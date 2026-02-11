@@ -91,9 +91,9 @@ export default function ReviewStep() {
       const data = await res.json();
       // Clear session storage
       sessionStorage.removeItem("eckcm_registration");
-      // Navigate to payment or confirmation
+      // Navigate to payment
       router.push(
-        `/register/${eventId}/payment?registrationId=${data.registrationId}`
+        `/register/${eventId}/payment?registrationId=${data.registrationId}&code=${data.confirmationCode}`
       );
     } catch {
       toast.error("Network error");

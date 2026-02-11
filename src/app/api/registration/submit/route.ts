@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateSafeConfirmationCode } from "@/lib/services/confirmation-code.service";
 import { calculateEstimate } from "@/lib/services/pricing.service";
+import { createInvoice } from "@/lib/services/invoice.service";
 import type { RoomGroupInput, AirportPickupInput } from "@/lib/types/registration";
 
 interface SubmitBody {
@@ -217,6 +218,18 @@ export async function POST(request: Request) {
         notes: `Airport pickup needed: ${airportPickup.details || "No details provided"}`,
       })
       .eq("id", registration.id);
+  }
+
+  // 8. Create invoice with line items
+  try {
+    await createInvoice(admin, {
+      registrationId: registration.id,
+      totalCents: estimate.total,
+      breakdown: estimate.breakdown,
+    });
+  } catch (invoiceErr) {
+    console.error("Invoice creation failed:", invoiceErr);
+    // Non-fatal: registration is still valid, invoice can be created later
   }
 
   return NextResponse.json({

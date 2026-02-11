@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-11T07:57:15.379Z",
+  "lastUpdated": "2026-02-11T08:13:18.361Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -36,7 +36,10 @@
     "pricing.service.ts",
     "estimate",
     "confirmation-code.service.ts",
-    "submit"
+    "submit",
+    "epass.service.ts",
+    "invoice.service.ts",
+    "create-intent"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -110,9 +113,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:22:35.232Z",
-        "lastUpdated": "2026-02-11T07:23:45.793Z"
+        "lastUpdated": "2026-02-11T08:13:18.361Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/lib/stripe/config.ts"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/webhooks/stripe/route.ts"
     },
     "email": {
       "phase": "do",
@@ -409,7 +412,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:46.919Z",
-        "lastUpdated": "2026-02-11T07:54:46.919Z"
+        "lastUpdated": "2026-02-11T08:10:59.271Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
     },
@@ -422,7 +425,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:55.352Z",
-        "lastUpdated": "2026-02-11T07:54:55.352Z"
+        "lastUpdated": "2026-02-11T08:09:56.731Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
     },
@@ -435,7 +438,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:55:02.249Z",
-        "lastUpdated": "2026-02-11T07:55:02.249Z"
+        "lastUpdated": "2026-02-11T08:10:03.043Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/confirmation/page.tsx"
     },
@@ -487,9 +490,48 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:56:55.924Z",
-        "lastUpdated": "2026-02-11T07:56:55.924Z"
+        "lastUpdated": "2026-02-11T08:10:48.982Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/submit/route.ts"
+    },
+    "epass.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T08:05:06.131Z",
+        "lastUpdated": "2026-02-11T08:05:06.131Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/epass.service.ts"
+    },
+    "invoice.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T08:05:12.323Z",
+        "lastUpdated": "2026-02-11T08:10:32.014Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/invoice.service.ts"
+    },
+    "create-intent": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T08:08:34.566Z",
+        "lastUpdated": "2026-02-11T08:13:07.431Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/create-intent/route.ts"
     }
   },
   "pipeline": {
@@ -500,7 +542,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-11T07:57:15.379Z"
+    "lastActivity": "2026-02-11T08:13:18.361Z"
   },
   "history": [
     {
@@ -941,6 +983,108 @@
     {
       "timestamp": "2026-02-11T07:57:15.379Z",
       "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:05:06.131Z",
+      "feature": "epass.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:05:12.324Z",
+      "feature": "invoice.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:08:34.566Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:08:49.178Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:09:00.185Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:09:56.731Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:10:03.043Z",
+      "feature": "confirmation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:10:32.014Z",
+      "feature": "invoice.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:10:39.917Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:10:48.982Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:10:59.271Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:12:49.350Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:12:57.282Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:13:01.917Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:13:07.431Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:13:11.311Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:13:18.361Z",
+      "feature": "stripe",
       "phase": "do",
       "action": "updated"
     }

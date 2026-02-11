@@ -1,35 +1,54 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSearchParams, useRouter, useParams } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { StripeCheckout } from "@/components/payment/stripe-checkout";
 
 export default function PaymentStep() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { eventId } = useParams<{ eventId: string }>();
   const registrationId = searchParams.get("registrationId");
+  const confirmationCode = searchParams.get("code");
+
+  if (!registrationId) {
+    return (
+      <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
+        <Card>
+          <CardContent className="py-12 text-center space-y-4">
+            <p className="text-destructive">
+              No registration found. Please start a new registration.
+            </p>
+            <Button asChild>
+              <Link href="/dashboard">Return to Dashboard</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const handlePaymentSuccess = () => {
+    router.push(
+      `/register/${eventId}/confirmation?registrationId=${registrationId}&code=${confirmationCode || ""}`
+    );
+  };
 
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-center">
-          <p className="text-muted-foreground">
-            Registration submitted successfully!
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Registration ID: {registrationId}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Stripe payment integration will be added in Phase 5.
-          </p>
-          <Button asChild>
-            <Link href="/dashboard">Return to Dashboard</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <h2 className="text-xl font-bold text-center">Complete Payment</h2>
+
+      <StripeCheckout
+        registrationId={registrationId}
+        onSuccess={handlePaymentSuccess}
+      />
+
+      <p className="text-xs text-center text-muted-foreground">
+        Your payment is processed securely by Stripe. We never store your card
+        details.
+      </p>
     </div>
   );
 }
