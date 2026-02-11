@@ -1,0 +1,315 @@
+# ECKCM Online Registration & Management System
+
+## 개요
+- 행사: 미국에있는 한국 교회 연합 야영회/수련회
+- 기간: 매년 6월 말, 7일간
+- 장소: University of Pittsburgh at Johnstown
+- 목적: 참가자 온라인 등록, 온라인 포털 (Profile Dashboard), 등록 관리 (Admin Dashboard), 여러개의 등록을 생성 가능 (항공사, 호텔 예약 시스템과 비슷)
+## 프로젝트 설정
+- 프레임워크: 최신 Next.js (App Router) and PWA 로 만들어줘. (캐시 문제 해결해야함 skipWaiting: true)
+- 스타일링: Tailwind CSS + shadcn/ui (Must and only use shadcn MCP, mobile focused Responsive web design, booking and e-pass are mobile design), 다크 모드 지원
+- 폰트:  CDN font-family: "Pretendard", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+- 백엔드: Supabase (Use Supabase MCP)
+- 배포: Vercel
+- 결제: Live Mode Stripe, Test Mode Stripe, Cancel and Refund, Partial Refund
+- Email system: Resend
+- OAuth: Google, Apple
+- 인앱 실시간 알림: Supabase Realtime (DB Changes or Broadcast), email notification
+- 모든 컨텐츠에 한국어, 영어 따로 존재 (default 영어)
+- 모든 관리자 audit_logs page
+- 특정 Google sheet 에서도 등록 정보와 개인 정보 보여야함. 
+## 보안
+- Supabase RLS (Row Level Security) 적용
+- 개인정보 암호화 저장
+- HTTPS 전용 통신
+- 결제 정보 PCI DSS 준수 (Stripe 처리)
+- 세션 타임아웃 설정
+## 세부사항
+- Auth(User) / Person(참가자) / Registration(예약) / Group(운영단위) / Payment(결제) / Checkin(로그) / Audit(감사)
+- RLS는 owner + group leader + staff permission(event_scope)
+- QR은 opaque token + 서버검증 + 오프라인은 로컬 캐시/큐 동기화 패턴
+- 등록하면 각 등록자들은 항공사에서 쓰는 6자리 comfirmaion code 를 제공.
+- 만약 로그인이 되어 있으면 모든 사용자는 Profile Dashboard Page 가 보여야함.
+- Group leader 즉 등록자는 모든 등록인원의 정보와 e-pass 볼 수 있음.
+- 모든 DB table 이름에 ECKCM_ prefix 가 들어감.
+- Group 이 생성되면 Room Assign Status: Pending, 관리자가 수동으로 방을 지정.
+## 관리자 페이지
+- System Settings
+	- Registration status
+	- Global variables
+	- Fee Categories
+		- Registration Fee: $80
+		- Early Bird Registration Fee: $70
+		- Lodging
+			- A/C Room: $75 / night
+			- Non-A/C Room: $65 / night
+		- Additional Lodging Fee
+			- 한 그룹에 3명 부터 한 night 에 $4 추가. admin이 가격 설정가능하게.
+		- Meal
+			- meal date range = event date range
+			- no meal date 설정
+			- 아침, 점심, 저녁
+			- 도착일과 출발일은 partial meal 선택 가능
+			- 아침, 점심, 저녁 가격 설정: adult: $18 each,  youth: $10
+			- 하루 3끼 다 먹을시 가격 설정: adult: $45, youth: $25
+			- 이벤트 시작일 기준 4세 이하는 무료
+		- VBS
+			- EM: VBS (4-8yrs, Pre-K to 3rd grade) 는 $15 어린이 여름성경학교 교재비 추가. admin이 가격 설정가능하게.
+		- Key deposit
+			- single key: $65
+	- Registration Group
+		- add, edit, remove
+		- Name, Description, Global Registration Fee, Global Early Bird Fee, Global Early Bird Deadline, Custom Registration Fee, Custom Early Bird Fee
+		- Access Code (Optional)
+	- Departments
+		- add, edit, remove
+		- English Name, Korean Name, Short Code (upper case only)
+	- Church List
+		- Add, edit, remove church
+		- English Only
+		- 맨위에 "Other" 이 있어야함.
+	- Lodging
+		- Add, edit, remove Building
+			- Magic generator for rooms (with fee)
+			- Add, edit, remove Floors
+			- Add, edit, remove Rooms
+	- Meal
+		- meal dashboard
+		- 
+	- Form Field Manager
+		- hide or show by registration type
+	- email notification when new registered
+	- Stript test and live mode API
+	- Google sheet api? or id
+	- email test 
+	- etc.
+- Events
+	- add, edit, remove
+	- 등록 날짜, 이벤트 기간 날짜 설정 가능 status: activate, deactivate
+	- 해당 이벤트 강제 초기화  (super admin)
+		- 특정  비밀번호를 넣야지만 등록 초기화 
+- Event Participants
+	- Data Table view: list of all Event Participants (not users), manually control like Excel
+		- all the personal info, note, payment status, room assigned status, on-site check-in status,  etc.
+- Room Groups
+	- 모든 그룹이 보임
+- Loding
+	- Pending Groups list
+		- assign rooms
+	- Assigned Groups list
+- Users
+	- List of users
+	- add, edit, remove users
+	- Permission
+		- 참가자 관리
+			- participant.read
+			- participant.update
+			- participant.delete (super admin)
+			- participant.export
+		- 체크인
+			- checkin.main
+			- checkin.session
+			- checkin.dining
+		- 그룹 관리
+			- 기본 CRUD
+				- group.read — 그룹 조회
+				- group.create — 그룹 생성
+				- group.update — 그룹 수정(이름/설명/타입 등)
+				- group.delete — 그룹 삭제
+			- 멤버 배정/이동
+				- group.member.assign — 참가자 → 그룹 배정
+				- group.member.remove — 그룹에서 멤버 제거
+				- group.member.transfer — 그룹 간 멤버 이동
+			- 리더(권한 있는 멤버) 지정
+				- group.leader.assign — 리더 변경
+			- 운영/확인용
+				- group.checkin.view — 그룹 단위 체크인/출석 현황 보기 (세션/메인/식당과 연결될 때 유용)
+				- group.roster.export — 그룹 명단 export (CSV/PDF 등)
+				- group.roster.print — 그룹 명단 출력/프린트 뷰 (선택)
+	- User Role
+		- Role: SUPER_ADMIN
+		- Role: EVENT_ADMIN
+		- Role: ROOM_COORDINATOR
+		- Role: CHECKIN_STAFF
+		- Role: SESSION_CHECKIN_STAFF
+		- Role: DINING_CHECKIN_STAFF
+		- Role: KEY_DEPOSIT_STAFF
+		- Role: CUSTOM
+- Print
+	- landyard Print
+		- bulk print, export png, pdf
+	- QR code card print
+		- bulk print, export png, pdf
+- Invoice
+	- search invoice
+	- export csv, pdf
+	- send invoice manually
+	- Create Custom Invoice
+- Manual
+	- Manual Registration (only admin can add person)
+		- Personal info
+		- Lodging
+		- dates
+		- Meals
+		- Payment
+	- Manual Partial Refund and Refund
+	- Manual Payment (Public)
+	- Manual E-Pass Viewer (Public)
+	- Donation (Public)
+- Check-in
+	- 실시간 동시 체크인 가능 (Self Check-in & Kiosk Check-in combo)
+	- Self Check-in (Using device back camera)
+		- Event Check-in 
+		- Meal Check-in
+		- Custom Check-in
+	- Kiosk Check-in (Using QR code scanner)
+		- Event Check-in 
+		- Meal Check-in
+		- Custom Check-in
+	- Session Check-in
+		- Generate Session
+		- Scan QR code to check-in
+		- session dashboard page with qr code
+		- end session with send email all attendees list
+## 유저 등록 FLow
+### 1단계
+- 로그인 페이지에서 OAuth: Google, Apple, (Email & Password) 로 회원가입 해야 서비스 이용 가능.
+- 등록시 Google, Apple, (Email & Password) 모든 email 은 중복일 경우 가입을 막아야함. 
+- OAuth: Google, Apple 연동후 개인 정보 입력을 해야 가입이 됨.
+- Email & Password 는 같은 페이지에서 Email & Password 를 입력하고 개인 정보 입력이 같이 보임.
+	- type="email": 한국어: "이메일", 영어: "Email" required
+		- "Confirm Email" field, 데이터베이스 중복 체크 버튼 (required)
+	- Password
+	- 그 밑에 개인 정보 넣고 등록.
+- 개인 정보
+	- Text Input: Last Name (English only) required
+	- Text Input: First Name (English only) required
+	- Text Input: Display Name (한글)
+	- Dropdown: 성별 required
+	- 생년월일
+		- 생년월일(Birth Date) 입력 UI/DB 규칙:
+			- Year: 검색 가능 + 직접 입력 가능한 콤보박스(검색형 dropdown/combobox)
+				- 옵션 범위: 현재 연도 기준 최대 120년 전 ~ 현재 연도
+				- 숫자(YYYY)만 허용, 범위 검증 필수, Required
+			- Month: 일반 Dropdown
+				- 1~12, Required
+			- Day: 일반 Dropdown
+				- Month/Year 선택값을 반영해 일(day) 옵션을 동적으로 제한
+					- 달력 월/윤년 날짜 적용.
+				- Required
+			- 저장 방식(DB):
+				- birth_date 단일 컬럼에 DATE 타입으로 저장 (YYYY-MM-DD)
+				- UI에서 선택/입력된 Year/Month/Day를 조합해 유효한 날짜로 변환 후 저장
+				- 나이 (Age) 도  이벤트 시작일 기준으로 자동으로 계산해서 저장. 
+	- Checkbox: I am currently a K–12 student (high school or younger). 
+		- 생년월일이 이벤트 시작일 기준 18세 미만 즉 미성년자면 자동으로 체크 됩니다. (예. 이벤트 시작이 6월 21일 2026년)
+	- (if yes above) Grade 학년 (Dropdown) required
+		- Pre-K
+		- Kindergarten
+		- 1st Grade
+		- 2nd Grade
+		- 3rd Grade
+		- 4th Grade
+		- 5th Grade
+		- 6th Grade
+		- 7th Grade
+		- 8th Grade
+		- 9th Grade
+		- 10th Grade
+		- 11th Grade
+		- 12th Grade
+	- Dropdown: 한국어: "참가 부서", 영어: "Department"
+		- 한국어권: 장년
+		- 한국어권: CIA
+		- 한국어권: HANSAMO
+		- EM: Cradle Roll (0-3yrs)
+		- EM: VBS (4-8yrs, Pre-K to 3rd grade)
+		- EM: Juniors (9-11 yrs, 4th-5th grade)
+		- EM: Earliteens (12-14 yrs, 6th-8th grade)
+		- EM: High School
+		- EM: Collegiate
+		- EM: YA (post-undergrad single)
+		- EM: Adult
+	- type="email": 한국어: "이메일", 영어: "Email" required
+		- 만약 Google OAuth 나 Email & Password 면 이 필드 보이지 않음. Profile setting 에서는 보임. Google OAuth는 Profile setting 에서 disable 로 이메일 변경 불가.
+		- "Confirm Email" field, 데이터베이스 중복 체크 버튼 (required)
+	- Tel Input:  한국어: "전화번호", 영어: "Phone Number" required
+	- Searchable Dropdown: 교회
+		- Other 선택시 Conditional Input
+- 만약 로그인이 되어 있으면 모든 사용자는 Profile Dashboard Page 가 보여야함.
+### 2단계
+- Profile Dashboard Page
+	- 가장 상단에 현재 등록가능한 등록이 보이고 등록하기 버튼 보임. 만약 등록이 끝났다면 "Request Change / Cancellation" 버튼이 떠야함.
+	- E-Pass 버튼
+		- 현재 active 등록된 e-pass 가 보임.
+		- 이름, 성별, QR code
+	- 등록정보 버튼
+		- 
+	- 영수증 버튼
+		- 매번 이벤트 영수증이 저장됨.
+	- Profile Settings
+		- 본인 개인정보 수정
+		- security
+### 3단계
+- Active event 에 "Register Now" 눌러서 등록
+- #### Step1: Start Registration
+	- date range (nights)  - nights 사이에 빈 날짜가 있으면 안됨, 이벤트 range 기간만 선택 가능
+		- 만약 하루를 머물면 하루만 선택 가능
+	- Participants (min 1 to max 6 per group)
+		- "Adults": 0 - 4 (-,+ 숫자 컨트롤)
+		- "K–12 (high school or younger)": 0 - 6 (-,+ 숫자 컨트롤)
+		- "Infant/Toddlers (0 - 4)": 0 - 5 (-,+ 숫자 컨트롤, at least 1 adult)
+		- add another Room Group (max 4 group)
+	- (optional) Access Code (for different registration group) 확인 버튼
+	- Estimate 가격
+	- "Next" 버튼
+- #### Step2: Participants information
+	- Room Group 1
+		- Group Leader info
+		- Group Members info
+		- each Participants can pick their meal
+			- Meals
+				- meal 은 night date range 와 sync (lock)
+				- each person
+				- 도착일과 출발일에 3끼는 선택 가능 (each check box)
+	- Room Group 2,3,4 (if)
+- #### Step3: Lodging
+	- Checkbox for Room assignment
+		- 거동이 불편하신 어르신/ Elderly 
+		- 장애인/ Handicapped
+		- 1층 / 1st floor  Close to EM Venue
+- #### Step4: Key Deposit
+	- Keys for Room 1: min 1 to max 2 (-,+)
+- #### Step5: Airport Pickup
+	- ask do you need pickup?
+		- if yes
+### 4단계
+- Review & Pay
+- Summary
+- Stripe Custom Checkout with Elements
+	- Apple Pay, Google Pay
+	- Credit card
+	- ACH
+	- Check
+		- check image and put routing and account number (process as ACH)
+	- Zelle
+	- By submitting this registration, you agree to our Privacy Policy & Disclaimers.
+	- Proceed to Payment
+- 제출
+### 5단계
+- 결제후 등록 결제 성공 page
+	- go to profile dashboard
+- Room 그룹  생성
+	- id (uuid)
+	- event_id
+	- register_id:  
+	- Display Group Code: G0001 ( unique(event_id, code) )
+	- group_memberships
+		- id (uuid)
+		- group_id (FK)
+		- person_id (FK: participant/user/staff)
+		- role (enum: LEADER | MEMBER )
+		- status (ACTIVE | INACTIVE) (선택)
+		- created_at
+- Group leader (등록자) email 로 모든 등록자 confirmation code 와 e-pass 링크가  생성되서 발송 해야함.
+- 영수증도 즉시 보내야함.

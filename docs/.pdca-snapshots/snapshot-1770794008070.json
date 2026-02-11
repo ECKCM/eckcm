@@ -1,0 +1,45 @@
+{
+  "timestamp": "2026-02-11T07:13:28.069Z",
+  "reason": "compaction",
+  "status": {
+    "version": "2.0",
+    "lastUpdated": "2026-02-11T08:00:00.000Z",
+    "activeFeatures": [
+      "online-registration"
+    ],
+    "primaryFeature": "online-registration",
+    "features": {
+      "online-registration": {
+        "phase": "design",
+        "startedAt": "2026-02-11T07:00:00.000Z",
+        "lastUpdated": "2026-02-11T08:00:00.000Z",
+        "documents": {
+          "plan": "docs/01-plan/features/online-registration.plan.md",
+          "design": "docs/02-design/features/online-registration.design.md"
+        }
+      }
+    },
+    "pipeline": {
+      "currentPhase": 1,
+      "level": "Dynamic",
+      "phaseHistory": []
+    },
+    "session": {
+      "startedAt": "2026-02-09T20:06:18.025Z",
+      "onboardingCompleted": false,
+      "lastActivity": "2026-02-11T08:00:00.000Z"
+    },
+    "history": [
+      {
+        "action": "plan_created",
+        "feature": "online-registration",
+        "timestamp": "2026-02-11T07:00:00.000Z"
+      },
+      {
+        "action": "design_created",
+        "feature": "online-registration",
+        "timestamp": "2026-02-11T08:00:00.000Z"
+      }
+    ]
+  }
+}
