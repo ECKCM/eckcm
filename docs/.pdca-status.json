@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-11T08:13:18.361Z",
+  "lastUpdated": "2026-02-11T08:20:18.790Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -39,7 +39,12 @@
     "submit",
     "epass.service.ts",
     "invoice.service.ts",
-    "create-intent"
+    "create-intent",
+    "epass",
+    "[id]",
+    "registrations",
+    "receipts",
+    "settings"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -113,7 +118,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:22:35.232Z",
-        "lastUpdated": "2026-02-11T08:13:18.361Z"
+        "lastUpdated": "2026-02-11T08:17:01.106Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/webhooks/stripe/route.ts"
     },
@@ -230,7 +235,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:59.415Z",
-        "lastUpdated": "2026-02-11T07:57:05.153Z"
+        "lastUpdated": "2026-02-11T08:19:10.779Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/dashboard-content.tsx"
     },
@@ -532,6 +537,71 @@
         "lastUpdated": "2026-02-11T08:13:07.431Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/create-intent/route.ts"
+    },
+    "epass": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T08:17:20.808Z",
+        "lastUpdated": "2026-02-11T08:20:02.208Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/epass/page.tsx"
+    },
+    "[id]": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T08:17:35.016Z",
+        "lastUpdated": "2026-02-11T08:19:50.869Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/epass/[id]/page.tsx"
+    },
+    "registrations": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T08:17:59.438Z",
+        "lastUpdated": "2026-02-11T08:20:18.789Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/registrations/page.tsx"
+    },
+    "receipts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T08:18:12.398Z",
+        "lastUpdated": "2026-02-11T08:20:09.475Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/receipts/page.tsx"
+    },
+    "settings": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T08:18:29.772Z",
+        "lastUpdated": "2026-02-11T08:18:44.870Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/settings/profile-settings.tsx"
     }
   },
   "pipeline": {
@@ -542,7 +612,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-11T08:13:18.361Z"
+    "lastActivity": "2026-02-11T08:20:18.790Z"
   },
   "history": [
     {
@@ -1085,6 +1155,102 @@
     {
       "timestamp": "2026-02-11T08:13:18.361Z",
       "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:17:01.106Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:17:20.808Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:17:30.375Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:17:35.016Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:17:52.449Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:17:59.438Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:18:08.284Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:18:12.398Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:18:21.192Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:18:29.772Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:18:44.870Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:19:10.779Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:19:50.869Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:20:02.208Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:20:09.475Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T08:20:18.790Z",
+      "feature": "registrations",
       "phase": "do",
       "action": "updated"
     }

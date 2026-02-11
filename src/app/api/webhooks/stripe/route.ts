@@ -109,11 +109,11 @@ async function handlePaymentIntentSucceeded(
       const { token, tokenHash } = generateEPassToken();
 
       await admin.from("ECKCM_epass_tokens").insert({
-        event_id: registration.event_id,
         person_id: membership.person_id,
         registration_id: registrationId,
+        token: token,
         token_hash: tokenHash,
-        status: "ACTIVE",
+        is_active: true,
       });
 
       // Store the raw token temporarily in metadata for email delivery

@@ -97,15 +97,27 @@ export function DashboardContent({
 
       {/* Quick Links */}
       <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" className="h-auto py-4 flex-col">
+        <Button
+          variant="outline"
+          className="h-auto py-4 flex-col"
+          onClick={() => router.push("/dashboard/epass")}
+        >
           <span className="text-lg">E-Pass</span>
           <span className="text-xs text-muted-foreground">View your passes</span>
         </Button>
-        <Button variant="outline" className="h-auto py-4 flex-col">
+        <Button
+          variant="outline"
+          className="h-auto py-4 flex-col"
+          onClick={() => router.push("/dashboard/receipts")}
+        >
           <span className="text-lg">Receipts</span>
           <span className="text-xs text-muted-foreground">View receipts</span>
         </Button>
-        <Button variant="outline" className="h-auto py-4 flex-col">
+        <Button
+          variant="outline"
+          className="h-auto py-4 flex-col"
+          onClick={() => router.push("/dashboard/registrations")}
+        >
           <span className="text-lg">Registrations</span>
           <span className="text-xs text-muted-foreground">View history</span>
         </Button>
