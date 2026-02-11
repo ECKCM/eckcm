@@ -71,41 +71,48 @@ export function BirthDatePicker({
       <Label>Date of Birth *</Label>
       <div className="grid grid-cols-3 gap-2">
         {/* Month - Dropdown */}
-        <Select
-          value={month?.toString()}
-          onValueChange={(v) => onMonthChange(parseInt(v))}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Month" />
-          </SelectTrigger>
-          <SelectContent className="max-h-60">
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-              <SelectItem key={m} value={m.toString()}>
-                {m}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Month</Label>
+          <Select
+            value={month?.toString()}
+            onValueChange={(v) => onMonthChange(parseInt(v))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Month" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <SelectItem key={m} value={m.toString()}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Day - Dropdown */}
-        <Select
-          value={day?.toString()}
-          onValueChange={(v) => onDayChange(parseInt(v))}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Day" />
-          </SelectTrigger>
-          <SelectContent className="max-h-60">
-            {Array.from({ length: maxDays }, (_, i) => i + 1).map((d) => (
-              <SelectItem key={d} value={d.toString()}>
-                {d}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Day</Label>
+          <Select
+            value={day?.toString()}
+            onValueChange={(v) => onDayChange(parseInt(v))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Day" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              {Array.from({ length: maxDays }, (_, i) => i + 1).map((d) => (
+                <SelectItem key={d} value={d.toString()}>
+                  {d}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Year - Input with live validation */}
         <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Year</Label>
           <Input
             type="text"
             inputMode="numeric"

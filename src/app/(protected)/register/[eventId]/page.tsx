@@ -15,13 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 
 interface EventData {
@@ -34,8 +27,6 @@ interface EventData {
 interface RegGroup {
   id: string;
   name_en: string;
-  name_ko: string | null;
-  description_en: string | null;
   access_code: string | null;
   is_default: boolean;
 }
@@ -61,8 +52,7 @@ export default function RegistrationStep1() {
           .single(),
         supabase
           .from("eckcm_registration_groups")
-          .select("id, name_en, name_ko, description_en, access_code, is_default")
-          .eq("event_id", eventId)
+          .select("id, name_en, access_code, is_default")
           .eq("is_active", true)
           .order("created_at"),
       ]);
@@ -79,7 +69,7 @@ export default function RegistrationStep1() {
         });
       }
 
-      // Default to default group
+      // Auto-assign default group
       if (!state.registrationGroupId && grps) {
         const defaultGroup = grps.find((g) => g.is_default);
         if (defaultGroup) {
@@ -112,13 +102,25 @@ export default function RegistrationStep1() {
     });
   };
 
-  const handleGroupSelect = (groupId: string) => {
-    const group = groups.find((g) => g.id === groupId);
-    if (group?.access_code && accessCode !== group.access_code) {
-      toast.error("This group requires an access code");
-      return;
+  // Resolve group from access code: match → use it, no match → default
+  const resolveGroup = (code: string): RegGroup | undefined => {
+    if (code.trim()) {
+      const matched = groups.find(
+        (g) => g.access_code && g.access_code === code.trim()
+      );
+      if (matched) return matched;
     }
-    dispatch({ type: "SET_REGISTRATION_GROUP", groupId });
+    return groups.find((g) => g.is_default);
+  };
+
+  const handleAccessCodeChange = (value: string) => {
+    setAccessCode(value);
+    dispatch({ type: "SET_ACCESS_CODE", code: value });
+
+    const group = resolveGroup(value);
+    if (group) {
+      dispatch({ type: "SET_REGISTRATION_GROUP", groupId: group.id });
+    }
   };
 
   const handleNext = () => {
@@ -130,23 +132,21 @@ export default function RegistrationStep1() {
       toast.error("Minimum 1 night stay required");
       return;
     }
-    if (!state.registrationGroupId) {
-      toast.error("Please select a registration group");
+
+    // Resolve group
+    const group = resolveGroup(accessCode);
+    if (!group) {
+      toast.error("No registration group available");
       return;
     }
 
-    // Check access code for selected group
-    const selectedGroup = groups.find(
-      (g) => g.id === state.registrationGroupId
-    );
-    if (
-      selectedGroup?.access_code &&
-      accessCode !== selectedGroup.access_code
-    ) {
-      toast.error("Invalid access code for selected group");
+    // If access code was entered but didn't match any group
+    if (accessCode.trim() && !groups.find((g) => g.access_code === accessCode.trim())) {
+      toast.error("Invalid access code");
       return;
     }
 
+    dispatch({ type: "SET_REGISTRATION_GROUP", groupId: group.id });
     dispatch({ type: "SET_STEP", step: 2 });
     router.push(`/register/${eventId}/participants`);
   };
@@ -167,10 +167,8 @@ export default function RegistrationStep1() {
     );
   }
 
-  // Filter available groups (public + access-code matched)
-  const availableGroups = groups.filter(
-    (g) => !g.access_code || g.access_code === accessCode
-  );
+  // Determine resolved group for display
+  const resolvedGroup = resolveGroup(accessCode);
 
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
@@ -179,8 +177,8 @@ export default function RegistrationStep1() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Step 1: Dates & Group</CardTitle>
-          <CardDescription>Select your stay dates and registration group</CardDescription>
+          <CardTitle>Step 1: Dates</CardTitle>
+          <CardDescription>Select your stay dates</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -217,34 +215,14 @@ export default function RegistrationStep1() {
             <Label>Access Code (optional)</Label>
             <Input
               value={accessCode}
-              onChange={(e) => {
-                setAccessCode(e.target.value);
-                dispatch({ type: "SET_ACCESS_CODE", code: e.target.value });
-              }}
+              onChange={(e) => handleAccessCodeChange(e.target.value)}
               placeholder="Enter if you have one"
             />
-          </div>
-
-          {/* Registration Group */}
-          <div className="space-y-1">
-            <Label>Registration Group</Label>
-            <Select
-              value={state.registrationGroupId ?? ""}
-              onValueChange={handleGroupSelect}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a group" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableGroups.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.name_en}
-                    {g.name_ko ? ` (${g.name_ko})` : ""}
-                    {g.is_default ? " - Default" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {resolvedGroup && (
+              <p className="text-xs text-muted-foreground">
+                Group: {resolvedGroup.name_en}
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end pt-4">

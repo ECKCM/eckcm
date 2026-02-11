@@ -96,21 +96,22 @@ export function ProfileForm({
   const selectedChurch = churches.find((c) => c.id === form.churchId);
   const showChurchOther = selectedChurch?.is_other ?? false;
 
-  // Regex: English and Spanish letters only (a-z, accented chars like ñ, é, etc.)
-  const namePattern = /^[A-Za-zÀ-ÖØ-öø-ÿÑñ]+(?: [A-Za-zÀ-ÖØ-öø-ÿÑñ]+)*$/;
+  // Regex: Uppercase English/Spanish letters only
+  const namePattern = /^[A-ZÀ-ÖØ-ÝÑ]+(?: [A-ZÀ-ÖØ-ÝÑ]+)*$/;
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!form.lastName.trim()) {
       errs.lastName = "Required";
     } else if (!namePattern.test(form.lastName.trim())) {
-      errs.lastName = "English/Spanish letters only, no leading/trailing spaces";
+      errs.lastName = "Uppercase letters only";
     }
     if (!form.firstName.trim()) {
       errs.firstName = "Required";
     } else if (!namePattern.test(form.firstName.trim())) {
-      errs.firstName = "English/Spanish letters only, no leading/trailing spaces";
+      errs.firstName = "Uppercase letters only";
     }
+    if (!form.displayNameKo.trim()) errs.displayNameKo = "Required";
     if (!form.gender) errs.gender = "Required";
     if (!form.birthYear || !form.birthMonth || !form.birthDay) {
       errs.birthDate = "Required";
@@ -161,10 +162,12 @@ export function ProfileForm({
     });
   };
 
-  // Filter name input: allow only English/Spanish letters and single spaces (no leading space)
+  // Filter name input: uppercase English/Spanish letters only, single spaces (no leading space)
   const handleNameChange = (field: "lastName" | "firstName", raw: string) => {
-    // Remove characters that aren't letters or spaces
-    let v = raw.replace(/[^A-Za-zÀ-ÖØ-öø-ÿÑñ ]/g, "");
+    // Convert to uppercase first
+    let v = raw.toUpperCase();
+    // Remove characters that aren't uppercase letters or spaces
+    v = v.replace(/[^A-ZÀ-ÖØ-ÝÑ ]/g, "");
     // No leading spaces
     v = v.replace(/^\s+/, "");
     // Collapse consecutive spaces to one
@@ -188,7 +191,7 @@ export function ProfileForm({
             id="firstName"
             value={form.firstName}
             onChange={(e) => handleNameChange("firstName", e.target.value)}
-            placeholder="John"
+            placeholder="JOHN"
           />
           {errors.firstName && (
             <p className="text-xs text-destructive">{errors.firstName}</p>
@@ -200,7 +203,7 @@ export function ProfileForm({
             id="lastName"
             value={form.lastName}
             onChange={(e) => handleNameChange("lastName", e.target.value)}
-            placeholder="Kim"
+            placeholder="KIM"
           />
           {errors.lastName && (
             <p className="text-xs text-destructive">{errors.lastName}</p>
@@ -209,13 +212,16 @@ export function ProfileForm({
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="displayNameKo">Display Name</Label>
+        <Label htmlFor="displayNameKo">Display Name *</Label>
         <Input
           id="displayNameKo"
           value={form.displayNameKo}
           onChange={(e) => update("displayNameKo", e.target.value)}
           placeholder="Scott Kim"
         />
+        {errors.displayNameKo && (
+          <p className="text-xs text-destructive">{errors.displayNameKo}</p>
+        )}
       </div>
 
       {/* Gender */}

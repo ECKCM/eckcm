@@ -395,16 +395,15 @@ CREATE TABLE ECKCM_events (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- ECKCM_departments
+-- ECKCM_departments (Global scope - shared across all events)
 CREATE TABLE ECKCM_departments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id UUID NOT NULL REFERENCES ECKCM_events(id) ON DELETE CASCADE,
   name_en TEXT NOT NULL,
   name_ko TEXT NOT NULL,
   short_code TEXT NOT NULL, -- upper case only
   sort_order INTEGER NOT NULL DEFAULT 0,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  UNIQUE(event_id, short_code)
+  UNIQUE(short_code)
 );
 
 -- ECKCM_churches (Global scope - shared across all events, not event-specific)
@@ -416,10 +415,9 @@ CREATE TABLE ECKCM_churches (
   is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- ECKCM_registration_groups
+-- ECKCM_registration_groups (Global scope - shared across all events)
 CREATE TABLE ECKCM_registration_groups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id UUID NOT NULL REFERENCES ECKCM_events(id) ON DELETE CASCADE,
   name_en TEXT NOT NULL,
   name_ko TEXT,
   description_en TEXT,
@@ -435,10 +433,9 @@ CREATE TABLE ECKCM_registration_groups (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- ECKCM_fee_categories
+-- ECKCM_fee_categories (Global scope - shared across all events)
 CREATE TABLE ECKCM_fee_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id UUID NOT NULL REFERENCES ECKCM_events(id) ON DELETE CASCADE,
   code TEXT NOT NULL, -- REG_FEE, LODGING_AC, LODGING_NON_AC, MEAL_ADULT, etc.
   name_en TEXT NOT NULL,
   name_ko TEXT,
@@ -447,7 +444,7 @@ CREATE TABLE ECKCM_fee_categories (
   metadata JSONB DEFAULT '{}', -- additional pricing rules
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   sort_order INTEGER NOT NULL DEFAULT 0,
-  UNIQUE(event_id, code)
+  UNIQUE(code)
 );
 
 -- ECKCM_registration_group_fee_categories: mapping
@@ -477,10 +474,10 @@ CREATE TABLE ECKCM_form_field_config (
 
 ```sql
 -- ECKCM_people: participant entity
--- NOTE: department_id is event-scoped (ECKCM_departments has event_id).
+-- NOTE: department_id is global-scoped (ECKCM_departments has no event_id).
+-- church_id is also global-scoped (ECKCM_churches has no event_id).
 -- Each person record is created per-registration, so a person participating
 -- in multiple events will have separate person records per event.
--- church_id is global-scoped (ECKCM_churches has no event_id).
 CREATE TABLE ECKCM_people (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   last_name_en TEXT NOT NULL,

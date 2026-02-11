@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-11T21:15:41.019Z",
+  "lastUpdated": "2026-02-11T22:29:14.872Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -73,7 +73,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:16:45.184Z",
-        "lastUpdated": "2026-02-11T20:34:42.581Z"
+        "lastUpdated": "2026-02-11T21:59:20.164Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/birth-date-picker.tsx"
     },
@@ -177,7 +177,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:30:50.784Z",
-        "lastUpdated": "2026-02-11T20:34:21.985Z"
+        "lastUpdated": "2026-02-11T22:00:04.532Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/components/auth/profile-form.tsx"
     },
@@ -281,7 +281,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:46:31.411Z",
-        "lastUpdated": "2026-02-11T07:52:25.204Z"
+        "lastUpdated": "2026-02-11T22:29:14.872Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/page.tsx"
     },
@@ -294,7 +294,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:47:06.044Z",
-        "lastUpdated": "2026-02-11T14:27:50.807Z"
+        "lastUpdated": "2026-02-11T22:13:21.632Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/groups/groups-manager.tsx"
     },
@@ -307,7 +307,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:47:55.404Z",
-        "lastUpdated": "2026-02-11T07:48:29.525Z"
+        "lastUpdated": "2026-02-11T22:11:14.953Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/fees/fees-manager.tsx"
     },
@@ -320,7 +320,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:48:47.747Z",
-        "lastUpdated": "2026-02-11T07:49:16.514Z"
+        "lastUpdated": "2026-02-11T22:10:51.194Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/departments/departments-manager.tsx"
     },
@@ -710,7 +710,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-11T21:15:41.019Z"
+    "lastActivity": "2026-02-11T22:29:14.872Z"
   },
   "history": [
     {
@@ -1883,6 +1883,90 @@
     {
       "timestamp": "2026-02-11T21:15:41.019Z",
       "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T21:59:20.164Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T21:59:33.038Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T21:59:39.793Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T21:59:48.670Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T21:59:54.759Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T21:59:59.351Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T22:00:04.532Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T22:10:16.008Z",
+      "feature": "departments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T22:10:18.112Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T22:10:19.920Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T22:10:51.194Z",
+      "feature": "departments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T22:11:14.953Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T22:13:21.632Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T22:29:14.872Z",
+      "feature": "[eventId]",
       "phase": "do",
       "action": "updated"
     }

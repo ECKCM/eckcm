@@ -7,14 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -35,7 +27,6 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 
 interface Department {
   id: string;
-  event_id: string;
   name_en: string;
   name_ko: string;
   short_code: string;
@@ -51,36 +42,28 @@ const emptyForm = {
   is_active: true,
 };
 
-export function DepartmentsManager({
-  events,
-}: {
-  events: { id: string; name_en: string; year: number }[];
-}) {
-  const [selectedEventId, setSelectedEventId] = useState("");
+export function DepartmentsManager() {
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
 
-  const loadDepartments = useCallback(async (eventId: string) => {
+  const loadDepartments = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
     const { data } = await supabase
       .from("eckcm_departments")
       .select("*")
-      .eq("event_id", eventId)
       .order("sort_order");
     setDepartments(data ?? []);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (selectedEventId) {
-      loadDepartments(selectedEventId);
-    }
-  }, [selectedEventId, loadDepartments]);
+    loadDepartments();
+  }, [loadDepartments]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -109,7 +92,6 @@ export function DepartmentsManager({
     const supabase = createClient();
 
     const payload = {
-      event_id: selectedEventId,
       name_en: form.name_en,
       name_ko: form.name_ko,
       short_code: form.short_code.toUpperCase(),
@@ -142,7 +124,7 @@ export function DepartmentsManager({
 
     setSaving(false);
     setDialogOpen(false);
-    loadDepartments(selectedEventId);
+    loadDepartments();
   };
 
   const handleDelete = async (id: string) => {
@@ -156,123 +138,97 @@ export function DepartmentsManager({
       return;
     }
     toast.success("Department deleted");
-    loadDepartments(selectedEventId);
+    loadDepartments();
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
-        <div className="w-64">
-          <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select event" />
-            </SelectTrigger>
-            <SelectContent>
-              {events.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name_en} ({e.year})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {selectedEventId && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openCreate}>
-                <Plus className="mr-2 size-4" />
-                New Department
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId ? "Edit Department" : "Create Department"}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>Name (EN) *</Label>
-                    <Input
-                      value={form.name_en}
-                      onChange={(e) =>
-                        setForm({ ...form, name_en: e.target.value })
-                      }
-                      placeholder="Youth"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Name (KO) *</Label>
-                    <Input
-                      value={form.name_ko}
-                      onChange={(e) =>
-                        setForm({ ...form, name_ko: e.target.value })
-                      }
-                      placeholder="청년부"
-                    />
-                  </div>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 size-4" />
+              New Department
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingId ? "Edit Department" : "Create Department"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Name (EN) *</Label>
+                  <Input
+                    value={form.name_en}
+                    onChange={(e) =>
+                      setForm({ ...form, name_en: e.target.value })
+                    }
+                    placeholder="Youth"
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>Short Code *</Label>
-                    <Input
-                      value={form.short_code}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          short_code: e.target.value.toUpperCase(),
-                        })
-                      }
-                      placeholder="YTH"
-                      maxLength={10}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Sort Order</Label>
-                    <Input
-                      type="number"
-                      value={form.sort_order}
-                      onChange={(e) =>
-                        setForm({ ...form, sort_order: e.target.value })
-                      }
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <Label>Name (KO) *</Label>
+                  <Input
+                    value={form.name_ko}
+                    onChange={(e) =>
+                      setForm({ ...form, name_ko: e.target.value })
+                    }
+                    placeholder="청년부"
+                  />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={form.is_active}
-                    onCheckedChange={(checked) =>
-                      setForm({ ...form, is_active: checked })
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Short Code *</Label>
+                  <Input
+                    value={form.short_code}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        short_code: e.target.value.toUpperCase(),
+                      })
+                    }
+                    placeholder="YTH"
+                    maxLength={10}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Sort Order</Label>
+                  <Input
+                    type="number"
+                    value={form.sort_order}
+                    onChange={(e) =>
+                      setForm({ ...form, sort_order: e.target.value })
                     }
                   />
-                  <Label>Active</Label>
                 </div>
-                <Button
-                  onClick={handleSave}
-                  className="w-full"
-                  disabled={saving}
-                >
-                  {saving ? "Saving..." : editingId ? "Update" : "Create"}
-                </Button>
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={form.is_active}
+                  onCheckedChange={(checked) =>
+                    setForm({ ...form, is_active: checked })
+                  }
+                />
+                <Label>Active</Label>
+              </div>
+              <Button
+                onClick={handleSave}
+                className="w-full"
+                disabled={saving}
+              >
+                {saving ? "Saving..." : editingId ? "Update" : "Create"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {!selectedEventId ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            Select an event to manage departments.
-          </CardContent>
-        </Card>
-      ) : loading ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            Loading...
-          </CardContent>
-        </Card>
+      {loading ? (
+        <p className="text-center text-muted-foreground py-8">Loading...</p>
       ) : (
         <Table>
           <TableHeader>

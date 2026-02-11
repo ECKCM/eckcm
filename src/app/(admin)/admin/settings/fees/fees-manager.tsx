@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -35,7 +34,6 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 
 interface FeeCategory {
   id: string;
-  event_id: string;
   code: string;
   name_en: string;
   name_ko: string | null;
@@ -58,36 +56,28 @@ const emptyForm = {
   is_active: true,
 };
 
-export function FeeCategoriesManager({
-  events,
-}: {
-  events: { id: string; name_en: string; year: number }[];
-}) {
-  const [selectedEventId, setSelectedEventId] = useState("");
+export function FeeCategoriesManager() {
   const [fees, setFees] = useState<FeeCategory[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
 
-  const loadFees = useCallback(async (eventId: string) => {
+  const loadFees = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
     const { data } = await supabase
       .from("eckcm_fee_categories")
       .select("*")
-      .eq("event_id", eventId)
       .order("sort_order");
     setFees(data ?? []);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (selectedEventId) {
-      loadFees(selectedEventId);
-    }
-  }, [selectedEventId, loadFees]);
+    loadFees();
+  }, [loadFees]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -118,7 +108,6 @@ export function FeeCategoriesManager({
     const supabase = createClient();
 
     const payload = {
-      event_id: selectedEventId,
       code: form.code.toUpperCase(),
       name_en: form.name_en,
       name_ko: form.name_ko || null,
@@ -153,7 +142,7 @@ export function FeeCategoriesManager({
 
     setSaving(false);
     setDialogOpen(false);
-    loadFees(selectedEventId);
+    loadFees();
   };
 
   const handleDelete = async (id: string) => {
@@ -167,153 +156,127 @@ export function FeeCategoriesManager({
       return;
     }
     toast.success("Fee category deleted");
-    loadFees(selectedEventId);
+    loadFees();
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
-        <div className="w-64">
-          <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select event" />
-            </SelectTrigger>
-            <SelectContent>
-              {events.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name_en} ({e.year})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {selectedEventId && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openCreate}>
-                <Plus className="mr-2 size-4" />
-                New Fee
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId ? "Edit Fee Category" : "Create Fee Category"}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>Code *</Label>
-                    <Input
-                      value={form.code}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          code: e.target.value.toUpperCase(),
-                        })
-                      }
-                      placeholder="REG_FEE"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Pricing Type</Label>
-                    <Select
-                      value={form.pricing_type}
-                      onValueChange={(v) =>
-                        setForm({ ...form, pricing_type: v })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PRICING_TYPES.map((t) => (
-                          <SelectItem key={t} value={t}>
-                            {t}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 size-4" />
+              New Fee
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingId ? "Edit Fee Category" : "Create Fee Category"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Code *</Label>
+                  <Input
+                    value={form.code}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        code: e.target.value.toUpperCase(),
+                      })
+                    }
+                    placeholder="REG_FEE"
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>Name (EN) *</Label>
-                    <Input
-                      value={form.name_en}
-                      onChange={(e) =>
-                        setForm({ ...form, name_en: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Name (KO)</Label>
-                    <Input
-                      value={form.name_ko}
-                      onChange={(e) =>
-                        setForm({ ...form, name_ko: e.target.value })
-                      }
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <Label>Pricing Type</Label>
+                  <Select
+                    value={form.pricing_type}
+                    onValueChange={(v) =>
+                      setForm({ ...form, pricing_type: v })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRICING_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>Amount (cents)</Label>
-                    <Input
-                      type="number"
-                      value={form.amount_cents}
-                      onChange={(e) =>
-                        setForm({ ...form, amount_cents: e.target.value })
-                      }
-                      placeholder="15000 = $150"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Sort Order</Label>
-                    <Input
-                      type="number"
-                      value={form.sort_order}
-                      onChange={(e) =>
-                        setForm({ ...form, sort_order: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={form.is_active}
-                    onCheckedChange={(checked) =>
-                      setForm({ ...form, is_active: checked })
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Name (EN) *</Label>
+                  <Input
+                    value={form.name_en}
+                    onChange={(e) =>
+                      setForm({ ...form, name_en: e.target.value })
                     }
                   />
-                  <Label>Active</Label>
                 </div>
-                <Button
-                  onClick={handleSave}
-                  className="w-full"
-                  disabled={saving}
-                >
-                  {saving ? "Saving..." : editingId ? "Update" : "Create"}
-                </Button>
+                <div className="space-y-1">
+                  <Label>Name (KO)</Label>
+                  <Input
+                    value={form.name_ko}
+                    onChange={(e) =>
+                      setForm({ ...form, name_ko: e.target.value })
+                    }
+                  />
+                </div>
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Amount (cents)</Label>
+                  <Input
+                    type="number"
+                    value={form.amount_cents}
+                    onChange={(e) =>
+                      setForm({ ...form, amount_cents: e.target.value })
+                    }
+                    placeholder="15000 = $150"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Sort Order</Label>
+                  <Input
+                    type="number"
+                    value={form.sort_order}
+                    onChange={(e) =>
+                      setForm({ ...form, sort_order: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={form.is_active}
+                  onCheckedChange={(checked) =>
+                    setForm({ ...form, is_active: checked })
+                  }
+                />
+                <Label>Active</Label>
+              </div>
+              <Button
+                onClick={handleSave}
+                className="w-full"
+                disabled={saving}
+              >
+                {saving ? "Saving..." : editingId ? "Update" : "Create"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {!selectedEventId ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            Select an event to manage fee categories.
-          </CardContent>
-        </Card>
-      ) : loading ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            Loading...
-          </CardContent>
-        </Card>
+      {loading ? (
+        <p className="text-center text-muted-foreground py-8">Loading...</p>
       ) : (
         <Table>
           <TableHeader>

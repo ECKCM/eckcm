@@ -15,13 +15,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -29,12 +22,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
 interface RegistrationGroup {
   id: string;
-  event_id: string;
   name_en: string;
   name_ko: string | null;
   description_en: string | null;
@@ -45,6 +38,14 @@ interface RegistrationGroup {
   early_bird_deadline: string | null;
   is_default: boolean;
   is_active: boolean;
+}
+
+interface FeeCategory {
+  id: string;
+  code: string;
+  name_en: string;
+  amount_cents: number;
+  pricing_type: string;
 }
 
 const emptyForm = {
@@ -60,40 +61,65 @@ const emptyForm = {
   is_active: true,
 };
 
-export function RegistrationGroupsManager({
-  events,
-}: {
-  events: { id: string; name_en: string; year: number }[];
-}) {
-  const [selectedEventId, setSelectedEventId] = useState("");
+export function RegistrationGroupsManager() {
   const [groups, setGroups] = useState<RegistrationGroup[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
 
-  const loadGroups = useCallback(async (eventId: string) => {
+  // Fee category linking
+  const [allFees, setAllFees] = useState<FeeCategory[]>([]);
+  const [selectedFeeIds, setSelectedFeeIds] = useState<Set<string>>(new Set());
+  const [groupFeeMap, setGroupFeeMap] = useState<
+    Map<string, string[]>
+  >(new Map());
+
+  const loadGroups = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
     const { data } = await supabase
       .from("eckcm_registration_groups")
       .select("*")
-      .eq("event_id", eventId)
       .order("created_at");
     setGroups(data ?? []);
+
+    // Load fee category mappings for all groups
+    const { data: mappings } = await supabase
+      .from("eckcm_registration_group_fee_categories")
+      .select("registration_group_id, fee_category_id");
+
+    const map = new Map<string, string[]>();
+    for (const m of mappings ?? []) {
+      const existing = map.get(m.registration_group_id) ?? [];
+      existing.push(m.fee_category_id);
+      map.set(m.registration_group_id, existing);
+    }
+    setGroupFeeMap(map);
+
     setLoading(false);
   }, []);
 
+  const loadFees = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("eckcm_fee_categories")
+      .select("id, code, name_en, amount_cents, pricing_type")
+      .eq("is_active", true)
+      .order("sort_order");
+    setAllFees(data ?? []);
+  }, []);
+
   useEffect(() => {
-    if (selectedEventId) {
-      loadGroups(selectedEventId);
-    }
-  }, [selectedEventId, loadGroups]);
+    loadGroups();
+    loadFees();
+  }, [loadGroups, loadFees]);
 
   const openCreate = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setSelectedFeeIds(new Set());
     setDialogOpen(true);
   };
 
@@ -113,7 +139,20 @@ export function RegistrationGroupsManager({
       is_default: group.is_default,
       is_active: group.is_active,
     });
+    setSelectedFeeIds(new Set(groupFeeMap.get(group.id) ?? []));
     setDialogOpen(true);
+  };
+
+  const toggleFee = (feeId: string) => {
+    setSelectedFeeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(feeId)) {
+        next.delete(feeId);
+      } else {
+        next.add(feeId);
+      }
+      return next;
+    });
   };
 
   const handleSave = async () => {
@@ -125,7 +164,6 @@ export function RegistrationGroupsManager({
     const supabase = createClient();
 
     const payload = {
-      event_id: selectedEventId,
       name_en: form.name_en,
       name_ko: form.name_ko || null,
       description_en: form.description_en || null,
@@ -142,6 +180,8 @@ export function RegistrationGroupsManager({
       is_active: form.is_active,
     };
 
+    let groupId = editingId;
+
     if (editingId) {
       const { error } = await supabase
         .from("eckcm_registration_groups")
@@ -152,22 +192,51 @@ export function RegistrationGroupsManager({
         setSaving(false);
         return;
       }
-      toast.success("Group updated");
     } else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("eckcm_registration_groups")
-        .insert(payload);
+        .insert(payload)
+        .select("id")
+        .single();
       if (error) {
         toast.error(error.message);
         setSaving(false);
         return;
       }
-      toast.success("Group created");
+      groupId = data.id;
     }
 
+    // Sync fee category mappings
+    if (groupId) {
+      // Delete existing mappings
+      await supabase
+        .from("eckcm_registration_group_fee_categories")
+        .delete()
+        .eq("registration_group_id", groupId);
+
+      // Insert new mappings
+      if (selectedFeeIds.size > 0) {
+        const mappings = Array.from(selectedFeeIds).map((feeId) => ({
+          registration_group_id: groupId,
+          fee_category_id: feeId,
+        }));
+        const { error: mapError } = await supabase
+          .from("eckcm_registration_group_fee_categories")
+          .insert(mappings);
+        if (mapError) {
+          toast.error("Group saved but fee mapping failed: " + mapError.message);
+          setSaving(false);
+          setDialogOpen(false);
+          loadGroups();
+          return;
+        }
+      }
+    }
+
+    toast.success(editingId ? "Group updated" : "Group created");
     setSaving(false);
     setDialogOpen(false);
-    loadGroups(selectedEventId);
+    loadGroups();
   };
 
   const handleDelete = async (id: string) => {
@@ -181,7 +250,7 @@ export function RegistrationGroupsManager({
       return;
     }
     toast.success("Group deleted");
-    loadGroups(selectedEventId);
+    loadGroups();
   };
 
   const formatCents = (cents: number | null) => {
@@ -189,175 +258,194 @@ export function RegistrationGroupsManager({
     return `$${(cents / 100).toFixed(2)}`;
   };
 
+  const getLinkedFeeNames = (groupId: string) => {
+    const feeIds = groupFeeMap.get(groupId) ?? [];
+    return feeIds
+      .map((id) => allFees.find((f) => f.id === id)?.name_en)
+      .filter(Boolean);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
-        <div className="w-64">
-          <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select event" />
-            </SelectTrigger>
-            <SelectContent>
-              {events.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name_en} ({e.year})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {selectedEventId && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openCreate}>
-                <Plus className="mr-2 size-4" />
-                New Group
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId ? "Edit Group" : "Create Group"}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>Name (EN) *</Label>
-                    <Input
-                      value={form.name_en}
-                      onChange={(e) =>
-                        setForm({ ...form, name_en: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Name (KO)</Label>
-                    <Input
-                      value={form.name_ko}
-                      onChange={(e) =>
-                        setForm({ ...form, name_ko: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>Description (EN)</Label>
-                    <Textarea
-                      value={form.description_en}
-                      onChange={(e) =>
-                        setForm({ ...form, description_en: e.target.value })
-                      }
-                      rows={2}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Description (KO)</Label>
-                    <Textarea
-                      value={form.description_ko}
-                      onChange={(e) =>
-                        setForm({ ...form, description_ko: e.target.value })
-                      }
-                      rows={2}
-                    />
-                  </div>
-                </div>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 size-4" />
+              New Group
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingId ? "Edit Group" : "Create Group"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Access Code (optional)</Label>
+                  <Label>Name (EN) *</Label>
                   <Input
-                    value={form.access_code}
+                    value={form.name_en}
                     onChange={(e) =>
-                      setForm({ ...form, access_code: e.target.value })
-                    }
-                    placeholder="Leave empty for public group"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>Registration Fee (cents)</Label>
-                    <Input
-                      type="number"
-                      value={form.global_registration_fee_cents}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          global_registration_fee_cents: e.target.value,
-                        })
-                      }
-                      placeholder="e.g., 15000 = $150"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Early Bird Fee (cents)</Label>
-                    <Input
-                      type="number"
-                      value={form.global_early_bird_fee_cents}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          global_early_bird_fee_cents: e.target.value,
-                        })
-                      }
-                      placeholder="e.g., 12000 = $120"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label>Early Bird Deadline</Label>
-                  <Input
-                    type="datetime-local"
-                    value={form.early_bird_deadline}
-                    onChange={(e) =>
-                      setForm({ ...form, early_bird_deadline: e.target.value })
+                      setForm({ ...form, name_en: e.target.value })
                     }
                   />
                 </div>
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={form.is_default}
-                      onCheckedChange={(checked) =>
-                        setForm({ ...form, is_default: checked })
-                      }
-                    />
-                    <Label>Default Group</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={form.is_active}
-                      onCheckedChange={(checked) =>
-                        setForm({ ...form, is_active: checked })
-                      }
-                    />
-                    <Label>Active</Label>
-                  </div>
+                <div className="space-y-1">
+                  <Label>Name (KO)</Label>
+                  <Input
+                    value={form.name_ko}
+                    onChange={(e) =>
+                      setForm({ ...form, name_ko: e.target.value })
+                    }
+                  />
                 </div>
-                <Button
-                  onClick={handleSave}
-                  className="w-full"
-                  disabled={saving}
-                >
-                  {saving ? "Saving..." : editingId ? "Update" : "Create"}
-                </Button>
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Description (EN)</Label>
+                  <Textarea
+                    value={form.description_en}
+                    onChange={(e) =>
+                      setForm({ ...form, description_en: e.target.value })
+                    }
+                    rows={2}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Description (KO)</Label>
+                  <Textarea
+                    value={form.description_ko}
+                    onChange={(e) =>
+                      setForm({ ...form, description_ko: e.target.value })
+                    }
+                    rows={2}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Access Code (optional)</Label>
+                <Input
+                  value={form.access_code}
+                  onChange={(e) =>
+                    setForm({ ...form, access_code: e.target.value })
+                  }
+                  placeholder="Leave empty for public group"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Registration Fee (cents)</Label>
+                  <Input
+                    type="number"
+                    value={form.global_registration_fee_cents}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        global_registration_fee_cents: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., 15000 = $150"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Early Bird Fee (cents)</Label>
+                  <Input
+                    type="number"
+                    value={form.global_early_bird_fee_cents}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        global_early_bird_fee_cents: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., 12000 = $120"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Early Bird Deadline</Label>
+                <Input
+                  type="datetime-local"
+                  value={form.early_bird_deadline}
+                  onChange={(e) =>
+                    setForm({ ...form, early_bird_deadline: e.target.value })
+                  }
+                />
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.is_default}
+                    onCheckedChange={(checked) =>
+                      setForm({ ...form, is_default: checked })
+                    }
+                  />
+                  <Label>Default Group</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.is_active}
+                    onCheckedChange={(checked) =>
+                      setForm({ ...form, is_active: checked })
+                    }
+                  />
+                  <Label>Active</Label>
+                </div>
+              </div>
+
+              {/* Fee Category Linking */}
+              <Separator />
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Fee Categories</Label>
+                <p className="text-xs text-muted-foreground">
+                  Select which fee categories apply to this group
+                </p>
+                <div className="space-y-2 rounded-md border p-3">
+                  {allFees.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No fee categories available
+                    </p>
+                  ) : (
+                    allFees.map((fee) => (
+                      <div
+                        key={fee.id}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={selectedFeeIds.has(fee.id)}
+                            onCheckedChange={() => toggleFee(fee.id)}
+                          />
+                          <span className="text-sm">{fee.name_en}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          ${(fee.amount_cents / 100).toFixed(2)}{" "}
+                          <Badge variant="outline" className="text-xs ml-1">
+                            {fee.pricing_type}
+                          </Badge>
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSave}
+                className="w-full"
+                disabled={saving}
+              >
+                {saving ? "Saving..." : editingId ? "Update" : "Create"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {!selectedEventId ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            Select an event to manage registration groups.
-          </CardContent>
-        </Card>
-      ) : loading ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            Loading...
-          </CardContent>
-        </Card>
+      {loading ? (
+        <p className="text-center text-muted-foreground py-8">Loading...</p>
       ) : groups.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
@@ -366,64 +454,86 @@ export function RegistrationGroupsManager({
         </Card>
       ) : (
         <div className="grid gap-3">
-          {groups.map((group) => (
-            <Card key={group.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-base">{group.name_en}</CardTitle>
-                    {group.name_ko && (
-                      <span className="text-sm text-muted-foreground">
-                        ({group.name_ko})
-                      </span>
-                    )}
-                    {group.is_default && <Badge>Default</Badge>}
-                    {!group.is_active && (
-                      <Badge variant="secondary">Inactive</Badge>
-                    )}
-                    {group.access_code && (
-                      <Badge variant="outline">Code: {group.access_code}</Badge>
-                    )}
+          {groups.map((group) => {
+            const linkedFees = getLinkedFeeNames(group.id);
+            return (
+              <Card key={group.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base">
+                        {group.name_en}
+                      </CardTitle>
+                      {group.name_ko && (
+                        <span className="text-sm text-muted-foreground">
+                          ({group.name_ko})
+                        </span>
+                      )}
+                      {group.is_default && <Badge>Default</Badge>}
+                      {!group.is_active && (
+                        <Badge variant="secondary">Inactive</Badge>
+                      )}
+                      {group.access_code && (
+                        <Badge variant="outline">
+                          Code: {group.access_code}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEdit(group)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(group.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openEdit(group)}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(group.id)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-                {group.description_en && (
-                  <CardDescription>{group.description_en}</CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-6 text-sm">
-                  <span>
-                    Reg Fee: {formatCents(group.global_registration_fee_cents)}
-                  </span>
-                  <span>
-                    Early Bird: {formatCents(group.global_early_bird_fee_cents)}
-                  </span>
-                  {group.early_bird_deadline && (
-                    <span>
-                      Deadline:{" "}
-                      {new Date(group.early_bird_deadline).toLocaleDateString("en-US")}
-                    </span>
+                  {group.description_en && (
+                    <CardDescription>{group.description_en}</CardDescription>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col gap-2 text-sm">
+                    <div className="flex gap-6">
+                      <span>
+                        Reg Fee:{" "}
+                        {formatCents(group.global_registration_fee_cents)}
+                      </span>
+                      <span>
+                        Early Bird:{" "}
+                        {formatCents(group.global_early_bird_fee_cents)}
+                      </span>
+                      {group.early_bird_deadline && (
+                        <span>
+                          Deadline:{" "}
+                          {new Date(
+                            group.early_bird_deadline
+                          ).toLocaleDateString("en-US")}
+                        </span>
+                      )}
+                    </div>
+                    {linkedFees.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {linkedFees.map((name) => (
+                          <Badge key={name} variant="outline" className="text-xs">
+                            {name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
