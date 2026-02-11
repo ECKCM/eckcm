@@ -11,7 +11,7 @@ export default async function RegistrationsPage() {
   if (!user) redirect("/login");
 
   const { data: registrations } = await supabase
-    .from("ECKCM_registrations")
+    .from("eckcm_registrations")
     .select(`
       id,
       confirmation_code,
@@ -21,7 +21,7 @@ export default async function RegistrationsPage() {
       nights_count,
       total_amount_cents,
       created_at,
-      ECKCM_events!inner(name_en, name_ko)
+      eckcm_events!inner(name_en, name_ko)
     `)
     .eq("created_by_user_id", user.id)
     .order("created_at", { ascending: false });

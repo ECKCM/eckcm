@@ -27,19 +27,19 @@ export async function POST(req: NextRequest) {
   const tokenHash = createHash("sha256").update(token).digest("hex");
 
   const { data: epass, error: epassError } = await supabase
-    .from("ECKCM_epass_tokens")
+    .from("eckcm_epass_tokens")
     .select(
       `
       id,
       person_id,
       registration_id,
       is_active,
-      ECKCM_people!inner(first_name_en, last_name_en, display_name_ko),
-      ECKCM_registrations!inner(
+      eckcm_people!inner(first_name_en, last_name_en, display_name_ko),
+      eckcm_registrations!inner(
         confirmation_code,
         status,
         event_id,
-        ECKCM_events!inner(name_en, year)
+        eckcm_events!inner(name_en, year)
       )
     `
     )
@@ -61,21 +61,21 @@ export async function POST(req: NextRequest) {
       {
         error: "E-Pass is inactive",
         person: {
-          name: `${data.ECKCM_people.first_name_en} ${data.ECKCM_people.last_name_en}`,
-          koreanName: data.ECKCM_people.display_name_ko,
+          name: `${data.eckcm_people.first_name_en} ${data.eckcm_people.last_name_en}`,
+          koreanName: data.eckcm_people.display_name_ko,
         },
       },
       { status: 403 }
     );
   }
 
-  if (data.ECKCM_registrations.status !== "PAID") {
+  if (data.eckcm_registrations.status !== "PAID") {
     return NextResponse.json(
       {
         error: "Registration is not paid",
         person: {
-          name: `${data.ECKCM_people.first_name_en} ${data.ECKCM_people.last_name_en}`,
-          koreanName: data.ECKCM_people.display_name_ko,
+          name: `${data.eckcm_people.first_name_en} ${data.eckcm_people.last_name_en}`,
+          koreanName: data.eckcm_people.display_name_ko,
         },
       },
       { status: 403 }
@@ -84,10 +84,10 @@ export async function POST(req: NextRequest) {
 
   // Record check-in
   const { error: checkinError } = await supabase
-    .from("ECKCM_checkins")
+    .from("eckcm_checkins")
     .insert({
       person_id: data.person_id,
-      event_id: data.ECKCM_registrations.event_id,
+      event_id: data.eckcm_registrations.event_id,
       session_id: sessionId || null,
       checkin_type: checkinType,
       checked_in_by: user.id,
@@ -100,14 +100,14 @@ export async function POST(req: NextRequest) {
         {
           status: "already_checked_in",
           person: {
-            name: `${data.ECKCM_people.first_name_en} ${data.ECKCM_people.last_name_en}`,
-            koreanName: data.ECKCM_people.display_name_ko,
+            name: `${data.eckcm_people.first_name_en} ${data.eckcm_people.last_name_en}`,
+            koreanName: data.eckcm_people.display_name_ko,
           },
           event: {
-            name: data.ECKCM_registrations.ECKCM_events.name_en,
-            year: data.ECKCM_registrations.ECKCM_events.year,
+            name: data.eckcm_registrations.eckcm_events.name_en,
+            year: data.eckcm_registrations.eckcm_events.year,
           },
-          confirmationCode: data.ECKCM_registrations.confirmation_code,
+          confirmationCode: data.eckcm_registrations.confirmation_code,
         },
         { status: 200 }
       );
@@ -121,14 +121,14 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     status: "checked_in",
     person: {
-      name: `${data.ECKCM_people.first_name_en} ${data.ECKCM_people.last_name_en}`,
-      koreanName: data.ECKCM_people.display_name_ko,
+      name: `${data.eckcm_people.first_name_en} ${data.eckcm_people.last_name_en}`,
+      koreanName: data.eckcm_people.display_name_ko,
     },
     event: {
-      name: data.ECKCM_registrations.ECKCM_events.name_en,
-      year: data.ECKCM_registrations.ECKCM_events.year,
+      name: data.eckcm_registrations.eckcm_events.name_en,
+      year: data.eckcm_registrations.eckcm_events.year,
     },
-    confirmationCode: data.ECKCM_registrations.confirmation_code,
+    confirmationCode: data.eckcm_registrations.confirmation_code,
     checkinType,
   });
 }

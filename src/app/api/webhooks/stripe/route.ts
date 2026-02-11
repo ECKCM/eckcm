@@ -61,7 +61,7 @@ async function handlePaymentIntentSucceeded(
 
   // 1. Update payment record
   await admin
-    .from("ECKCM_payments")
+    .from("eckcm_payments")
     .update({
       status: "SUCCEEDED",
       metadata: {
@@ -76,7 +76,7 @@ async function handlePaymentIntentSucceeded(
 
   // 2. Update invoice
   await admin
-    .from("ECKCM_invoices")
+    .from("eckcm_invoices")
     .update({
       status: "SUCCEEDED",
       paid_at: new Date().toISOString(),
@@ -85,13 +85,13 @@ async function handlePaymentIntentSucceeded(
 
   // 3. Update registration status
   await admin
-    .from("ECKCM_registrations")
+    .from("eckcm_registrations")
     .update({ status: "PAID" })
     .eq("id", registrationId);
 
   // 4. Load registration data to get event_id
   const { data: registration } = await admin
-    .from("ECKCM_registrations")
+    .from("eckcm_registrations")
     .select("event_id")
     .eq("id", registrationId)
     .single();
@@ -100,15 +100,15 @@ async function handlePaymentIntentSucceeded(
 
   // 5. Generate E-Pass tokens for each participant
   const { data: memberships } = await admin
-    .from("ECKCM_group_memberships")
-    .select("person_id, ECKCM_groups!inner(registration_id)")
-    .eq("ECKCM_groups.registration_id", registrationId);
+    .from("eckcm_group_memberships")
+    .select("person_id, eckcm_groups!inner(registration_id)")
+    .eq("eckcm_groups.registration_id", registrationId);
 
   if (memberships) {
     for (const membership of memberships) {
       const { token, tokenHash } = generateEPassToken();
 
-      await admin.from("ECKCM_epass_tokens").insert({
+      await admin.from("eckcm_epass_tokens").insert({
         person_id: membership.person_id,
         registration_id: registrationId,
         token: token,
@@ -132,7 +132,7 @@ async function handlePaymentIntentFailed(
 
   // Update payment record
   await admin
-    .from("ECKCM_payments")
+    .from("eckcm_payments")
     .update({
       status: "FAILED",
       metadata: {
@@ -146,7 +146,7 @@ async function handlePaymentIntentFailed(
   const { invoiceId } = paymentIntent.metadata;
   if (invoiceId) {
     await admin
-      .from("ECKCM_invoices")
+      .from("eckcm_invoices")
       .update({ status: "PENDING" })
       .eq("id", invoiceId);
   }

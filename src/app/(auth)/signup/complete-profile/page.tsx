@@ -50,7 +50,7 @@ export default function CompleteProfilePage() {
 
       // Check if profile is already completed
       const { data: profile } = await supabase
-        .from("ECKCM_users")
+        .from("eckcm_users")
         .select("profile_completed")
         .eq("id", user.id)
         .single();
@@ -63,12 +63,12 @@ export default function CompleteProfilePage() {
       // Fetch reference data
       const [churchRes, deptRes] = await Promise.all([
         supabase
-          .from("ECKCM_churches")
+          .from("eckcm_churches")
           .select("id, name_en, is_other")
           .eq("is_active", true)
           .order("sort_order"),
         supabase
-          .from("ECKCM_departments")
+          .from("eckcm_departments")
           .select("id, name_en, name_ko")
           .eq("is_active", true)
           .order("sort_order"),
@@ -98,8 +98,8 @@ export default function CompleteProfilePage() {
     // Determine auth provider
     const provider = user.app_metadata.provider ?? "email";
 
-    // 1. Upsert ECKCM_users
-    const { error: userError } = await supabase.from("ECKCM_users").upsert({
+    // 1. Upsert eckcm_users
+    const { error: userError } = await supabase.from("eckcm_users").upsert({
       id: user.id,
       email: user.email!,
       auth_provider: provider,
@@ -116,7 +116,7 @@ export default function CompleteProfilePage() {
     const birthDate = `${data.birthYear}-${String(data.birthMonth).padStart(2, "0")}-${String(data.birthDay).padStart(2, "0")}`;
 
     const { data: person, error: personError } = await supabase
-      .from("ECKCM_people")
+      .from("eckcm_people")
       .insert({
         last_name_en: data.lastName,
         first_name_en: data.firstName,
@@ -142,7 +142,7 @@ export default function CompleteProfilePage() {
 
     // 3. Link user to person
     const { error: linkError } = await supabase
-      .from("ECKCM_user_people")
+      .from("eckcm_user_people")
       .insert({
         user_id: user.id,
         person_id: person.id,

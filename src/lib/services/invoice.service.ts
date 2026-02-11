@@ -23,14 +23,14 @@ export async function createInvoice(
 ): Promise<string> {
   // Get next sequence number
   const { count } = await admin
-    .from("ECKCM_invoices")
+    .from("eckcm_invoices")
     .select("id", { count: "exact", head: true });
 
   const invoiceNumber = generateInvoiceNumber((count ?? 0) + 1);
 
   // Create invoice
   const { data: invoice, error: invoiceError } = await admin
-    .from("ECKCM_invoices")
+    .from("eckcm_invoices")
     .insert({
       registration_id: params.registrationId,
       invoice_number: invoiceNumber,
@@ -59,7 +59,7 @@ export async function createInvoice(
     }));
 
     const { error: lineItemError } = await admin
-      .from("ECKCM_invoice_line_items")
+      .from("eckcm_invoice_line_items")
       .insert(lineItems);
 
     if (lineItemError) {

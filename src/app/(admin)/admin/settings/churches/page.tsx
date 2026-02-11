@@ -7,7 +7,7 @@ export default async function ChurchesPage() {
   const supabase = await createClient();
 
   const { data: churches } = await supabase
-    .from("ECKCM_churches")
+    .from("eckcm_churches")
     .select("*")
     .order("is_other", { ascending: false })
     .order("sort_order");

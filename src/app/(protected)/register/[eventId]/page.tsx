@@ -55,12 +55,12 @@ export default function RegistrationStep1() {
       const supabase = createClient();
       const [{ data: ev }, { data: grps }] = await Promise.all([
         supabase
-          .from("ECKCM_events")
+          .from("eckcm_events")
           .select("id, name_en, event_start_date, event_end_date")
           .eq("id", eventId)
           .single(),
         supabase
-          .from("ECKCM_registration_groups")
+          .from("eckcm_registration_groups")
           .select("id, name_en, name_ko, description_en, access_code, is_default")
           .eq("event_id", eventId)
           .eq("is_active", true)

@@ -7,7 +7,7 @@ export default async function EventsPage() {
   const supabase = await createClient();
 
   const { data: events } = await supabase
-    .from("ECKCM_events")
+    .from("eckcm_events")
     .select("*")
     .order("year", { ascending: false });
 

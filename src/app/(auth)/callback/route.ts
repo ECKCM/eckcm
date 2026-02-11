@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
       if (user) {
         const { data: profile } = await supabase
-          .from("ECKCM_users")
+          .from("eckcm_users")
           .select("profile_completed")
           .eq("id", user.id)
           .single();

@@ -50,7 +50,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
     const supabase = createClient();
 
     const { data } = await supabase
-      .from("ECKCM_invoices")
+      .from("eckcm_invoices")
       .select(`
         id,
         invoice_number,
@@ -58,13 +58,13 @@ export function InvoicesTable({ events }: { events: Event[] }) {
         status,
         issued_at,
         paid_at,
-        ECKCM_registrations!inner(
+        eckcm_registrations!inner(
           confirmation_code,
           event_id,
-          ECKCM_users:created_by_user_id(email)
+          eckcm_users:created_by_user_id(email)
         )
       `)
-      .eq("ECKCM_registrations.event_id", eventId)
+      .eq("eckcm_registrations.event_id", eventId)
       .order("issued_at", { ascending: false });
 
     if (data) {
@@ -76,8 +76,8 @@ export function InvoicesTable({ events }: { events: Event[] }) {
         status: inv.status,
         issued_at: inv.issued_at,
         paid_at: inv.paid_at,
-        confirmation_code: inv.ECKCM_registrations?.confirmation_code,
-        registrant_email: inv.ECKCM_registrations?.ECKCM_users?.email ?? null,
+        confirmation_code: inv.eckcm_registrations?.confirmation_code,
+        registrant_email: inv.eckcm_registrations?.eckcm_users?.email ?? null,
       }));
       setInvoices(rows);
     }
@@ -174,11 +174,11 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {new Date(inv.issued_at).toLocaleDateString()}
+                      {new Date(inv.issued_at).toLocaleDateString("en-US")}
                     </TableCell>
                     <TableCell className="text-sm">
                       {inv.paid_at
-                        ? new Date(inv.paid_at).toLocaleDateString()
+                        ? new Date(inv.paid_at).toLocaleDateString("en-US")
                         : "-"}
                     </TableCell>
                   </TableRow>

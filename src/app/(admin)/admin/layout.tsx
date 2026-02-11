@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { UserMenu } from "@/components/shared/user-menu";
 
 export default async function AdminLayout({
   children,
@@ -19,8 +20,8 @@ export default async function AdminLayout({
 
   // Check staff assignments with role info
   const { data: assignments } = await supabase
-    .from("ECKCM_staff_assignments")
-    .select("id, event_id, is_active, ECKCM_roles(name)")
+    .from("eckcm_staff_assignments")
+    .select("id, event_id, is_active, eckcm_roles(name)")
     .eq("user_id", user.id)
     .eq("is_active", true);
 
@@ -30,13 +31,13 @@ export default async function AdminLayout({
 
   const isSuperAdmin = assignments.some(
     (a) =>
-      a.ECKCM_roles &&
-      (a.ECKCM_roles as unknown as { name: string }).name === "SUPER_ADMIN"
+      a.eckcm_roles &&
+      (a.eckcm_roles as unknown as { name: string }).name === "SUPER_ADMIN"
   );
 
   // Get events for sidebar
   const { data: events } = await supabase
-    .from("ECKCM_events")
+    .from("eckcm_events")
     .select("id, name_en, name_ko, year, is_active")
     .order("year", { ascending: false });
 
@@ -46,7 +47,12 @@ export default async function AdminLayout({
         events={events ?? []}
         isSuperAdmin={isSuperAdmin}
       />
-      <SidebarInset>{children}</SidebarInset>
+      <SidebarInset>
+        <div className="absolute right-4 top-3 z-20">
+          <UserMenu isAdmin={isSuperAdmin} />
+        </div>
+        {children}
+      </SidebarInset>
     </SidebarProvider>
   );
 }

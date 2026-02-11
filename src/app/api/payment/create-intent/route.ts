@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   // Load registration + invoice
   const { data: registration } = await supabase
-    .from("ECKCM_registrations")
+    .from("eckcm_registrations")
     .select("id, status, created_by_user_id, total_amount_cents, confirmation_code")
     .eq("id", registrationId)
     .single();
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
   // Load invoice
   const { data: invoice } = await supabase
-    .from("ECKCM_invoices")
+    .from("eckcm_invoices")
     .select("id, total_cents, status")
     .eq("registration_id", registrationId)
     .single();
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
   });
 
   // Create pending payment record
-  await supabase.from("ECKCM_payments").insert({
+  await supabase.from("eckcm_payments").insert({
     invoice_id: invoice.id,
     stripe_payment_intent_id: paymentIntent.id,
     payment_method: "STRIPE",

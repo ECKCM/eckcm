@@ -15,7 +15,7 @@ interface Registration {
   nights_count: number;
   total_amount_cents: number;
   created_at: string;
-  ECKCM_events: {
+  eckcm_events: {
     name_en: string;
     name_ko: string | null;
   };
@@ -57,7 +57,7 @@ export function RegistrationHistory({
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">
-                  {reg.ECKCM_events.name_en}
+                  {reg.eckcm_events.name_en}
                 </CardTitle>
                 <Badge variant={statusVariant[reg.status] ?? "secondary"}>
                   {reg.status}
@@ -85,7 +85,7 @@ export function RegistrationHistory({
                   ${(reg.total_amount_cents / 100).toFixed(2)}
                 </span>
                 <span className="text-muted-foreground">Created</span>
-                <span>{new Date(reg.created_at).toLocaleDateString()}</span>
+                <span>{new Date(reg.created_at).toLocaleDateString("en-US")}</span>
               </div>
             </CardContent>
           </Card>

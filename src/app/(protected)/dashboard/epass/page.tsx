@@ -12,7 +12,7 @@ export default async function EPassPage() {
 
   // Get user's person IDs
   const { data: userPeople } = await supabase
-    .from("ECKCM_user_people")
+    .from("eckcm_user_people")
     .select("person_id")
     .eq("user_id", user.id);
 
@@ -29,7 +29,7 @@ export default async function EPassPage() {
 
   // Get E-Pass tokens for this user's person records
   const { data: tokens } = await supabase
-    .from("ECKCM_epass_tokens")
+    .from("eckcm_epass_tokens")
     .select(`
       id,
       token,
@@ -37,14 +37,14 @@ export default async function EPassPage() {
       created_at,
       person_id,
       registration_id,
-      ECKCM_people!inner(first_name_en, last_name_en, display_name_ko),
-      ECKCM_registrations!inner(
+      eckcm_people!inner(first_name_en, last_name_en, display_name_ko),
+      eckcm_registrations!inner(
         confirmation_code,
         status,
         start_date,
         end_date,
         event_id,
-        ECKCM_events!inner(name_en, name_ko)
+        eckcm_events!inner(name_en, name_ko)
       )
     `)
     .in("person_id", personIds)

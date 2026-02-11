@@ -18,6 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
 import { ProfileForm, type ProfileFormData } from "@/components/auth/profile-form";
+import { checkEmailAvailability } from "./actions";
 import { toast } from "sonner";
 
 interface Church {
@@ -48,12 +49,12 @@ export default function SignupPage() {
     async function fetchData() {
       const [churchRes, deptRes] = await Promise.all([
         supabase
-          .from("ECKCM_churches")
+          .from("eckcm_churches")
           .select("id, name_en, is_other")
           .eq("is_active", true)
           .order("sort_order"),
         supabase
-          .from("ECKCM_departments")
+          .from("eckcm_departments")
           .select("id, name_en, name_ko")
           .eq("is_active", true)
           .order("sort_order"),
@@ -68,14 +69,9 @@ export default function SignupPage() {
 
   const checkEmailDuplicate = async () => {
     if (!email) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("ECKCM_users")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
+    const { available } = await checkEmailAvailability(email);
 
-    if (data) {
+    if (!available) {
       setEmailError("This email is already registered");
     } else {
       setEmailError("");
@@ -110,8 +106,8 @@ export default function SignupPage() {
 
     const userId = authData.user.id;
 
-    // 2. Create ECKCM_users record
-    const { error: userError } = await supabase.from("ECKCM_users").insert({
+    // 2. Create eckcm_users record
+    const { error: userError } = await supabase.from("eckcm_users").insert({
       id: userId,
       email,
       auth_provider: "email",
@@ -128,7 +124,7 @@ export default function SignupPage() {
     const birthDate = `${profileData.birthYear}-${String(profileData.birthMonth).padStart(2, "0")}-${String(profileData.birthDay).padStart(2, "0")}`;
 
     const { data: person, error: personError } = await supabase
-      .from("ECKCM_people")
+      .from("eckcm_people")
       .insert({
         last_name_en: profileData.lastName,
         first_name_en: profileData.firstName,
@@ -154,7 +150,7 @@ export default function SignupPage() {
 
     // 4. Link user to person
     const { error: linkError } = await supabase
-      .from("ECKCM_user_people")
+      .from("eckcm_user_people")
       .insert({
         user_id: userId,
         person_id: person.id,

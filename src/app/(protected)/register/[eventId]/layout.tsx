@@ -13,7 +13,7 @@ export default async function RegisterLayout({
   const supabase = await createClient();
 
   const { data: event } = await supabase
-    .from("ECKCM_events")
+    .from("eckcm_events")
     .select("id, name_en, is_active")
     .eq("id", eventId)
     .eq("is_active", true)

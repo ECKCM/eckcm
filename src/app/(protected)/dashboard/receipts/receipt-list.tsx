@@ -14,9 +14,9 @@ interface Invoice {
   issued_at: string;
   paid_at: string | null;
   registration_id: string;
-  ECKCM_registrations: {
+  eckcm_registrations: {
     confirmation_code: string | null;
-    ECKCM_events: {
+    eckcm_events: {
       name_en: string;
     };
   };
@@ -50,8 +50,8 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
         </Card>
       ) : (
         invoices.map((inv) => {
-          const reg = inv.ECKCM_registrations;
-          const event = reg.ECKCM_events;
+          const reg = inv.eckcm_registrations;
+          const event = reg.eckcm_events;
 
           return (
             <Card key={inv.id}>
@@ -84,13 +84,13 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
                   </span>
                   <span className="text-muted-foreground">Issued</span>
                   <span>
-                    {new Date(inv.issued_at).toLocaleDateString()}
+                    {new Date(inv.issued_at).toLocaleDateString("en-US")}
                   </span>
                   {inv.paid_at && (
                     <>
                       <span className="text-muted-foreground">Paid</span>
                       <span>
-                        {new Date(inv.paid_at).toLocaleDateString()}
+                        {new Date(inv.paid_at).toLocaleDateString("en-US")}
                       </span>
                     </>
                   )}

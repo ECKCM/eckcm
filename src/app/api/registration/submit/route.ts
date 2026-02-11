@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
   // 1. Load registration group
   const { data: regGroup } = await admin
-    .from("ECKCM_registration_groups")
+    .from("eckcm_registration_groups")
     .select("*")
     .eq("id", registrationGroupId)
     .single();
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
 
   // 2. Load system settings
   const { data: settings } = await admin
-    .from("ECKCM_system_settings")
+    .from("eckcm_system_settings")
     .select("*")
     .eq("event_id", eventId)
     .single();
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
   for (let attempt = 0; attempt < 10; attempt++) {
     const candidate = generateSafeConfirmationCode();
     const { data: existing } = await admin
-      .from("ECKCM_registrations")
+      .from("eckcm_registrations")
       .select("id")
       .eq("event_id", eventId)
       .eq("confirmation_code", candidate)
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
 
   // 5. Insert registration
   const { data: registration, error: regError } = await admin
-    .from("ECKCM_registrations")
+    .from("eckcm_registrations")
     .insert({
       event_id: eventId,
       created_by_user_id: user.id,
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
     const groupCode = `G${String(groupCodeCounter++).padStart(4, "0")}`;
 
     const { data: group, error: groupError } = await admin
-      .from("ECKCM_groups")
+      .from("eckcm_groups")
       .insert({
         event_id: eventId,
         registration_id: registration.id,
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
     if (groupError) {
       // Attempt cleanup
       await admin
-        .from("ECKCM_registrations")
+        .from("eckcm_registrations")
         .delete()
         .eq("id", registration.id);
       return NextResponse.json(
@@ -170,7 +170,7 @@ export async function POST(request: Request) {
       const birthDate = `${participant.birthYear}-${String(participant.birthMonth).padStart(2, "0")}-${String(participant.birthDay).padStart(2, "0")}`;
 
       const { data: person, error: personError } = await admin
-        .from("ECKCM_people")
+        .from("eckcm_people")
         .insert({
           last_name_en: participant.lastName,
           first_name_en: participant.firstName,
@@ -190,7 +190,7 @@ export async function POST(request: Request) {
 
       if (personError) {
         await admin
-          .from("ECKCM_registrations")
+          .from("eckcm_registrations")
           .delete()
           .eq("id", registration.id);
         return NextResponse.json(
@@ -200,7 +200,7 @@ export async function POST(request: Request) {
       }
 
       // Group membership
-      await admin.from("ECKCM_group_memberships").insert({
+      await admin.from("eckcm_group_memberships").insert({
         group_id: group.id,
         person_id: person.id,
         role: participant.isLeader ? "LEADER" : "MEMBER",
@@ -213,7 +213,7 @@ export async function POST(request: Request) {
   if (airportPickup?.needed) {
     // Store as registration notes for now (airport_pickups table not yet created)
     await admin
-      .from("ECKCM_registrations")
+      .from("eckcm_registrations")
       .update({
         notes: `Airport pickup needed: ${airportPickup.details || "No details provided"}`,
       })

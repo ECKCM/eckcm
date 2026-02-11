@@ -68,7 +68,7 @@ export function DepartmentsManager({
     setLoading(true);
     const supabase = createClient();
     const { data } = await supabase
-      .from("ECKCM_departments")
+      .from("eckcm_departments")
       .select("*")
       .eq("event_id", eventId)
       .order("sort_order");
@@ -119,7 +119,7 @@ export function DepartmentsManager({
 
     if (editingId) {
       const { error } = await supabase
-        .from("ECKCM_departments")
+        .from("eckcm_departments")
         .update(payload)
         .eq("id", editingId);
       if (error) {
@@ -130,7 +130,7 @@ export function DepartmentsManager({
       toast.success("Department updated");
     } else {
       const { error } = await supabase
-        .from("ECKCM_departments")
+        .from("eckcm_departments")
         .insert(payload);
       if (error) {
         toast.error(error.message);
@@ -148,7 +148,7 @@ export function DepartmentsManager({
   const handleDelete = async (id: string) => {
     const supabase = createClient();
     const { error } = await supabase
-      .from("ECKCM_departments")
+      .from("eckcm_departments")
       .delete()
       .eq("id", id);
     if (error) {

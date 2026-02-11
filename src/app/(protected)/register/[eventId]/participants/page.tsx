@@ -88,13 +88,13 @@ export default function ParticipantsStep() {
       const supabase = createClient();
       const [{ data: deps }, { data: chs }] = await Promise.all([
         supabase
-          .from("ECKCM_departments")
+          .from("eckcm_departments")
           .select("id, name_en, name_ko")
           .eq("event_id", eventId)
           .eq("is_active", true)
           .order("sort_order"),
         supabase
-          .from("ECKCM_churches")
+          .from("eckcm_churches")
           .select("id, name_en, is_other")
           .eq("is_active", true)
           .order("is_other", { ascending: false })

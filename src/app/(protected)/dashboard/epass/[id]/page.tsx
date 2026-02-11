@@ -17,7 +17,7 @@ export default async function EPassDetailPage({
 
   // Get E-Pass token with person and registration info
   const { data: token } = await supabase
-    .from("ECKCM_epass_tokens")
+    .from("eckcm_epass_tokens")
     .select(`
       id,
       token,
@@ -25,14 +25,14 @@ export default async function EPassDetailPage({
       created_at,
       person_id,
       registration_id,
-      ECKCM_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date),
-      ECKCM_registrations!inner(
+      eckcm_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date),
+      eckcm_registrations!inner(
         confirmation_code,
         status,
         start_date,
         end_date,
         event_id,
-        ECKCM_events!inner(name_en, name_ko, location)
+        eckcm_events!inner(name_en, name_ko, location)
       )
     `)
     .eq("id", id)
@@ -42,7 +42,7 @@ export default async function EPassDetailPage({
 
   // Verify this user owns this E-Pass
   const { data: userPeople } = await supabase
-    .from("ECKCM_user_people")
+    .from("eckcm_user_people")
     .select("person_id")
     .eq("user_id", user.id);
 
@@ -63,8 +63,8 @@ export default async function EPassDetailPage({
         created_at: t.created_at,
         person_id: t.person_id,
         registration_id: t.registration_id,
-        ECKCM_people: t.ECKCM_people,
-        ECKCM_registrations: t.ECKCM_registrations,
+        eckcm_people: t.eckcm_people,
+        eckcm_registrations: t.eckcm_registrations,
       }}
     />
   );

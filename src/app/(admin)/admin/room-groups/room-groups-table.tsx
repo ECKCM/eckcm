@@ -48,15 +48,15 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
     const supabase = createClient();
 
     const { data } = await supabase
-      .from("ECKCM_groups")
+      .from("eckcm_groups")
       .select(`
         id,
         display_group_code,
         room_assign_status,
         key_count,
         preferences,
-        ECKCM_registrations!inner(confirmation_code, status),
-        ECKCM_group_memberships(count)
+        eckcm_registrations!inner(confirmation_code, status),
+        eckcm_group_memberships(count)
       `)
       .eq("event_id", eventId);
 
@@ -68,9 +68,9 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
         room_assign_status: g.room_assign_status,
         key_count: g.key_count,
         preferences: g.preferences ?? {},
-        member_count: g.ECKCM_group_memberships?.[0]?.count ?? 0,
-        confirmation_code: g.ECKCM_registrations?.confirmation_code,
-        registration_status: g.ECKCM_registrations?.status,
+        member_count: g.eckcm_group_memberships?.[0]?.count ?? 0,
+        confirmation_code: g.eckcm_registrations?.confirmation_code,
+        registration_status: g.eckcm_registrations?.status,
       }));
       setGroups(rows);
     }

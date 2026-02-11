@@ -54,34 +54,34 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
     const supabase = createClient();
 
     const { data } = await supabase
-      .from("ECKCM_group_memberships")
+      .from("eckcm_group_memberships")
       .select(`
         person_id,
         role,
-        ECKCM_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date, email, phone),
-        ECKCM_groups!inner(
+        eckcm_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date, email, phone),
+        eckcm_groups!inner(
           display_group_code,
           event_id,
-          ECKCM_registrations!inner(confirmation_code, status)
+          eckcm_registrations!inner(confirmation_code, status)
         )
       `)
-      .eq("ECKCM_groups.event_id", eventId);
+      .eq("eckcm_groups.event_id", eventId);
 
     if (data) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rows: ParticipantRow[] = data.map((m: any) => ({
         person_id: m.person_id,
-        first_name_en: m.ECKCM_people.first_name_en,
-        last_name_en: m.ECKCM_people.last_name_en,
-        display_name_ko: m.ECKCM_people.display_name_ko,
-        gender: m.ECKCM_people.gender,
-        birth_date: m.ECKCM_people.birth_date,
-        email: m.ECKCM_people.email,
-        phone: m.ECKCM_people.phone,
-        confirmation_code: m.ECKCM_groups.ECKCM_registrations.confirmation_code,
-        registration_status: m.ECKCM_groups.ECKCM_registrations.status,
+        first_name_en: m.eckcm_people.first_name_en,
+        last_name_en: m.eckcm_people.last_name_en,
+        display_name_ko: m.eckcm_people.display_name_ko,
+        gender: m.eckcm_people.gender,
+        birth_date: m.eckcm_people.birth_date,
+        email: m.eckcm_people.email,
+        phone: m.eckcm_people.phone,
+        confirmation_code: m.eckcm_groups.eckcm_registrations.confirmation_code,
+        registration_status: m.eckcm_groups.eckcm_registrations.status,
         group_role: m.role,
-        display_group_code: m.ECKCM_groups.display_group_code,
+        display_group_code: m.eckcm_groups.display_group_code,
       }));
       setParticipants(rows);
     }

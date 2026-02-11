@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,8 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ThemeToggle } from "@/components/shared/theme-toggle";
-import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { Toolbar } from "@/components/shared/toolbar";
+import { UserMenu } from "@/components/shared/user-menu";
 
 interface DashboardContentProps {
   user: {
@@ -34,21 +33,16 @@ interface DashboardContentProps {
     event_end_date: string;
     is_active: boolean;
   }[];
+  isAdmin?: boolean;
 }
 
 export function DashboardContent({
   user,
   person,
   events,
+  isAdmin,
 }: DashboardContentProps) {
   const router = useRouter();
-
-  const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  };
 
   const displayName = person
     ? person.display_name_ko ??
@@ -64,11 +58,8 @@ export function DashboardContent({
           <p className="text-sm text-muted-foreground">{user.email}</p>
         </div>
         <div className="flex items-center gap-1">
-          <LanguageSwitcher />
-          <ThemeToggle />
-          <Button variant="outline" size="sm" onClick={handleSignOut}>
-            Sign Out
-          </Button>
+          <Toolbar />
+          <UserMenu isAdmin={isAdmin} />
         </div>
       </div>
 

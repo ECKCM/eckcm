@@ -55,7 +55,7 @@ export function ProfileSettings({
 
     // Update user locale
     const { error: userError } = await supabase
-      .from("ECKCM_users")
+      .from("eckcm_users")
       .update({ locale })
       .eq("id", userId);
 
@@ -68,7 +68,7 @@ export function ProfileSettings({
     // Update person info
     if (person) {
       const { error: personError } = await supabase
-        .from("ECKCM_people")
+        .from("eckcm_people")
         .update({
           phone: phone || null,
           display_name_ko: displayNameKo || null,

@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
   // Load registration group
   const { data: regGroup } = await supabase
-    .from("ECKCM_registration_groups")
+    .from("eckcm_registration_groups")
     .select("*")
     .eq("id", registrationGroupId)
     .single();
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
   // Load system settings for the event
   const { data: settings } = await supabase
-    .from("ECKCM_system_settings")
+    .from("eckcm_system_settings")
     .select("*")
     .eq("event_id", eventId)
     .single();

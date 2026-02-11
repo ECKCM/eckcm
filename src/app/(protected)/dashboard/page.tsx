@@ -15,7 +15,7 @@ export default async function DashboardPage() {
 
   // Check profile completion
   const { data: profile } = await supabase
-    .from("ECKCM_users")
+    .from("eckcm_users")
     .select("profile_completed, email, locale")
     .eq("id", user.id)
     .single();
@@ -26,13 +26,13 @@ export default async function DashboardPage() {
 
   // Get person info
   const { data: personData } = await supabase
-    .from("ECKCM_people")
+    .from("eckcm_people")
     .select("id, first_name_en, last_name_en, display_name_ko, gender, email")
     .in(
       "id",
       (
         await supabase
-          .from("ECKCM_user_people")
+          .from("eckcm_user_people")
           .select("person_id")
           .eq("user_id", user.id)
       ).data?.map((up) => up.person_id) ?? []
@@ -42,10 +42,20 @@ export default async function DashboardPage() {
 
   // Get active events
   const { data: events } = await supabase
-    .from("ECKCM_events")
+    .from("eckcm_events")
     .select("id, name_en, name_ko, event_start_date, event_end_date, is_active")
     .eq("is_active", true)
     .order("event_start_date", { ascending: false });
+
+  // Check if user is admin
+  const { data: staffAssignments } = await supabase
+    .from("eckcm_staff_assignments")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .limit(1);
+
+  const isAdmin = (staffAssignments?.length ?? 0) > 0;
 
   return (
     <DashboardContent
@@ -55,6 +65,7 @@ export default async function DashboardPage() {
       }}
       person={personData}
       events={events ?? []}
+      isAdmin={isAdmin}
     />
   );
 }

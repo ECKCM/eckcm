@@ -7,7 +7,7 @@ export default async function AdminDashboardPage() {
   const supabase = await createClient();
 
   const { data: events } = await supabase
-    .from("ECKCM_events")
+    .from("eckcm_events")
     .select("id, name_en, year, is_active")
     .order("year", { ascending: false });
 

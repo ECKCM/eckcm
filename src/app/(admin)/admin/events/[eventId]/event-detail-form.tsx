@@ -44,7 +44,7 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
     setSaving(true);
     const supabase = createClient();
     const { error } = await supabase
-      .from("ECKCM_events")
+      .from("eckcm_events")
       .update({
         name_en: form.name_en,
         name_ko: form.name_ko || null,

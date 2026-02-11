@@ -80,14 +80,18 @@ export function UsersManager({
       return;
     }
     const supabase = createClient();
-    const { error } = await supabase.from("ECKCM_staff_assignments").insert({
+    const { error } = await supabase.from("eckcm_staff_assignments").insert({
       user_id: selectedUserId,
       event_id: selectedEventId,
       role_id: selectedRoleId,
     });
 
     if (error) {
-      toast.error(error.message);
+      if (error.code === "23505") {
+        toast.error("This user already has this role for this event");
+      } else {
+        toast.error(error.message);
+      }
       return;
     }
     toast.success("Role assigned");
@@ -140,7 +144,7 @@ export function UsersManager({
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {new Date(user.created_at).toLocaleDateString()}
+                    {new Date(user.created_at).toLocaleDateString("en-US")}
                   </TableCell>
                   <TableCell>
                     <Dialog

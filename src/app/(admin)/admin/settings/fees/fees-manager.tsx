@@ -75,7 +75,7 @@ export function FeeCategoriesManager({
     setLoading(true);
     const supabase = createClient();
     const { data } = await supabase
-      .from("ECKCM_fee_categories")
+      .from("eckcm_fee_categories")
       .select("*")
       .eq("event_id", eventId)
       .order("sort_order");
@@ -130,7 +130,7 @@ export function FeeCategoriesManager({
 
     if (editingId) {
       const { error } = await supabase
-        .from("ECKCM_fee_categories")
+        .from("eckcm_fee_categories")
         .update(payload)
         .eq("id", editingId);
       if (error) {
@@ -141,7 +141,7 @@ export function FeeCategoriesManager({
       toast.success("Fee category updated");
     } else {
       const { error } = await supabase
-        .from("ECKCM_fee_categories")
+        .from("eckcm_fee_categories")
         .insert(payload);
       if (error) {
         toast.error(error.message);
@@ -159,7 +159,7 @@ export function FeeCategoriesManager({
   const handleDelete = async (id: string) => {
     const supabase = createClient();
     const { error } = await supabase
-      .from("ECKCM_fee_categories")
+      .from("eckcm_fee_categories")
       .delete()
       .eq("id", id);
     if (error) {

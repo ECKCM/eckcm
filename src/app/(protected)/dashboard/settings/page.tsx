@@ -12,14 +12,14 @@ export default async function SettingsPage() {
 
   // Get user profile
   const { data: profile } = await supabase
-    .from("ECKCM_users")
+    .from("eckcm_users")
     .select("email, auth_provider, locale")
     .eq("id", user.id)
     .single();
 
   // Get person info
   const { data: userPeople } = await supabase
-    .from("ECKCM_user_people")
+    .from("eckcm_user_people")
     .select("person_id")
     .eq("user_id", user.id);
 
@@ -28,7 +28,7 @@ export default async function SettingsPage() {
   let person = null;
   if (personIds.length > 0) {
     const { data } = await supabase
-      .from("ECKCM_people")
+      .from("eckcm_people")
       .select("id, first_name_en, last_name_en, display_name_ko, gender, birth_date, email, phone")
       .eq("id", personIds[0])
       .single();

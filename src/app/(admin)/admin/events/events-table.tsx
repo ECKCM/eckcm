@@ -61,7 +61,7 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
     setSaving(true);
     const supabase = createClient();
     const { data, error } = await supabase
-      .from("ECKCM_events")
+      .from("eckcm_events")
       .insert({
         name_en: form.name_en,
         name_ko: form.name_ko || null,
@@ -97,7 +97,7 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
   const toggleActive = async (event: Event) => {
     const supabase = createClient();
     const { error } = await supabase
-      .from("ECKCM_events")
+      .from("eckcm_events")
       .update({ is_active: !event.is_active })
       .eq("id", event.id);
 

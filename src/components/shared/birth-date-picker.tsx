@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ interface BirthDatePickerProps {
   year: number | undefined;
   month: number | undefined;
   day: number | undefined;
-  onYearChange: (year: number) => void;
+  onYearChange: (year: number | undefined) => void;
   onMonthChange: (month: number) => void;
   onDayChange: (day: number) => void;
 }
@@ -24,6 +25,7 @@ function getDaysInMonth(year: number, month: number): number {
 }
 
 const currentYear = new Date().getFullYear();
+const minYear = currentYear - 120;
 
 export function BirthDatePicker({
   year,
@@ -33,26 +35,54 @@ export function BirthDatePicker({
   onMonthChange,
   onDayChange,
 }: BirthDatePickerProps) {
-  const maxDays =
-    year && month ? getDaysInMonth(year, month) : 31;
+  const [yearInput, setYearInput] = useState(year?.toString() ?? "");
+  const [yearError, setYearError] = useState("");
+
+  const maxDays = year && month ? getDaysInMonth(year, month) : 31;
+
+  const handleYearChange = (raw: string) => {
+    // Only allow digits, max 4 characters
+    const cleaned = raw.replace(/\D/g, "").slice(0, 4);
+    setYearInput(cleaned);
+
+    if (cleaned === "") {
+      setYearError("");
+      onYearChange(undefined);
+      return;
+    }
+
+    const v = parseInt(cleaned);
+    if (cleaned.length === 4) {
+      if (v < minYear || v > currentYear) {
+        setYearError(`${minYear}–${currentYear}`);
+      } else {
+        setYearError("");
+      }
+      onYearChange(v);
+    } else {
+      // Still typing, clear error but don't validate yet
+      setYearError("");
+      onYearChange(undefined);
+    }
+  };
 
   return (
     <div className="space-y-2">
-      <Label>Date of Birth</Label>
+      <Label>Date of Birth *</Label>
       <div className="grid grid-cols-3 gap-2">
-        {/* Year - Input with validation */}
-        <div>
+        {/* Year - Input with live validation */}
+        <div className="space-y-1">
           <Input
-            type="number"
+            type="text"
+            inputMode="numeric"
             placeholder="Year"
-            min={currentYear - 120}
-            max={currentYear}
-            value={year ?? ""}
-            onChange={(e) => {
-              const v = parseInt(e.target.value);
-              if (!isNaN(v)) onYearChange(v);
-            }}
+            maxLength={4}
+            value={yearInput}
+            onChange={(e) => handleYearChange(e.target.value)}
           />
+          {yearError && (
+            <p className="text-xs text-destructive">{yearError}</p>
+          )}
         </div>
 
         {/* Month - Dropdown */}
@@ -63,7 +93,7 @@ export function BirthDatePicker({
           <SelectTrigger>
             <SelectValue placeholder="Month" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-60">
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
               <SelectItem key={m} value={m.toString()}>
                 {m}
@@ -72,7 +102,7 @@ export function BirthDatePicker({
           </SelectContent>
         </Select>
 
-        {/* Day - Dropdown (dynamic based on month/year) */}
+        {/* Day - Dropdown with max height */}
         <Select
           value={day?.toString()}
           onValueChange={(v) => onDayChange(parseInt(v))}
@@ -80,7 +110,7 @@ export function BirthDatePicker({
           <SelectTrigger>
             <SelectValue placeholder="Day" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-60">
             {Array.from({ length: maxDays }, (_, i) => i + 1).map((d) => (
               <SelectItem key={d} value={d.toString()}>
                 {d}

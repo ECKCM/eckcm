@@ -96,13 +96,34 @@ export function ProfileForm({
   const selectedChurch = churches.find((c) => c.id === form.churchId);
   const showChurchOther = selectedChurch?.is_other ?? false;
 
+  // Regex: English and Spanish letters only (a-z, accented chars like ñ, é, etc.)
+  const namePattern = /^[A-Za-zÀ-ÖØ-öø-ÿÑñ]+(?: [A-Za-zÀ-ÖØ-öø-ÿÑñ]+)*$/;
+
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!form.lastName.trim()) errs.lastName = "Required";
-    if (!form.firstName.trim()) errs.firstName = "Required";
+    if (!form.lastName.trim()) {
+      errs.lastName = "Required";
+    } else if (!namePattern.test(form.lastName.trim())) {
+      errs.lastName = "English/Spanish letters only, no leading/trailing spaces";
+    }
+    if (!form.firstName.trim()) {
+      errs.firstName = "Required";
+    } else if (!namePattern.test(form.firstName.trim())) {
+      errs.firstName = "English/Spanish letters only, no leading/trailing spaces";
+    }
     if (!form.gender) errs.gender = "Required";
-    if (!form.birthYear || !form.birthMonth || !form.birthDay)
+    if (!form.birthYear || !form.birthMonth || !form.birthDay) {
       errs.birthDate = "Required";
+    } else {
+      const currentYear = new Date().getFullYear();
+      if (
+        form.birthYear < currentYear - 120 ||
+        form.birthYear > currentYear ||
+        String(form.birthYear).length !== 4
+      ) {
+        errs.birthDate = `Year must be between ${currentYear - 120} and ${currentYear}`;
+      }
+    }
     if (!form.phone.trim()) errs.phone = "Required";
     if (showEmail && !form.email.trim()) errs.email = "Required";
     if ((form.isK12 || isMinor) && !form.grade) errs.grade = "Required";
@@ -110,13 +131,25 @@ export function ProfileForm({
     return Object.keys(errs).length === 0;
   };
 
+  const trimFields = (data: ProfileFormData): ProfileFormData => ({
+    ...data,
+    lastName: data.lastName.trim().replace(/\s{2,}/g, " "),
+    firstName: data.firstName.trim().replace(/\s{2,}/g, " "),
+    displayNameKo: data.displayNameKo.trim(),
+    phone: data.phone.trim(),
+    email: data.email.trim(),
+    churchOther: data.churchOther.trim(),
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    await onSubmit({
-      ...form,
-      isK12: form.isK12 || isMinor,
-    });
+    await onSubmit(
+      trimFields({
+        ...form,
+        isK12: form.isK12 || isMinor,
+      })
+    );
   };
 
   const update = (field: keyof ProfileFormData, value: unknown) => {
@@ -128,6 +161,17 @@ export function ProfileForm({
     });
   };
 
+  // Filter name input: allow only English/Spanish letters and single spaces (no leading space)
+  const handleNameChange = (field: "lastName" | "firstName", raw: string) => {
+    // Remove characters that aren't letters or spaces
+    let v = raw.replace(/[^A-Za-zÀ-ÖØ-öø-ÿÑñ ]/g, "");
+    // No leading spaces
+    v = v.replace(/^\s+/, "");
+    // Collapse consecutive spaces to one
+    v = v.replace(/\s{2,}/g, " ");
+    update(field, v);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Names */}
@@ -137,7 +181,7 @@ export function ProfileForm({
           <Input
             id="lastName"
             value={form.lastName}
-            onChange={(e) => update("lastName", e.target.value)}
+            onChange={(e) => handleNameChange("lastName", e.target.value)}
             placeholder="Kim"
           />
           {errors.lastName && (
@@ -149,7 +193,7 @@ export function ProfileForm({
           <Input
             id="firstName"
             value={form.firstName}
-            onChange={(e) => update("firstName", e.target.value)}
+            onChange={(e) => handleNameChange("firstName", e.target.value)}
             placeholder="John"
           />
           {errors.firstName && (
@@ -181,6 +225,7 @@ export function ProfileForm({
           <SelectContent>
             <SelectItem value="MALE">Male</SelectItem>
             <SelectItem value="FEMALE">Female</SelectItem>
+            <SelectItem value="OTHERS">Others</SelectItem>
           </SelectContent>
         </Select>
         {errors.gender && (

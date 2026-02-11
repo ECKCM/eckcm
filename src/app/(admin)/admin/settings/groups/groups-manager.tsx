@@ -77,7 +77,7 @@ export function RegistrationGroupsManager({
     setLoading(true);
     const supabase = createClient();
     const { data } = await supabase
-      .from("ECKCM_registration_groups")
+      .from("eckcm_registration_groups")
       .select("*")
       .eq("event_id", eventId)
       .order("created_at");
@@ -144,7 +144,7 @@ export function RegistrationGroupsManager({
 
     if (editingId) {
       const { error } = await supabase
-        .from("ECKCM_registration_groups")
+        .from("eckcm_registration_groups")
         .update(payload)
         .eq("id", editingId);
       if (error) {
@@ -155,7 +155,7 @@ export function RegistrationGroupsManager({
       toast.success("Group updated");
     } else {
       const { error } = await supabase
-        .from("ECKCM_registration_groups")
+        .from("eckcm_registration_groups")
         .insert(payload);
       if (error) {
         toast.error(error.message);
@@ -173,7 +173,7 @@ export function RegistrationGroupsManager({
   const handleDelete = async (id: string) => {
     const supabase = createClient();
     const { error } = await supabase
-      .from("ECKCM_registration_groups")
+      .from("eckcm_registration_groups")
       .delete()
       .eq("id", id);
     if (error) {
@@ -417,7 +417,7 @@ export function RegistrationGroupsManager({
                   {group.early_bird_deadline && (
                     <span>
                       Deadline:{" "}
-                      {new Date(group.early_bird_deadline).toLocaleDateString()}
+                      {new Date(group.early_bird_deadline).toLocaleDateString("en-US")}
                     </span>
                   )}
                 </div>

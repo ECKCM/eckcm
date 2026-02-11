@@ -13,7 +13,7 @@ export default async function EventDetailPage({
   const supabase = await createClient();
 
   const { data: event } = await supabase
-    .from("ECKCM_events")
+    .from("eckcm_events")
     .select("*")
     .eq("id", eventId)
     .single();

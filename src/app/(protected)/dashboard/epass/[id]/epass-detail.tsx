@@ -15,20 +15,20 @@ interface EPassDetailProps {
     created_at: string;
     person_id: string;
     registration_id: string;
-    ECKCM_people: {
+    eckcm_people: {
       first_name_en: string;
       last_name_en: string;
       display_name_ko: string | null;
       gender: string;
       birth_date: string;
     };
-    ECKCM_registrations: {
+    eckcm_registrations: {
       confirmation_code: string | null;
       status: string;
       start_date: string;
       end_date: string;
       event_id: string;
-      ECKCM_events: {
+      eckcm_events: {
         name_en: string;
         name_ko: string | null;
         location: string | null;
@@ -38,9 +38,9 @@ interface EPassDetailProps {
 }
 
 export function EPassDetail({ token }: EPassDetailProps) {
-  const person = token.ECKCM_people;
-  const reg = token.ECKCM_registrations;
-  const event = reg.ECKCM_events;
+  const person = token.eckcm_people;
+  const reg = token.eckcm_registrations;
+  const event = reg.eckcm_events;
   const displayName =
     person.display_name_ko ??
     `${person.first_name_en} ${person.last_name_en}`;

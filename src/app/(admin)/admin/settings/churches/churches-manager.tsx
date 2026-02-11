@@ -82,7 +82,7 @@ export function ChurchesManager({
 
     if (editingId) {
       const { error } = await supabase
-        .from("ECKCM_churches")
+        .from("eckcm_churches")
         .update(payload)
         .eq("id", editingId);
       if (error) {
@@ -93,7 +93,7 @@ export function ChurchesManager({
       toast.success("Church updated");
     } else {
       const { error } = await supabase
-        .from("ECKCM_churches")
+        .from("eckcm_churches")
         .insert(payload);
       if (error) {
         toast.error(error.message);
@@ -109,7 +109,7 @@ export function ChurchesManager({
 
     // Reload
     const { data } = await supabase
-      .from("ECKCM_churches")
+      .from("eckcm_churches")
       .select("*")
       .order("is_other", { ascending: false })
       .order("sort_order");
@@ -123,7 +123,7 @@ export function ChurchesManager({
     }
     const supabase = createClient();
     const { error } = await supabase
-      .from("ECKCM_churches")
+      .from("eckcm_churches")
       .delete()
       .eq("id", church.id);
     if (error) {

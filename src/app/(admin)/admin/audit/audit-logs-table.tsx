@@ -37,7 +37,7 @@ export function AuditLogsTable() {
     const supabase = createClient();
 
     const { data } = await supabase
-      .from("ECKCM_audit_logs")
+      .from("eckcm_audit_logs")
       .select(
         `
         id,
@@ -46,7 +46,7 @@ export function AuditLogsTable() {
         entity_id,
         created_at,
         metadata,
-        ECKCM_users:actor_id(email)
+        eckcm_users:actor_id(email)
       `
       )
       .order("created_at", { ascending: false })
@@ -59,7 +59,7 @@ export function AuditLogsTable() {
         action: log.action,
         entity_type: log.entity_type,
         entity_id: log.entity_id,
-        actor_email: log.ECKCM_users?.email ?? null,
+        actor_email: log.eckcm_users?.email ?? null,
         created_at: log.created_at,
         metadata: log.metadata,
       }));

@@ -12,7 +12,7 @@ export default async function ReceiptsPage() {
 
   // Get invoices for user's registrations
   const { data: registrations } = await supabase
-    .from("ECKCM_registrations")
+    .from("eckcm_registrations")
     .select("id")
     .eq("created_by_user_id", user.id);
 
@@ -25,7 +25,7 @@ export default async function ReceiptsPage() {
   }
 
   const { data: invoices } = await supabase
-    .from("ECKCM_invoices")
+    .from("eckcm_invoices")
     .select(`
       id,
       invoice_number,
@@ -34,9 +34,9 @@ export default async function ReceiptsPage() {
       issued_at,
       paid_at,
       registration_id,
-      ECKCM_registrations!inner(
+      eckcm_registrations!inner(
         confirmation_code,
-        ECKCM_events!inner(name_en)
+        eckcm_events!inner(name_en)
       )
     `)
     .in("registration_id", regIds)
