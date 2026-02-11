@@ -170,24 +170,18 @@ export function ProfileForm({
     // Collapse consecutive spaces to one
     v = v.replace(/\s{2,}/g, " ");
     update(field, v);
+
+    // Auto-populate Display Name from First + Last Name
+    const first = field === "firstName" ? v : form.firstName;
+    const last = field === "lastName" ? v : form.lastName;
+    const displayName = `${first.trim()} ${last.trim()}`.trim();
+    setForm((prev) => ({ ...prev, [field]: v, displayNameKo: displayName }));
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Names */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label htmlFor="lastName">Last Name (EN) *</Label>
-          <Input
-            id="lastName"
-            value={form.lastName}
-            onChange={(e) => handleNameChange("lastName", e.target.value)}
-            placeholder="Kim"
-          />
-          {errors.lastName && (
-            <p className="text-xs text-destructive">{errors.lastName}</p>
-          )}
-        </div>
         <div className="space-y-1">
           <Label htmlFor="firstName">First Name (EN) *</Label>
           <Input
@@ -200,15 +194,27 @@ export function ProfileForm({
             <p className="text-xs text-destructive">{errors.firstName}</p>
           )}
         </div>
+        <div className="space-y-1">
+          <Label htmlFor="lastName">Last Name (EN) *</Label>
+          <Input
+            id="lastName"
+            value={form.lastName}
+            onChange={(e) => handleNameChange("lastName", e.target.value)}
+            placeholder="Kim"
+          />
+          {errors.lastName && (
+            <p className="text-xs text-destructive">{errors.lastName}</p>
+          )}
+        </div>
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="displayNameKo">Display Name (Korean)</Label>
+        <Label htmlFor="displayNameKo">Display Name</Label>
         <Input
           id="displayNameKo"
           value={form.displayNameKo}
           onChange={(e) => update("displayNameKo", e.target.value)}
-          placeholder="김존"
+          placeholder="Scott Kim"
         />
       </div>
 

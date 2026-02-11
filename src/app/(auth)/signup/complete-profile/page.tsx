@@ -3,14 +3,20 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { ProfileForm, type ProfileFormData } from "@/components/auth/profile-form";
+import { checkEmailAvailability } from "../actions";
 import { toast } from "sonner";
 
 interface Church {
@@ -31,37 +37,45 @@ export default function CompleteProfilePage() {
   const [churches, setChurches] = useState<Church[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [userEmail, setUserEmail] = useState("");
+  const [eventStartDate, setEventStartDate] = useState<string | undefined>();
+  const [isEmailSignup, setIsEmailSignup] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  // Email signup fields
+  const [email, setEmail] = useState("");
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   useEffect(() => {
     const supabase = createClient();
 
     async function init() {
-      // Get current user
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.push("/login");
-        return;
-      }
+      if (user) {
+        setUserEmail(user.email ?? "");
 
-      setUserEmail(user.email ?? "");
+        // Check if profile is already completed
+        const { data: profile } = await supabase
+          .from("eckcm_users")
+          .select("profile_completed")
+          .eq("id", user.id)
+          .single();
 
-      // Check if profile is already completed
-      const { data: profile } = await supabase
-        .from("eckcm_users")
-        .select("profile_completed")
-        .eq("id", user.id)
-        .single();
-
-      if (profile?.profile_completed) {
-        router.push("/dashboard");
-        return;
+        if (profile?.profile_completed) {
+          router.push("/dashboard");
+          return;
+        }
+      } else {
+        // No session - email signup flow
+        setIsEmailSignup(true);
       }
 
       // Fetch reference data
-      const [churchRes, deptRes] = await Promise.all([
+      const [churchRes, deptRes, eventRes] = await Promise.all([
         supabase
           .from("eckcm_churches")
           .select("id, name_en, is_other")
@@ -72,19 +86,77 @@ export default function CompleteProfilePage() {
           .select("id, name_en, name_ko")
           .eq("is_active", true)
           .order("sort_order"),
+        supabase
+          .from("eckcm_events")
+          .select("event_start_date")
+          .eq("is_active", true)
+          .order("event_start_date", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
 
       if (churchRes.data) setChurches(churchRes.data);
       if (deptRes.data) setDepartments(deptRes.data);
+      if (eventRes.data) setEventStartDate(eventRes.data.event_start_date);
+      setInitialized(true);
     }
 
     init();
   }, [router]);
 
+  const checkEmailDuplicate = async () => {
+    if (!email) return;
+    const { available } = await checkEmailAvailability(email);
+
+    if (!available) {
+      setEmailError("This email is already registered");
+    } else {
+      setEmailError("");
+      toast.success("Email is available");
+    }
+  };
+
   const handleSubmit = async (data: ProfileFormData) => {
     setLoading(true);
     const supabase = createClient();
 
+    if (isEmailSignup) {
+      // Validate email/password
+      if (!email) {
+        toast.error("Email is required");
+        setLoading(false);
+        return;
+      }
+      if (email !== confirmEmail) {
+        toast.error("Emails do not match");
+        setLoading(false);
+        return;
+      }
+      if (emailError) {
+        toast.error("Please use a different email");
+        setLoading(false);
+        return;
+      }
+      if (password.length < 8) {
+        toast.error("Password must be at least 8 characters");
+        setLoading(false);
+        return;
+      }
+
+      // Create auth user
+      const { error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (authError) {
+        toast.error(authError.message);
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Get authenticated user
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -154,17 +226,32 @@ export default function CompleteProfilePage() {
       return;
     }
 
-    toast.success("Profile completed!");
+    toast.success(isEmailSignup ? "Account created!" : "Profile completed!");
     router.push("/dashboard");
     router.refresh();
   };
 
+  const handleCancel = async () => {
+    if (!isEmailSignup) {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    }
+    router.push("/");
+    router.refresh();
+  };
+
+  if (!initialized) return null;
+
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">Complete Your Profile</CardTitle>
+        <CardTitle className="text-2xl font-bold">
+          {isEmailSignup ? "Create Your Account" : "Complete Your Profile"}
+        </CardTitle>
         <CardDescription>
-          Please fill in your personal information to continue.
+          {isEmailSignup
+            ? "Fill in your information to create an account."
+            : "Please fill in your personal information to continue."}
           {userEmail && (
             <span className="block mt-1 font-medium text-foreground">
               {userEmail}
@@ -172,15 +259,77 @@ export default function CompleteProfilePage() {
           )}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {isEmailSignup && (
+          <>
+            <div className="space-y-1">
+              <Label htmlFor="email">Email *</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailError("");
+                  }}
+                  placeholder="email@example.com"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={checkEmailDuplicate}
+                  className="shrink-0"
+                >
+                  Check
+                </Button>
+              </div>
+              {emailError && (
+                <p className="text-xs text-destructive">{emailError}</p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="confirmEmail">Confirm Email *</Label>
+              <Input
+                id="confirmEmail"
+                type="email"
+                value={confirmEmail}
+                onChange={(e) => setConfirmEmail(e.target.value)}
+                placeholder="email@example.com"
+              />
+              {confirmEmail && email !== confirmEmail && (
+                <p className="text-xs text-destructive">Emails do not match</p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="password">Password *</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min 8 characters"
+                minLength={8}
+              />
+            </div>
+            <Separator />
+          </>
+        )}
         <ProfileForm
           churches={churches}
           departments={departments}
+          eventStartDate={eventStartDate}
           onSubmit={handleSubmit}
-          submitLabel="Complete Profile"
+          submitLabel={isEmailSignup ? "Create Account" : "Complete Profile"}
           loading={loading}
         />
       </CardContent>
+      <CardFooter className="justify-center">
+        <Button variant="ghost" size="sm" onClick={handleCancel}>
+          Cancel
+        </Button>
+      </CardFooter>
     </Card>
   );
 }

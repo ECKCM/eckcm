@@ -30,10 +30,10 @@ export default async function HomePage() {
         </p>
         <div className="mt-10 flex items-center justify-center gap-4">
           <Button asChild size="lg">
-            <Link href="/login">Sign In</Link>
+            <Link href="/signup">Sign Up</Link>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <Link href="/signup">Register</Link>
+            <Link href="/login">Sign In</Link>
           </Button>
         </div>
       </div>

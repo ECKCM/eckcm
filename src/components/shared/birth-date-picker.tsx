@@ -70,21 +70,6 @@ export function BirthDatePicker({
     <div className="space-y-2">
       <Label>Date of Birth *</Label>
       <div className="grid grid-cols-3 gap-2">
-        {/* Year - Input with live validation */}
-        <div className="space-y-1">
-          <Input
-            type="text"
-            inputMode="numeric"
-            placeholder="Year"
-            maxLength={4}
-            value={yearInput}
-            onChange={(e) => handleYearChange(e.target.value)}
-          />
-          {yearError && (
-            <p className="text-xs text-destructive">{yearError}</p>
-          )}
-        </div>
-
         {/* Month - Dropdown */}
         <Select
           value={month?.toString()}
@@ -102,7 +87,7 @@ export function BirthDatePicker({
           </SelectContent>
         </Select>
 
-        {/* Day - Dropdown with max height */}
+        {/* Day - Dropdown */}
         <Select
           value={day?.toString()}
           onValueChange={(v) => onDayChange(parseInt(v))}
@@ -118,6 +103,21 @@ export function BirthDatePicker({
             ))}
           </SelectContent>
         </Select>
+
+        {/* Year - Input with live validation */}
+        <div className="space-y-1">
+          <Input
+            type="text"
+            inputMode="numeric"
+            placeholder="Year"
+            maxLength={4}
+            value={yearInput}
+            onChange={(e) => handleYearChange(e.target.value)}
+          />
+          {yearError && (
+            <p className="text-xs text-destructive">{yearError}</p>
+          )}
+        </div>
       </div>
     </div>
   );

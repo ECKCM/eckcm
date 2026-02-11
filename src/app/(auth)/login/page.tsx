@@ -97,7 +97,7 @@ export default function LoginPage() {
         <p className="text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
           <Link href="/signup" className="text-primary underline-offset-4 hover:underline">
-            Register
+            Sign Up
           </Link>
         </p>
       </CardFooter>
