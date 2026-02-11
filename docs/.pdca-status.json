@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-11T08:20:18.790Z",
+  "lastUpdated": "2026-02-11T10:49:11.499Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -44,7 +44,13 @@
     "[id]",
     "registrations",
     "receipts",
-    "settings"
+    "settings",
+    "users",
+    "room-groups",
+    "invoices",
+    "[token]",
+    "verify",
+    "audit"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -66,9 +72,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:16:45.184Z",
-        "lastUpdated": "2026-02-11T07:57:15.379Z"
+        "lastUpdated": "2026-02-11T10:48:47.192Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/lib/utils/constants.ts"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/layout.tsx"
     },
     "supabase": {
       "phase": "do",
@@ -92,9 +98,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:21:20.291Z",
-        "lastUpdated": "2026-02-11T07:21:21.349Z"
+        "lastUpdated": "2026-02-11T10:49:00.253Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(public)/layout.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(public)/page.tsx"
     },
     "i18n": {
       "phase": "do",
@@ -105,9 +111,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:22:12.749Z",
-        "lastUpdated": "2026-02-11T07:22:12.749Z"
+        "lastUpdated": "2026-02-11T10:48:22.323Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/lib/i18n/config.ts"
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/i18n/context.tsx"
     },
     "stripe": {
       "phase": "do",
@@ -235,7 +241,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:59.415Z",
-        "lastUpdated": "2026-02-11T08:19:10.779Z"
+        "lastUpdated": "2026-02-11T10:49:11.499Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/dashboard-content.tsx"
     },
@@ -248,9 +254,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:44:31.720Z",
-        "lastUpdated": "2026-02-11T07:45:45.419Z"
+        "lastUpdated": "2026-02-11T10:47:37.050Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/page.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/admin/admin-sidebar.tsx"
     },
     "events": {
       "phase": "do",
@@ -365,9 +371,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:53:37.337Z",
-        "lastUpdated": "2026-02-11T07:53:37.337Z"
+        "lastUpdated": "2026-02-11T10:42:04.069Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/participants/participants-table.tsx"
     },
     "lodging": {
       "phase": "do",
@@ -602,6 +608,84 @@
         "lastUpdated": "2026-02-11T08:18:44.870Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/settings/profile-settings.tsx"
+    },
+    "users": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T10:42:06.660Z",
+        "lastUpdated": "2026-02-11T10:42:28.915Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/users/users-manager.tsx"
+    },
+    "room-groups": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T10:42:36.906Z",
+        "lastUpdated": "2026-02-11T10:42:52.843Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/room-groups/room-groups-table.tsx"
+    },
+    "invoices": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T10:42:53.903Z",
+        "lastUpdated": "2026-02-11T10:43:10.533Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/invoices/invoices-table.tsx"
+    },
+    "[token]": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T10:46:34.843Z",
+        "lastUpdated": "2026-02-11T10:46:46.478Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/epass/[token]/epass-viewer.tsx"
+    },
+    "verify": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T10:46:59.292Z",
+        "lastUpdated": "2026-02-11T10:46:59.292Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/checkin/verify/route.ts"
+    },
+    "audit": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-11T10:47:00.371Z",
+        "lastUpdated": "2026-02-11T10:47:16.584Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/audit/audit-logs-table.tsx"
     }
   },
   "pipeline": {
@@ -612,7 +696,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-11T08:20:18.790Z"
+    "lastActivity": "2026-02-11T10:49:11.499Z"
   },
   "history": [
     {
@@ -1251,6 +1335,156 @@
     {
       "timestamp": "2026-02-11T08:20:18.790Z",
       "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:41:42.521Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:42:04.069Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:42:06.660Z",
+      "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:42:28.915Z",
+      "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:42:36.906Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:42:52.843Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:42:53.903Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:43:10.533Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:43:20.066Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:43:28.216Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:46:34.843Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:46:46.478Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:46:59.292Z",
+      "feature": "verify",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:47:00.371Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:47:16.584Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:47:31.439Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:47:37.050Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:48:22.323Z",
+      "feature": "i18n",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:48:26.085Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:48:30.315Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:48:43.040Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:48:47.192Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:49:00.253Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:49:05.010Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-11T10:49:11.499Z",
+      "feature": "dashboard",
       "phase": "do",
       "action": "updated"
     }

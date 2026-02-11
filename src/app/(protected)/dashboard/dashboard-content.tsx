@@ -10,6 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 interface DashboardContentProps {
   user: {
@@ -61,9 +63,13 @@ export function DashboardContent({
           <h1 className="text-2xl font-bold">Welcome, {displayName}</h1>
           <p className="text-sm text-muted-foreground">{user.email}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleSignOut}>
-          Sign Out
-        </Button>
+        <div className="flex items-center gap-1">
+          <LanguageSwitcher />
+          <ThemeToggle />
+          <Button variant="outline" size="sm" onClick={handleSignOut}>
+            Sign Out
+          </Button>
+        </div>
       </div>
 
       {/* Active Events */}

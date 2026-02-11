@@ -11,6 +11,10 @@ import {
   Church,
   Layers,
   LayoutDashboard,
+  UserCheck,
+  BedDouble,
+  FileText,
+  ScrollText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -76,6 +80,50 @@ export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
                   <Link href="/admin/events">
                     <Calendar />
                     <span>Events</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/admin/participants")}
+                >
+                  <Link href="/admin/participants">
+                    <UserCheck />
+                    <span>Participants</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/admin/room-groups")}
+                >
+                  <Link href="/admin/room-groups">
+                    <BedDouble />
+                    <span>Room Groups</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/admin/invoices")}
+                >
+                  <Link href="/admin/invoices">
+                    <FileText />
+                    <span>Invoices</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/admin/audit")}
+                >
+                  <Link href="/admin/audit">
+                    <ScrollText />
+                    <span>Audit Logs</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
