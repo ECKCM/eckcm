@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-11T22:29:14.872Z",
+  "lastUpdated": "2026-02-12T01:57:25.797Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -359,9 +359,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:51:56.507Z",
-        "lastUpdated": "2026-02-11T07:51:56.507Z"
+        "lastUpdated": "2026-02-12T01:56:56.783Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/registration/wizard-stepper.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/registration/meal-selection-grid.tsx"
     },
     "participants": {
       "phase": "do",
@@ -372,9 +372,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:53:37.337Z",
-        "lastUpdated": "2026-02-11T14:10:26.545Z"
+        "lastUpdated": "2026-02-12T01:57:25.797Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/participants/page.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
     "lodging": {
       "phase": "do",
@@ -710,7 +710,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-11T22:29:14.872Z"
+    "lastActivity": "2026-02-12T01:57:25.797Z"
   },
   "history": [
     {
@@ -1967,6 +1967,36 @@
     {
       "timestamp": "2026-02-11T22:29:14.872Z",
       "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T01:55:51.693Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T01:56:56.783Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T01:57:08.224Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T01:57:14.905Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T01:57:25.797Z",
+      "feature": "participants",
       "phase": "do",
       "action": "updated"
     }

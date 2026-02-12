@@ -24,9 +24,10 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
-import type { ParticipantInput, RoomGroupInput } from "@/lib/types/registration";
+import type { ParticipantInput, RoomGroupInput, MealSelection } from "@/lib/types/registration";
 import type { Gender, Grade } from "@/lib/types/database";
 import { MAX_GROUPS, MAX_PARTICIPANTS_PER_GROUP } from "@/lib/utils/constants";
+import { MealSelectionGrid } from "@/components/registration/meal-selection-grid";
 
 const GENDERS: Gender[] = ["MALE", "FEMALE"];
 const GRADES: Grade[] = [
@@ -90,7 +91,6 @@ export default function ParticipantsStep() {
         supabase
           .from("eckcm_departments")
           .select("id, name_en, name_ko")
-          .eq("event_id", eventId)
           .eq("is_active", true)
           .order("sort_order"),
         supabase
@@ -164,6 +164,21 @@ export default function ParticipantsStep() {
       participant.isK12 = age < 18;
     }
 
+    dispatch({
+      type: "UPDATE_PARTICIPANT",
+      groupIndex,
+      participantIndex: pIndex,
+      participant,
+    });
+  };
+
+  const updateMealSelections = (
+    groupIndex: number,
+    pIndex: number,
+    meals: MealSelection[]
+  ) => {
+    const participant = { ...state.roomGroups[groupIndex].participants[pIndex] };
+    participant.mealSelections = meals;
     dispatch({
       type: "UPDATE_PARTICIPANT",
       groupIndex,
@@ -430,6 +445,15 @@ export default function ParticipantsStep() {
                       </SelectContent>
                     </Select>
                   </div>
+                )}
+                {/* Meal Selection */}
+                {state.startDate && state.endDate && (
+                  <MealSelectionGrid
+                    startDate={state.startDate}
+                    endDate={state.endDate}
+                    selections={p.mealSelections}
+                    onChange={(meals) => updateMealSelections(gi, pi, meals)}
+                  />
                 )}
               </div>
             ))}

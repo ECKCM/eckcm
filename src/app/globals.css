@@ -179,4 +179,15 @@
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
   }
+  button,
+  [role="button"],
+  a,
+  select,
+  summary,
+  [type="checkbox"],
+  [type="radio"],
+  label:has(input),
+  [tabindex]:not([tabindex="-1"]) {
+    cursor: pointer;
+  }
 }
