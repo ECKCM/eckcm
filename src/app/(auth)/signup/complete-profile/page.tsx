@@ -46,6 +46,7 @@ export default function CompleteProfilePage() {
   const [confirmEmail, setConfirmEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [emailChecked, setEmailChecked] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -110,8 +111,10 @@ export default function CompleteProfilePage() {
 
     if (!available) {
       setEmailError("This email is already registered");
+      setEmailChecked(false);
     } else {
       setEmailError("");
+      setEmailChecked(true);
       toast.success("Email is available");
     }
   };
@@ -272,15 +275,16 @@ export default function CompleteProfilePage() {
                   onChange={(e) => {
                     setEmail(e.target.value);
                     setEmailError("");
+                    setEmailChecked(false);
                   }}
                   placeholder="email@example.com"
                 />
                 <Button
                   type="button"
-                  variant="outline"
+                  variant={emailChecked ? "default" : "outline"}
                   size="sm"
                   onClick={checkEmailDuplicate}
-                  className="shrink-0"
+                  className={`shrink-0 ${emailChecked ? "bg-green-600 text-white border-green-600 hover:bg-green-700" : ""}`}
                 >
                   Check
                 </Button>
@@ -323,6 +327,7 @@ export default function CompleteProfilePage() {
           onSubmit={handleSubmit}
           submitLabel={isEmailSignup ? "Create Account" : "Complete Profile"}
           loading={loading}
+          hideDepartment
         />
       </CardContent>
       <CardFooter className="justify-center">

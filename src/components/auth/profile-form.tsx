@@ -50,6 +50,7 @@ interface ProfileFormProps {
   churches: Church[];
   departments: Department[];
   showEmail?: boolean;
+  hideDepartment?: boolean;
   eventStartDate?: string;
   onSubmit: (data: ProfileFormData) => Promise<void>;
   submitLabel?: string;
@@ -61,6 +62,7 @@ export function ProfileForm({
   churches,
   departments,
   showEmail = false,
+  hideDepartment = false,
   eventStartDate,
   onSubmit,
   submitLabel = "Save",
@@ -301,24 +303,26 @@ export function ProfileForm({
       )}
 
       {/* Department */}
-      <div className="space-y-1">
-        <Label>Department</Label>
-        <Select
-          value={form.departmentId}
-          onValueChange={(v) => update("departmentId", v)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select department" />
-          </SelectTrigger>
-          <SelectContent>
-            {departments.map((dept) => (
-              <SelectItem key={dept.id} value={dept.id}>
-                {dept.name_en}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {!hideDepartment && (
+        <div className="space-y-1">
+          <Label>Department</Label>
+          <Select
+            value={form.departmentId}
+            onValueChange={(v) => update("departmentId", v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select department" />
+            </SelectTrigger>
+            <SelectContent>
+              {departments.map((dept) => (
+                <SelectItem key={dept.id} value={dept.id}>
+                  {dept.name_en}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Email (conditional) */}
       {showEmail && (

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +12,15 @@ import {
 } from "@/components/ui/card";
 import { Toolbar } from "@/components/shared/toolbar";
 import { UserMenu } from "@/components/shared/user-menu";
+import { Loader2 } from "lucide-react";
+
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${mm}.${dd}.${yy}`;
+}
 
 interface DashboardContentProps {
   user: {
@@ -43,11 +53,17 @@ export function DashboardContent({
   isAdmin,
 }: DashboardContentProps) {
   const router = useRouter();
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
   const displayName = person
     ? person.display_name_ko ??
       `${person.first_name_en} ${person.last_name_en}`
     : user.email;
+
+  const handleRegister = (eventId: string) => {
+    setNavigatingTo(eventId);
+    router.push(`/register/${eventId}`);
+  };
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-4 pt-8">
@@ -70,16 +86,24 @@ export function DashboardContent({
             <CardHeader>
               <CardTitle>{event.name_en}</CardTitle>
               <CardDescription>
-                {event.event_start_date} ~ {event.event_end_date}
+                {formatShortDate(event.event_start_date)} - {formatShortDate(event.event_end_date)}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button
-                className="w-full"
+                className="w-full text-lg font-bold tracking-wide"
                 size="lg"
-                onClick={() => router.push(`/register/${event.id}`)}
+                onClick={() => handleRegister(event.id)}
+                disabled={navigatingTo === event.id}
               >
-                Register Now
+                {navigatingTo === event.id ? (
+                  <>
+                    <Loader2 className="mr-2 size-5 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  "Register Now"
+                )}
               </Button>
             </CardContent>
           </Card>

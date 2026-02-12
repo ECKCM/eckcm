@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-12T01:57:25.797Z",
+  "lastUpdated": "2026-02-12T18:56:44.141Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -177,7 +177,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:30:50.784Z",
-        "lastUpdated": "2026-02-11T22:00:04.532Z"
+        "lastUpdated": "2026-02-12T18:52:38.269Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/components/auth/profile-form.tsx"
     },
@@ -216,7 +216,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:43.874Z",
-        "lastUpdated": "2026-02-11T21:15:41.019Z"
+        "lastUpdated": "2026-02-12T18:52:15.969Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/signup/complete-profile/page.tsx"
     },
@@ -242,7 +242,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:59.415Z",
-        "lastUpdated": "2026-02-11T14:43:52.084Z"
+        "lastUpdated": "2026-02-12T18:51:36.784Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/dashboard-content.tsx"
     },
@@ -359,7 +359,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:51:56.507Z",
-        "lastUpdated": "2026-02-12T01:56:56.783Z"
+        "lastUpdated": "2026-02-12T18:56:44.141Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/components/registration/meal-selection-grid.tsx"
     },
@@ -372,7 +372,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:53:37.337Z",
-        "lastUpdated": "2026-02-12T01:57:25.797Z"
+        "lastUpdated": "2026-02-12T18:53:56.051Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
@@ -710,7 +710,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-12T01:57:25.797Z"
+    "lastActivity": "2026-02-12T18:56:44.141Z"
   },
   "history": [
     {
@@ -1997,6 +1997,72 @@
     {
       "timestamp": "2026-02-12T01:57:25.797Z",
       "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T18:51:36.784Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T18:51:53.971Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T18:51:59.210Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T18:52:04.508Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T18:52:10.175Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T18:52:15.969Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T18:52:26.209Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T18:52:31.083Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T18:52:38.269Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T18:53:56.051Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-12T18:56:44.141Z",
+      "feature": "registration",
       "phase": "do",
       "action": "updated"
     }

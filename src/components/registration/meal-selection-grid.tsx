@@ -12,9 +12,13 @@ const MEAL_TYPES: { type: MealType; label: string; short: string }[] = [
   { type: "DINNER", label: "Dinner", short: "D" },
 ];
 
+type DayType = "no_meal" | "partial" | "fullday";
+
 interface MealSelectionGridProps {
   startDate: string; // YYYY-MM-DD (check-in)
   endDate: string; // YYYY-MM-DD (check-out)
+  eventStartDate: string; // YYYY-MM-DD (event start)
+  eventEndDate: string; // YYYY-MM-DD (event end)
   selections: MealSelection[];
   onChange: (selections: MealSelection[]) => void;
 }
@@ -35,38 +39,55 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
+function getDayType(
+  date: string,
+  startDate: string,
+  endDate: string,
+  eventStartDate: string,
+  eventEndDate: string
+): DayType {
+  // Event start/end dates: no meal at all
+  if (date === eventStartDate || date === eventEndDate) return "no_meal";
+  // Check-in date (if different from event start): partial
+  if (date === startDate) return "partial";
+  // Check-out date (if different from event end): partial
+  if (date === endDate) return "partial";
+  // Everything else: full day (locked)
+  return "fullday";
+}
+
 export function MealSelectionGrid({
   startDate,
   endDate,
+  eventStartDate,
+  eventEndDate,
   selections,
   onChange,
 }: MealSelectionGridProps) {
-  const dates = getDatesInRange(startDate, endDate);
-  const isArrivalDay = (date: string) => date === startDate;
-  const isDepartureDay = (date: string) => date === endDate;
+  const allDates = getDatesInRange(startDate, endDate);
+  // Filter out event start/end dates (no meals)
+  const visibleDates = allDates.filter(
+    (d) => getDayType(d, startDate, endDate, eventStartDate, eventEndDate) !== "no_meal"
+  );
 
   // Initialize default selections when dates change
   const initializeSelections = useCallback(() => {
-    if (dates.length === 0) return;
+    if (visibleDates.length === 0) return;
 
-    // Check if selections already exist for these dates
+    // Check if selections already exist for these visible dates
     const existingDates = new Set(selections.map((s) => s.date));
-    const allDatesExist = dates.every((d) => existingDates.has(d));
+    const allDatesExist = visibleDates.every((d) => existingDates.has(d));
     if (allDatesExist && selections.length > 0) return;
 
-    // Generate defaults: middle days = all checked, arrival/departure = unchecked
     const newSelections: MealSelection[] = [];
-    for (const date of dates) {
-      const isFirst = date === startDate;
-      const isLast = date === endDate;
+    for (const date of visibleDates) {
+      const dayType = getDayType(date, startDate, endDate, eventStartDate, eventEndDate);
       for (const meal of MEAL_TYPES) {
-        // Middle days default to all checked
-        // Arrival/departure days default to unchecked (partial selection)
-        const defaultSelected = !isFirst && !isLast;
         // Preserve existing selection if available
         const existing = selections.find(
           (s) => s.date === date && s.mealType === meal.type
         );
+        const defaultSelected = dayType === "fullday"; // full days default checked, partial days unchecked
         newSelections.push({
           date,
           mealType: meal.type,
@@ -75,7 +96,7 @@ export function MealSelectionGrid({
       }
     }
     onChange(newSelections);
-  }, [dates.join(","), startDate, endDate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [visibleDates.join(","), startDate, endDate, eventStartDate, eventEndDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     initializeSelections();
@@ -99,7 +120,7 @@ export function MealSelectionGrid({
 
   const selectedCount = selections.filter((s) => s.selected).length;
 
-  if (dates.length === 0) return null;
+  if (visibleDates.length === 0) return null;
 
   return (
     <div className="space-y-2">
@@ -115,28 +136,32 @@ export function MealSelectionGrid({
           ))}
         </div>
         {/* Rows */}
-        {dates.map((date) => {
-          const arrival = isArrivalDay(date);
-          const departure = isDepartureDay(date);
+        {visibleDates.map((date) => {
+          const dayType = getDayType(date, startDate, endDate, eventStartDate, eventEndDate);
+          const isFullDay = dayType === "fullday";
           return (
             <div
               key={date}
-              className="grid grid-cols-[1fr_repeat(3,48px)] gap-0 items-center px-2 py-1.5 border-t text-xs"
+              className={`grid grid-cols-[1fr_repeat(3,48px)] gap-0 items-center px-2 py-1.5 border-t text-xs ${
+                isFullDay ? "bg-muted/30" : ""
+              }`}
             >
               <span className="truncate">
                 {formatDate(date)}
-                {arrival && (
-                  <span className="ml-1 text-muted-foreground">(Arr.)</span>
+                {dayType === "partial" && (
+                  <span className="ml-1 text-muted-foreground">(Partial)</span>
                 )}
-                {departure && (
-                  <span className="ml-1 text-muted-foreground">(Dep.)</span>
+                {isFullDay && (
+                  <span className="ml-1 text-muted-foreground">(Full Day)</span>
                 )}
               </span>
               {MEAL_TYPES.map((meal) => (
                 <div key={meal.type} className="flex justify-center">
                   <Checkbox
-                    checked={isChecked(date, meal.type)}
+                    checked={isFullDay ? true : isChecked(date, meal.type)}
                     onCheckedChange={() => toggleMeal(date, meal.type)}
+                    disabled={isFullDay}
+                    className={isFullDay ? "opacity-50" : ""}
                   />
                 </div>
               ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRegistration } from "@/lib/context/registration-context";
@@ -26,15 +26,9 @@ import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import type { ParticipantInput, RoomGroupInput, MealSelection } from "@/lib/types/registration";
 import type { Gender, Grade } from "@/lib/types/database";
-import { MAX_GROUPS, MAX_PARTICIPANTS_PER_GROUP } from "@/lib/utils/constants";
+import { MAX_GROUPS, MAX_PARTICIPANTS_PER_GROUP, GRADE_LABELS } from "@/lib/utils/constants";
+import { calculateAge } from "@/lib/utils/validators";
 import { MealSelectionGrid } from "@/components/registration/meal-selection-grid";
-
-const GENDERS: Gender[] = ["MALE", "FEMALE"];
-const GRADES: Grade[] = [
-  "PRE_K", "KINDERGARTEN",
-  "GRADE_1", "GRADE_2", "GRADE_3", "GRADE_4", "GRADE_5", "GRADE_6",
-  "GRADE_7", "GRADE_8", "GRADE_9", "GRADE_10", "GRADE_11", "GRADE_12",
-];
 
 function createEmptyParticipant(isLeader: boolean): ParticipantInput {
   return {
@@ -43,6 +37,7 @@ function createEmptyParticipant(isLeader: boolean): ParticipantInput {
     isExistingPerson: false,
     lastName: "",
     firstName: "",
+    displayNameKo: "",
     gender: "MALE",
     birthYear: 2000,
     birthMonth: 1,
@@ -67,6 +62,7 @@ export default function ParticipantsStep() {
   const router = useRouter();
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
+  const leaderFilledRef = useRef(false);
 
   const [departments, setDepartments] = useState<
     { id: string; name_en: string; name_ko: string }[]
@@ -74,6 +70,10 @@ export default function ParticipantsStep() {
   const [churches, setChurches] = useState<
     { id: string; name_en: string; is_other: boolean }[]
   >([]);
+  const [eventDates, setEventDates] = useState<{
+    eventStartDate: string;
+    eventEndDate: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!state.startDate) {
@@ -84,10 +84,14 @@ export default function ParticipantsStep() {
     if (state.roomGroups.length === 0) {
       dispatch({ type: "ADD_ROOM_GROUP", group: createEmptyGroup() });
     }
-    // Load departments and churches
+
     const load = async () => {
       const supabase = createClient();
-      const [{ data: deps }, { data: chs }] = await Promise.all([
+
+      // Fetch departments, churches, event dates, and current user's person data
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const [{ data: deps }, { data: chs }, { data: ev }] = await Promise.all([
         supabase
           .from("eckcm_departments")
           .select("id, name_en, name_ko")
@@ -99,9 +103,73 @@ export default function ParticipantsStep() {
           .eq("is_active", true)
           .order("is_other", { ascending: false })
           .order("sort_order"),
+        supabase
+          .from("eckcm_events")
+          .select("event_start_date, event_end_date")
+          .eq("id", eventId)
+          .single(),
       ]);
+
       setDepartments(deps ?? []);
       setChurches(chs ?? []);
+      if (ev) {
+        setEventDates({
+          eventStartDate: ev.event_start_date,
+          eventEndDate: ev.event_end_date,
+        });
+      }
+
+      // Auto-fill leader from user's profile (only once)
+      if (user && !leaderFilledRef.current) {
+        const { data: userPeople } = await supabase
+          .from("eckcm_user_people")
+          .select("person_id")
+          .eq("user_id", user.id)
+          .limit(1);
+
+        if (userPeople && userPeople.length > 0) {
+          const { data: person } = await supabase
+            .from("eckcm_people")
+            .select("id, first_name_en, last_name_en, display_name_ko, gender, birth_date, is_k12, grade, email, phone, department_id, church_id, church_other")
+            .eq("id", userPeople[0].person_id)
+            .single();
+
+          if (person && state.roomGroups.length > 0) {
+            const leader = state.roomGroups[0].participants[0];
+            // Only fill if leader is still empty (fresh start)
+            if (!leader.lastName && !leader.firstName) {
+              const bd = person.birth_date ? new Date(person.birth_date + "T00:00:00") : null;
+              const filledLeader: ParticipantInput = {
+                ...leader,
+                isExistingPerson: true,
+                personId: person.id,
+                lastName: person.last_name_en ?? "",
+                firstName: person.first_name_en ?? "",
+                displayNameKo: person.display_name_ko ?? "",
+                gender: (person.gender as Gender) ?? "MALE",
+                birthYear: bd ? bd.getFullYear() : 2000,
+                birthMonth: bd ? bd.getMonth() + 1 : 1,
+                birthDay: bd ? bd.getDate() : 1,
+                isK12: person.is_k12 ?? false,
+                grade: (person.grade as Grade) ?? undefined,
+                email: person.email ?? "",
+                phone: person.phone ?? "",
+                departmentId: person.department_id ?? undefined,
+                churchId: person.church_id ?? undefined,
+                churchOther: person.church_other ?? undefined,
+                mealSelections: leader.mealSelections,
+              };
+              dispatch({
+                type: "UPDATE_PARTICIPANT",
+                groupIndex: 0,
+                participantIndex: 0,
+                participant: filledLeader,
+              });
+              leaderFilledRef.current = true;
+            }
+          }
+        }
+      }
     };
     load();
   }, [eventId, state.startDate, state.roomGroups.length, dispatch, router]);
@@ -157,11 +225,18 @@ export default function ParticipantsStep() {
     const participant = { ...state.roomGroups[groupIndex].participants[pIndex] };
     (participant as Record<string, unknown>)[field] = value;
 
-    // Auto-detect K-12 based on age
-    if (field === "birthYear") {
-      const age =
-        new Date(state.startDate).getFullYear() - (value as number);
-      participant.isK12 = age < 18;
+    // Auto-detect K-12 based on birth date
+    if (field === "birthYear" || field === "birthMonth" || field === "birthDay") {
+      const year = field === "birthYear" ? (value as number) : participant.birthYear;
+      const month = field === "birthMonth" ? (value as number) : participant.birthMonth;
+      const day = field === "birthDay" ? (value as number) : participant.birthDay;
+      if (year && month && day) {
+        const birthDate = new Date(year, month - 1, day);
+        const refDate = eventDates
+          ? new Date(eventDates.eventStartDate)
+          : new Date(state.startDate);
+        participant.isK12 = calculateAge(birthDate, refDate) < 18;
+      }
     }
 
     dispatch({
@@ -187,8 +262,12 @@ export default function ParticipantsStep() {
     });
   };
 
+  const isChurchOther = (churchId: string | undefined) => {
+    if (!churchId) return false;
+    return churches.find((c) => c.id === churchId)?.is_other ?? false;
+  };
+
   const handleNext = () => {
-    // Validate all groups have at least one participant with required fields
     for (let gi = 0; gi < state.roomGroups.length; gi++) {
       const group = state.roomGroups[gi];
       for (let pi = 0; pi < group.participants.length; pi++) {
@@ -256,36 +335,41 @@ export default function ParticipantsStep() {
                     </Button>
                   )}
                 </div>
+
+                {/* Names */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-xs">Last Name *</Label>
-                    <Input
-                      value={p.lastName}
-                      onChange={(e) =>
-                        updateParticipant(gi, pi, "lastName", e.target.value)
-                      }
-                      placeholder="Kim"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">First Name *</Label>
+                    <Label className="text-xs">First Name (EN) *</Label>
                     <Input
                       value={p.firstName}
                       onChange={(e) =>
                         updateParticipant(gi, pi, "firstName", e.target.value)
                       }
-                      placeholder="John"
+                      placeholder="JOHN"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Last Name (EN) *</Label>
+                    <Input
+                      value={p.lastName}
+                      onChange={(e) =>
+                        updateParticipant(gi, pi, "lastName", e.target.value)
+                      }
+                      placeholder="KIM"
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+
+                {/* Display Name + Gender */}
+                <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-xs">Korean Name</Label>
+                    <Label className="text-xs">Display Name</Label>
                     <Input
                       value={p.displayNameKo ?? ""}
                       onChange={(e) =>
                         updateParticipant(gi, pi, "displayNameKo", e.target.value)
                       }
+                      placeholder="Scott Kim"
                     />
                   </div>
                   <div className="space-y-1">
@@ -300,33 +384,28 @@ export default function ParticipantsStep() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {GENDERS.map((g) => (
-                          <SelectItem key={g} value={g}>
-                            {g === "MALE" ? "Male" : "Female"}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="MALE">Male</SelectItem>
+                        <SelectItem value="FEMALE">Female</SelectItem>
+                        <SelectItem value="OTHERS">Others</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                {/* Birth Date */}
+                <div className="grid grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <Label className="text-xs">Birth Year *</Label>
                     <Input
                       type="number"
                       value={p.birthYear}
                       onChange={(e) =>
-                        updateParticipant(
-                          gi,
-                          pi,
-                          "birthYear",
-                          parseInt(e.target.value)
-                        )
+                        updateParticipant(gi, pi, "birthYear", parseInt(e.target.value))
                       }
                       min={1920}
                       max={new Date().getFullYear()}
                     />
                   </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <Label className="text-xs">Birth Month</Label>
                     <Select
@@ -339,13 +418,11 @@ export default function ParticipantsStep() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map(
-                          (m) => (
-                            <SelectItem key={m} value={m.toString()}>
-                              {m}
-                            </SelectItem>
-                          )
-                        )}
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                          <SelectItem key={m} value={m.toString()}>
+                            {m}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -361,68 +438,29 @@ export default function ParticipantsStep() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {Array.from({ length: 31 }, (_, i) => i + 1).map(
-                          (d) => (
-                            <SelectItem key={d} value={d.toString()}>
-                              {d}
-                            </SelectItem>
-                          )
-                        )}
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                          <SelectItem key={d} value={d.toString()}>
+                            {d}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Phone</Label>
-                    <Input
-                      value={p.phone}
-                      onChange={(e) =>
-                        updateParticipant(gi, pi, "phone", e.target.value)
-                      }
-                      placeholder="123-456-7890"
-                    />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Department</Label>
-                    <Select
-                      value={p.departmentId ?? ""}
-                      onValueChange={(v) =>
-                        updateParticipant(gi, pi, "departmentId", v)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map((d) => (
-                          <SelectItem key={d.id} value={d.id}>
-                            {d.name_en} ({d.name_ko})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Church</Label>
-                    <Select
-                      value={p.churchId ?? ""}
-                      onValueChange={(v) =>
-                        updateParticipant(gi, pi, "churchId", v)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {churches.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name_en}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+
+                {/* K-12 + Grade */}
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={p.isK12}
+                    onChange={(e) =>
+                      updateParticipant(gi, pi, "isK12", e.target.checked)
+                    }
+                    className="mt-1"
+                  />
+                  <Label className="text-xs font-normal leading-snug">
+                    K-12 student (high school or younger)
+                  </Label>
                 </div>
                 {p.isK12 && (
                   <div className="space-y-1">
@@ -437,20 +475,110 @@ export default function ParticipantsStep() {
                         <SelectValue placeholder="Select grade" />
                       </SelectTrigger>
                       <SelectContent>
-                        {GRADES.map((g) => (
-                          <SelectItem key={g} value={g}>
-                            {g.replace(/_/g, " ")}
+                        {Object.entries(GRADE_LABELS).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>
+                            {label.en}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                 )}
+
+                {/* Department */}
+                <div className="space-y-1">
+                  <Label className="text-xs">Department</Label>
+                  <Select
+                    value={p.departmentId ?? ""}
+                    onValueChange={(v) =>
+                      updateParticipant(gi, pi, "departmentId", v)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name_en}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Phone + Email */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Phone</Label>
+                    <Input
+                      value={p.phone}
+                      onChange={(e) =>
+                        updateParticipant(gi, pi, "phone", e.target.value)
+                      }
+                      placeholder="(000) 000-0000"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Email</Label>
+                    <Input
+                      type="email"
+                      value={p.email}
+                      onChange={(e) =>
+                        updateParticipant(gi, pi, "email", e.target.value)
+                      }
+                      placeholder="email@example.com"
+                    />
+                  </div>
+                </div>
+
+                {/* Church */}
+                <div className="space-y-1">
+                  <Label className="text-xs">Church</Label>
+                  <Select
+                    value={p.churchId ?? ""}
+                    onValueChange={(v) =>
+                      updateParticipant(gi, pi, "churchId", v)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {churches
+                        .sort((a, b) => {
+                          if (a.is_other) return -1;
+                          if (b.is_other) return 1;
+                          return a.name_en.localeCompare(b.name_en);
+                        })
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name_en}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {isChurchOther(p.churchId) && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Church Name</Label>
+                    <Input
+                      value={p.churchOther ?? ""}
+                      onChange={(e) =>
+                        updateParticipant(gi, pi, "churchOther", e.target.value)
+                      }
+                      placeholder="Enter your church name"
+                    />
+                  </div>
+                )}
+
                 {/* Meal Selection */}
-                {state.startDate && state.endDate && (
+                {state.startDate && state.endDate && eventDates && (
                   <MealSelectionGrid
                     startDate={state.startDate}
                     endDate={state.endDate}
+                    eventStartDate={eventDates.eventStartDate}
+                    eventEndDate={eventDates.eventEndDate}
                     selections={p.mealSelections}
                     onChange={(meals) => updateMealSelections(gi, pi, meals)}
                   />
