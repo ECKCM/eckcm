@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RegistrationProvider } from "@/lib/context/registration-context";
+import { ForceLightMode } from "@/components/registration/force-light-mode";
 
 export default async function RegisterLayout({
   children,
@@ -24,6 +25,9 @@ export default async function RegisterLayout({
   }
 
   return (
-    <RegistrationProvider eventId={eventId}>{children}</RegistrationProvider>
+    <RegistrationProvider eventId={eventId}>
+      <ForceLightMode />
+      {children}
+    </RegistrationProvider>
   );
 }

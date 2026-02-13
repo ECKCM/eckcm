@@ -158,9 +158,6 @@ export default function RegistrationStep1() {
     );
   }
 
-  // Determine resolved group for display
-  const resolvedGroup = resolveGroup(accessCode);
-
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
       <h1 className="text-2xl font-bold text-center">{event.name_en}</h1>
@@ -202,14 +199,12 @@ export default function RegistrationStep1() {
               onChange={(e) => handleAccessCodeChange(e.target.value)}
               placeholder="Enter if you have one"
             />
-            {resolvedGroup && (
-              <p className="text-xs text-muted-foreground">
-                Group: {resolvedGroup.name_en}
-              </p>
-            )}
           </div>
 
-          <div className="flex justify-end pt-4">
+          <div className="flex justify-between pt-4">
+            <Button variant="outline" onClick={() => router.push("/dashboard")}>
+              Cancel
+            </Button>
             <Button onClick={handleNext}>Next: Participants</Button>
           </div>
         </CardContent>

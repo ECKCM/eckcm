@@ -348,9 +348,21 @@ export function ProfileForm({
           id="phone"
           type="tel"
           value={form.phone}
-          onChange={(e) => update("phone", e.target.value)}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+            let formatted = digits;
+            if (digits.length > 3 && digits.length <= 6) formatted = `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+            else if (digits.length > 6) formatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+            update("phone", formatted);
+          }}
           placeholder="(000) 000-0000"
         />
+        {form.phone && (() => {
+          const d = form.phone.replace(/\D/g, "");
+          return d.length > 0 && d.length < 10;
+        })() && (
+          <p className="text-xs text-destructive">Enter 10-digit phone number</p>
+        )}
         {errors.phone && (
           <p className="text-xs text-destructive">{errors.phone}</p>
         )}

@@ -17,17 +17,18 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
-import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setLoginError("");
 
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
@@ -36,7 +37,7 @@ export default function LoginPage() {
     });
 
     if (error) {
-      toast.error(error.message);
+      setLoginError(error.message);
       setLoading(false);
       return;
     }
@@ -72,7 +73,10 @@ export default function LoginPage() {
               id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setLoginError("");
+              }}
               placeholder="email@example.com"
               required
             />
@@ -83,10 +87,16 @@ export default function LoginPage() {
               id="password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setLoginError("");
+              }}
               placeholder="••••••••"
               required
             />
+            {loginError && (
+              <p className="text-xs text-destructive">{loginError}</p>
+            )}
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign In"}

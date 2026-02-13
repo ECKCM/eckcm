@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-13T02:28:23.622Z",
+  "lastUpdated": "2026-02-13T08:31:15.926Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -177,7 +177,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:30:50.784Z",
-        "lastUpdated": "2026-02-12T18:52:38.269Z"
+        "lastUpdated": "2026-02-13T08:30:35.639Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/components/auth/profile-form.tsx"
     },
@@ -190,7 +190,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:01.757Z",
-        "lastUpdated": "2026-02-11T20:33:51.031Z"
+        "lastUpdated": "2026-02-13T08:30:56.426Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/login/page.tsx"
     },
@@ -216,7 +216,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:43.874Z",
-        "lastUpdated": "2026-02-12T18:52:15.969Z"
+        "lastUpdated": "2026-02-13T08:28:05.206Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/signup/complete-profile/page.tsx"
     },
@@ -281,7 +281,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:46:31.411Z",
-        "lastUpdated": "2026-02-12T23:02:09.869Z"
+        "lastUpdated": "2026-02-13T08:31:09.032Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/page.tsx"
     },
@@ -359,9 +359,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:51:56.507Z",
-        "lastUpdated": "2026-02-12T23:06:56.301Z"
+        "lastUpdated": "2026-02-13T08:27:37.461Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/registration/date-range-picker.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/registration/force-light-mode.tsx"
     },
     "participants": {
       "phase": "do",
@@ -372,7 +372,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:53:37.337Z",
-        "lastUpdated": "2026-02-13T02:28:23.622Z"
+        "lastUpdated": "2026-02-13T08:31:15.926Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
@@ -710,7 +710,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-13T02:28:23.622Z"
+    "lastActivity": "2026-02-13T08:31:15.926Z"
   },
   "history": [
     {
@@ -2278,6 +2278,72 @@
     },
     {
       "timestamp": "2026-02-13T02:28:23.622Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T08:27:31.297Z",
+      "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T08:27:37.461Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T08:27:50.969Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T08:28:05.206Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T08:30:35.639Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T08:30:43.219Z",
+      "feature": "login",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T08:30:51.410Z",
+      "feature": "login",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T08:30:56.426Z",
+      "feature": "login",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T08:31:03.996Z",
+      "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T08:31:09.032Z",
+      "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T08:31:15.926Z",
       "feature": "participants",
       "phase": "do",
       "action": "updated"

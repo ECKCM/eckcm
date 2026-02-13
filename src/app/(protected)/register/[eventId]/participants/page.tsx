@@ -338,7 +338,7 @@ export default function ParticipantsStep() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Room Group {gi + 1}</CardTitle>
-              {state.roomGroups.length > 1 && (
+              {gi > 0 && (
                 <Button
                   variant="ghost"
                   size="icon"

@@ -45,8 +45,18 @@ export default function CompleteProfilePage() {
   const [email, setEmail] = useState("");
   const [confirmEmail, setConfirmEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [emailError, setEmailError] = useState("");
   const [emailChecked, setEmailChecked] = useState(false);
+
+  const isValidEmail = (v: string) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  const formatPhone = (raw: string): string => {
+    const digits = raw.replace(/\D/g, "").slice(0, 10);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  };
+  const isValidPhone = (v: string) => { const d = v.replace(/\D/g, ""); return d.length === 0 || d.length === 10; };
 
   useEffect(() => {
     const supabase = createClient();
@@ -266,11 +276,13 @@ export default function CompleteProfilePage() {
         {isEmailSignup && (
           <>
             <div className="space-y-1">
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="signup-email">Email <span className="text-destructive">*</span></Label>
               <div className="flex gap-2">
                 <Input
-                  id="email"
+                  id="signup-email"
+                  name="signup-email"
                   type="email"
+                  autoComplete="off"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
@@ -292,12 +304,17 @@ export default function CompleteProfilePage() {
               {emailError && (
                 <p className="text-xs text-destructive">{emailError}</p>
               )}
+              {email && !isValidEmail(email) && !emailError && (
+                <p className="text-xs text-destructive">Enter a valid email address</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="confirmEmail">Confirm Email *</Label>
+              <Label htmlFor="signup-confirm-email">Confirm Email <span className="text-destructive">*</span></Label>
               <Input
-                id="confirmEmail"
+                id="signup-confirm-email"
+                name="signup-confirm-email"
                 type="email"
+                autoComplete="off"
                 value={confirmEmail}
                 onChange={(e) => setConfirmEmail(e.target.value)}
                 placeholder="email@example.com"
@@ -307,15 +324,20 @@ export default function CompleteProfilePage() {
               )}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="password">Password *</Label>
+              <Label htmlFor="signup-password">Password <span className="text-destructive">*</span></Label>
               <Input
-                id="password"
+                id="signup-password"
+                name="signup-password"
                 type="password"
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Min 8 characters"
                 minLength={8}
               />
+              {password && password.length < 8 && (
+                <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+              )}
             </div>
             <Separator />
           </>
