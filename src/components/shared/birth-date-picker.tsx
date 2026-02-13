@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -18,6 +18,7 @@ interface BirthDatePickerProps {
   onYearChange: (year: number | undefined) => void;
   onMonthChange: (month: number) => void;
   onDayChange: (day: number) => void;
+  labelClassName?: string;
 }
 
 function getDaysInMonth(year: number, month: number): number {
@@ -34,9 +35,19 @@ export function BirthDatePicker({
   onYearChange,
   onMonthChange,
   onDayChange,
+  labelClassName,
 }: BirthDatePickerProps) {
   const [yearInput, setYearInput] = useState(year?.toString() ?? "");
   const [yearError, setYearError] = useState("");
+
+  // Sync internal yearInput when year prop changes externally (e.g. auto-fill from profile)
+  useEffect(() => {
+    const propStr = year?.toString() ?? "";
+    if (propStr && propStr !== yearInput) {
+      setYearInput(propStr);
+      setYearError("");
+    }
+  }, [year]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const maxDays = year && month ? getDaysInMonth(year, month) : 31;
 
@@ -68,7 +79,7 @@ export function BirthDatePicker({
 
   return (
     <div className="space-y-2">
-      <Label>Date of Birth *</Label>
+      <Label className={labelClassName}>Date of Birth <span className="text-destructive">*</span></Label>
       <div className="grid grid-cols-3 gap-2">
         {/* Month - Dropdown */}
         <div className="space-y-1">

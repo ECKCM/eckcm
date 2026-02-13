@@ -14,6 +14,13 @@ import {
 import { BirthDatePicker } from "@/components/shared/birth-date-picker";
 import { GRADE_LABELS } from "@/lib/utils/constants";
 import { calculateAge } from "@/lib/utils/validators";
+import {
+  filterName,
+  buildDisplayName,
+  formatPhone,
+  isPhoneIncomplete,
+  NAME_PATTERN,
+} from "@/lib/utils/field-helpers";
 import type { Gender, Grade } from "@/lib/types/database";
 
 interface Church {
@@ -98,19 +105,16 @@ export function ProfileForm({
   const selectedChurch = churches.find((c) => c.id === form.churchId);
   const showChurchOther = selectedChurch?.is_other ?? false;
 
-  // Regex: Uppercase English/Spanish letters only
-  const namePattern = /^[A-ZÀ-ÖØ-ÝÑ]+(?: [A-ZÀ-ÖØ-ÝÑ]+)*$/;
-
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!form.lastName.trim()) {
       errs.lastName = "Required";
-    } else if (!namePattern.test(form.lastName.trim())) {
+    } else if (!NAME_PATTERN.test(form.lastName.trim())) {
       errs.lastName = "Uppercase letters only";
     }
     if (!form.firstName.trim()) {
       errs.firstName = "Required";
-    } else if (!namePattern.test(form.firstName.trim())) {
+    } else if (!NAME_PATTERN.test(form.firstName.trim())) {
       errs.firstName = "Uppercase letters only";
     }
     if (!form.displayNameKo.trim()) errs.displayNameKo = "Required";
@@ -164,23 +168,12 @@ export function ProfileForm({
     });
   };
 
-  // Filter name input: uppercase English/Spanish letters only, single spaces (no leading space)
   const handleNameChange = (field: "lastName" | "firstName", raw: string) => {
-    // Convert to uppercase first
-    let v = raw.toUpperCase();
-    // Remove characters that aren't uppercase letters or spaces
-    v = v.replace(/[^A-ZÀ-ÖØ-ÝÑ ]/g, "");
-    // No leading spaces
-    v = v.replace(/^\s+/, "");
-    // Collapse consecutive spaces to one
-    v = v.replace(/\s{2,}/g, " ");
+    const v = filterName(raw);
     update(field, v);
-
-    // Auto-populate Display Name from First + Last Name
     const first = field === "firstName" ? v : form.firstName;
     const last = field === "lastName" ? v : form.lastName;
-    const displayName = `${first.trim()} ${last.trim()}`.trim();
-    setForm((prev) => ({ ...prev, [field]: v, displayNameKo: displayName }));
+    setForm((prev) => ({ ...prev, [field]: v, displayNameKo: buildDisplayName(first, last) }));
   };
 
   return (
@@ -273,7 +266,7 @@ export function ProfileForm({
           className="mt-1"
         />
         <Label htmlFor="isK12" className="text-sm font-normal leading-snug">
-          I am currently a K-12 student (high school or younger)
+          I am currently a Pre-K/K-12 student (high school or younger)
         </Label>
       </div>
 
@@ -348,19 +341,10 @@ export function ProfileForm({
           id="phone"
           type="tel"
           value={form.phone}
-          onChange={(e) => {
-            const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
-            let formatted = digits;
-            if (digits.length > 3 && digits.length <= 6) formatted = `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-            else if (digits.length > 6) formatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-            update("phone", formatted);
-          }}
+          onChange={(e) => update("phone", formatPhone(e.target.value))}
           placeholder="(000) 000-0000"
         />
-        {form.phone && (() => {
-          const d = form.phone.replace(/\D/g, "");
-          return d.length > 0 && d.length < 10;
-        })() && (
+        {isPhoneIncomplete(form.phone) && (
           <p className="text-xs text-destructive">Enter 10-digit phone number</p>
         )}
         {errors.phone && (

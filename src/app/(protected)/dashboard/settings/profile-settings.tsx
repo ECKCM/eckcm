@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { formatPhone, isPhoneIncomplete } from "@/lib/utils/field-helpers";
 
 interface ProfileSettingsProps {
   userId: string;
@@ -42,14 +43,21 @@ export function ProfileSettings({
   profile,
   person,
 }: ProfileSettingsProps) {
+  const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [locale, setLocale] = useState(profile?.locale ?? "en");
+
+  useEffect(() => setMounted(true), []);
   const [phone, setPhone] = useState(person?.phone ?? "");
   const [displayNameKo, setDisplayNameKo] = useState(
     person?.display_name_ko ?? ""
   );
 
   const handleSave = async () => {
+    if (isPhoneIncomplete(phone)) {
+      toast.error("Enter a complete 10-digit phone number");
+      return;
+    }
     setSaving(true);
     const supabase = createClient();
 
@@ -152,10 +160,14 @@ export function ProfileSettings({
               <Label htmlFor="phone">Phone</Label>
               <Input
                 id="phone"
+                type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="123-456-7890"
+                onChange={(e) => setPhone(formatPhone(e.target.value))}
+                placeholder="(000) 000-0000"
               />
+              {isPhoneIncomplete(phone) && (
+                <p className="text-xs text-destructive mt-1">Enter 10-digit phone number</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -184,15 +196,21 @@ export function ProfileSettings({
         <CardContent className="space-y-4">
           <div>
             <Label htmlFor="locale">Language</Label>
-            <Select value={locale} onValueChange={setLocale}>
-              <SelectTrigger id="locale">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="ko">한국어</SelectItem>
-              </SelectContent>
-            </Select>
+            {mounted ? (
+              <Select value={locale} onValueChange={setLocale}>
+                <SelectTrigger id="locale">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="ko">한국어</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 text-sm">
+                {locale === "ko" ? "한국어" : "English"}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

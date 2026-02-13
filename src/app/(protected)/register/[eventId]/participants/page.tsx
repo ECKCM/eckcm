@@ -22,12 +22,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ChevronDown, CheckCircle2 } from "lucide-react";
 import type { ParticipantInput, RoomGroupInput, MealSelection } from "@/lib/types/registration";
 import type { Gender, Grade } from "@/lib/types/database";
 import { MAX_GROUPS, MAX_PARTICIPANTS_PER_GROUP, GRADE_LABELS } from "@/lib/utils/constants";
 import { calculateAge } from "@/lib/utils/validators";
+import {
+  filterName,
+  buildDisplayName,
+  formatPhone,
+  isPhoneIncomplete,
+  isValidEmail,
+  NAME_PATTERN,
+} from "@/lib/utils/field-helpers";
 import { MealSelectionGrid } from "@/components/registration/meal-selection-grid";
 import { BirthDatePicker } from "@/components/shared/birth-date-picker";
 
@@ -64,6 +87,7 @@ export default function ParticipantsStep() {
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
   const leaderFilledRef = useRef(false);
+  const groupInitRef = useRef(false);
 
   const [departments, setDepartments] = useState<
     { id: string; name_en: string; name_ko: string }[]
@@ -76,20 +100,47 @@ export default function ParticipantsStep() {
     eventEndDate: string;
   } | null>(null);
 
+  // Track which participants are open (accordion state)
+  // Key: "gi-pi", value: open/closed
+  const [openPanels, setOpenPanels] = useState<Record<string, boolean>>({
+    "0-0": true, // First leader starts open
+  });
+
+  // Track which participants have been saved
+  const [savedPanels, setSavedPanels] = useState<Record<string, boolean>>({});
+  const [savingPanel, setSavingPanel] = useState<string | null>(null);
+
+  // Per-participant inline field errors: { "gi-pi": { fieldName: "error msg" } }
+  const [fieldErrors, setFieldErrors] = useState<Record<string, Record<string, string>>>({});
+
+  // Confirmation dialog for removing a participant
+  const [removeTarget, setRemoveTarget] = useState<{
+    gi: number;
+    pi: number;
+    name: string;
+  } | null>(null);
+
+  // Confirmation dialog for removing an entire group
+  const [removeGroupTarget, setRemoveGroupTarget] = useState<number | null>(null);
+
+  const togglePanel = (key: string) => {
+    setOpenPanels((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   useEffect(() => {
     if (!state.startDate) {
       router.push(`/register/${eventId}`);
       return;
     }
-    // Initialize with one group if empty
-    if (state.roomGroups.length === 0) {
+    // Initialize with one group if empty (ref guard prevents double-dispatch in strict mode)
+    if (state.roomGroups.length === 0 && !groupInitRef.current) {
+      groupInitRef.current = true;
       dispatch({ type: "ADD_ROOM_GROUP", group: createEmptyGroup() });
     }
 
     const load = async () => {
       const supabase = createClient();
 
-      // Fetch departments, churches, event dates, and current user's person data
       const { data: { user } } = await supabase.auth.getUser();
 
       const [{ data: deps }, { data: chs }, { data: ev }] = await Promise.all([
@@ -122,6 +173,24 @@ export default function ParticipantsStep() {
 
       // Auto-fill leader from user's profile (only once)
       if (user && !leaderFilledRef.current) {
+        // Check for existing drafts
+        const { data: drafts } = await supabase
+          .from("eckcm_registration_drafts")
+          .select("participant_client_id")
+          .eq("user_id", user.id)
+          .eq("event_id", eventId);
+
+        if (drafts && drafts.length > 0) {
+          // Mark saved panels
+          const saved: Record<string, boolean> = {};
+          // We'll match by participant_client_id later
+          // For now just track that drafts exist
+          drafts.forEach(() => {
+            // Will be matched after groups are loaded
+          });
+          setSavedPanels(saved);
+        }
+
         const { data: userPeople } = await supabase
           .from("eckcm_user_people")
           .select("person_id")
@@ -180,15 +249,30 @@ export default function ParticipantsStep() {
       toast.error(`Maximum ${MAX_GROUPS} room groups allowed`);
       return;
     }
-    dispatch({ type: "ADD_ROOM_GROUP", group: createEmptyGroup() });
+    const newGroup = createEmptyGroup();
+    dispatch({ type: "ADD_ROOM_GROUP", group: newGroup });
+    // Open the new group's leader
+    const newGi = state.roomGroups.length;
+    setOpenPanels((prev) => ({ ...prev, [`${newGi}-0`]: true }));
   };
 
   const removeGroup = (index: number) => {
-    if (state.roomGroups.length <= 1) {
-      toast.error("At least one room group is required");
-      return;
-    }
     dispatch({ type: "REMOVE_ROOM_GROUP", index });
+    // Clean up saved/error state for removed group's participants
+    const group = state.roomGroups[index];
+    group.participants.forEach((_, pi) => {
+      const key = `${index}-${pi}`;
+      setSavedPanels((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    });
   };
 
   const addParticipant = (groupIndex: number) => {
@@ -197,11 +281,15 @@ export default function ParticipantsStep() {
       toast.error(`Maximum ${MAX_PARTICIPANTS_PER_GROUP} participants per group`);
       return;
     }
+    const newP = createEmptyParticipant(false);
     const updated = {
       ...group,
-      participants: [...group.participants, createEmptyParticipant(false)],
+      participants: [...group.participants, newP],
     };
     dispatch({ type: "UPDATE_ROOM_GROUP", index: groupIndex, group: updated });
+    // Open the new participant
+    const newPi = group.participants.length;
+    setOpenPanels((prev) => ({ ...prev, [`${groupIndex}-${newPi}`]: true }));
   };
 
   const removeParticipant = (groupIndex: number, pIndex: number) => {
@@ -215,6 +303,13 @@ export default function ParticipantsStep() {
       participants: group.participants.filter((_, i) => i !== pIndex),
     };
     dispatch({ type: "UPDATE_ROOM_GROUP", index: groupIndex, group: updated });
+    // Remove saved state
+    const key = `${groupIndex}-${pIndex}`;
+    setSavedPanels((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   };
 
   const updateParticipant = (
@@ -239,6 +334,19 @@ export default function ParticipantsStep() {
         participant.isK12 = calculateAge(birthDate, refDate) < 18;
       }
     }
+
+    // Mark as unsaved when edited & clear field error
+    const key = `${groupIndex}-${pIndex}`;
+    setSavedPanels((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setFieldErrors((prev) => {
+      const panelErrs = { ...prev[key] };
+      delete panelErrs[field];
+      return { ...prev, [key]: panelErrs };
+    });
 
     dispatch({
       type: "UPDATE_PARTICIPANT",
@@ -268,22 +376,40 @@ export default function ParticipantsStep() {
     return churches.find((c) => c.id === churchId)?.is_other ?? false;
   };
 
-  // Phone formatting: (XXX) XXX-XXXX
-  const formatPhone = (raw: string): string => {
-    const digits = raw.replace(/\D/g, "").slice(0, 10);
-    if (digits.length <= 3) return digits;
-    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  };
+  // Name change handler: filter → uppercase, auto-populate displayNameKo
+  const handleNameChange = (
+    gi: number,
+    pi: number,
+    field: "firstName" | "lastName",
+    raw: string
+  ) => {
+    const v = filterName(raw);
+    const participant = { ...state.roomGroups[gi].participants[pi] };
+    (participant as Record<string, unknown>)[field] = v;
+    const first = field === "firstName" ? v : participant.firstName;
+    const last = field === "lastName" ? v : participant.lastName;
+    participant.displayNameKo = buildDisplayName(first, last);
 
-  const isValidPhone = (phone: string): boolean => {
-    const digits = phone.replace(/\D/g, "");
-    return digits.length === 0 || digits.length === 10;
-  };
+    // Mark as unsaved & clear name-related field errors
+    const key = `${gi}-${pi}`;
+    setSavedPanels((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setFieldErrors((prev) => {
+      const panelErrs = { ...prev[key] };
+      delete panelErrs[field];
+      delete panelErrs.displayNameKo;
+      return { ...prev, [key]: panelErrs };
+    });
 
-  const isValidEmail = (email: string): boolean => {
-    if (!email) return true;
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    dispatch({
+      type: "UPDATE_PARTICIPANT",
+      groupIndex: gi,
+      participantIndex: pi,
+      participant,
+    });
   };
 
   // Check if dates match event period (no meals needed to display)
@@ -292,27 +418,89 @@ export default function ParticipantsStep() {
     state.startDate === eventDates.eventStartDate &&
     state.endDate === eventDates.eventEndDate;
 
+  // Validate a single participant — returns all field errors
+  const validateParticipant = (p: ParticipantInput): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!p.firstName.trim()) errs.firstName = "Required";
+    else if (!NAME_PATTERN.test(p.firstName.trim())) errs.firstName = "Uppercase letters only";
+    if (!p.lastName.trim()) errs.lastName = "Required";
+    else if (!NAME_PATTERN.test(p.lastName.trim())) errs.lastName = "Uppercase letters only";
+    if (!p.displayNameKo?.trim()) errs.displayNameKo = "Required";
+    if (!p.departmentId) errs.departmentId = "Required";
+    if (!p.email) errs.email = "Required";
+    else if (!isValidEmail(p.email)) errs.email = "Enter a valid email";
+    if (!p.phone.trim()) errs.phone = "Required";
+    else if (isPhoneIncomplete(p.phone)) errs.phone = "Enter 10-digit phone number";
+    if (!p.churchId) errs.churchId = "Required";
+    if (isChurchOther(p.churchId) && !p.churchOther?.trim()) errs.churchOther = "Required";
+    return errs;
+  };
+
+  // Save participant to draft DB
+  const saveParticipant = async (gi: number, pi: number) => {
+    const p = state.roomGroups[gi].participants[pi];
+    const key = `${gi}-${pi}`;
+
+    // Validate — show inline errors
+    const errs = validateParticipant(p);
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors((prev) => ({ ...prev, [key]: errs }));
+      return;
+    }
+    // Clear errors for this participant
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+
+    setSavingPanel(key);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      toast.error("Not authenticated");
+      setSavingPanel(null);
+      return;
+    }
+
+    const { error: dbError } = await supabase
+      .from("eckcm_registration_drafts")
+      .upsert({
+        user_id: user.id,
+        event_id: eventId,
+        participant_client_id: p.id,
+        group_index: gi,
+        participant_index: pi,
+        is_leader: p.isLeader,
+        participant_data: p as unknown as Record<string, unknown>,
+      }, {
+        onConflict: "user_id,event_id,participant_client_id",
+      });
+
+    setSavingPanel(null);
+
+    if (dbError) {
+      toast.error("Failed to save");
+      return;
+    }
+
+    // Mark as saved and collapse
+    setSavedPanels((prev) => ({ ...prev, [key]: true }));
+    setOpenPanels((prev) => ({ ...prev, [key]: false }));
+    toast.success(`${p.firstName || "Participant"} saved`);
+  };
+
   const handleNext = () => {
+    // Check all participants are saved
     for (let gi = 0; gi < state.roomGroups.length; gi++) {
       const group = state.roomGroups[gi];
       for (let pi = 0; pi < group.participants.length; pi++) {
-        const p = group.participants[pi];
-        if (!p.lastName || !p.firstName) {
-          toast.error(
-            `Group ${gi + 1}, Participant ${pi + 1}: Name is required`
-          );
-          return;
-        }
-        if (!p.phone || !isValidPhone(p.phone)) {
-          toast.error(
-            `Group ${gi + 1}, Participant ${pi + 1}: Valid phone is required`
-          );
-          return;
-        }
-        if (!p.email || !isValidEmail(p.email)) {
-          toast.error(
-            `Group ${gi + 1}, Participant ${pi + 1}: Valid email is required`
-          );
+        const key = `${gi}-${pi}`;
+        if (!savedPanels[key]) {
+          toast.error(`Please save all participants before proceeding`);
+          // Open the unsaved participant
+          setOpenPanels((prev) => ({ ...prev, [key]: true }));
           return;
         }
       }
@@ -342,7 +530,7 @@ export default function ParticipantsStep() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => removeGroup(gi)}
+                  onClick={() => setRemoveGroupTarget(gi)}
                 >
                   <Trash2 className="size-4" />
                 </Button>
@@ -352,253 +540,312 @@ export default function ParticipantsStep() {
               {group.participants.length} participant(s)
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {group.participants.map((p, pi) => (
-              <div
-                key={p.id}
-                className="space-y-2 rounded-lg border p-3"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">
-                    {p.isLeader ? "Leader" : `Member ${pi}`}
-                  </span>
-                  {!p.isLeader && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeParticipant(gi, pi)}
-                    >
-                      <Trash2 className="size-3" />
-                    </Button>
-                  )}
-                </div>
+          <CardContent className="space-y-2">
+            {group.participants.map((p, pi) => {
+              const panelKey = `${gi}-${pi}`;
+              const isOpen = openPanels[panelKey] ?? false;
+              const isSaved = savedPanels[panelKey] ?? false;
+              const isSaving = savingPanel === panelKey;
+              const errs = fieldErrors[panelKey] ?? {};
 
-                {/* Names */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">First Name (EN) <span className="text-destructive">*</span></Label>
-                    <Input
-                      value={p.firstName}
-                      onChange={(e) =>
-                        updateParticipant(gi, pi, "firstName", e.target.value)
-                      }
-                      placeholder="JOHN"
-                    />
+              return (
+                <Collapsible key={p.id} open={isOpen} onOpenChange={() => togglePanel(panelKey)}>
+                  <div className="rounded-lg border">
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-accent/50 transition-colors rounded-t-lg"
+                      >
+                        {isSaved ? (
+                          <CheckCircle2 className="size-4 shrink-0 text-green-600" />
+                        ) : (
+                          <div className="size-4 shrink-0 rounded-full border-2 border-muted-foreground/30" />
+                        )}
+                        <span className="text-sm font-medium flex-1">
+                          {p.isLeader ? "Leader" : `Member ${pi}`}
+                          {(p.firstName || p.lastName) && (
+                            <span className="ml-2 font-normal text-muted-foreground">
+                              {p.firstName} {p.lastName}
+                            </span>
+                          )}
+                        </span>
+                        {!p.isLeader && (
+                          <span
+                            className="p-1 hover:bg-destructive/10 rounded"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRemoveTarget({
+                                gi,
+                                pi,
+                                name: p.firstName || "this participant",
+                              });
+                            }}
+                          >
+                            <Trash2 className="size-3 text-muted-foreground" />
+                          </span>
+                        )}
+                        <ChevronDown
+                          className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent>
+                      <div className="space-y-2 px-3 pb-3 pt-1">
+                        {/* Names */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">First Name (EN) <span className="text-destructive">*</span></Label>
+                            <Input
+                              value={p.firstName}
+                              onChange={(e) =>
+                                handleNameChange(gi, pi, "firstName", e.target.value)
+                              }
+                              placeholder="JOHN"
+                              className={errs.firstName ? "border-destructive" : ""}
+                            />
+                            {errs.firstName && <p className="text-xs text-destructive">{errs.firstName}</p>}
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Last Name (EN) <span className="text-destructive">*</span></Label>
+                            <Input
+                              value={p.lastName}
+                              onChange={(e) =>
+                                handleNameChange(gi, pi, "lastName", e.target.value)
+                              }
+                              placeholder="KIM"
+                              className={errs.lastName ? "border-destructive" : ""}
+                            />
+                            {errs.lastName && <p className="text-xs text-destructive">{errs.lastName}</p>}
+                          </div>
+                        </div>
+
+                        {/* Display Name + Gender */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Display Name <span className="text-destructive">*</span></Label>
+                            <Input
+                              value={p.displayNameKo ?? ""}
+                              onChange={(e) =>
+                                updateParticipant(gi, pi, "displayNameKo", e.target.value)
+                              }
+                              placeholder="Scott Kim"
+                              className={errs.displayNameKo ? "border-destructive" : ""}
+                            />
+                            {errs.displayNameKo && <p className="text-xs text-destructive">{errs.displayNameKo}</p>}
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Gender <span className="text-destructive">*</span></Label>
+                            <Select
+                              value={p.gender}
+                              onValueChange={(v) =>
+                                updateParticipant(gi, pi, "gender", v)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="MALE">Male</SelectItem>
+                                <SelectItem value="FEMALE">Female</SelectItem>
+                                <SelectItem value="OTHERS">Others</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Birth Date */}
+                        <BirthDatePicker
+                          year={p.birthYear}
+                          month={p.birthMonth}
+                          day={p.birthDay}
+                          labelClassName="text-xs"
+                          onYearChange={(v) =>
+                            updateParticipant(gi, pi, "birthYear", v ?? 2000)
+                          }
+                          onMonthChange={(v) =>
+                            updateParticipant(gi, pi, "birthMonth", v)
+                          }
+                          onDayChange={(v) =>
+                            updateParticipant(gi, pi, "birthDay", v)
+                          }
+                        />
+
+                        {/* K-12 + Grade — hidden if age > 21 at event start */}
+                        {(() => {
+                          const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
+                          const refDate = eventDates
+                            ? new Date(eventDates.eventStartDate + "T00:00:00")
+                            : new Date(state.startDate + "T00:00:00");
+                          const age = calculateAge(birthDate, refDate);
+                          return age <= 21;
+                        })() && (
+                          <div className="flex items-start gap-2">
+                            <input
+                              type="checkbox"
+                              checked={p.isK12}
+                              onChange={(e) =>
+                                updateParticipant(gi, pi, "isK12", e.target.checked)
+                              }
+                              className="mt-1"
+                            />
+                            <Label className="text-xs font-normal leading-snug">
+                              I am currently a Pre-K/K-12 student (high school or younger)
+                            </Label>
+                          </div>
+                        )}
+                        {p.isK12 && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">Grade</Label>
+                            <Select
+                              value={p.grade ?? ""}
+                              onValueChange={(v) =>
+                                updateParticipant(gi, pi, "grade", v)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select grade" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(GRADE_LABELS).map(([key, label]) => (
+                                  <SelectItem key={key} value={key}>
+                                    {label.en}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {/* Department */}
+                        <div className="space-y-1">
+                          <Label className="text-xs">Department <span className="text-destructive">*</span></Label>
+                          <Select
+                            value={p.departmentId ?? ""}
+                            onValueChange={(v) =>
+                              updateParticipant(gi, pi, "departmentId", v)
+                            }
+                          >
+                            <SelectTrigger className={errs.departmentId ? "border-destructive" : ""}>
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {departments.map((d) => (
+                                <SelectItem key={d.id} value={d.id}>
+                                  {d.name_en}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errs.departmentId && <p className="text-xs text-destructive">{errs.departmentId}</p>}
+                        </div>
+
+                        {/* Email */}
+                        <div className="space-y-1">
+                          <Label className="text-xs">Email <span className="text-destructive">*</span></Label>
+                          <Input
+                            type="email"
+                            value={p.email}
+                            onChange={(e) =>
+                              updateParticipant(gi, pi, "email", e.target.value)
+                            }
+                            placeholder="email@example.com"
+                            disabled={gi === 0 && pi === 0}
+                            className={errs.email || (p.email && !isValidEmail(p.email)) ? "border-destructive" : ""}
+                          />
+                          {(errs.email || (p.email && !isValidEmail(p.email))) && (
+                            <p className="text-xs text-destructive">{errs.email || "Enter a valid email"}</p>
+                          )}
+                        </div>
+
+                        {/* Phone */}
+                        <div className="space-y-1">
+                          <Label className="text-xs">Phone <span className="text-destructive">*</span></Label>
+                          <Input
+                            type="tel"
+                            value={p.phone}
+                            onChange={(e) =>
+                              updateParticipant(gi, pi, "phone", formatPhone(e.target.value))
+                            }
+                            placeholder="(000) 000-0000"
+                            className={errs.phone || isPhoneIncomplete(p.phone) ? "border-destructive" : ""}
+                          />
+                          {(errs.phone || isPhoneIncomplete(p.phone)) && (
+                            <p className="text-xs text-destructive">{errs.phone || "Enter 10-digit phone number"}</p>
+                          )}
+                        </div>
+
+                        {/* Church */}
+                        <div className="space-y-1">
+                          <Label className="text-xs">Church <span className="text-destructive">*</span></Label>
+                          <Select
+                            value={p.churchId ?? ""}
+                            onValueChange={(v) =>
+                              updateParticipant(gi, pi, "churchId", v)
+                            }
+                          >
+                            <SelectTrigger className={errs.churchId ? "border-destructive" : ""}>
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {churches
+                                .sort((a, b) => {
+                                  if (a.is_other) return -1;
+                                  if (b.is_other) return 1;
+                                  return a.name_en.localeCompare(b.name_en);
+                                })
+                                .map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {c.name_en}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                          {errs.churchId && <p className="text-xs text-destructive">{errs.churchId}</p>}
+                        </div>
+                        {isChurchOther(p.churchId) && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">Church Name <span className="text-destructive">*</span></Label>
+                            <Input
+                              value={p.churchOther ?? ""}
+                              onChange={(e) =>
+                                updateParticipant(gi, pi, "churchOther", e.target.value)
+                              }
+                              placeholder="Enter your church name"
+                              className={errs.churchOther ? "border-destructive" : ""}
+                            />
+                            {errs.churchOther && <p className="text-xs text-destructive">{errs.churchOther}</p>}
+                          </div>
+                        )}
+
+                        {/* Meal Selection - hidden when dates match full event period */}
+                        {state.startDate && state.endDate && eventDates && !datesMatchEvent && (
+                          <MealSelectionGrid
+                            startDate={state.startDate}
+                            endDate={state.endDate}
+                            eventStartDate={eventDates.eventStartDate}
+                            eventEndDate={eventDates.eventEndDate}
+                            selections={p.mealSelections}
+                            onChange={(meals) => updateMealSelections(gi, pi, meals)}
+                          />
+                        )}
+
+                        {/* Save & Continue */}
+                        <Button
+                          className="w-full mt-2"
+                          onClick={() => saveParticipant(gi, pi)}
+                          disabled={isSaving}
+                        >
+                          {isSaving
+                            ? "Saving..."
+                            : `Save ${p.firstName || "Participant"} & Continue`}
+                        </Button>
+                      </div>
+                    </CollapsibleContent>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Last Name (EN) <span className="text-destructive">*</span></Label>
-                    <Input
-                      value={p.lastName}
-                      onChange={(e) =>
-                        updateParticipant(gi, pi, "lastName", e.target.value)
-                      }
-                      placeholder="KIM"
-                    />
-                  </div>
-                </div>
-
-                {/* Display Name + Gender */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Display Name</Label>
-                    <Input
-                      value={p.displayNameKo ?? ""}
-                      onChange={(e) =>
-                        updateParticipant(gi, pi, "displayNameKo", e.target.value)
-                      }
-                      placeholder="Scott Kim"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Gender <span className="text-destructive">*</span></Label>
-                    <Select
-                      value={p.gender}
-                      onValueChange={(v) =>
-                        updateParticipant(gi, pi, "gender", v)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="MALE">Male</SelectItem>
-                        <SelectItem value="FEMALE">Female</SelectItem>
-                        <SelectItem value="OTHERS">Others</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Birth Date */}
-                <BirthDatePicker
-                  year={p.birthYear}
-                  month={p.birthMonth}
-                  day={p.birthDay}
-                  onYearChange={(v) =>
-                    updateParticipant(gi, pi, "birthYear", v ?? 2000)
-                  }
-                  onMonthChange={(v) =>
-                    updateParticipant(gi, pi, "birthMonth", v)
-                  }
-                  onDayChange={(v) =>
-                    updateParticipant(gi, pi, "birthDay", v)
-                  }
-                />
-
-                {/* K-12 + Grade — hidden if age > 21 at event start */}
-                {(() => {
-                  const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
-                  const refDate = eventDates
-                    ? new Date(eventDates.eventStartDate + "T00:00:00")
-                    : new Date(state.startDate + "T00:00:00");
-                  const age = calculateAge(birthDate, refDate);
-                  return age <= 21;
-                })() && (
-                  <div className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      checked={p.isK12}
-                      onChange={(e) =>
-                        updateParticipant(gi, pi, "isK12", e.target.checked)
-                      }
-                      className="mt-1"
-                    />
-                    <Label className="text-xs font-normal leading-snug">
-                      I am currently a Pre-K/K-12 student (high school or younger)
-                    </Label>
-                  </div>
-                )}
-                {p.isK12 && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Grade</Label>
-                    <Select
-                      value={p.grade ?? ""}
-                      onValueChange={(v) =>
-                        updateParticipant(gi, pi, "grade", v)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select grade" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(GRADE_LABELS).map(([key, label]) => (
-                          <SelectItem key={key} value={key}>
-                            {label.en}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Department */}
-                <div className="space-y-1">
-                  <Label className="text-xs">Department</Label>
-                  <Select
-                    value={p.departmentId ?? ""}
-                    onValueChange={(v) =>
-                      updateParticipant(gi, pi, "departmentId", v)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.name_en}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Email */}
-                <div className="space-y-1">
-                  <Label className="text-xs">Email <span className="text-destructive">*</span></Label>
-                  <Input
-                    type="email"
-                    value={p.email}
-                    onChange={(e) =>
-                      updateParticipant(gi, pi, "email", e.target.value)
-                    }
-                    placeholder="email@example.com"
-                    disabled={gi === 0 && pi === 0}
-                  />
-                  {p.email && !isValidEmail(p.email) && (
-                    <p className="text-xs text-destructive">Enter a valid email address</p>
-                  )}
-                </div>
-
-                {/* Phone */}
-                <div className="space-y-1">
-                  <Label className="text-xs">Phone <span className="text-destructive">*</span></Label>
-                  <Input
-                    type="tel"
-                    value={p.phone}
-                    onChange={(e) =>
-                      updateParticipant(gi, pi, "phone", formatPhone(e.target.value))
-                    }
-                    placeholder="(000) 000-0000"
-                  />
-                  {p.phone && !isValidPhone(p.phone) && (
-                    <p className="text-xs text-destructive">Enter 10-digit phone number</p>
-                  )}
-                </div>
-
-                {/* Church */}
-                <div className="space-y-1">
-                  <Label className="text-xs">Church</Label>
-                  <Select
-                    value={p.churchId ?? ""}
-                    onValueChange={(v) =>
-                      updateParticipant(gi, pi, "churchId", v)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {churches
-                        .sort((a, b) => {
-                          if (a.is_other) return -1;
-                          if (b.is_other) return 1;
-                          return a.name_en.localeCompare(b.name_en);
-                        })
-                        .map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name_en}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {isChurchOther(p.churchId) && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Church Name</Label>
-                    <Input
-                      value={p.churchOther ?? ""}
-                      onChange={(e) =>
-                        updateParticipant(gi, pi, "churchOther", e.target.value)
-                      }
-                      placeholder="Enter your church name"
-                    />
-                  </div>
-                )}
-
-                {/* Meal Selection - hidden when dates match full event period */}
-                {state.startDate && state.endDate && eventDates && !datesMatchEvent && (
-                  <MealSelectionGrid
-                    startDate={state.startDate}
-                    endDate={state.endDate}
-                    eventStartDate={eventDates.eventStartDate}
-                    eventEndDate={eventDates.eventEndDate}
-                    selections={p.mealSelections}
-                    onChange={(meals) => updateMealSelections(gi, pi, meals)}
-                  />
-                )}
-              </div>
-            ))}
+                </Collapsible>
+              );
+            })}
             <Button
               variant="outline"
               size="sm"
@@ -621,6 +868,66 @@ export default function ParticipantsStep() {
         </Button>
         <Button onClick={handleNext}>Next: Lodging</Button>
       </div>
+
+      {/* Remove participant confirmation dialog */}
+      <AlertDialog
+        open={!!removeTarget}
+        onOpenChange={(open) => {
+          if (!open) setRemoveTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Participant</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove {removeTarget?.name} from the group?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (removeTarget) {
+                  removeParticipant(removeTarget.gi, removeTarget.pi);
+                  setRemoveTarget(null);
+                }
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove group confirmation dialog */}
+      <AlertDialog
+        open={removeGroupTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoveGroupTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Room Group</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove Room Group {removeGroupTarget !== null ? removeGroupTarget + 1 : ""}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (removeGroupTarget !== null) {
+                  removeGroup(removeGroupTarget);
+                  setRemoveGroupTarget(null);
+                }
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
