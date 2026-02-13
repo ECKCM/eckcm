@@ -17,10 +17,11 @@ import { calculateAge } from "@/lib/utils/validators";
 import {
   filterName,
   buildDisplayName,
-  formatPhone,
   isPhoneIncomplete,
+  buildPhoneValue,
   NAME_PATTERN,
 } from "@/lib/utils/field-helpers";
+import { PhoneInput } from "@/components/shared/phone-input";
 import type { Gender, Grade } from "@/lib/types/database";
 
 interface Church {
@@ -46,6 +47,7 @@ export interface ProfileFormData {
   isK12: boolean;
   grade: Grade | "";
   phone: string;
+  phoneCountry: string;
   email: string;
   departmentId: string;
   churchId: string;
@@ -86,6 +88,7 @@ export function ProfileForm({
     isK12: initialData?.isK12 ?? false,
     grade: initialData?.grade ?? "",
     phone: initialData?.phone ?? "",
+    phoneCountry: initialData?.phoneCountry ?? "US",
     email: initialData?.email ?? "",
     departmentId: initialData?.departmentId ?? "",
     churchId: initialData?.churchId ?? "",
@@ -143,7 +146,7 @@ export function ProfileForm({
     lastName: data.lastName.trim().replace(/\s{2,}/g, " "),
     firstName: data.firstName.trim().replace(/\s{2,}/g, " "),
     displayNameKo: data.displayNameKo.trim(),
-    phone: data.phone.trim(),
+    phone: buildPhoneValue(data.phoneCountry, data.phone),
     email: data.email.trim(),
     churchOther: data.churchOther.trim(),
   });
@@ -337,15 +340,16 @@ export function ProfileForm({
       {/* Phone */}
       <div className="space-y-1">
         <Label htmlFor="phone">Phone Number *</Label>
-        <Input
+        <PhoneInput
           id="phone"
-          type="tel"
           value={form.phone}
-          onChange={(e) => update("phone", formatPhone(e.target.value))}
-          placeholder="(000) 000-0000"
+          countryCode={form.phoneCountry}
+          onChange={(v) => update("phone", v)}
+          onCountryChange={(c) => update("phoneCountry", c)}
+          error={!!errors.phone || isPhoneIncomplete(form.phone, form.phoneCountry)}
         />
-        {isPhoneIncomplete(form.phone) && (
-          <p className="text-xs text-destructive">Enter 10-digit phone number</p>
+        {isPhoneIncomplete(form.phone, form.phoneCountry) && (
+          <p className="text-xs text-destructive">Enter a complete phone number</p>
         )}
         {errors.phone && (
           <p className="text-xs text-destructive">{errors.phone}</p>

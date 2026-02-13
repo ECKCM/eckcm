@@ -4,8 +4,14 @@ export const emailSchema = z.string().email("Invalid email address");
 
 export const phoneSchema = z
   .string()
-  .min(10, "Phone number must be at least 10 digits")
-  .regex(/^[\d\s\-+()]+$/, "Invalid phone number format");
+  .regex(/^(\+\d{1,3}\s)?[\d\s\-+()]+$/, "Invalid phone number format")
+  .refine(
+    (val) => {
+      const digits = val.replace(/\D/g, "");
+      return digits.length >= 10;
+    },
+    { message: "Phone number must be at least 10 digits" },
+  );
 
 export const passwordSchema = z
   .string()

@@ -212,6 +212,7 @@ export default function CompleteProfilePage() {
         grade: data.grade || null,
         email: user.email,
         phone: data.phone,
+        phone_country: data.phoneCountry || "US",
         department_id: data.departmentId || null,
         church_id: data.churchId || null,
         church_other: data.churchOther || null,

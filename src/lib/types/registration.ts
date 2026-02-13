@@ -36,6 +36,7 @@ export interface ParticipantInput {
   grade?: Grade;
   departmentId?: string;
   phone: string;
+  phoneCountry: string;
   email: string;
   churchId?: string;
   churchOther?: string;

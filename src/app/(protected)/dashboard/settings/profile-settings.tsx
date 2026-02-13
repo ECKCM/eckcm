@@ -17,7 +17,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { formatPhone, isPhoneIncomplete } from "@/lib/utils/field-helpers";
+import { isPhoneIncomplete, buildPhoneValue } from "@/lib/utils/field-helpers";
+import { PhoneInput } from "@/components/shared/phone-input";
 
 interface ProfileSettingsProps {
   userId: string;
@@ -35,6 +36,7 @@ interface ProfileSettingsProps {
     birth_date: string;
     email: string | null;
     phone: string | null;
+    phone_country: string | null;
   } | null;
 }
 
@@ -49,13 +51,14 @@ export function ProfileSettings({
 
   useEffect(() => setMounted(true), []);
   const [phone, setPhone] = useState(person?.phone ?? "");
+  const [phoneCountry, setPhoneCountry] = useState(person?.phone_country ?? "US");
   const [displayNameKo, setDisplayNameKo] = useState(
     person?.display_name_ko ?? ""
   );
 
   const handleSave = async () => {
-    if (isPhoneIncomplete(phone)) {
-      toast.error("Enter a complete 10-digit phone number");
+    if (isPhoneIncomplete(phone, phoneCountry)) {
+      toast.error("Enter a complete phone number");
       return;
     }
     setSaving(true);
@@ -75,10 +78,12 @@ export function ProfileSettings({
 
     // Update person info
     if (person) {
+      const storedPhone = phone ? buildPhoneValue(phoneCountry, phone) : null;
       const { error: personError } = await supabase
         .from("eckcm_people")
         .update({
-          phone: phone || null,
+          phone: storedPhone,
+          phone_country: phoneCountry,
           display_name_ko: displayNameKo || null,
         })
         .eq("id", person.id);
@@ -158,15 +163,16 @@ export function ProfileSettings({
 
             <div>
               <Label htmlFor="phone">Phone</Label>
-              <Input
+              <PhoneInput
                 id="phone"
-                type="tel"
                 value={phone}
-                onChange={(e) => setPhone(formatPhone(e.target.value))}
-                placeholder="(000) 000-0000"
+                countryCode={phoneCountry}
+                onChange={setPhone}
+                onCountryChange={setPhoneCountry}
+                error={isPhoneIncomplete(phone, phoneCountry)}
               />
-              {isPhoneIncomplete(phone) && (
-                <p className="text-xs text-destructive mt-1">Enter 10-digit phone number</p>
+              {isPhoneIncomplete(phone, phoneCountry) && (
+                <p className="text-xs text-destructive mt-1">Enter a complete phone number</p>
               )}
             </div>
 

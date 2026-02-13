@@ -46,11 +46,12 @@ import { calculateAge } from "@/lib/utils/validators";
 import {
   filterName,
   buildDisplayName,
-  formatPhone,
   isPhoneIncomplete,
+  buildPhoneValue,
   isValidEmail,
   NAME_PATTERN,
 } from "@/lib/utils/field-helpers";
+import { PhoneInput } from "@/components/shared/phone-input";
 import { MealSelectionGrid } from "@/components/registration/meal-selection-grid";
 import { BirthDatePicker } from "@/components/shared/birth-date-picker";
 
@@ -68,6 +69,7 @@ function createEmptyParticipant(isLeader: boolean): ParticipantInput {
     birthDay: 1,
     isK12: false,
     phone: "",
+    phoneCountry: "US",
     email: "",
     mealSelections: [],
   };
@@ -212,7 +214,7 @@ export default function ParticipantsStep() {
         if (userPeople && userPeople.length > 0) {
           const { data: person } = await supabase
             .from("eckcm_people")
-            .select("id, first_name_en, last_name_en, display_name_ko, gender, birth_date, is_k12, grade, email, phone, department_id, church_id, church_other")
+            .select("id, first_name_en, last_name_en, display_name_ko, gender, birth_date, is_k12, grade, email, phone, phone_country, department_id, church_id, church_other")
             .eq("id", userPeople[0].person_id)
             .single();
 
@@ -236,6 +238,7 @@ export default function ParticipantsStep() {
                 grade: (person.grade as Grade) ?? undefined,
                 email: person.email ?? "",
                 phone: person.phone ?? "",
+                phoneCountry: person.phone_country ?? "US",
                 departmentId: person.department_id ?? undefined,
                 churchId: person.church_id ?? undefined,
                 churchOther: person.church_other ?? undefined,
@@ -442,7 +445,7 @@ export default function ParticipantsStep() {
     if (!p.email) errs.email = "Required";
     else if (!isValidEmail(p.email)) errs.email = "Enter a valid email";
     if (!p.phone.trim()) errs.phone = "Required";
-    else if (isPhoneIncomplete(p.phone)) errs.phone = "Enter 10-digit phone number";
+    else if (isPhoneIncomplete(p.phone, p.phoneCountry)) errs.phone = "Enter a complete phone number";
     if (!p.churchId) errs.churchId = "Required";
     if (isChurchOther(p.churchId) && !p.churchOther?.trim()) errs.churchOther = "Required";
     return errs;
@@ -790,17 +793,15 @@ export default function ParticipantsStep() {
                         {/* Phone */}
                         <div className="space-y-1">
                           <Label className="text-xs">Phone <span className="text-destructive">*</span></Label>
-                          <Input
-                            type="tel"
+                          <PhoneInput
                             value={p.phone}
-                            onChange={(e) =>
-                              updateParticipant(gi, pi, "phone", formatPhone(e.target.value))
-                            }
-                            placeholder="(000) 000-0000"
-                            className={errs.phone || isPhoneIncomplete(p.phone) ? "border-destructive" : ""}
+                            countryCode={p.phoneCountry}
+                            onChange={(v) => updateParticipant(gi, pi, "phone", v)}
+                            onCountryChange={(c) => updateParticipant(gi, pi, "phoneCountry", c)}
+                            error={!!errs.phone || isPhoneIncomplete(p.phone, p.phoneCountry)}
                           />
-                          {(errs.phone || isPhoneIncomplete(p.phone)) && (
-                            <p className="text-xs text-destructive">{errs.phone || "Enter 10-digit phone number"}</p>
+                          {(errs.phone || isPhoneIncomplete(p.phone, p.phoneCountry)) && (
+                            <p className="text-xs text-destructive">{errs.phone || "Enter a complete phone number"}</p>
                           )}
                         </div>
 

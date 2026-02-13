@@ -181,6 +181,7 @@ export async function POST(request: Request) {
           grade: participant.grade || null,
           email: participant.email || null,
           phone: participant.phone || null,
+          phone_country: participant.phoneCountry || "US",
           department_id: participant.departmentId || null,
           church_id: participant.churchId || null,
           church_other: participant.churchOther || null,

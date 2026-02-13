@@ -29,7 +29,7 @@ export default async function SettingsPage() {
   if (personIds.length > 0) {
     const { data } = await supabase
       .from("eckcm_people")
-      .select("id, first_name_en, last_name_en, display_name_ko, gender, birth_date, email, phone")
+      .select("id, first_name_en, last_name_en, display_name_ko, gender, birth_date, email, phone, phone_country")
       .eq("id", personIds[0])
       .single();
     person = data;

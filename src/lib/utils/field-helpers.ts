@@ -31,24 +31,56 @@ export function buildDisplayName(firstName: string, lastName: string): string {
 
 // ── Phone ─────────────────────────────────────────────────────────────
 
-/** Format raw input into (XXX) XXX-XXXX */
+/** Country code → expected digit count */
+const COUNTRY_DIGITS: Record<string, number> = { US: 10, CA: 10, KR: 11 };
+
+/** Dial code lookup */
+const DIAL_CODES: Record<string, string> = { US: "+1", CA: "+1", KR: "+82" };
+
+/** Format raw input into (XXX) XXX-XXXX — kept for backward compat */
 export function formatPhone(raw: string): string {
+  return formatPhoneNational(raw, "US");
+}
+
+/** Format national number based on country code */
+export function formatPhoneNational(raw: string, countryCode: string): string {
+  if (countryCode === "OTHER") return raw;
+  if (countryCode === "KR") {
+    const digits = raw.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+  // US / CA
   const digits = raw.replace(/\D/g, "").slice(0, 10);
   if (digits.length <= 3) return digits;
   if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
-/** True if empty or exactly 10 digits */
-export function isValidPhone(phone: string): boolean {
-  const digits = phone.replace(/\D/g, "");
-  return digits.length === 0 || digits.length === 10;
+/** Build stored phone value with dial code prefix: "+1 (212) 555-1234" */
+export function buildPhoneValue(countryCode: string, nationalNumber: string): string {
+  if (countryCode === "OTHER") return nationalNumber || "";
+  const dial = DIAL_CODES[countryCode] ?? "+1";
+  const digits = nationalNumber.replace(/\D/g, "");
+  if (!digits) return "";
+  return `${dial} ${nationalNumber}`;
 }
 
-/** True if phone has at least 1 digit but fewer than 10 (incomplete) */
-export function isPhoneIncomplete(phone: string): boolean {
+/** True if empty or matches expected digit count for country */
+export function isValidPhone(phone: string, countryCode: string = "US"): boolean {
+  if (countryCode === "OTHER") return true;
   const digits = phone.replace(/\D/g, "");
-  return digits.length > 0 && digits.length < 10;
+  const expected = COUNTRY_DIGITS[countryCode] ?? 10;
+  return digits.length === 0 || digits.length === expected;
+}
+
+/** True if phone has at least 1 digit but fewer than expected */
+export function isPhoneIncomplete(phone: string, countryCode: string = "US"): boolean {
+  if (countryCode === "OTHER") return false;
+  const digits = phone.replace(/\D/g, "");
+  const expected = COUNTRY_DIGITS[countryCode] ?? 10;
+  return digits.length > 0 && digits.length < expected;
 }
 
 // ── Email ─────────────────────────────────────────────────────────────
