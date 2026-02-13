@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-13T15:21:22.754Z",
+  "lastUpdated": "2026-02-13T16:54:47.077Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -372,7 +372,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:53:37.337Z",
-        "lastUpdated": "2026-02-13T15:21:22.754Z"
+        "lastUpdated": "2026-02-13T16:54:47.077Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
@@ -385,7 +385,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:53:54.115Z",
-        "lastUpdated": "2026-02-11T07:53:54.115Z"
+        "lastUpdated": "2026-02-13T15:47:40.811Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/lodging/page.tsx"
     },
@@ -398,7 +398,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:07.897Z",
-        "lastUpdated": "2026-02-11T07:54:07.897Z"
+        "lastUpdated": "2026-02-13T15:48:09.047Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/key-deposit/page.tsx"
     },
@@ -411,7 +411,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:20.413Z",
-        "lastUpdated": "2026-02-11T07:54:20.413Z"
+        "lastUpdated": "2026-02-13T15:48:10.485Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/airport-pickup/page.tsx"
     },
@@ -424,7 +424,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:46.919Z",
-        "lastUpdated": "2026-02-11T08:10:59.271Z"
+        "lastUpdated": "2026-02-13T15:48:11.850Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
     },
@@ -710,7 +710,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-13T15:21:22.754Z"
+    "lastActivity": "2026-02-13T16:54:47.077Z"
   },
   "history": [
     {
@@ -2638,6 +2638,84 @@
     },
     {
       "timestamp": "2026-02-13T15:21:22.754Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T15:46:50.849Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T15:47:40.811Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T15:47:59.835Z",
+      "feature": "key-deposit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T15:48:01.165Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T15:48:02.559Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T15:48:09.047Z",
+      "feature": "key-deposit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T15:48:10.485Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T15:48:11.850Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T16:40:47.446Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T16:40:54.601Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T16:41:00.802Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T16:41:10.567Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T16:54:47.077Z",
       "feature": "participants",
       "phase": "do",
       "action": "updated"

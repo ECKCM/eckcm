@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useRegistration } from "@/lib/context/registration-context";
 import { Button } from "@/components/ui/button";
@@ -31,8 +31,13 @@ export default function ReviewStep() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!state.startDate) {
+      router.push(`/register/${eventId}`);
+    }
+  }, [state.startDate, router, eventId]);
+
   if (!state.startDate) {
-    router.push(`/register/${eventId}`);
     return null;
   }
 

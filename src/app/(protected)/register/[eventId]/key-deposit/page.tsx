@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useRegistration } from "@/lib/context/registration-context";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
@@ -25,8 +26,13 @@ export default function KeyDepositStep() {
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
 
+  useEffect(() => {
+    if (!state.startDate) {
+      router.push(`/register/${eventId}`);
+    }
+  }, [state.startDate, router, eventId]);
+
   if (!state.startDate) {
-    router.push(`/register/${eventId}`);
     return null;
   }
 

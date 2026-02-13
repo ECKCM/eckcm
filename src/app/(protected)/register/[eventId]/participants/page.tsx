@@ -123,6 +123,18 @@ export default function ParticipantsStep() {
   // Confirmation dialog for removing an entire group
   const [removeGroupTarget, setRemoveGroupTarget] = useState<number | null>(null);
 
+  // HANSAMO policy: leader-only registration unless general lodging opted
+  const [hansamoGeneralLodging, setHansamoGeneralLodging] = useState(false);
+
+  const isHansamoDept = (deptId: string | undefined) => {
+    if (!deptId) return false;
+    return departments.find((d) => d.id === deptId)?.name_en?.includes("HANSAMO") ?? false;
+  };
+
+  // True when Group 1 Leader selected HANSAMO and did NOT opt for general lodging
+  const leaderDeptId = state.roomGroups[0]?.participants[0]?.departmentId;
+  const isHansamoRestricted = isHansamoDept(leaderDeptId) && !hansamoGeneralLodging;
+
   const togglePanel = (key: string) => {
     setOpenPanels((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -515,10 +527,12 @@ export default function ParticipantsStep() {
 
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Room Groups & Participants</h2>
-        <Button variant="outline" size="sm" onClick={addGroup}>
-          <Plus className="mr-1 size-4" />
-          Add Group
-        </Button>
+        {!isHansamoRestricted && (
+          <Button variant="outline" size="sm" onClick={addGroup}>
+            <Plus className="mr-1 size-4" />
+            Add Group
+          </Button>
+        )}
       </div>
 
       {state.roomGroups.map((group, gi) => (
@@ -740,6 +754,21 @@ export default function ParticipantsStep() {
                           {errs.departmentId && <p className="text-xs text-destructive">{errs.departmentId}</p>}
                         </div>
 
+                        {/* HANSAMO general lodging opt-in — only for Group 1 Leader */}
+                        {gi === 0 && pi === 0 && isHansamoDept(p.departmentId) && (
+                          <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2.5">
+                            <input
+                              type="checkbox"
+                              checked={hansamoGeneralLodging}
+                              onChange={(e) => setHansamoGeneralLodging(e.target.checked)}
+                              className="mt-0.5"
+                            />
+                            <Label className="text-xs font-normal leading-snug text-amber-900">
+                              참여 부서는 한사모이지만, 한사모 지정 숙소가 아닌 가족/지인과 함께 등록하는 일반 숙소를 희망합니다.
+                            </Label>
+                          </div>
+                        )}
+
                         {/* Email */}
                         <div className="space-y-1">
                           <Label className="text-xs">Email <span className="text-destructive">*</span></Label>
@@ -846,15 +875,17 @@ export default function ParticipantsStep() {
                 </Collapsible>
               );
             })}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => addParticipant(gi)}
-            >
-              <Plus className="mr-1 size-4" />
-              Add Participant
-            </Button>
+            {!isHansamoRestricted && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => addParticipant(gi)}
+              >
+                <Plus className="mr-1 size-4" />
+                Add Participant
+              </Button>
+            )}
           </CardContent>
         </Card>
       ))}
