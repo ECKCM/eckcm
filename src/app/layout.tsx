@@ -5,9 +5,9 @@ import { I18nProvider } from "@/lib/i18n/context";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ECKCM - Eastern Korean Churches Camp Meeting",
+  title: "ECKCM Participant Portal - 중동부 연합 야영회 온라인 시스템",
   description:
-    "Online registration and management system for Eastern Korean Churches Camp Meeting",
+    "Online registration and management system for ECKCM",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

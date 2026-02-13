@@ -16,6 +16,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { DateRangePicker } from "@/components/registration/date-range-picker";
 
 interface EventData {
   id: string;
@@ -89,17 +91,6 @@ export default function RegistrationStep1() {
     const d1 = new Date(start);
     const d2 = new Date(end);
     return Math.max(0, Math.round((d2.getTime() - d1.getTime()) / 86400000));
-  };
-
-  const handleDateChange = (field: "startDate" | "endDate", value: string) => {
-    const start = field === "startDate" ? value : state.startDate;
-    const end = field === "endDate" ? value : state.endDate;
-    dispatch({
-      type: "SET_DATES",
-      startDate: start,
-      endDate: end,
-      nightsCount: calcNights(start, end),
-    });
   };
 
   // Resolve group from access code: match → use it, no match → default
@@ -178,37 +169,30 @@ export default function RegistrationStep1() {
       <Card>
         <CardHeader>
           <CardTitle>Step 1: Dates</CardTitle>
-          <CardDescription>Select your stay dates</CardDescription>
+          <CardDescription>
+            <span className="font-medium text-foreground">
+              Event Dates: {format(new Date(event.event_start_date + "T00:00:00"), "MM.dd.yy")} - {format(new Date(event.event_end_date + "T00:00:00"), "MM.dd.yy")}
+            </span>
+            <br />
+            Select your stay dates
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Check-in Date</Label>
-              <Input
-                type="date"
-                value={state.startDate}
-                min={event.event_start_date}
-                max={event.event_end_date}
-                onChange={(e) => handleDateChange("startDate", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Check-out Date</Label>
-              <Input
-                type="date"
-                value={state.endDate}
-                min={state.startDate || event.event_start_date}
-                max={event.event_end_date}
-                onChange={(e) => handleDateChange("endDate", e.target.value)}
-              />
-            </div>
-          </div>
-
-          {state.nightsCount > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {state.nightsCount} night{state.nightsCount > 1 ? "s" : ""}
-            </p>
-          )}
+          <DateRangePicker
+            startDate={state.startDate}
+            endDate={state.endDate}
+            eventStartDate={event.event_start_date}
+            eventEndDate={event.event_end_date}
+            nightsCount={state.nightsCount}
+            onDatesChange={(start, end, nights) => {
+              dispatch({
+                type: "SET_DATES",
+                startDate: start,
+                endDate: end,
+                nightsCount: nights,
+              });
+            }}
+          />
 
           {/* Access Code */}
           <div className="space-y-1">

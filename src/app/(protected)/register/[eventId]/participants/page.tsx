@@ -29,6 +29,7 @@ import type { Gender, Grade } from "@/lib/types/database";
 import { MAX_GROUPS, MAX_PARTICIPANTS_PER_GROUP, GRADE_LABELS } from "@/lib/utils/constants";
 import { calculateAge } from "@/lib/utils/validators";
 import { MealSelectionGrid } from "@/components/registration/meal-selection-grid";
+import { BirthDatePicker } from "@/components/shared/birth-date-picker";
 
 function createEmptyParticipant(isLeader: boolean): ParticipantInput {
   return {
@@ -267,6 +268,30 @@ export default function ParticipantsStep() {
     return churches.find((c) => c.id === churchId)?.is_other ?? false;
   };
 
+  // Phone formatting: (XXX) XXX-XXXX
+  const formatPhone = (raw: string): string => {
+    const digits = raw.replace(/\D/g, "").slice(0, 10);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  };
+
+  const isValidPhone = (phone: string): boolean => {
+    const digits = phone.replace(/\D/g, "");
+    return digits.length === 0 || digits.length === 10;
+  };
+
+  const isValidEmail = (email: string): boolean => {
+    if (!email) return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  // Check if dates match event period (no meals needed to display)
+  const datesMatchEvent =
+    eventDates &&
+    state.startDate === eventDates.eventStartDate &&
+    state.endDate === eventDates.eventEndDate;
+
   const handleNext = () => {
     for (let gi = 0; gi < state.roomGroups.length; gi++) {
       const group = state.roomGroups[gi];
@@ -275,6 +300,18 @@ export default function ParticipantsStep() {
         if (!p.lastName || !p.firstName) {
           toast.error(
             `Group ${gi + 1}, Participant ${pi + 1}: Name is required`
+          );
+          return;
+        }
+        if (!p.phone || !isValidPhone(p.phone)) {
+          toast.error(
+            `Group ${gi + 1}, Participant ${pi + 1}: Valid phone is required`
+          );
+          return;
+        }
+        if (!p.email || !isValidEmail(p.email)) {
+          toast.error(
+            `Group ${gi + 1}, Participant ${pi + 1}: Valid email is required`
           );
           return;
         }
@@ -339,7 +376,7 @@ export default function ParticipantsStep() {
                 {/* Names */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-xs">First Name (EN) *</Label>
+                    <Label className="text-xs">First Name (EN) <span className="text-destructive">*</span></Label>
                     <Input
                       value={p.firstName}
                       onChange={(e) =>
@@ -349,7 +386,7 @@ export default function ParticipantsStep() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Last Name (EN) *</Label>
+                    <Label className="text-xs">Last Name (EN) <span className="text-destructive">*</span></Label>
                     <Input
                       value={p.lastName}
                       onChange={(e) =>
@@ -373,7 +410,7 @@ export default function ParticipantsStep() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Gender *</Label>
+                    <Label className="text-xs">Gender <span className="text-destructive">*</span></Label>
                     <Select
                       value={p.gender}
                       onValueChange={(v) =>
@@ -393,75 +430,44 @@ export default function ParticipantsStep() {
                 </div>
 
                 {/* Birth Date */}
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Birth Year *</Label>
-                    <Input
-                      type="number"
-                      value={p.birthYear}
-                      onChange={(e) =>
-                        updateParticipant(gi, pi, "birthYear", parseInt(e.target.value))
-                      }
-                      min={1920}
-                      max={new Date().getFullYear()}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Birth Month</Label>
-                    <Select
-                      value={p.birthMonth.toString()}
-                      onValueChange={(v) =>
-                        updateParticipant(gi, pi, "birthMonth", parseInt(v))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                          <SelectItem key={m} value={m.toString()}>
-                            {m}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Birth Day</Label>
-                    <Select
-                      value={p.birthDay.toString()}
-                      onValueChange={(v) =>
-                        updateParticipant(gi, pi, "birthDay", parseInt(v))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                          <SelectItem key={d} value={d.toString()}>
-                            {d}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                <BirthDatePicker
+                  year={p.birthYear}
+                  month={p.birthMonth}
+                  day={p.birthDay}
+                  onYearChange={(v) =>
+                    updateParticipant(gi, pi, "birthYear", v ?? 2000)
+                  }
+                  onMonthChange={(v) =>
+                    updateParticipant(gi, pi, "birthMonth", v)
+                  }
+                  onDayChange={(v) =>
+                    updateParticipant(gi, pi, "birthDay", v)
+                  }
+                />
 
-                {/* K-12 + Grade */}
-                <div className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
-                    checked={p.isK12}
-                    onChange={(e) =>
-                      updateParticipant(gi, pi, "isK12", e.target.checked)
-                    }
-                    className="mt-1"
-                  />
-                  <Label className="text-xs font-normal leading-snug">
-                    K-12 student (high school or younger)
-                  </Label>
-                </div>
+                {/* K-12 + Grade — hidden if age > 21 at event start */}
+                {(() => {
+                  const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
+                  const refDate = eventDates
+                    ? new Date(eventDates.eventStartDate + "T00:00:00")
+                    : new Date(state.startDate + "T00:00:00");
+                  const age = calculateAge(birthDate, refDate);
+                  return age <= 21;
+                })() && (
+                  <div className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={p.isK12}
+                      onChange={(e) =>
+                        updateParticipant(gi, pi, "isK12", e.target.checked)
+                      }
+                      className="mt-1"
+                    />
+                    <Label className="text-xs font-normal leading-snug">
+                      I am currently a Pre-K/K-12 student (high school or younger)
+                    </Label>
+                  </div>
+                )}
                 {p.isK12 && (
                   <div className="space-y-1">
                     <Label className="text-xs">Grade</Label>
@@ -507,29 +513,37 @@ export default function ParticipantsStep() {
                   </Select>
                 </div>
 
-                {/* Phone + Email */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Phone</Label>
-                    <Input
-                      value={p.phone}
-                      onChange={(e) =>
-                        updateParticipant(gi, pi, "phone", e.target.value)
-                      }
-                      placeholder="(000) 000-0000"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Email</Label>
-                    <Input
-                      type="email"
-                      value={p.email}
-                      onChange={(e) =>
-                        updateParticipant(gi, pi, "email", e.target.value)
-                      }
-                      placeholder="email@example.com"
-                    />
-                  </div>
+                {/* Email */}
+                <div className="space-y-1">
+                  <Label className="text-xs">Email <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="email"
+                    value={p.email}
+                    onChange={(e) =>
+                      updateParticipant(gi, pi, "email", e.target.value)
+                    }
+                    placeholder="email@example.com"
+                    disabled={gi === 0 && pi === 0}
+                  />
+                  {p.email && !isValidEmail(p.email) && (
+                    <p className="text-xs text-destructive">Enter a valid email address</p>
+                  )}
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-1">
+                  <Label className="text-xs">Phone <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="tel"
+                    value={p.phone}
+                    onChange={(e) =>
+                      updateParticipant(gi, pi, "phone", formatPhone(e.target.value))
+                    }
+                    placeholder="(000) 000-0000"
+                  />
+                  {p.phone && !isValidPhone(p.phone) && (
+                    <p className="text-xs text-destructive">Enter 10-digit phone number</p>
+                  )}
                 </div>
 
                 {/* Church */}
@@ -572,8 +586,8 @@ export default function ParticipantsStep() {
                   </div>
                 )}
 
-                {/* Meal Selection */}
-                {state.startDate && state.endDate && eventDates && (
+                {/* Meal Selection - hidden when dates match full event period */}
+                {state.startDate && state.endDate && eventDates && !datesMatchEvent && (
                   <MealSelectionGrid
                     startDate={state.startDate}
                     endDate={state.endDate}

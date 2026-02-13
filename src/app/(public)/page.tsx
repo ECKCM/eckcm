@@ -22,11 +22,14 @@ export default async function HomePage() {
         <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
           ECKCM
         </h1>
+        <h3 className="text-1xl font-bold tracking-tight sm:text-2xl">
+          중동부 연합 야영회
+        </h3>
         <p className="mt-2 text-lg text-muted-foreground">
-          Eastern Korean Churches Camp Meeting
+          East Coast Korean Campmeeting
         </p>
         <p className="mt-6 text-base leading-7 text-muted-foreground">
-          Online Registration & Management System
+          ECKCM Participant Portal & EMS
         </p>
         <div className="mt-10 flex items-center justify-center gap-4">
           <Button asChild size="lg">
