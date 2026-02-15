@@ -55,10 +55,12 @@ interface ProfileFormProps {
   departments: Department[];
   showEmail?: boolean;
   hideDepartment?: boolean;
+  hideBirthDate?: boolean;
   eventStartDate?: string;
   onSubmit: (data: ProfileFormData) => Promise<void>;
   submitLabel?: string;
   loading?: boolean;
+  children?: React.ReactNode;
 }
 
 export function ProfileForm({
@@ -67,10 +69,12 @@ export function ProfileForm({
   departments,
   showEmail = false,
   hideDepartment = false,
+  hideBirthDate = false,
   eventStartDate,
   onSubmit,
   submitLabel = "Save",
   loading = false,
+  children,
 }: ProfileFormProps) {
   const [form, setForm] = useState<ProfileFormData>({
     lastName: initialData?.lastName ?? "",
@@ -117,21 +121,23 @@ export function ProfileForm({
     }
     if (!form.displayNameKo.trim()) errs.displayNameKo = "Required";
     if (!form.gender) errs.gender = "Required";
-    if (!form.birthYear || !form.birthMonth || !form.birthDay) {
-      errs.birthDate = "Required";
-    } else {
-      const currentYear = new Date().getFullYear();
-      if (
-        form.birthYear < currentYear - 120 ||
-        form.birthYear > currentYear ||
-        String(form.birthYear).length !== 4
-      ) {
-        errs.birthDate = `Year must be between ${currentYear - 120} and ${currentYear}`;
+    if (!hideBirthDate) {
+      if (!form.birthYear || !form.birthMonth || !form.birthDay) {
+        errs.birthDate = "Required";
+      } else {
+        const currentYear = new Date().getFullYear();
+        if (
+          form.birthYear < currentYear - 120 ||
+          form.birthYear > currentYear ||
+          String(form.birthYear).length !== 4
+        ) {
+          errs.birthDate = `Year must be between ${currentYear - 120} and ${currentYear}`;
+        }
       }
+      if ((form.isK12 || isMinor) && !form.grade) errs.grade = "Required";
     }
     if (!form.phone.trim()) errs.phone = "Required";
     if (showEmail && !form.email.trim()) errs.email = "Required";
-    if ((form.isK12 || isMinor) && !form.grade) errs.grade = "Required";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -179,7 +185,7 @@ export function ProfileForm({
       {/* Names */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label htmlFor="firstName">First Name (EN) *</Label>
+          <Label htmlFor="firstName">First Name (Legal) *</Label>
           <Input
             id="firstName"
             value={form.firstName}
@@ -191,7 +197,7 @@ export function ProfileForm({
           )}
         </div>
         <div className="space-y-1">
-          <Label htmlFor="lastName">Last Name (EN) *</Label>
+          <Label htmlFor="lastName">Last Name (Legal) *</Label>
           <Input
             id="lastName"
             value={form.lastName}
@@ -238,59 +244,61 @@ export function ProfileForm({
         )}
       </div>
 
-      {/* Birth Date */}
-      <div>
-        <BirthDatePicker
-          year={form.birthYear}
-          month={form.birthMonth}
-          day={form.birthDay}
-          onYearChange={(v) => update("birthYear", v)}
-          onMonthChange={(v) => update("birthMonth", v)}
-          onDayChange={(v) => update("birthDay", v)}
-        />
-        {errors.birthDate && (
-          <p className="text-xs text-destructive">{errors.birthDate}</p>
-        )}
-      </div>
+      {/* Birth Date + K-12 + Grade (hidden on signup) */}
+      {!hideBirthDate && (
+        <>
+          <div>
+            <BirthDatePicker
+              year={form.birthYear}
+              month={form.birthMonth}
+              day={form.birthDay}
+              onYearChange={(v) => update("birthYear", v)}
+              onMonthChange={(v) => update("birthMonth", v)}
+              onDayChange={(v) => update("birthDay", v)}
+            />
+            {errors.birthDate && (
+              <p className="text-xs text-destructive">{errors.birthDate}</p>
+            )}
+          </div>
 
-      {/* K-12 checkbox */}
-      <div className="flex items-start gap-2">
-        <input
-          type="checkbox"
-          id="isK12"
-          checked={form.isK12 || isMinor}
-          onChange={(e) => update("isK12", e.target.checked)}
-          disabled={isMinor}
-          className="mt-1"
-        />
-        <Label htmlFor="isK12" className="text-sm font-normal leading-snug">
-          I am currently a Pre-K/K-12 student (high school or younger)
-        </Label>
-      </div>
+          <div className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              id="isK12"
+              checked={form.isK12 || isMinor}
+              onChange={(e) => update("isK12", e.target.checked)}
+              disabled={isMinor}
+              className="mt-1"
+            />
+            <Label htmlFor="isK12" className="text-sm font-normal leading-snug">
+              I am currently a Pre-K/K-12 student (high school or younger)
+            </Label>
+          </div>
 
-      {/* Grade (conditional) */}
-      {(form.isK12 || isMinor) && (
-        <div className="space-y-1">
-          <Label>Grade *</Label>
-          <Select
-            value={form.grade}
-            onValueChange={(v) => update("grade", v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select grade" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(GRADE_LABELS).map(([key, label]) => (
-                <SelectItem key={key} value={key}>
-                  {label.en}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.grade && (
-            <p className="text-xs text-destructive">{errors.grade}</p>
+          {(form.isK12 || isMinor) && (
+            <div className="space-y-1">
+              <Label>Grade *</Label>
+              <Select
+                value={form.grade}
+                onValueChange={(v) => update("grade", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select grade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(GRADE_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label.en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.grade && (
+                <p className="text-xs text-destructive">{errors.grade}</p>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
 
       {/* Department */}
@@ -349,6 +357,9 @@ export function ProfileForm({
         {errors.phone && (
           <p className="text-xs text-destructive">{errors.phone}</p>
         )}
+        <p className="text-xs text-muted-foreground">
+          By providing your number, you agree to receive service-related messages.
+        </p>
       </div>
 
       {/* Church */}
@@ -373,6 +384,8 @@ export function ProfileForm({
           />
         </div>
       )}
+
+      {children}
 
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Saving..." : submitLabel}

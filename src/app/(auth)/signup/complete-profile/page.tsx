@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { ProfileForm, type ProfileFormData } from "@/components/auth/profile-form";
 import { checkEmailAvailability } from "../actions";
 import { toast } from "sonner";
+import Link from "next/link";
 
 interface Church {
   id: string;
@@ -31,6 +32,9 @@ interface Department {
   name_en: string;
   name_ko: string;
 }
+
+const hasNumber = (v: string) => /\d/.test(v);
+const hasSymbol = (v: string) => /[^A-Za-z0-9]/.test(v);
 
 export default function CompleteProfilePage() {
   const router = useRouter();
@@ -47,18 +51,13 @@ export default function CompleteProfilePage() {
   const [confirmEmail, setConfirmEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [phone, setPhone] = useState("");
   const [emailError, setEmailError] = useState("");
-  const [emailChecked, setEmailChecked] = useState(false);
+
+  // Consent checkboxes
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
 
   const isValidEmail = (v: string) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-  const formatPhone = (raw: string): string => {
-    const digits = raw.replace(/\D/g, "").slice(0, 10);
-    if (digits.length <= 3) return digits;
-    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  };
-  const isValidPhone = (v: string) => { const d = v.replace(/\D/g, ""); return d.length === 0 || d.length === 10; };
 
   useEffect(() => {
     const supabase = createClient();
@@ -117,26 +116,24 @@ export default function CompleteProfilePage() {
     init();
   }, [router]);
 
-  const checkEmailDuplicate = async () => {
-    if (!email) return;
-    const { available } = await checkEmailAvailability(email);
-
-    if (!available) {
-      setEmailError("This email is already registered");
-      setEmailChecked(false);
-    } else {
-      setEmailError("");
-      setEmailChecked(true);
-      toast.success("Email is available");
-    }
-  };
-
   const handleSubmit = async (data: ProfileFormData) => {
     setLoading(true);
     const supabase = createClient();
 
     if (isEmailSignup) {
-      // Validate email/password
+      // Validate consent checkboxes
+      if (!ageConfirmed) {
+        toast.error("Please confirm that you are at least 13 years old");
+        setLoading(false);
+        return;
+      }
+      if (!termsAgreed) {
+        toast.error("Please agree to the Terms of Service and Privacy Policy");
+        setLoading(false);
+        return;
+      }
+
+      // Validate email
       if (!email) {
         toast.error("Email is required");
         setLoading(false);
@@ -147,13 +144,24 @@ export default function CompleteProfilePage() {
         setLoading(false);
         return;
       }
-      if (emailError) {
-        toast.error("Please use a different email");
+
+      // Check email availability on submit
+      const { available } = await checkEmailAvailability(email);
+      if (!available) {
+        setEmailError("This email is already registered");
+        toast.error("Unable to use this email");
         setLoading(false);
         return;
       }
-      if (password.length < 8) {
-        toast.error("Password must be at least 8 characters");
+
+      // Validate password
+      if (password.length < 10) {
+        toast.error("Password must be at least 10 characters");
+        setLoading(false);
+        return;
+      }
+      if (!hasNumber(password) || !hasSymbol(password)) {
+        toast.error("Password must include a number and a symbol");
         setLoading(false);
         return;
       }
@@ -189,6 +197,7 @@ export default function CompleteProfilePage() {
 
     // Determine auth provider
     const provider = user.app_metadata.provider ?? "email";
+    const now = new Date().toISOString();
 
     // 1. Upsert eckcm_users
     const { error: userError } = await supabase.from("eckcm_users").upsert({
@@ -196,6 +205,8 @@ export default function CompleteProfilePage() {
       email: user.email!,
       auth_provider: provider,
       profile_completed: true,
+      age_confirmed_at: ageConfirmed ? now : null,
+      terms_agreed_at: termsAgreed ? now : null,
     });
 
     if (userError) {
@@ -204,8 +215,11 @@ export default function CompleteProfilePage() {
       return;
     }
 
-    // 2. Create person
-    const birthDate = `${data.birthYear}-${String(data.birthMonth).padStart(2, "0")}-${String(data.birthDay).padStart(2, "0")}`;
+    // 2. Create person (birth_date is null for signup since hideBirthDate is true)
+    const birthDate =
+      data.birthYear && data.birthMonth && data.birthDay
+        ? `${data.birthYear}-${String(data.birthMonth).padStart(2, "0")}-${String(data.birthDay).padStart(2, "0")}`
+        : null;
 
     const { data: person, error: personError } = await supabase
       .from("eckcm_people")
@@ -285,30 +299,18 @@ export default function CompleteProfilePage() {
           <>
             <div className="space-y-1">
               <Label htmlFor="signup-email">Email <span className="text-destructive">*</span></Label>
-              <div className="flex gap-2">
-                <Input
-                  id="signup-email"
-                  name="signup-email"
-                  type="email"
-                  autoComplete="off"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setEmailError("");
-                    setEmailChecked(false);
-                  }}
-                  placeholder="email@example.com"
-                />
-                <Button
-                  type="button"
-                  variant={emailChecked ? "default" : "outline"}
-                  size="sm"
-                  onClick={checkEmailDuplicate}
-                  className={`shrink-0 ${emailChecked ? "bg-green-600 text-white border-green-600 hover:bg-green-700" : ""}`}
-                >
-                  Check
-                </Button>
-              </div>
+              <Input
+                id="signup-email"
+                name="signup-email"
+                type="email"
+                autoComplete="off"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setEmailError("");
+                }}
+                placeholder="email@example.com"
+              />
               {emailError && (
                 <p className="text-xs text-destructive">{emailError}</p>
               )}
@@ -339,11 +341,14 @@ export default function CompleteProfilePage() {
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min 8 characters"
-                minLength={8}
+                placeholder="Min 10 characters"
+                minLength={10}
               />
-              {password && password.length < 8 && (
-                <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+              {password && password.length < 10 && (
+                <p className="text-xs text-destructive">Password must be at least 10 characters</p>
+              )}
+              {password && password.length >= 10 && (!hasNumber(password) || !hasSymbol(password)) && (
+                <p className="text-xs text-destructive">Must include a number and a symbol</p>
               )}
             </div>
             <div className="space-y-1">
@@ -371,7 +376,45 @@ export default function CompleteProfilePage() {
           submitLabel={isEmailSignup ? "Create Account" : "Complete Profile"}
           loading={loading}
           hideDepartment
-        />
+          hideBirthDate={isEmailSignup}
+        >
+          {isEmailSignup && (
+            <div className="space-y-3">
+              <div className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  id="ageConfirmed"
+                  checked={ageConfirmed}
+                  onChange={(e) => setAgeConfirmed(e.target.checked)}
+                  className="mt-1"
+                />
+                <Label htmlFor="ageConfirmed" className="text-sm font-normal leading-snug">
+                  I confirm that I am at least 13 years old. <span className="text-destructive">*</span>
+                </Label>
+              </div>
+              <div className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  id="termsAgreed"
+                  checked={termsAgreed}
+                  onChange={(e) => setTermsAgreed(e.target.checked)}
+                  className="mt-1"
+                />
+                <Label htmlFor="termsAgreed" className="text-sm font-normal leading-snug">
+                  I agree to the{" "}
+                  <Link href="/terms" target="_blank" className="underline text-primary hover:text-primary/80">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="/privacy" target="_blank" className="underline text-primary hover:text-primary/80">
+                    Privacy Policy
+                  </Link>
+                  . <span className="text-destructive">*</span>
+                </Label>
+              </div>
+            </div>
+          )}
+        </ProfileForm>
       </CardContent>
       <CardFooter className="justify-center">
         <Button variant="ghost" size="sm" onClick={handleCancel}>

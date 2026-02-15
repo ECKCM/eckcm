@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-15T03:55:21.684Z",
+  "lastUpdated": "2026-02-15T16:05:21.812Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -51,7 +51,10 @@
     "[token]",
     "verify",
     "audit",
-    "ui"
+    "ui",
+    "legal",
+    "terms",
+    "privacy"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -177,7 +180,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:30:50.784Z",
-        "lastUpdated": "2026-02-15T03:35:09.312Z"
+        "lastUpdated": "2026-02-15T14:12:40.943Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/components/auth/profile-form.tsx"
     },
@@ -216,7 +219,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:43.874Z",
-        "lastUpdated": "2026-02-15T03:55:21.684Z"
+        "lastUpdated": "2026-02-15T14:12:17.990Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/signup/complete-profile/page.tsx"
     },
@@ -255,9 +258,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:44:31.720Z",
-        "lastUpdated": "2026-02-11T14:42:58.043Z"
+        "lastUpdated": "2026-02-15T14:13:06.128Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/layout.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/admin/admin-sidebar.tsx"
     },
     "events": {
       "phase": "do",
@@ -700,6 +703,45 @@
         "lastUpdated": "2026-02-15T03:40:22.713Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/components/ui/combobox.tsx"
+    },
+    "legal": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-15T14:13:12.180Z",
+        "lastUpdated": "2026-02-15T16:05:21.812Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/legal/legal-manager.tsx"
+    },
+    "terms": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-15T14:13:38.849Z",
+        "lastUpdated": "2026-02-15T14:13:38.849Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(public)/terms/page.tsx"
+    },
+    "privacy": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-15T14:13:42.086Z",
+        "lastUpdated": "2026-02-15T14:13:42.086Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(public)/privacy/page.tsx"
     }
   },
   "pipeline": {
@@ -710,7 +752,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-15T03:55:21.684Z"
+    "lastActivity": "2026-02-15T16:05:21.812Z"
   },
   "history": [
     {
@@ -3107,6 +3149,108 @@
     {
       "timestamp": "2026-02-15T03:55:21.684Z",
       "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:08:52.535Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:08:57.377Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:09:08.194Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:09:12.665Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:09:28.719Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:09:39.656Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:12:17.990Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:12:30.024Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:12:35.686Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:12:40.943Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:13:01.317Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:13:06.128Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:13:12.180Z",
+      "feature": "legal",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:13:22.734Z",
+      "feature": "legal",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:13:38.849Z",
+      "feature": "terms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T14:13:42.086Z",
+      "feature": "privacy",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T16:05:21.812Z",
+      "feature": "legal",
       "phase": "do",
       "action": "updated"
     }

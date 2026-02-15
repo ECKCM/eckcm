@@ -15,6 +15,7 @@ import {
   BedDouble,
   FileText,
   ScrollText,
+  Scale,
 } from "lucide-react";
 import {
   Sidebar,
@@ -45,6 +46,7 @@ const settingsLinks = [
   { href: "/admin/settings/fees", label: "Fee Categories", icon: DollarSign },
   { href: "/admin/settings/departments", label: "Departments", icon: Building2 },
   { href: "/admin/settings/churches", label: "Churches", icon: Church },
+  { href: "/admin/settings/legal", label: "Legal Pages", icon: Scale },
 ];
 
 export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
