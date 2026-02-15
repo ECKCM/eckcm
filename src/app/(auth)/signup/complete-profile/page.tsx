@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/shared/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -326,10 +327,9 @@ export default function CompleteProfilePage() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="signup-password">Password <span className="text-destructive">*</span></Label>
-              <Input
+              <PasswordInput
                 id="signup-password"
                 name="signup-password"
-                type="password"
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

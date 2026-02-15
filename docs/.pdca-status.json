@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-13T17:49:33.413Z",
+  "lastUpdated": "2026-02-13T22:06:51.847Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -73,9 +73,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:16:45.184Z",
-        "lastUpdated": "2026-02-13T17:49:33.413Z"
+        "lastUpdated": "2026-02-13T22:06:23.494Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/phone-input.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/password-input.tsx"
     },
     "supabase": {
       "phase": "do",
@@ -190,7 +190,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:01.757Z",
-        "lastUpdated": "2026-02-13T08:30:56.426Z"
+        "lastUpdated": "2026-02-13T22:06:32.714Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/login/page.tsx"
     },
@@ -216,7 +216,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:43.874Z",
-        "lastUpdated": "2026-02-13T17:21:50.592Z"
+        "lastUpdated": "2026-02-13T22:06:51.847Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/signup/complete-profile/page.tsx"
     },
@@ -710,7 +710,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-13T17:49:33.413Z"
+    "lastActivity": "2026-02-13T22:06:51.847Z"
   },
   "history": [
     {
@@ -2957,6 +2957,36 @@
     {
       "timestamp": "2026-02-13T17:49:33.413Z",
       "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T22:06:23.494Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T22:06:27.918Z",
+      "feature": "login",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T22:06:32.714Z",
+      "feature": "login",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T22:06:44.274Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-13T22:06:51.847Z",
+      "feature": "complete-profile",
       "phase": "do",
       "action": "updated"
     }
