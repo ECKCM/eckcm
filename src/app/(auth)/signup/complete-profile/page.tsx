@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import type { TurnstileInstance } from "@marsidev/react-turnstile";
+import { TurnstileWidget } from "@/components/shared/turnstile-widget";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +58,10 @@ export default function CompleteProfilePage() {
   // Consent checkboxes
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [termsAgreed, setTermsAgreed] = useState(false);
+
+  // Turnstile CAPTCHA
+  const [captchaToken, setCaptchaToken] = useState<string>();
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const isValidEmail = (v: string) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
@@ -175,10 +181,13 @@ export default function CompleteProfilePage() {
       const { error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: { captchaToken },
       });
 
       if (authError) {
         toast.error(authError.message);
+        setCaptchaToken(undefined);
+        turnstileRef.current?.reset();
         setLoading(false);
         return;
       }
@@ -412,6 +421,11 @@ export default function CompleteProfilePage() {
                   . <span className="text-destructive">*</span>
                 </Label>
               </div>
+              <TurnstileWidget
+                ref={turnstileRef}
+                onSuccess={setCaptchaToken}
+                onExpire={() => setCaptchaToken(undefined)}
+              />
             </div>
           )}
         </ProfileForm>

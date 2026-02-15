@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-15T16:05:21.812Z",
+  "lastUpdated": "2026-02-15T17:53:25.672Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -76,9 +76,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:16:45.184Z",
-        "lastUpdated": "2026-02-15T03:38:15.770Z"
+        "lastUpdated": "2026-02-15T17:52:20.170Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/church-combobox.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/turnstile-widget.tsx"
     },
     "supabase": {
       "phase": "do",
@@ -193,7 +193,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:01.757Z",
-        "lastUpdated": "2026-02-13T22:06:32.714Z"
+        "lastUpdated": "2026-02-15T17:52:57.040Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/login/page.tsx"
     },
@@ -219,7 +219,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:43.874Z",
-        "lastUpdated": "2026-02-15T14:12:17.990Z"
+        "lastUpdated": "2026-02-15T17:53:25.672Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/signup/complete-profile/page.tsx"
     },
@@ -752,7 +752,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-15T16:05:21.812Z"
+    "lastActivity": "2026-02-15T17:53:25.672Z"
   },
   "history": [
     {
@@ -3251,6 +3251,60 @@
     {
       "timestamp": "2026-02-15T16:05:21.812Z",
       "feature": "legal",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T17:52:20.170Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T17:52:39.780Z",
+      "feature": "login",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T17:52:45.280Z",
+      "feature": "login",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T17:52:51.477Z",
+      "feature": "login",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T17:52:57.040Z",
+      "feature": "login",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T17:53:02.623Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T17:53:08.274Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T17:53:14.521Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T17:53:25.672Z",
+      "feature": "complete-profile",
       "phase": "do",
       "action": "updated"
     }

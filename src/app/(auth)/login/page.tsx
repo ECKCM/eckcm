@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { TurnstileInstance } from "@marsidev/react-turnstile";
+import { TurnstileWidget } from "@/components/shared/turnstile-widget";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +27,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string>();
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,10 +39,13 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: { captchaToken },
     });
 
     if (error) {
       setLoginError(error.message);
+      setCaptchaToken(undefined);
+      turnstileRef.current?.reset();
       setLoading(false);
       return;
     }
@@ -98,6 +105,11 @@ export default function LoginPage() {
               <p className="text-xs text-destructive">{loginError}</p>
             )}
           </div>
+          <TurnstileWidget
+            ref={turnstileRef}
+            onSuccess={setCaptchaToken}
+            onExpire={() => setCaptchaToken(undefined)}
+          />
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign In"}
           </Button>
