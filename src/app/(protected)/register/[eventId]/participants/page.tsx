@@ -52,6 +52,7 @@ import {
   NAME_PATTERN,
 } from "@/lib/utils/field-helpers";
 import { PhoneInput } from "@/components/shared/phone-input";
+import { ChurchCombobox } from "@/components/shared/church-combobox";
 import { MealSelectionGrid } from "@/components/registration/meal-selection-grid";
 import { BirthDatePicker } from "@/components/shared/birth-date-picker";
 
@@ -808,29 +809,14 @@ export default function ParticipantsStep() {
                         {/* Church */}
                         <div className="space-y-1">
                           <Label className="text-xs">Church <span className="text-destructive">*</span></Label>
-                          <Select
+                          <ChurchCombobox
+                            churches={churches}
                             value={p.churchId ?? ""}
                             onValueChange={(v) =>
                               updateParticipant(gi, pi, "churchId", v)
                             }
-                          >
-                            <SelectTrigger className={errs.churchId ? "border-destructive" : ""}>
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {churches
-                                .sort((a, b) => {
-                                  if (a.is_other) return -1;
-                                  if (b.is_other) return 1;
-                                  return a.name_en.localeCompare(b.name_en);
-                                })
-                                .map((c) => (
-                                  <SelectItem key={c.id} value={c.id}>
-                                    {c.name_en}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
+                            error={!!errs.churchId}
+                          />
                           {errs.churchId && <p className="text-xs text-destructive">{errs.churchId}</p>}
                         </div>
                         {isChurchOther(p.churchId) && (

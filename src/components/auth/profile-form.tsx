@@ -4,13 +4,8 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChurchCombobox } from "@/components/shared/church-combobox";
 import { BirthDatePicker } from "@/components/shared/birth-date-picker";
 import { GRADE_LABELS } from "@/lib/utils/constants";
 import { calculateAge } from "@/lib/utils/validators";
@@ -359,27 +354,11 @@ export function ProfileForm({
       {/* Church */}
       <div className="space-y-1">
         <Label>Church</Label>
-        <Select
+        <ChurchCombobox
+          churches={churches}
           value={form.churchId}
           onValueChange={(v) => update("churchId", v)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select church" />
-          </SelectTrigger>
-          <SelectContent>
-            {churches
-              .sort((a, b) => {
-                if (a.is_other) return -1;
-                if (b.is_other) return 1;
-                return a.name_en.localeCompare(b.name_en);
-              })
-              .map((church) => (
-                <SelectItem key={church.id} value={church.id}>
-                  {church.name_en}
-                </SelectItem>
-              ))}
-          </SelectContent>
-        </Select>
+        />
       </div>
 
       {/* Church Other (conditional) */}

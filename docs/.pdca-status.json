@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-13T22:06:51.847Z",
+  "lastUpdated": "2026-02-15T03:55:21.684Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -73,9 +73,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:16:45.184Z",
-        "lastUpdated": "2026-02-13T22:06:23.494Z"
+        "lastUpdated": "2026-02-15T03:38:15.770Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/password-input.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/church-combobox.tsx"
     },
     "supabase": {
       "phase": "do",
@@ -177,7 +177,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:30:50.784Z",
-        "lastUpdated": "2026-02-13T17:19:27.505Z"
+        "lastUpdated": "2026-02-15T03:35:09.312Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/components/auth/profile-form.tsx"
     },
@@ -216,7 +216,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:43.874Z",
-        "lastUpdated": "2026-02-13T22:06:51.847Z"
+        "lastUpdated": "2026-02-15T03:55:21.684Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/signup/complete-profile/page.tsx"
     },
@@ -372,7 +372,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:53:37.337Z",
-        "lastUpdated": "2026-02-13T17:20:48.569Z"
+        "lastUpdated": "2026-02-15T03:35:27.224Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
@@ -697,9 +697,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T14:23:57.797Z",
-        "lastUpdated": "2026-02-13T14:54:46.222Z"
+        "lastUpdated": "2026-02-15T03:40:22.713Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/ui/alert-dialog.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/ui/combobox.tsx"
     }
   },
   "pipeline": {
@@ -710,7 +710,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-13T22:06:51.847Z"
+    "lastActivity": "2026-02-15T03:55:21.684Z"
   },
   "history": [
     {
@@ -2986,6 +2986,126 @@
     },
     {
       "timestamp": "2026-02-13T22:06:51.847Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:28:14.951Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:28:33.838Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:28:48.304Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:28:53.803Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:29:13.317Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:29:20.348Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:33:58.493Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:34:25.029Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:34:54.841Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:35:03.208Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:35:09.312Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:35:17.153Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:35:27.224Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:36:53.956Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:38:15.770Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:40:00.337Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:40:22.713Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:55:09.506Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:55:14.309Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-15T03:55:21.684Z",
       "feature": "complete-profile",
       "phase": "do",
       "action": "updated"

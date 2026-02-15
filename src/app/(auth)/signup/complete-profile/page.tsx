@@ -46,6 +46,7 @@ export default function CompleteProfilePage() {
   const [email, setEmail] = useState("");
   const [confirmEmail, setConfirmEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [emailError, setEmailError] = useState("");
   const [emailChecked, setEmailChecked] = useState(false);
@@ -153,6 +154,11 @@ export default function CompleteProfilePage() {
       }
       if (password.length < 8) {
         toast.error("Password must be at least 8 characters");
+        setLoading(false);
+        return;
+      }
+      if (password !== confirmPassword) {
+        toast.error("Passwords do not match");
         setLoading(false);
         return;
       }
@@ -338,6 +344,20 @@ export default function CompleteProfilePage() {
               />
               {password && password.length < 8 && (
                 <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="signup-confirm-password">Confirm Password <span className="text-destructive">*</span></Label>
+              <PasswordInput
+                id="signup-confirm-password"
+                name="signup-confirm-password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter password"
+              />
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-xs text-destructive">Passwords do not match</p>
               )}
             </div>
             <Separator />
