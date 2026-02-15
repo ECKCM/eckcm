@@ -56,6 +56,7 @@ interface ProfileFormProps {
   showEmail?: boolean;
   hideDepartment?: boolean;
   hideBirthDate?: boolean;
+  hideChurch?: boolean;
   eventStartDate?: string;
   onSubmit: (data: ProfileFormData) => Promise<void>;
   submitLabel?: string;
@@ -70,6 +71,7 @@ export function ProfileForm({
   showEmail = false,
   hideDepartment = false,
   hideBirthDate = false,
+  hideChurch = false,
   eventStartDate,
   onSubmit,
   submitLabel = "Save",
@@ -236,12 +238,16 @@ export function ProfileForm({
           <SelectContent>
             <SelectItem value="MALE">Male</SelectItem>
             <SelectItem value="FEMALE">Female</SelectItem>
-            <SelectItem value="OTHERS">Others</SelectItem>
+            <SelectItem value="NON_BINARY">Non-binary</SelectItem>
+            <SelectItem value="PREFER_NOT_TO_SAY">Prefer not to say</SelectItem>
           </SelectContent>
         </Select>
         {errors.gender && (
           <p className="text-xs text-destructive">{errors.gender}</p>
         )}
+        <p className="text-muted-foreground" style={{ fontSize: "0.625rem" }}>
+          We collect gender information for statistical and program accommodation purposes only. It will not be used for discriminatory decisions.
+        </p>
       </div>
 
       {/* Birth Date + K-12 + Grade (hidden on signup) */}
@@ -357,32 +363,36 @@ export function ProfileForm({
         {errors.phone && (
           <p className="text-xs text-destructive">{errors.phone}</p>
         )}
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground" style={{ fontSize: "0.625rem" }}>
           By providing your number, you agree to receive service-related messages.
         </p>
       </div>
 
       {/* Church */}
-      <div className="space-y-1">
-        <Label>Church</Label>
-        <ChurchCombobox
-          churches={churches}
-          value={form.churchId}
-          onValueChange={(v) => update("churchId", v)}
-        />
-      </div>
+      {!hideChurch && (
+        <>
+          <div className="space-y-1">
+            <Label>Church</Label>
+            <ChurchCombobox
+              churches={churches}
+              value={form.churchId}
+              onValueChange={(v) => update("churchId", v)}
+            />
+          </div>
 
-      {/* Church Other (conditional) */}
-      {showChurchOther && (
-        <div className="space-y-1">
-          <Label htmlFor="churchOther">Church Name</Label>
-          <Input
-            id="churchOther"
-            value={form.churchOther}
-            onChange={(e) => update("churchOther", e.target.value)}
-            placeholder="Enter your church name"
-          />
-        </div>
+          {/* Church Other (conditional) */}
+          {showChurchOther && (
+            <div className="space-y-1">
+              <Label htmlFor="churchOther">Church Name</Label>
+              <Input
+                id="churchOther"
+                value={form.churchOther}
+                onChange={(e) => update("churchOther", e.target.value)}
+                placeholder="Enter your church name"
+              />
+            </div>
+          )}
+        </>
       )}
 
       {children}

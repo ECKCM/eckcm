@@ -29,7 +29,7 @@ export default async function HomePage() {
           East Coast Korean Campmeeting
         </p>
         <p className="mt-6 text-base leading-7 text-muted-foreground">
-          ECKCM Participant Portal & EMS
+          Sign up to register for ECKCM
         </p>
         <div className="mt-10 flex items-center justify-center gap-4">
           <Button asChild size="lg">

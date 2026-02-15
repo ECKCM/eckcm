@@ -666,11 +666,15 @@ export default function ParticipantsStep() {
                               <SelectContent>
                                 <SelectItem value="MALE">Male</SelectItem>
                                 <SelectItem value="FEMALE">Female</SelectItem>
-                                <SelectItem value="OTHERS">Others</SelectItem>
+                                <SelectItem value="NON_BINARY">Non-binary</SelectItem>
+                                <SelectItem value="PREFER_NOT_TO_SAY">Prefer not to say</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                         </div>
+                        <p className="text-muted-foreground" style={{ fontSize: "0.625rem" }}>
+                          We collect gender information for statistical and program accommodation purposes only. It will not be used for discriminatory decisions.
+                        </p>
 
                         {/* Birth Date */}
                         <BirthDatePicker

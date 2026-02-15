@@ -386,6 +386,7 @@ export default function CompleteProfilePage() {
           loading={loading}
           hideDepartment
           hideBirthDate={isEmailSignup}
+          hideChurch={isEmailSignup}
         >
           {isEmailSignup && (
             <div className="space-y-3">
