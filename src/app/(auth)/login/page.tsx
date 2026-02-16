@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { TurnstileInstance } from "@marsidev/react-turnstile";
@@ -29,6 +29,14 @@ export default function LoginPage() {
   const [loginError, setLoginError] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string>();
   const turnstileRef = useRef<TurnstileInstance>(null);
+  const [callbackError, setCallbackError] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") === "auth_callback_error") {
+      setCallbackError(true);
+    }
+  }, []);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +69,11 @@ export default function LoginPage() {
         <CardDescription>Sign in to your account</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {callbackError && (
+          <p className="text-sm text-center text-destructive">
+            Authentication failed. Please try again.
+          </p>
+        )}
         <OAuthButtons />
 
         <div className="relative">

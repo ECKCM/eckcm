@@ -2,6 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  // Skip auth check for OAuth callback to prevent getUser() from
+  // clearing the PKCE code verifier cookie before the code exchange
+  if (request.nextUrl.pathname.startsWith("/callback")) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });

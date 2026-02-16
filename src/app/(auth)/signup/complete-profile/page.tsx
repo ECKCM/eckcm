@@ -54,6 +54,9 @@ export default function CompleteProfilePage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [confirmEmailError, setConfirmEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
 
   // Consent checkboxes
   const [ageConfirmed, setAgeConfirmed] = useState(false);
@@ -64,6 +67,58 @@ export default function CompleteProfilePage() {
   const turnstileRef = useRef<TurnstileInstance>(null);
 
   const isValidEmail = (v: string) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+  const validateSignupFields = (): boolean => {
+    if (!isEmailSignup) return true;
+
+    let valid = true;
+    setEmailError("");
+    setConfirmEmailError("");
+    setPasswordError("");
+    setConfirmPasswordError("");
+
+    if (!email) {
+      setEmailError("Email is required");
+      valid = false;
+    } else if (!isValidEmail(email)) {
+      setEmailError("Enter a valid email address");
+      valid = false;
+    }
+    if (!confirmEmail) {
+      setConfirmEmailError("Confirm email is required");
+      valid = false;
+    } else if (email !== confirmEmail) {
+      setConfirmEmailError("Emails do not match");
+      valid = false;
+    }
+    if (!password) {
+      setPasswordError("Password is required");
+      valid = false;
+    } else if (password.length < 10) {
+      setPasswordError("Password must be at least 10 characters");
+      valid = false;
+    } else if (!hasNumber(password) || !hasSymbol(password)) {
+      setPasswordError("Must include a number and a symbol");
+      valid = false;
+    }
+    if (!confirmPassword) {
+      setConfirmPasswordError("Confirm password is required");
+      valid = false;
+    } else if (password !== confirmPassword) {
+      setConfirmPasswordError("Passwords do not match");
+      valid = false;
+    }
+
+    // Consent (applies to all users but check here too)
+    if (!ageConfirmed) {
+      valid = false;
+    }
+    if (!termsAgreed) {
+      valid = false;
+    }
+
+    return valid;
+  };
 
   useEffect(() => {
     const supabase = createClient();
@@ -126,53 +181,23 @@ export default function CompleteProfilePage() {
     setLoading(true);
     const supabase = createClient();
 
+    // Consent checks (onValidate already caught field errors, but consent needs toast)
+    if (!ageConfirmed) {
+      toast.error("Please confirm that you are at least 13 years old");
+      setLoading(false);
+      return;
+    }
+    if (!termsAgreed) {
+      toast.error("Please agree to the Terms of Service and Privacy Policy");
+      setLoading(false);
+      return;
+    }
+
     if (isEmailSignup) {
-      // Validate consent checkboxes
-      if (!ageConfirmed) {
-        toast.error("Please confirm that you are at least 13 years old");
-        setLoading(false);
-        return;
-      }
-      if (!termsAgreed) {
-        toast.error("Please agree to the Terms of Service and Privacy Policy");
-        setLoading(false);
-        return;
-      }
-
-      // Validate email
-      if (!email) {
-        toast.error("Email is required");
-        setLoading(false);
-        return;
-      }
-      if (email !== confirmEmail) {
-        toast.error("Emails do not match");
-        setLoading(false);
-        return;
-      }
-
-      // Check email availability on submit
+      // Check email availability (async — can't do in synchronous onValidate)
       const { available } = await checkEmailAvailability(email);
       if (!available) {
         setEmailError("This email is already registered");
-        toast.error("Unable to use this email");
-        setLoading(false);
-        return;
-      }
-
-      // Validate password
-      if (password.length < 10) {
-        toast.error("Password must be at least 10 characters");
-        setLoading(false);
-        return;
-      }
-      if (!hasNumber(password) || !hasSymbol(password)) {
-        toast.error("Password must include a number and a symbol");
-        setLoading(false);
-        return;
-      }
-      if (password !== confirmPassword) {
-        toast.error("Passwords do not match");
         setLoading(false);
         return;
       }
@@ -319,6 +344,7 @@ export default function CompleteProfilePage() {
                   setEmailError("");
                 }}
                 placeholder="email@example.com"
+                className={emailError || (email && !isValidEmail(email)) ? "border-destructive" : ""}
               />
               {emailError && (
                 <p className="text-xs text-destructive">{emailError}</p>
@@ -335,10 +361,17 @@ export default function CompleteProfilePage() {
                 type="email"
                 autoComplete="off"
                 value={confirmEmail}
-                onChange={(e) => setConfirmEmail(e.target.value)}
+                onChange={(e) => {
+                  setConfirmEmail(e.target.value);
+                  setConfirmEmailError("");
+                }}
                 placeholder="email@example.com"
+                className={confirmEmailError || (confirmEmail && email !== confirmEmail) ? "border-destructive" : ""}
               />
-              {confirmEmail && email !== confirmEmail && (
+              {confirmEmailError && (
+                <p className="text-xs text-destructive">{confirmEmailError}</p>
+              )}
+              {!confirmEmailError && confirmEmail && email !== confirmEmail && (
                 <p className="text-xs text-destructive">Emails do not match</p>
               )}
             </div>
@@ -347,16 +380,23 @@ export default function CompleteProfilePage() {
               <PasswordInput
                 id="signup-password"
                 name="signup-password"
-                autoComplete="new-password"
+                autoComplete="off"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError("");
+                }}
                 placeholder="Min 10 characters"
                 minLength={10}
+                className={passwordError || (password && (password.length < 10 || !hasNumber(password) || !hasSymbol(password))) ? "border-destructive" : ""}
               />
-              {password && password.length < 10 && (
+              {passwordError && (
+                <p className="text-xs text-destructive">{passwordError}</p>
+              )}
+              {!passwordError && password && password.length < 10 && (
                 <p className="text-xs text-destructive">Password must be at least 10 characters</p>
               )}
-              {password && password.length >= 10 && (!hasNumber(password) || !hasSymbol(password)) && (
+              {!passwordError && password && password.length >= 10 && (!hasNumber(password) || !hasSymbol(password)) && (
                 <p className="text-xs text-destructive">Must include a number and a symbol</p>
               )}
             </div>
@@ -365,12 +405,19 @@ export default function CompleteProfilePage() {
               <PasswordInput
                 id="signup-confirm-password"
                 name="signup-confirm-password"
-                autoComplete="new-password"
+                autoComplete="off"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setConfirmPasswordError("");
+                }}
                 placeholder="Re-enter password"
+                className={confirmPasswordError || (confirmPassword && password !== confirmPassword) ? "border-destructive" : ""}
               />
-              {confirmPassword && password !== confirmPassword && (
+              {confirmPasswordError && (
+                <p className="text-xs text-destructive">{confirmPasswordError}</p>
+              )}
+              {!confirmPasswordError && confirmPassword && password !== confirmPassword && (
                 <p className="text-xs text-destructive">Passwords do not match</p>
               )}
             </div>
@@ -382,53 +429,54 @@ export default function CompleteProfilePage() {
           departments={departments}
           eventStartDate={eventStartDate}
           onSubmit={handleSubmit}
+          onValidate={validateSignupFields}
           submitLabel={isEmailSignup ? "Create Account" : "Complete Profile"}
           loading={loading}
           hideDepartment
-          hideBirthDate={isEmailSignup}
-          hideChurch={isEmailSignup}
+          hideBirthDate
+          hideChurch
         >
-          {isEmailSignup && (
-            <div className="space-y-3">
-              <div className="flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  id="ageConfirmed"
-                  checked={ageConfirmed}
-                  onChange={(e) => setAgeConfirmed(e.target.checked)}
-                  className="mt-1"
-                />
-                <Label htmlFor="ageConfirmed" className="text-sm font-normal leading-snug">
-                  I confirm that I am at least 13 years old. <span className="text-destructive">*</span>
-                </Label>
-              </div>
-              <div className="flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  id="termsAgreed"
-                  checked={termsAgreed}
-                  onChange={(e) => setTermsAgreed(e.target.checked)}
-                  className="mt-1"
-                />
-                <Label htmlFor="termsAgreed" className="text-sm font-normal leading-snug">
-                  I agree to the{" "}
-                  <Link href="/terms" target="_blank" className="underline text-primary hover:text-primary/80">
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link href="/privacy" target="_blank" className="underline text-primary hover:text-primary/80">
-                    Privacy Policy
-                  </Link>
-                  . <span className="text-destructive">*</span>
-                </Label>
-              </div>
+          <div className="space-y-3">
+            <div className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                id="ageConfirmed"
+                checked={ageConfirmed}
+                onChange={(e) => setAgeConfirmed(e.target.checked)}
+                className="mt-1"
+              />
+              <Label htmlFor="ageConfirmed" className="text-sm font-normal leading-snug">
+                I confirm that I am at least 13 years old. <span className="text-destructive">*</span>
+              </Label>
+            </div>
+            <div className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                id="termsAgreed"
+                checked={termsAgreed}
+                onChange={(e) => setTermsAgreed(e.target.checked)}
+                className="mt-1"
+              />
+              <Label htmlFor="termsAgreed" className="text-sm font-normal leading-snug">
+                I agree to the{" "}
+                <Link href="/terms" target="_blank" className="underline text-primary hover:text-primary/80">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" target="_blank" className="underline text-primary hover:text-primary/80">
+                  Privacy Policy
+                </Link>
+                . <span className="text-destructive">*</span>
+              </Label>
+            </div>
+            {isEmailSignup && (
               <TurnstileWidget
                 ref={turnstileRef}
                 onSuccess={setCaptchaToken}
                 onExpire={() => setCaptchaToken(undefined)}
               />
-            </div>
-          )}
+            )}
+          </div>
         </ProfileForm>
       </CardContent>
       <CardFooter className="justify-center">

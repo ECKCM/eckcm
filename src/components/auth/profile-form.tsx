@@ -59,6 +59,7 @@ interface ProfileFormProps {
   hideChurch?: boolean;
   eventStartDate?: string;
   onSubmit: (data: ProfileFormData) => Promise<void>;
+  onValidate?: () => boolean;
   submitLabel?: string;
   loading?: boolean;
   children?: React.ReactNode;
@@ -74,6 +75,7 @@ export function ProfileForm({
   hideChurch = false,
   eventStartDate,
   onSubmit,
+  onValidate,
   submitLabel = "Save",
   loading = false,
   children,
@@ -156,7 +158,9 @@ export function ProfileForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    const profileValid = validate();
+    const externalValid = onValidate ? onValidate() : true;
+    if (!profileValid || !externalValid) return;
     await onSubmit(
       trimFields({
         ...form,
@@ -187,24 +191,26 @@ export function ProfileForm({
       {/* Names */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label htmlFor="firstName">First Name (Legal) *</Label>
+          <Label htmlFor="firstName">First Name (Legal) <span className="text-destructive">*</span></Label>
           <Input
             id="firstName"
             value={form.firstName}
             onChange={(e) => handleNameChange("firstName", e.target.value)}
             placeholder="JOHN"
+            className={errors.firstName ? "border-destructive" : ""}
           />
           {errors.firstName && (
             <p className="text-xs text-destructive">{errors.firstName}</p>
           )}
         </div>
         <div className="space-y-1">
-          <Label htmlFor="lastName">Last Name (Legal) *</Label>
+          <Label htmlFor="lastName">Last Name (Legal) <span className="text-destructive">*</span></Label>
           <Input
             id="lastName"
             value={form.lastName}
             onChange={(e) => handleNameChange("lastName", e.target.value)}
             placeholder="KIM"
+            className={errors.lastName ? "border-destructive" : ""}
           />
           {errors.lastName && (
             <p className="text-xs text-destructive">{errors.lastName}</p>
@@ -213,12 +219,13 @@ export function ProfileForm({
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="displayNameKo">Display Name *</Label>
+        <Label htmlFor="displayNameKo">Display Name <span className="text-destructive">*</span></Label>
         <Input
           id="displayNameKo"
           value={form.displayNameKo}
           onChange={(e) => update("displayNameKo", e.target.value)}
           placeholder="Scott Kim"
+          className={errors.displayNameKo ? "border-destructive" : ""}
         />
         {errors.displayNameKo && (
           <p className="text-xs text-destructive">{errors.displayNameKo}</p>
@@ -227,12 +234,12 @@ export function ProfileForm({
 
       {/* Gender */}
       <div className="space-y-1">
-        <Label>Gender *</Label>
+        <Label>Gender <span className="text-destructive">*</span></Label>
         <Select
           value={form.gender}
           onValueChange={(v) => update("gender", v)}
         >
-          <SelectTrigger>
+          <SelectTrigger className={errors.gender ? "border-destructive" : ""}>
             <SelectValue placeholder="Select gender" />
           </SelectTrigger>
           <SelectContent>
@@ -283,12 +290,12 @@ export function ProfileForm({
 
           {(form.isK12 || isMinor) && (
             <div className="space-y-1">
-              <Label>Grade *</Label>
+              <Label>Grade <span className="text-destructive">*</span></Label>
               <Select
                 value={form.grade}
                 onValueChange={(v) => update("grade", v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className={errors.grade ? "border-destructive" : ""}>
                   <SelectValue placeholder="Select grade" />
                 </SelectTrigger>
                 <SelectContent>
@@ -332,13 +339,14 @@ export function ProfileForm({
       {/* Email (conditional) */}
       {showEmail && (
         <div className="space-y-1">
-          <Label htmlFor="email">Email *</Label>
+          <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
           <Input
             id="email"
             type="email"
             value={form.email}
             onChange={(e) => update("email", e.target.value)}
             placeholder="email@example.com"
+            className={errors.email ? "border-destructive" : ""}
           />
           {errors.email && (
             <p className="text-xs text-destructive">{errors.email}</p>
@@ -348,7 +356,7 @@ export function ProfileForm({
 
       {/* Phone */}
       <div className="space-y-1">
-        <Label htmlFor="phone">Phone Number *</Label>
+        <Label htmlFor="phone">Phone Number <span className="text-destructive">*</span></Label>
         <PhoneInput
           id="phone"
           value={form.phone}
