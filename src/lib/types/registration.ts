@@ -1,4 +1,4 @@
-import type { Gender, Grade, MealType } from "./database";
+import type { Gender, Grade, MealType, ChurchRole } from "./database";
 
 /**
  * Registration wizard state (persisted to sessionStorage)
@@ -39,6 +39,7 @@ export interface ParticipantInput {
   phoneCountry: string;
   email: string;
   churchId?: string;
+  churchRole?: ChurchRole;
   churchOther?: string;
   mealSelections: MealSelection[];
 }

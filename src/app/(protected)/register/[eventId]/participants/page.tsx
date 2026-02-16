@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, CheckCircle2, Info, CircleHelp } from "lucide-react";
+import { Plus, Trash2, ChevronDown, CheckCircle2, Info, CircleHelp, User } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ParticipantInput, RoomGroupInput, MealSelection } from "@/lib/types/registration";
 import type { Gender, Grade } from "@/lib/types/database";
@@ -393,6 +393,11 @@ export default function ParticipantsStep() {
     return churches.find((c) => c.id === churchId)?.is_other ?? false;
   };
 
+  const isNoHomeChurch = (churchId: string | undefined) => {
+    if (!churchId) return false;
+    return churches.find((c) => c.id === churchId)?.name_en === "No Home Church";
+  };
+
   // Name change handler: filter → uppercase, auto-populate displayNameKo
   const handleNameChange = (
     gi: number,
@@ -544,7 +549,14 @@ export default function ParticipantsStep() {
         <Card key={group.id}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Room Group {gi + 1}</CardTitle>
+              <div className="flex items-center gap-1.5">
+                <CardTitle className="text-base">Room Group {gi + 1}</CardTitle>
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: group.participants.length }, (_, i) => (
+                    <User key={i} className={`h-3.5 w-3.5 ${savedPanels[`${gi}-${i}`] ? "text-green-500" : "text-muted-foreground"}`} />
+                  ))}
+                </div>
+              </div>
               {gi > 0 && (
                 <Button
                   variant="ghost"
@@ -869,6 +881,28 @@ export default function ParticipantsStep() {
                               className={errs.churchOther ? "border-destructive" : ""}
                             />
                             {errs.churchOther && <p className="text-xs text-destructive">{errs.churchOther}</p>}
+                          </div>
+                        )}
+                        {!isNoHomeChurch(p.churchId) && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">Church Role <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                            <Select
+                              value={p.churchRole ?? ""}
+                              onValueChange={(v) =>
+                                updateParticipant(gi, pi, "churchRole", v)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select your church role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="MEMBER">Member</SelectItem>
+                                <SelectItem value="DEACON">Deacon</SelectItem>
+                                <SelectItem value="ELDER">Elder</SelectItem>
+                                <SelectItem value="MINISTER">Minister</SelectItem>
+                                <SelectItem value="PASTOR">Pastor</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                         )}
 

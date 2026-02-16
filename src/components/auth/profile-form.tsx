@@ -19,7 +19,7 @@ import {
 import { PhoneInput } from "@/components/shared/phone-input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Info, CircleHelp } from "lucide-react";
-import type { Gender, Grade } from "@/lib/types/database";
+import type { Gender, Grade, ChurchRole } from "@/lib/types/database";
 
 interface Church {
   id: string;
@@ -48,6 +48,7 @@ export interface ProfileFormData {
   email: string;
   departmentId: string;
   churchId: string;
+  churchRole: ChurchRole | "";
   churchOther: string;
 }
 
@@ -97,6 +98,7 @@ export function ProfileForm({
     email: initialData?.email ?? "",
     departmentId: initialData?.departmentId ?? "",
     churchId: initialData?.churchId ?? "",
+    churchRole: initialData?.churchRole ?? "",
     churchOther: initialData?.churchOther ?? "",
   });
 
@@ -112,6 +114,7 @@ export function ProfileForm({
 
   const selectedChurch = churches.find((c) => c.id === form.churchId);
   const showChurchOther = selectedChurch?.is_other ?? false;
+  const isNoHomeChurch = selectedChurch?.name_en === "No Home Church";
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
@@ -430,6 +433,28 @@ export function ProfileForm({
                 onChange={(e) => update("churchOther", e.target.value)}
                 placeholder="Enter your church name"
               />
+            </div>
+          )}
+
+          {/* Church Role (hidden when No Home Church) */}
+          {!isNoHomeChurch && (
+            <div className="space-y-1">
+              <Label>Church Role <span className="text-muted-foreground text-xs font-normal">(Optional)</span></Label>
+              <Select
+                value={form.churchRole}
+                onValueChange={(v) => update("churchRole", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your church role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MEMBER">Member</SelectItem>
+                  <SelectItem value="DEACON">Deacon</SelectItem>
+                  <SelectItem value="ELDER">Elder</SelectItem>
+                  <SelectItem value="MINISTER">Minister</SelectItem>
+                  <SelectItem value="PASTOR">Pastor</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
         </>

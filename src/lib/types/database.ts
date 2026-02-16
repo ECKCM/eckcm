@@ -26,6 +26,7 @@ export type RegistrationStatus =
   | "CANCELLED"
   | "REFUNDED";
 
+export type ChurchRole = "MEMBER" | "DEACON" | "ELDER" | "MINISTER" | "PASTOR";
 export type GroupRole = "LEADER" | "MEMBER";
 export type MemberStatus = "ACTIVE" | "INACTIVE";
 export type RoomAssignStatus = "PENDING" | "ASSIGNED";
