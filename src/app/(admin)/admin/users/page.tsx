@@ -6,20 +6,50 @@ import { UsersManager } from "./users-manager";
 export default async function UsersPage() {
   const supabase = await createClient();
 
-  const { data: users } = await supabase
+  // Fetch users with linked person names
+  const { data: rawUsers } = await supabase
     .from("eckcm_users")
-    .select("id, email, auth_provider, profile_completed, created_at")
+    .select(
+      `id, email, role, profile_completed, created_at,
+       eckcm_user_people(eckcm_people(first_name_en, last_name_en))`
+    )
     .order("created_at", { ascending: false });
 
-  const { data: events } = await supabase
-    .from("eckcm_events")
-    .select("id, name_en, year")
-    .order("year", { ascending: false });
+  // Fetch auth providers via RPC (reads from auth.users securely)
+  const { data: providerRows } = await supabase.rpc("get_auth_providers");
 
+  const providersMap = new Map<string, string[]>();
+  for (const row of providerRows ?? []) {
+    const providers: string[] = Array.isArray(row.providers) ? row.providers : [];
+    providersMap.set(row.user_id, providers.length > 0 ? providers : ["email"]);
+  }
+
+  // Flatten user data for the client
+  const users = (rawUsers ?? []).map((u: any) => {
+    const person = u.eckcm_user_people?.[0]?.eckcm_people ?? null;
+    return {
+      id: u.id,
+      email: u.email,
+      role: u.role,
+      firstName: person?.first_name_en ?? null,
+      lastName: person?.last_name_en ?? null,
+      providers: providersMap.get(u.id) ?? ["email"],
+      profile_completed: u.profile_completed,
+      created_at: u.created_at,
+    };
+  });
+
+  // Fetch roles for filter + assign dialog
   const { data: roles } = await supabase
     .from("eckcm_roles")
     .select("id, name, description_en")
     .order("name");
+
+  // Fetch events for assign dialog
+  const { data: events } = await supabase
+    .from("eckcm_events")
+    .select("id, name_en, year")
+    .order("year", { ascending: false });
 
   return (
     <div className="flex flex-col">
@@ -30,9 +60,9 @@ export default async function UsersPage() {
       </header>
       <div className="p-6">
         <UsersManager
-          users={users ?? []}
-          events={events ?? []}
+          users={users}
           roles={roles ?? []}
+          events={events ?? []}
         />
       </div>
     </div>

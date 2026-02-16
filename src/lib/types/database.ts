@@ -50,6 +50,7 @@ export type PaymentMethod =
   | "ZELLE"
   | "MANUAL";
 export type StaffRole =
+  | "PARTICIPANT"
   | "SUPER_ADMIN"
   | "EVENT_ADMIN"
   | "ROOM_COORDINATOR"

@@ -17,6 +17,7 @@ import {
   ScrollText,
   Scale,
   Package,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -45,6 +46,7 @@ interface AdminSidebarProps {
 const settingsLinks = [
   { href: "/admin/settings/groups", label: "Registration Groups", icon: Layers },
   { href: "/admin/settings/fees", label: "Fee Categories", icon: DollarSign },
+  { href: "/admin/settings/roles", label: "Roles", icon: ShieldCheck },
   { href: "/admin/settings/departments", label: "Departments", icon: Building2 },
   { href: "/admin/settings/churches", label: "Churches", icon: Church },
   { href: "/admin/settings/legal", label: "Legal Pages", icon: Scale },

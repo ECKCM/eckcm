@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-16T08:17:09.476Z",
+  "lastUpdated": "2026-02-16T08:53:13.418Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -55,7 +55,8 @@
     "legal",
     "terms",
     "privacy",
-    "inventory"
+    "inventory",
+    "roles"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -77,9 +78,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:16:45.184Z",
-        "lastUpdated": "2026-02-16T06:13:11.240Z"
+        "lastUpdated": "2026-02-16T08:40:44.214Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/lib/types/registration.ts"
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/types/database.ts"
     },
     "supabase": {
       "phase": "do",
@@ -259,9 +260,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:44:31.720Z",
-        "lastUpdated": "2026-02-16T08:14:39.551Z"
+        "lastUpdated": "2026-02-16T08:41:08.918Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/admin/confirm-delete-dialog.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/admin/admin-sidebar.tsx"
     },
     "events": {
       "phase": "do",
@@ -623,7 +624,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T10:42:06.660Z",
-        "lastUpdated": "2026-02-11T14:35:24.392Z"
+        "lastUpdated": "2026-02-16T08:53:13.418Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/users/users-manager.tsx"
     },
@@ -756,6 +757,19 @@
         "lastUpdated": "2026-02-16T07:34:11.359Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/inventory/inventory-manager.tsx"
+    },
+    "roles": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-16T08:41:30.302Z",
+        "lastUpdated": "2026-02-16T08:41:59.534Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/roles/roles-manager.tsx"
     }
   },
   "pipeline": {
@@ -766,7 +780,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-16T08:17:09.476Z"
+    "lastActivity": "2026-02-16T08:53:13.418Z"
   },
   "history": [
     {
@@ -4411,6 +4425,90 @@
     {
       "timestamp": "2026-02-16T08:17:09.476Z",
       "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:40:44.214Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:41:05.638Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:41:08.918Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:41:30.302Z",
+      "feature": "roles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:41:59.534Z",
+      "feature": "roles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:42:22.573Z",
+      "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:43:01.633Z",
+      "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:45:30.608Z",
+      "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:52:27.932Z",
+      "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:52:37.689Z",
+      "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:52:46.818Z",
+      "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:52:54.785Z",
+      "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:53:08.054Z",
+      "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:53:13.418Z",
+      "feature": "users",
       "phase": "do",
       "action": "updated"
     }
