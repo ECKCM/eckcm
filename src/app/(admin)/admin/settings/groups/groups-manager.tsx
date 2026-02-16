@@ -47,6 +47,7 @@ interface RegistrationGroup {
   department_id: string | null;
   show_special_preferences: boolean;
   show_key_deposit: boolean;
+  only_one_person: boolean;
   is_default: boolean;
   is_active: boolean;
 }
@@ -76,6 +77,7 @@ const emptyForm = {
   department_id: "",
   show_special_preferences: true,
   show_key_deposit: true,
+  only_one_person: false,
   is_default: false,
   is_active: true,
 };
@@ -171,6 +173,7 @@ export function RegistrationGroupsManager() {
       department_id: group.department_id ?? "",
       show_special_preferences: group.show_special_preferences,
       show_key_deposit: group.show_key_deposit,
+      only_one_person: group.only_one_person,
       is_default: group.is_default,
       is_active: group.is_active,
     });
@@ -214,6 +217,7 @@ export function RegistrationGroupsManager() {
       department_id: form.department_id || null,
       show_special_preferences: form.show_special_preferences,
       show_key_deposit: form.show_key_deposit,
+      only_one_person: form.only_one_person,
       is_default: form.is_default,
       is_active: form.is_active,
     };
@@ -373,7 +377,7 @@ export function RegistrationGroupsManager() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Activate by Group Leader Department (optional)</Label>
+                <Label>Activate by Group Representative Department (optional)</Label>
                 <Select
                   value={form.department_id}
                   onValueChange={(v) =>
@@ -393,7 +397,7 @@ export function RegistrationGroupsManager() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  When set, this group is auto-assigned if Room Group 1 leader selects this department.
+                  When set, this group is auto-assigned if Room Group 1 representative selects this department.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -472,6 +476,15 @@ export function RegistrationGroupsManager() {
                     }
                   />
                   <Label>Key Deposit</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.only_one_person}
+                    onCheckedChange={(checked) =>
+                      setForm({ ...form, only_one_person: checked })
+                    }
+                  />
+                  <Label>Only One Person</Label>
                 </div>
               </div>
 

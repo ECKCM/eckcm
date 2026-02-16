@@ -53,11 +53,11 @@ export default function AirportPickupStep() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
-      <WizardStepper currentStep={5} />
+      <WizardStepper currentStep={6} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Step 5: Airport Pickup</CardTitle>
+          <CardTitle>Step 6: Airport Pickup</CardTitle>
           <CardDescription>
             Do any participants need airport pickup service?
           </CardDescription>

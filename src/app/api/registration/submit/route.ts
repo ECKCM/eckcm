@@ -289,7 +289,7 @@ export async function POST(request: Request) {
       await admin.from("eckcm_group_memberships").insert({
         group_id: group.id,
         person_id: person.id,
-        role: participant.isLeader ? "LEADER" : "MEMBER",
+        role: participant.isRepresentative ? "REPRESENTATIVE" : "MEMBER",
         status: "ACTIVE",
       });
     }

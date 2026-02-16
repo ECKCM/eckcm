@@ -127,7 +127,18 @@ export function RegistrationProvider({
             dispatch({ type: "SET_REGISTRATION_GROUP", groupId: parsed.registrationGroupId });
           }
           if (parsed.roomGroups) {
-            dispatch({ type: "SET_ROOM_GROUPS", groups: parsed.roomGroups });
+            // Migrate legacy isLeader → isRepresentative
+            const migratedGroups = parsed.roomGroups.map((g: any) => ({
+              ...g,
+              participants: g.participants?.map((p: any) => {
+                if ("isLeader" in p && !("isRepresentative" in p)) {
+                  const { isLeader, ...rest } = p;
+                  return { ...rest, isRepresentative: isLeader };
+                }
+                return p;
+              }) ?? [],
+            }));
+            dispatch({ type: "SET_ROOM_GROUPS", groups: migratedGroups });
           }
           if (parsed.step) {
             dispatch({ type: "SET_STEP", step: parsed.step });

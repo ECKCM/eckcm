@@ -63,17 +63,17 @@ export default function KeyDepositStep() {
   };
 
   const handleNext = () => {
-    dispatch({ type: "SET_STEP", step: 5 });
+    dispatch({ type: "SET_STEP", step: 6 });
     router.push(`/register/${eventId}/airport-pickup`);
   };
 
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
-      <WizardStepper currentStep={4} />
+      <WizardStepper currentStep={5} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Step 4: Key Deposit</CardTitle>
+          <CardTitle>Step 5: Key Deposit</CardTitle>
           <CardDescription>
             Each room group needs at least 1 key. Maximum 2 keys per group.
             Key deposit is $65 per key (refundable).

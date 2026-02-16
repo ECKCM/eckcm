@@ -4,10 +4,11 @@ import { cn } from "@/lib/utils";
 
 const STEPS = [
   { number: 1, label: "Dates & Group" },
-  { number: 2, label: "Participants" },
-  { number: 3, label: "Lodging" },
-  { number: 4, label: "Key Deposit" },
-  { number: 5, label: "Airport" },
+  { number: 2, label: "Instructions" },
+  { number: 3, label: "Participants" },
+  { number: 4, label: "Lodging" },
+  { number: 5, label: "Key Deposit" },
+  { number: 6, label: "Airport" },
 ];
 
 export function WizardStepper({ currentStep }: { currentStep: number }) {
@@ -35,7 +36,7 @@ export function WizardStepper({ currentStep }: { currentStep: number }) {
           {i < STEPS.length - 1 && (
             <div
               className={cn(
-                "mx-2 h-0.5 w-8",
+                "mx-1 h-0.5 w-4",
                 currentStep > step.number ? "bg-primary" : "bg-muted"
               )}
             />

@@ -139,7 +139,7 @@ export default function RegistrationStep1() {
 
     dispatch({ type: "SET_REGISTRATION_GROUP", groupId: group.id });
     dispatch({ type: "SET_STEP", step: 2 });
-    router.push(`/register/${eventId}/participants`);
+    router.push(`/register/${eventId}/instructions`);
   };
 
   if (loading) {

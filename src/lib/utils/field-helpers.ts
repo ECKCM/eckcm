@@ -1,6 +1,6 @@
 /**
  * Shared field formatting, filtering, and validation helpers.
- * Used by: ProfileForm (signup), Participants page (leader & member).
+ * Used by: ProfileForm (signup), Participants page (representative & member).
  * IMPORTANT: Keep these in sync — all person-entry forms must behave identically.
  */
 

@@ -23,7 +23,7 @@ export interface RoomGroupInput {
 
 export interface ParticipantInput {
   id: string; // client-side temp ID
-  isLeader: boolean;
+  isRepresentative: boolean;
   isExistingPerson: boolean;
   personId?: string; // existing person ID if logged-in user
   lastName: string;

@@ -175,7 +175,7 @@ export default function ReviewStep() {
                     </TableCell>
                     <TableCell>{p.gender}</TableCell>
                     <TableCell>{p.birthYear}</TableCell>
-                    <TableCell>{p.isLeader ? "Leader" : "Member"}</TableCell>
+                    <TableCell>{p.isRepresentative ? "Representative" : "Member"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

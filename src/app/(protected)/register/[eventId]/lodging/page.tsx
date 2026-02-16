@@ -129,10 +129,10 @@ export default function LodgingStep() {
     }
 
     if (showKeyDeposit) {
-      dispatch({ type: "SET_STEP", step: 4 });
+      dispatch({ type: "SET_STEP", step: 5 });
       router.push(`/register/${eventId}/key-deposit`);
     } else {
-      dispatch({ type: "SET_STEP", step: 5 });
+      dispatch({ type: "SET_STEP", step: 6 });
       router.push(`/register/${eventId}/airport-pickup`);
     }
   };
@@ -141,11 +141,11 @@ export default function LodgingStep() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
-      <WizardStepper currentStep={3} />
+      <WizardStepper currentStep={4} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Step 3: Lodging</CardTitle>
+          <CardTitle>Step 4: Lodging</CardTitle>
           <CardDescription>
             {isSingleOption
               ? "Your room assignment has been set for this registration group."

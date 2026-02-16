@@ -57,10 +57,10 @@ import { ChurchCombobox } from "@/components/shared/church-combobox";
 import { MealSelectionGrid } from "@/components/registration/meal-selection-grid";
 import { BirthDatePicker } from "@/components/shared/birth-date-picker";
 
-function createEmptyParticipant(isLeader: boolean): ParticipantInput {
+function createEmptyParticipant(isRepresentative: boolean): ParticipantInput {
   return {
     id: crypto.randomUUID(),
-    isLeader,
+    isRepresentative,
     isExistingPerson: false,
     lastName: "",
     firstName: "",
@@ -90,7 +90,7 @@ export default function ParticipantsStep() {
   const router = useRouter();
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
-  const leaderFilledRef = useRef(false);
+  const representativeFilledRef = useRef(false);
   const groupInitRef = useRef(false);
 
   const [departments, setDepartments] = useState<
@@ -104,13 +104,13 @@ export default function ParticipantsStep() {
     eventEndDate: string;
   } | null>(null);
   const [regGroups, setRegGroups] = useState<
-    { id: string; department_id: string | null; is_default: boolean }[]
+    { id: string; department_id: string | null; is_default: boolean; only_one_person: boolean }[]
   >([]);
 
   // Track which participants are open (accordion state)
   // Key: "gi-pi", value: open/closed
   const [openPanels, setOpenPanels] = useState<Record<string, boolean>>({
-    "0-0": true, // First leader starts open
+    "0-0": true, // First representative starts open
   });
 
   // Track which participants have been saved
@@ -130,7 +130,7 @@ export default function ParticipantsStep() {
   // Confirmation dialog for removing an entire group
   const [removeGroupTarget, setRemoveGroupTarget] = useState<number | null>(null);
 
-  // HANSAMO policy: leader-only registration unless general lodging opted
+  // HANSAMO policy: representative-only registration unless general lodging opted
   const [hansamoGeneralLodging, setHansamoGeneralLodging] = useState(false);
 
   const isHansamoDept = (deptId: string | undefined) => {
@@ -138,9 +138,13 @@ export default function ParticipantsStep() {
     return departments.find((d) => d.id === deptId)?.name_en?.includes("HANSAMO") ?? false;
   };
 
-  // True when Group 1 Leader selected HANSAMO and did NOT opt for general lodging
-  const leaderDeptId = state.roomGroups[0]?.participants[0]?.departmentId;
-  const isHansamoRestricted = isHansamoDept(leaderDeptId) && !hansamoGeneralLodging;
+  // True when Group 1 Representative selected HANSAMO and did NOT opt for general lodging
+  const representativeDeptId = state.roomGroups[0]?.participants[0]?.departmentId;
+  const isHansamoRestricted = isHansamoDept(representativeDeptId) && !hansamoGeneralLodging;
+
+  // True when current registration group enforces single-person registration
+  const currentRegGroup = regGroups.find((g) => g.id === state.registrationGroupId);
+  const isOnlyOnePerson = currentRegGroup?.only_one_person ?? false;
 
   const togglePanel = (key: string) => {
     setOpenPanels((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -181,7 +185,7 @@ export default function ParticipantsStep() {
           .single(),
         supabase
           .from("eckcm_registration_groups")
-          .select("id, department_id, is_default")
+          .select("id, department_id, is_default, only_one_person")
           .eq("is_active", true),
       ]);
 
@@ -195,8 +199,8 @@ export default function ParticipantsStep() {
         });
       }
 
-      // Auto-fill leader from user's profile (only once)
-      if (user && !leaderFilledRef.current) {
+      // Auto-fill representative from user's profile (only once)
+      if (user && !representativeFilledRef.current) {
         // Check for existing drafts
         const { data: drafts } = await supabase
           .from("eckcm_registration_drafts")
@@ -229,12 +233,12 @@ export default function ParticipantsStep() {
             .single();
 
           if (person && state.roomGroups.length > 0) {
-            const leader = state.roomGroups[0].participants[0];
-            // Only fill if leader is still empty (fresh start)
-            if (!leader.lastName && !leader.firstName) {
+            const representative = state.roomGroups[0].participants[0];
+            // Only fill if representative is still empty (fresh start)
+            if (!representative.lastName && !representative.firstName) {
               const bd = person.birth_date ? new Date(person.birth_date + "T00:00:00") : null;
-              const filledLeader: ParticipantInput = {
-                ...leader,
+              const filledRepresentative: ParticipantInput = {
+                ...representative,
                 isExistingPerson: true,
                 personId: person.id,
                 lastName: person.last_name_en ?? "",
@@ -252,15 +256,15 @@ export default function ParticipantsStep() {
                 departmentId: person.department_id ?? undefined,
                 churchId: person.church_id ?? undefined,
                 churchOther: person.church_other ?? undefined,
-                mealSelections: leader.mealSelections,
+                mealSelections: representative.mealSelections,
               };
               dispatch({
                 type: "UPDATE_PARTICIPANT",
                 groupIndex: 0,
                 participantIndex: 0,
-                participant: filledLeader,
+                participant: filledRepresentative,
               });
-              leaderFilledRef.current = true;
+              representativeFilledRef.current = true;
             }
           }
         }
@@ -276,7 +280,7 @@ export default function ParticipantsStep() {
     }
     const newGroup = createEmptyGroup();
     dispatch({ type: "ADD_ROOM_GROUP", group: newGroup });
-    // Open the new group's leader
+    // Open the new group's representative
     const newGi = state.roomGroups.length;
     setOpenPanels((prev) => ({ ...prev, [`${newGi}-0`]: true }));
   };
@@ -360,7 +364,7 @@ export default function ParticipantsStep() {
       }
     }
 
-    // Auto-switch registration group when Group 1 leader changes department
+    // Auto-switch registration group when Group 1 representative changes department
     if (groupIndex === 0 && pIndex === 0 && field === "departmentId") {
       const deptGroup = regGroups.find((g) => g.department_id === value);
       if (deptGroup) {
@@ -516,7 +520,7 @@ export default function ParticipantsStep() {
         participant_client_id: p.id,
         group_index: gi,
         participant_index: pi,
-        is_leader: p.isLeader,
+        is_representative: p.isRepresentative,
         participant_data: p as unknown as Record<string, unknown>,
       }, {
         onConflict: "user_id,event_id,participant_client_id",
@@ -536,30 +540,53 @@ export default function ParticipantsStep() {
   };
 
   const handleNext = () => {
-    // Check all participants are saved
-    for (let gi = 0; gi < state.roomGroups.length; gi++) {
-      const group = state.roomGroups[gi];
-      for (let pi = 0; pi < group.participants.length; pi++) {
-        const key = `${gi}-${pi}`;
-        if (!savedPanels[key]) {
-          toast.error(`Please save all participants before proceeding`);
-          // Open the unsaved participant
-          setOpenPanels((prev) => ({ ...prev, [key]: true }));
-          return;
+    // Check if current registration group enforces only one person
+    const currentRegGroup = regGroups.find((g) => g.id === state.registrationGroupId);
+    const isOnlyOnePerson = currentRegGroup?.only_one_person ?? false;
+
+    if (isOnlyOnePerson) {
+      // Only Room Group 1 Representative needs to be saved
+      if (!savedPanels["0-0"]) {
+        toast.error("Please save the participant before proceeding");
+        setOpenPanels((prev) => ({ ...prev, "0-0": true }));
+        return;
+      }
+      // Strip extra members from Group 1 and remove extra groups
+      const firstGroup = state.roomGroups[0];
+      if (firstGroup.participants.length > 1 || state.roomGroups.length > 1) {
+        const trimmedGroup: RoomGroupInput = {
+          ...firstGroup,
+          participants: [firstGroup.participants[0]],
+        };
+        dispatch({ type: "SET_ROOM_GROUPS", groups: [trimmedGroup] });
+      }
+    } else {
+      // Check all participants are saved
+      for (let gi = 0; gi < state.roomGroups.length; gi++) {
+        const group = state.roomGroups[gi];
+        for (let pi = 0; pi < group.participants.length; pi++) {
+          const key = `${gi}-${pi}`;
+          if (!savedPanels[key]) {
+            toast.error(`Please save all participants before proceeding`);
+            // Open the unsaved participant
+            setOpenPanels((prev) => ({ ...prev, [key]: true }));
+            return;
+          }
         }
       }
     }
-    dispatch({ type: "SET_STEP", step: 3 });
+
+    dispatch({ type: "SET_STEP", step: 4 });
     router.push(`/register/${eventId}/lodging`);
   };
 
   return (
     <div className="mx-auto max-w-3xl p-4 pt-8 space-y-6">
-      <WizardStepper currentStep={2} />
+      <WizardStepper currentStep={3} />
 
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Room Groups & Participants</h2>
-        {!isHansamoRestricted && (
+        {!isHansamoRestricted && !isOnlyOnePerson && (
           <Button variant="outline" size="sm" onClick={addGroup}>
             <Plus className="mr-1 size-4" />
             Add Group
@@ -615,14 +642,14 @@ export default function ParticipantsStep() {
                           <div className="size-4 shrink-0 rounded-full border-2 border-muted-foreground/30" />
                         )}
                         <span className="text-sm font-medium flex-1">
-                          {p.isLeader ? "Leader" : `Member ${pi}`}
+                          {p.isRepresentative ? "Representative" : `Member ${pi}`}
                           {(p.firstName || p.lastName) && (
                             <span className="ml-2 font-normal text-muted-foreground">
                               {p.firstName} {p.lastName}
                             </span>
                           )}
                         </span>
-                        {!p.isLeader && (
+                        {!p.isRepresentative && (
                           <span
                             className="p-1 hover:bg-destructive/10 rounded"
                             onClick={(e) => {
@@ -818,13 +845,29 @@ export default function ParticipantsStep() {
                           {errs.departmentId && <p className="text-xs text-destructive">{errs.departmentId}</p>}
                         </div>
 
-                        {/* HANSAMO general lodging opt-in — only for Group 1 Leader */}
+                        {/* HANSAMO general lodging opt-in — only for Group 1 Representative */}
                         {gi === 0 && pi === 0 && isHansamoDept(p.departmentId) && (
                           <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2.5">
                             <input
                               type="checkbox"
                               checked={hansamoGeneralLodging}
-                              onChange={(e) => setHansamoGeneralLodging(e.target.checked)}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setHansamoGeneralLodging(checked);
+                                if (checked) {
+                                  // Switch to default registration group
+                                  const defaultGroup = regGroups.find((g) => g.is_default);
+                                  if (defaultGroup) {
+                                    dispatch({ type: "SET_REGISTRATION_GROUP", groupId: defaultGroup.id });
+                                  }
+                                } else {
+                                  // Switch back to HANSAMO department group
+                                  const deptGroup = regGroups.find((g) => g.department_id === p.departmentId);
+                                  if (deptGroup) {
+                                    dispatch({ type: "SET_REGISTRATION_GROUP", groupId: deptGroup.id });
+                                  }
+                                }
+                              }}
                               className="mt-0.5"
                             />
                             <Label className="text-xs font-normal leading-snug text-amber-900">
@@ -956,7 +999,7 @@ export default function ParticipantsStep() {
                 </Collapsible>
               );
             })}
-            {!isHansamoRestricted && (
+            {!isHansamoRestricted && !isOnlyOnePerson && (
               <Button
                 variant="outline"
                 size="sm"
@@ -974,7 +1017,7 @@ export default function ParticipantsStep() {
       <div className="flex justify-between pt-4">
         <Button
           variant="outline"
-          onClick={() => router.push(`/register/${eventId}`)}
+          onClick={() => router.push(`/register/${eventId}/instructions`)}
         >
           Back
         </Button>

@@ -41,7 +41,7 @@ export default function ConfirmationPage() {
           <div className="text-sm text-muted-foreground space-y-2">
             <p>
               A confirmation email with your E-Pass and registration details
-              will be sent to the group leader&apos;s email address.
+              will be sent to the group representative&apos;s email address.
             </p>
             {registrationId && (
               <p className="text-xs">Registration ID: {registrationId}</p>
