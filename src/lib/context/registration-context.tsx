@@ -51,13 +51,27 @@ function reducer(state: RegistrationState, action: Action): RegistrationState {
   switch (action.type) {
     case "SET_STEP":
       return { ...state, step: action.step };
-    case "SET_DATES":
+    case "SET_DATES": {
+      const datesChanged =
+        state.startDate !== action.startDate || state.endDate !== action.endDate;
+      const roomGroups =
+        datesChanged && state.roomGroups.length > 0
+          ? state.roomGroups.map((g) => ({
+              ...g,
+              participants: g.participants.map((p) => ({
+                ...p,
+                mealSelections: [],
+              })),
+            }))
+          : state.roomGroups;
       return {
         ...state,
         startDate: action.startDate,
         endDate: action.endDate,
         nightsCount: action.nightsCount,
+        roomGroups,
       };
+    }
     case "SET_ACCESS_CODE":
       return { ...state, accessCode: action.code };
     case "SET_REGISTRATION_GROUP":

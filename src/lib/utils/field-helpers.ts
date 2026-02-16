@@ -67,6 +67,19 @@ export function buildPhoneValue(countryCode: string, nationalNumber: string): st
   return `${dial} ${nationalNumber}`;
 }
 
+/** Strip the dial-code prefix from a stored phone value to get the national number.
+ *  Handles accumulated duplicates like "+1 +1 +1 (951) 966-1889". */
+export function stripDialCode(stored: string, countryCode: string): string {
+  if (!stored || countryCode === "OTHER") return stored || "";
+  const dial = DIAL_CODES[countryCode];
+  if (!dial) return stored;
+  let result = stored;
+  while (result.startsWith(dial + " ")) {
+    result = result.slice(dial.length + 1);
+  }
+  return result;
+}
+
 /** True if empty or matches expected digit count for country */
 export function isValidPhone(phone: string, countryCode: string = "US"): boolean {
   if (countryCode === "OTHER") return true;

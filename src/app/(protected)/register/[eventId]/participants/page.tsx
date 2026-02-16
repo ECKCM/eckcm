@@ -48,7 +48,7 @@ import {
   filterName,
   buildDisplayName,
   isPhoneIncomplete,
-  buildPhoneValue,
+  stripDialCode,
   isValidEmail,
   NAME_PATTERN,
 } from "@/lib/utils/field-helpers";
@@ -251,12 +251,12 @@ export default function ParticipantsStep() {
                 isK12: person.is_k12 ?? false,
                 grade: (person.grade as Grade) ?? undefined,
                 email: person.email ?? "",
-                phone: person.phone ?? "",
+                phone: stripDialCode(person.phone ?? "", person.phone_country ?? "US"),
                 phoneCountry: person.phone_country ?? "US",
                 departmentId: person.department_id ?? undefined,
                 churchId: person.church_id ?? undefined,
                 churchOther: person.church_other ?? undefined,
-                mealSelections: representative.mealSelections,
+                mealSelections: [], // always recalculate from dates
               };
               dispatch({
                 type: "UPDATE_PARTICIPANT",
@@ -467,7 +467,7 @@ export default function ParticipantsStep() {
     state.endDate === eventDates.eventEndDate;
 
   // Validate a single participant — returns all field errors
-  const validateParticipant = (p: ParticipantInput): Record<string, string> => {
+  const validateParticipant = (p: ParticipantInput, gi: number, pi: number): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!p.firstName.trim()) errs.firstName = "Required";
     else if (!NAME_PATTERN.test(p.firstName.trim())) errs.firstName = "Uppercase letters only";
@@ -475,12 +475,27 @@ export default function ParticipantsStep() {
     else if (!NAME_PATTERN.test(p.lastName.trim())) errs.lastName = "Uppercase letters only";
     if (!p.displayNameKo?.trim()) errs.displayNameKo = "Required";
     if (!p.departmentId) errs.departmentId = "Required";
-    if (!p.email) errs.email = "Required";
-    else if (!isValidEmail(p.email)) errs.email = "Enter a valid email";
-    if (!p.phone.trim()) errs.phone = "Required";
-    else if (isPhoneIncomplete(p.phone, p.phoneCountry)) errs.phone = "Enter a complete phone number";
+    if (!p.noEmail) {
+      if (!p.email) errs.email = "Required";
+      else if (!isValidEmail(p.email)) errs.email = "Enter a valid email";
+    }
+    if (!p.noPhone) {
+      if (!p.phone.trim()) errs.phone = "Required";
+      else if (isPhoneIncomplete(p.phone, p.phoneCountry)) errs.phone = "Enter a complete phone number";
+    }
+    if (p.isK12 && !p.grade) errs.grade = "Required";
     if (!p.churchId) errs.churchId = "Required";
     if (isChurchOther(p.churchId) && !p.churchOther?.trim()) errs.churchOther = "Required";
+    // Room Group 1 Representative must be at least 13 by event start
+    if (gi === 0 && pi === 0) {
+      const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
+      const refDate = eventDates
+        ? new Date(eventDates.eventStartDate + "T00:00:00")
+        : new Date(state.startDate + "T00:00:00");
+      if (calculateAge(birthDate, refDate) < 11) {
+        errs.birthYear = "Representative must be at least 11 years old";
+      }
+    }
     return errs;
   };
 
@@ -490,7 +505,7 @@ export default function ParticipantsStep() {
     const key = `${gi}-${pi}`;
 
     // Validate — show inline errors
-    const errs = validateParticipant(p);
+    const errs = validateParticipant(p, gi, pi);
     if (Object.keys(errs).length > 0) {
       setFieldErrors((prev) => ({ ...prev, [key]: errs }));
       return;
@@ -775,6 +790,7 @@ export default function ParticipantsStep() {
                             updateParticipant(gi, pi, "birthDay", v)
                           }
                         />
+                        {errs.birthYear && <p className="text-xs text-destructive">{errs.birthYear}</p>}
 
                         {/* K-12 + Grade — hidden if age > 21 at event start */}
                         {(() => {
@@ -801,14 +817,14 @@ export default function ParticipantsStep() {
                         )}
                         {p.isK12 && (
                           <div className="space-y-1">
-                            <Label className="text-xs">Grade</Label>
+                            <Label className="text-xs">Grade <span className="text-destructive">*</span></Label>
                             <Select
                               value={p.grade ?? ""}
                               onValueChange={(v) =>
                                 updateParticipant(gi, pi, "grade", v)
                               }
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className={errs.grade ? "border-destructive" : ""}>
                                 <SelectValue placeholder="Select grade" />
                               </SelectTrigger>
                               <SelectContent>
@@ -819,6 +835,7 @@ export default function ParticipantsStep() {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {errs.grade && <p className="text-xs text-destructive">{errs.grade}</p>}
                           </div>
                         )}
 
@@ -878,46 +895,100 @@ export default function ParticipantsStep() {
 
                         {/* Email */}
                         <div className="space-y-1">
-                          <Label className="text-xs">Email <span className="text-destructive">*</span></Label>
-                          <Input
-                            type="email"
-                            value={p.email}
-                            onChange={(e) =>
-                              updateParticipant(gi, pi, "email", e.target.value)
-                            }
-                            placeholder="email@example.com"
-                            disabled={gi === 0 && pi === 0}
-                            className={errs.email || (p.email && !isValidEmail(p.email)) ? "border-destructive" : ""}
-                          />
-                          {(errs.email || (p.email && !isValidEmail(p.email))) && (
-                            <p className="text-xs text-destructive">{errs.email || "Enter a valid email"}</p>
+                          {!p.noEmail && (
+                            <>
+                              <Label className="text-xs">Email <span className="text-destructive">*</span></Label>
+                              <Input
+                                type="email"
+                                value={p.email}
+                                onChange={(e) =>
+                                  updateParticipant(gi, pi, "email", e.target.value)
+                                }
+                                placeholder="email@example.com"
+                                disabled={gi === 0 && pi === 0}
+                                className={errs.email || (p.email && !isValidEmail(p.email)) ? "border-destructive" : ""}
+                              />
+                              {(errs.email || (p.email && !isValidEmail(p.email))) && (
+                                <p className="text-xs text-destructive">{errs.email || "Enter a valid email"}</p>
+                              )}
+                            </>
+                          )}
+                          {!p.isRepresentative && (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={p.noEmail ?? false}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  const updated = { ...p, noEmail: checked };
+                                  if (checked) updated.email = "";
+                                  dispatch({
+                                    type: "UPDATE_PARTICIPANT",
+                                    groupIndex: gi,
+                                    participantIndex: pi,
+                                    participant: updated,
+                                  });
+                                }}
+                              />
+                              <Label className="text-xs font-normal">I don&apos;t have an email address.</Label>
+                            </div>
                           )}
                         </div>
 
                         {/* Phone */}
                         <div className="space-y-1">
-                          <div className="flex items-center gap-1">
-                            <Label className="text-xs">Phone <span className="text-destructive">*</span></Label>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <button type="button" className="text-muted-foreground hover:text-foreground">
-                                  <Info className="h-3.5 w-3.5" />
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent className="text-xs">
-                                By providing your number, you agree to receive service-related messages.
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                          <PhoneInput
-                            value={p.phone}
-                            countryCode={p.phoneCountry}
-                            onChange={(v) => updateParticipant(gi, pi, "phone", v)}
-                            onCountryChange={(c) => updateParticipant(gi, pi, "phoneCountry", c)}
-                            error={!!errs.phone || isPhoneIncomplete(p.phone, p.phoneCountry)}
-                          />
-                          {(errs.phone || isPhoneIncomplete(p.phone, p.phoneCountry)) && (
-                            <p className="text-xs text-destructive">{errs.phone || "Enter a complete phone number"}</p>
+                          {!p.noPhone && (
+                            <>
+                              <div className="flex items-center gap-1">
+                                <Label className="text-xs">Phone <span className="text-destructive">*</span></Label>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button type="button" className="text-muted-foreground hover:text-foreground">
+                                      <Info className="h-3.5 w-3.5" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="text-xs">
+                                    By providing your number, you agree to receive service-related messages.
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                              <PhoneInput
+                                value={p.phone}
+                                countryCode={p.phoneCountry}
+                                onChange={(v) => updateParticipant(gi, pi, "phone", v)}
+                                onCountryChange={(c) => updateParticipant(gi, pi, "phoneCountry", c)}
+                                error={!!errs.phone || isPhoneIncomplete(p.phone, p.phoneCountry)}
+                              />
+                              {(errs.phone || isPhoneIncomplete(p.phone, p.phoneCountry)) && (
+                                <p className="text-xs text-destructive">{errs.phone || "Enter a complete phone number"}</p>
+                              )}
+                            </>
+                          )}
+                          {(!p.isRepresentative || (() => {
+                            const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
+                            const refDate = eventDates
+                              ? new Date(eventDates.eventStartDate + "T00:00:00")
+                              : new Date(state.startDate + "T00:00:00");
+                            return calculateAge(birthDate, refDate) < 18;
+                          })()) && (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={p.noPhone ?? false}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  const updated = { ...p, noPhone: checked };
+                                  if (checked) updated.phone = "";
+                                  dispatch({
+                                    type: "UPDATE_PARTICIPANT",
+                                    groupIndex: gi,
+                                    participantIndex: pi,
+                                    participant: updated,
+                                  });
+                                }}
+                              />
+                              <Label className="text-xs font-normal">I don&apos;t have a phone number.</Label>
+                            </div>
                           )}
                         </div>
 

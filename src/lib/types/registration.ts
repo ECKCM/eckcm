@@ -38,7 +38,9 @@ export interface ParticipantInput {
   departmentId?: string;
   phone: string;
   phoneCountry: string;
+  noPhone?: boolean;
   email: string;
+  noEmail?: boolean;
   churchId?: string;
   churchRole?: ChurchRole;
   churchOther?: string;

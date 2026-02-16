@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { MealSelection } from "@/lib/types/registration";
 import type { MealType } from "@/lib/types/database";
 
-const MEAL_TYPES: { type: MealType; label: string; short: string }[] = [
-  { type: "BREAKFAST", label: "Breakfast", short: "B" },
-  { type: "LUNCH", label: "Lunch", short: "L" },
-  { type: "DINNER", label: "Dinner", short: "D" },
+const MEAL_TYPES: { type: MealType; label: string }[] = [
+  { type: "BREAKFAST", label: "Breakfast" },
+  { type: "LUNCH", label: "Lunch" },
+  { type: "DINNER", label: "Dinner" },
 ];
 
 type DayType = "no_meal" | "partial" | "fullday";
@@ -46,14 +46,33 @@ function getDayType(
   eventStartDate: string,
   eventEndDate: string
 ): DayType {
-  // Event start/end dates: no meal at all
   if (date === eventStartDate || date === eventEndDate) return "no_meal";
-  // Check-in date (if different from event start): partial
   if (date === startDate) return "partial";
-  // Check-out date (if different from event end): partial
   if (date === endDate) return "partial";
-  // Everything else: full day (locked)
   return "fullday";
+}
+
+/** Build the complete set of meal selections, merging existing with defaults */
+function buildSelections(
+  visibleDates: string[],
+  startDate: string,
+  endDate: string,
+  eventStartDate: string,
+  eventEndDate: string,
+  existing: MealSelection[]
+): MealSelection[] {
+  const map = new Map<string, boolean>();
+  for (const s of existing) map.set(`${s.date}|${s.mealType}`, s.selected);
+
+  return visibleDates.flatMap((date) => {
+    const dayType = getDayType(date, startDate, endDate, eventStartDate, eventEndDate);
+    return MEAL_TYPES.map((meal) => ({
+      date,
+      mealType: meal.type,
+      // Full days always selected; partial days use existing value or default true
+      selected: dayType === "fullday" ? true : (map.get(`${date}|${meal.type}`) ?? true),
+    }));
+  });
 }
 
 export function MealSelectionGrid({
@@ -64,46 +83,32 @@ export function MealSelectionGrid({
   selections,
   onChange,
 }: MealSelectionGridProps) {
-  const allDates = getDatesInRange(startDate, endDate);
-  // Filter out event start/end dates (no meals)
-  const visibleDates = allDates.filter(
-    (d) => getDayType(d, startDate, endDate, eventStartDate, eventEndDate) !== "no_meal"
+  const visibleDates = useMemo(
+    () =>
+      getDatesInRange(startDate, endDate).filter(
+        (d) => getDayType(d, startDate, endDate, eventStartDate, eventEndDate) !== "no_meal"
+      ),
+    [startDate, endDate, eventStartDate, eventEndDate]
   );
 
-  // Initialize default selections when dates change
-  const initializeSelections = useCallback(() => {
-    if (visibleDates.length === 0) return;
+  // Always-complete selections: fills gaps in props with defaults
+  const effective = useMemo(
+    () => buildSelections(visibleDates, startDate, endDate, eventStartDate, eventEndDate, selections),
+    [visibleDates, startDate, endDate, eventStartDate, eventEndDate, selections]
+  );
 
-    // Check if selections already exist for these visible dates
-    const existingDates = new Set(selections.map((s) => s.date));
-    const allDatesExist = visibleDates.every((d) => existingDates.has(d));
-    if (allDatesExist && selections.length > 0) return;
-
-    const newSelections: MealSelection[] = [];
-    for (const date of visibleDates) {
-      const dayType = getDayType(date, startDate, endDate, eventStartDate, eventEndDate);
-      for (const meal of MEAL_TYPES) {
-        // Preserve existing selection if available
-        const existing = selections.find(
-          (s) => s.date === date && s.mealType === meal.type
-        );
-        const defaultSelected = dayType === "fullday" || dayType === "partial";
-        newSelections.push({
-          date,
-          mealType: meal.type,
-          selected: existing !== undefined ? existing.selected : defaultSelected,
-        });
-      }
-    }
-    onChange(newSelections);
-  }, [visibleDates.join(","), startDate, endDate, eventStartDate, eventEndDate]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  // Sync to parent on mount (if empty) or when dates change (missing entries)
   useEffect(() => {
-    initializeSelections();
-  }, [initializeSelections]);
+    if (visibleDates.length === 0) return;
+    const parentDates = new Set(selections.map((s) => s.date));
+    if (selections.length === 0 || !visibleDates.every((d) => parentDates.has(d))) {
+      onChange(effective);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleDates]);
 
   const toggleMeal = (date: string, mealType: MealType) => {
-    const updated = selections.map((s) =>
+    const updated = effective.map((s) =>
       s.date === date && s.mealType === mealType
         ? { ...s, selected: !s.selected }
         : s
@@ -111,14 +116,10 @@ export function MealSelectionGrid({
     onChange(updated);
   };
 
-  const isChecked = (date: string, mealType: MealType): boolean => {
-    return (
-      selections.find((s) => s.date === date && s.mealType === mealType)
-        ?.selected ?? false
-    );
-  };
+  const isChecked = (date: string, mealType: MealType): boolean =>
+    effective.find((s) => s.date === date && s.mealType === mealType)?.selected ?? false;
 
-  const selectedCount = selections.filter((s) => s.selected).length;
+  const selectedCount = effective.filter((s) => s.selected).length;
 
   if (visibleDates.length === 0) return null;
 
@@ -158,7 +159,7 @@ export function MealSelectionGrid({
               {MEAL_TYPES.map((meal) => (
                 <div key={meal.type} className="flex justify-center">
                   <Checkbox
-                    checked={isFullDay ? true : isChecked(date, meal.type)}
+                    checked={isChecked(date, meal.type)}
                     onCheckedChange={() => toggleMeal(date, meal.type)}
                     disabled={isFullDay}
                     className={isFullDay ? "opacity-50" : ""}

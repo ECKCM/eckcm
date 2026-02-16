@@ -118,13 +118,11 @@ export default function LodgingStep() {
   };
 
   const handleNext = () => {
-    // Validate: each room group must have a lodging type selected (when multiple options)
-    if (lodgingOptions.length > 1) {
-      for (let i = 0; i < state.roomGroups.length; i++) {
-        if (!state.roomGroups[i].lodgingType) {
-          toast.error(`Please select a room type for Room Group ${i + 1}`);
-          return;
-        }
+    // Validate: each room group must have a lodging type selected
+    for (let i = 0; i < state.roomGroups.length; i++) {
+      if (!state.roomGroups[i].lodgingType) {
+        toast.error(`Please select a room type for Room Group ${i + 1}`);
+        return;
       }
     }
 

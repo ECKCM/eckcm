@@ -6,6 +6,7 @@ import { calculateEstimate } from "@/lib/services/pricing.service";
 import type { MealFeeCategory } from "@/lib/services/pricing.service";
 import { createInvoice } from "@/lib/services/invoice.service";
 import type { RoomGroupInput, AirportPickupInput, MealSelection } from "@/lib/types/registration";
+import { buildPhoneValue } from "@/lib/utils/field-helpers";
 
 const MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER"] as const;
 
@@ -265,7 +266,7 @@ export async function POST(request: Request) {
           is_k12: participant.isK12,
           grade: participant.grade || null,
           email: participant.email || null,
-          phone: participant.phone || null,
+          phone: buildPhoneValue(participant.phoneCountry || "US", participant.phone || "") || null,
           phone_country: participant.phoneCountry || "US",
           department_id: participant.departmentId || null,
           church_id: participant.churchId || null,

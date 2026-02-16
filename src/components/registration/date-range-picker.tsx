@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
@@ -46,21 +46,49 @@ export function DateRangePicker({
   onDatesChange,
 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
-
-  const selected: DateRange = {
-    from: startDate ? toDate(startDate) : undefined,
-    to: endDate ? toDate(endDate) : undefined,
-  };
+  // Tracks the "from" date during a two-click selection
+  const pickingFrom = useRef<string | null>(null);
 
   const evStart = toDate(eventStartDate);
   const evEnd = toDate(eventEndDate);
 
-  const handleSelect = (range: DateRange | undefined) => {
-    if (!range) return;
-    const from = range.from ? toYMD(range.from) : startDate;
-    const to = range.to ? toYMD(range.to) : from;
+  // Show only "from" highlighted while picking, full range otherwise
+  const selected: DateRange = pickingFrom.current
+    ? { from: toDate(pickingFrom.current), to: undefined }
+    : {
+        from: startDate ? toDate(startDate) : undefined,
+        to: endDate ? toDate(endDate) : undefined,
+      };
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen) pickingFrom.current = null;
+  };
+
+  // onSelect signature: (range, triggerDate, modifiers, event)
+  // triggerDate = the exact date the user clicked
+  const handleSelect = (
+    _range: DateRange | undefined,
+    triggerDate: Date
+  ) => {
+    const clicked = toYMD(triggerDate);
+
+    if (!pickingFrom.current) {
+      // First click — set as check-in, wait for check-out
+      pickingFrom.current = clicked;
+      onDatesChange(clicked, clicked, 0);
+      return;
+    }
+
+    // Second click — complete the range
+    let from = pickingFrom.current;
+    let to = clicked;
+    // Swap if user clicked before the from date
+    if (from > to) [from, to] = [to, from];
+
     onDatesChange(from, to, calcNights(from, to));
-    if (range.from && range.to) setOpen(false);
+    pickingFrom.current = null;
+    setOpen(false);
   };
 
   const shiftDate = (
@@ -94,7 +122,7 @@ export function DateRangePicker({
         <Label>Check-in</Label>
         <Label>Check-out</Label>
       </div>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={handleOpenChange}>
         {/* Trigger — date header bar */}
         <PopoverTrigger asChild>
           <button
@@ -162,6 +190,13 @@ export function DateRangePicker({
               </button>
             </div>
           </div>
+
+          {pickingFrom.current && (
+            <p className="px-4 pt-2 text-xs text-muted-foreground">
+              Now select check-out date
+            </p>
+          )}
+
           <div className="flex justify-center">
             <Calendar
               mode="range"
