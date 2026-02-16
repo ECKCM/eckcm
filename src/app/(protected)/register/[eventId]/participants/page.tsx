@@ -103,6 +103,9 @@ export default function ParticipantsStep() {
     eventStartDate: string;
     eventEndDate: string;
   } | null>(null);
+  const [regGroups, setRegGroups] = useState<
+    { id: string; department_id: string | null; is_default: boolean }[]
+  >([]);
 
   // Track which participants are open (accordion state)
   // Key: "gi-pi", value: open/closed
@@ -159,7 +162,7 @@ export default function ParticipantsStep() {
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      const [{ data: deps }, { data: chs }, { data: ev }] = await Promise.all([
+      const [{ data: deps }, { data: chs }, { data: ev }, { data: rgs }] = await Promise.all([
         supabase
           .from("eckcm_departments")
           .select("id, name_en, name_ko")
@@ -176,10 +179,15 @@ export default function ParticipantsStep() {
           .select("event_start_date, event_end_date")
           .eq("id", eventId)
           .single(),
+        supabase
+          .from("eckcm_registration_groups")
+          .select("id, department_id, is_default")
+          .eq("is_active", true),
       ]);
 
       setDepartments(deps ?? []);
       setChurches(chs ?? []);
+      setRegGroups(rgs ?? []);
       if (ev) {
         setEventDates({
           eventStartDate: ev.event_start_date,
@@ -349,6 +357,20 @@ export default function ParticipantsStep() {
           ? new Date(eventDates.eventStartDate)
           : new Date(state.startDate);
         participant.isK12 = calculateAge(birthDate, refDate) < 18;
+      }
+    }
+
+    // Auto-switch registration group when Group 1 leader changes department
+    if (groupIndex === 0 && pIndex === 0 && field === "departmentId") {
+      const deptGroup = regGroups.find((g) => g.department_id === value);
+      if (deptGroup) {
+        dispatch({ type: "SET_REGISTRATION_GROUP", groupId: deptGroup.id });
+      } else {
+        // Fall back to default group
+        const defaultGroup = regGroups.find((g) => g.is_default);
+        if (defaultGroup) {
+          dispatch({ type: "SET_REGISTRATION_GROUP", groupId: defaultGroup.id });
+        }
       }
     }
 

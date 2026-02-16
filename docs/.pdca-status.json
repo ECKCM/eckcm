@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-16T08:53:13.418Z",
+  "lastUpdated": "2026-02-16T09:46:47.155Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -286,9 +286,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:46:31.411Z",
-        "lastUpdated": "2026-02-13T08:31:09.032Z"
+        "lastUpdated": "2026-02-16T09:33:12.758Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/page.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/events/[eventId]/event-detail-form.tsx"
     },
     "groups": {
       "phase": "do",
@@ -299,7 +299,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:47:06.044Z",
-        "lastUpdated": "2026-02-16T08:17:09.476Z"
+        "lastUpdated": "2026-02-16T09:27:23.940Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/groups/groups-manager.tsx"
     },
@@ -377,7 +377,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:53:37.337Z",
-        "lastUpdated": "2026-02-16T04:10:34.684Z"
+        "lastUpdated": "2026-02-16T09:28:01.271Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
@@ -481,7 +481,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:56:22.489Z",
-        "lastUpdated": "2026-02-16T07:21:10.862Z"
+        "lastUpdated": "2026-02-16T09:46:17.762Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/estimate/route.ts"
     },
@@ -507,7 +507,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:56:55.924Z",
-        "lastUpdated": "2026-02-16T07:21:26.406Z"
+        "lastUpdated": "2026-02-16T09:46:47.155Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/submit/route.ts"
     },
@@ -780,7 +780,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-16T08:53:13.418Z"
+    "lastActivity": "2026-02-16T09:46:47.155Z"
   },
   "history": [
     {
@@ -4509,6 +4509,150 @@
     {
       "timestamp": "2026-02-16T08:53:13.418Z",
       "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:26:32.099Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:26:37.758Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:26:44.578Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:26:50.698Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:26:56.875Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:27:03.093Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:27:08.807Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:27:17.465Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:27:23.940Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:27:37.996Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:27:52.402Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:28:01.271Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:33:12.758Z",
+      "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:38:40.258Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:38:47.677Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:38:53.047Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:39:04.399Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:39:10.189Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:46:12.070Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:46:17.762Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:46:30.687Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:46:35.774Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:46:40.169Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T09:46:47.155Z",
+      "feature": "submit",
       "phase": "do",
       "action": "updated"
     }

@@ -75,24 +75,32 @@ export async function POST(request: Request) {
     .eq("event_id", eventId)
     .single();
 
-  // Load lodging fee categories for this registration group
-  const { data: feeLinks } = await supabase
-    .from("eckcm_registration_group_fee_categories")
-    .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents)")
-    .eq("registration_group_id", registrationGroupId)
-    .like("eckcm_fee_categories.code", "LODGING_%");
-
-  const lodgingRates = (feeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
-
-  // Load meal fee categories (MEAL_* with age ranges)
-  const { data: mealFeeLinks } = await supabase
+  // Load all linked fee categories for this registration group
+  const { data: allFeeLinks } = await supabase
     .from("eckcm_registration_group_fee_categories")
     .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
-    .eq("registration_group_id", registrationGroupId)
-    .like("eckcm_fee_categories.code", "MEAL_%");
+    .eq("registration_group_id", registrationGroupId);
 
-  const mealFeeCategories: MealFeeCategory[] = (mealFeeLinks ?? []).map(
-    (row: any) => row.eckcm_fee_categories
+  const allLinkedFees = (allFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
+
+  // Extract registration fees from linked fee categories
+  const regFeeCat = allLinkedFees.find((f: any) => f.code === "REG_FEE");
+  const earlyBirdCat = allLinkedFees.find((f: any) => f.code === "EARLY_BIRD");
+
+  const registrationFeePerPerson =
+    regGroup.global_registration_fee_cents ?? regFeeCat?.amount_cents ?? 0;
+  const earlyBirdFeePerPerson =
+    regGroup.global_early_bird_fee_cents ?? earlyBirdCat?.amount_cents ?? null;
+
+  const lodgingRates = allLinkedFees.filter((f: any) => f.code.startsWith("LODGING_"));
+
+  // Extract key deposit from linked fees (unlinked = $0)
+  const keyDepositCat = allLinkedFees.find((f: any) => f.code === "KEY_DEPOSIT");
+  const keyDepositPerKey = keyDepositCat?.amount_cents ?? 0;
+
+  // Extract meal fee categories from linked fees
+  const mealFeeCategories: MealFeeCategory[] = allLinkedFees.filter(
+    (f: any) => f.code.startsWith("MEAL_")
   );
 
   // Load meal rules for date range (used to populate default meals)
@@ -122,10 +130,10 @@ export async function POST(request: Request) {
   const estimate = calculateEstimate({
     nightsCount,
     roomGroups: processedRoomGroups,
-    registrationFeePerPerson: regGroup.global_registration_fee_cents ?? 0,
-    earlyBirdFeePerPerson: regGroup.global_early_bird_fee_cents,
+    registrationFeePerPerson,
+    earlyBirdFeePerPerson,
     isEarlyBird,
-    keyDepositPerKey: settings?.key_deposit_cents ?? 6500,
+    keyDepositPerKey,
     additionalLodgingThreshold: settings?.additional_lodging_threshold ?? 3,
     additionalLodgingFeePerNight: settings?.additional_lodging_fee_cents ?? 400,
     lodgingRates,

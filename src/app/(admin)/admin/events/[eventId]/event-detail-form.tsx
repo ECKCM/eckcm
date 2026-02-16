@@ -25,6 +25,15 @@ interface EventDetailFormProps {
   };
 }
 
+// Convert timestamptz string to datetime-local format (YYYY-MM-DDTHH:mm)
+function toDatetimeLocal(value: string | null): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function EventDetailForm({ event }: EventDetailFormProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -34,8 +43,8 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
     year: event.year,
     event_start_date: event.event_start_date,
     event_end_date: event.event_end_date,
-    registration_start_date: event.registration_start_date ?? "",
-    registration_end_date: event.registration_end_date ?? "",
+    registration_start_date: toDatetimeLocal(event.registration_start_date),
+    registration_end_date: toDatetimeLocal(event.registration_end_date),
     location: event.location ?? "",
     is_active: event.is_active,
   });

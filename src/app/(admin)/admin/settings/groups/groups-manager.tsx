@@ -23,6 +23,13 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
@@ -37,8 +44,14 @@ interface RegistrationGroup {
   global_registration_fee_cents: number | null;
   global_early_bird_fee_cents: number | null;
   early_bird_deadline: string | null;
+  department_id: string | null;
   is_default: boolean;
   is_active: boolean;
+}
+
+interface Department {
+  id: string;
+  name_en: string;
 }
 
 interface FeeCategory {
@@ -58,6 +71,7 @@ const emptyForm = {
   global_registration_fee_cents: "",
   global_early_bird_fee_cents: "",
   early_bird_deadline: "",
+  department_id: "",
   is_default: false,
   is_active: true,
 };
@@ -77,6 +91,7 @@ export function RegistrationGroupsManager() {
   const [groupFeeMap, setGroupFeeMap] = useState<
     Map<string, string[]>
   >(new Map());
+  const [allDepartments, setAllDepartments] = useState<Department[]>([]);
 
   const loadGroups = useCallback(async () => {
     setLoading(true);
@@ -113,10 +128,21 @@ export function RegistrationGroupsManager() {
     setAllFees(data ?? []);
   }, []);
 
+  const loadDepartments = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("eckcm_departments")
+      .select("id, name_en")
+      .eq("is_active", true)
+      .order("sort_order");
+    setAllDepartments(data ?? []);
+  }, []);
+
   useEffect(() => {
     loadGroups();
     loadFees();
-  }, [loadGroups, loadFees]);
+    loadDepartments();
+  }, [loadGroups, loadFees, loadDepartments]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -138,6 +164,7 @@ export function RegistrationGroupsManager() {
       global_early_bird_fee_cents:
         group.global_early_bird_fee_cents?.toString() ?? "",
       early_bird_deadline: group.early_bird_deadline ?? "",
+      department_id: group.department_id ?? "",
       is_default: group.is_default,
       is_active: group.is_active,
     });
@@ -178,6 +205,7 @@ export function RegistrationGroupsManager() {
         ? parseInt(form.global_early_bird_fee_cents)
         : null,
       early_bird_deadline: form.early_bird_deadline || null,
+      department_id: form.department_id || null,
       is_default: form.is_default,
       is_active: form.is_active,
     };
@@ -336,6 +364,30 @@ export function RegistrationGroupsManager() {
                   placeholder="Leave empty for public group"
                 />
               </div>
+              <div className="space-y-1">
+                <Label>Activate by Group Leader Department (optional)</Label>
+                <Select
+                  value={form.department_id}
+                  onValueChange={(v) =>
+                    setForm({ ...form, department_id: v === "__none__" ? "" : v })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None — not activated" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {allDepartments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name_en}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  When set, this group is auto-assigned if Room Group 1 leader selects this department.
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Registration Fee (cents)</Label>
@@ -478,6 +530,11 @@ export function RegistrationGroupsManager() {
                       {group.access_code && (
                         <Badge variant="outline">
                           Code: {group.access_code}
+                        </Badge>
+                      )}
+                      {group.department_id && (
+                        <Badge variant="outline">
+                          Dept: {allDepartments.find((d) => d.id === group.department_id)?.name_en ?? "—"}
                         </Badge>
                       )}
                     </div>
