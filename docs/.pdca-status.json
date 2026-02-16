@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-16T04:10:34.684Z",
+  "lastUpdated": "2026-02-16T06:32:51.780Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -76,7 +76,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:16:45.184Z",
-        "lastUpdated": "2026-02-16T04:00:51.271Z"
+        "lastUpdated": "2026-02-16T06:13:11.240Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/types/registration.ts"
     },
@@ -388,7 +388,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:53:54.115Z",
-        "lastUpdated": "2026-02-13T15:47:40.811Z"
+        "lastUpdated": "2026-02-16T06:13:59.801Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/lodging/page.tsx"
     },
@@ -427,7 +427,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:46.919Z",
-        "lastUpdated": "2026-02-13T15:48:11.850Z"
+        "lastUpdated": "2026-02-16T06:27:41.500Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
     },
@@ -466,7 +466,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:56:11.556Z",
-        "lastUpdated": "2026-02-11T07:56:11.556Z"
+        "lastUpdated": "2026-02-16T06:32:51.780Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/pricing.service.ts"
     },
@@ -479,7 +479,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:56:22.489Z",
-        "lastUpdated": "2026-02-11T07:56:22.489Z"
+        "lastUpdated": "2026-02-16T06:27:06.728Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/estimate/route.ts"
     },
@@ -505,7 +505,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:56:55.924Z",
-        "lastUpdated": "2026-02-13T17:22:08.199Z"
+        "lastUpdated": "2026-02-16T06:28:08.584Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/submit/route.ts"
     },
@@ -752,7 +752,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-16T04:10:34.684Z"
+    "lastActivity": "2026-02-16T06:32:51.780Z"
   },
   "history": [
     {
@@ -3917,6 +3917,72 @@
     {
       "timestamp": "2026-02-16T04:10:34.684Z",
       "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T06:13:11.240Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T06:13:59.801Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T06:26:33.732Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T06:26:44.493Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T06:26:53.006Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T06:27:06.728Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T06:27:41.500Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T06:28:08.584Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T06:32:22.446Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T06:32:37.111Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T06:32:51.780Z",
+      "feature": "pricing.service.ts",
       "phase": "do",
       "action": "updated"
     }

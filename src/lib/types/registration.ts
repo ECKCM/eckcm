@@ -16,6 +16,7 @@ export interface RegistrationWizardState {
 export interface RoomGroupInput {
   id: string; // client-side temp ID
   participants: ParticipantInput[];
+  lodgingType?: string; // fee category code e.g. "LODGING_AC"
   preferences: LodgingPreferences;
   keyCount: number;
 }

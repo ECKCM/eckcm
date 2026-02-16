@@ -42,6 +42,15 @@ export async function POST(request: Request) {
     .eq("event_id", eventId)
     .single();
 
+  // Load lodging fee categories for this registration group
+  const { data: feeLinks } = await supabase
+    .from("eckcm_registration_group_fee_categories")
+    .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents)")
+    .eq("registration_group_id", registrationGroupId)
+    .like("eckcm_fee_categories.code", "LODGING_%");
+
+  const lodgingRates = (feeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
+
   const estimate = calculateEstimate({
     nightsCount,
     roomGroups,
@@ -51,6 +60,7 @@ export async function POST(request: Request) {
     keyDepositPerKey: settings?.key_deposit_cents ?? 6500,
     additionalLodgingThreshold: settings?.additional_lodging_threshold ?? 3,
     additionalLodgingFeePerNight: settings?.additional_lodging_fee_cents ?? 400,
+    lodgingRates,
   });
 
   return NextResponse.json(estimate);

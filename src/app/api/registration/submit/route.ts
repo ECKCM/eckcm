@@ -72,7 +72,16 @@ export async function POST(request: Request) {
     .eq("event_id", eventId)
     .single();
 
-  // 3. Calculate pricing
+  // 3. Load lodging fee categories for this registration group
+  const { data: feeLinks } = await admin
+    .from("eckcm_registration_group_fee_categories")
+    .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents)")
+    .eq("registration_group_id", registrationGroupId)
+    .like("eckcm_fee_categories.code", "LODGING_%");
+
+  const lodgingRates = (feeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
+
+  // 4. Calculate pricing
   const isEarlyBird =
     regGroup.early_bird_deadline != null &&
     new Date() < new Date(regGroup.early_bird_deadline);
@@ -86,6 +95,7 @@ export async function POST(request: Request) {
     keyDepositPerKey: settings?.key_deposit_cents ?? 6500,
     additionalLodgingThreshold: settings?.additional_lodging_threshold ?? 3,
     additionalLodgingFeePerNight: settings?.additional_lodging_fee_cents ?? 400,
+    lodgingRates,
   });
 
   // 4. Generate confirmation code (unique per event)

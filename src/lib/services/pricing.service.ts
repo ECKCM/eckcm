@@ -1,5 +1,12 @@
 import type { PriceEstimate, PriceLineItem, RoomGroupInput } from "@/lib/types/registration";
 
+export interface LodgingRate {
+  code: string;
+  name_en: string;
+  pricing_type: string; // "PER_NIGHT" | "FLAT"
+  amount_cents: number;
+}
+
 interface PricingInput {
   nightsCount: number;
   roomGroups: RoomGroupInput[];
@@ -9,6 +16,7 @@ interface PricingInput {
   keyDepositPerKey: number; // cents
   additionalLodgingThreshold: number;
   additionalLodgingFeePerNight: number; // cents
+  lodgingRates: LodgingRate[]; // available lodging fee categories
 }
 
 export function calculateEstimate(input: PricingInput): PriceEstimate {
@@ -42,7 +50,30 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     });
   }
 
-  // 2. Additional lodging fee if group exceeds threshold
+  // 2. Lodging fee per room group
+  for (let gi = 0; gi < input.roomGroups.length; gi++) {
+    const group = input.roomGroups[gi];
+    const rate = input.lodgingRates.find((r) => r.code === group.lodgingType);
+    if (rate && rate.amount_cents > 0) {
+      const groupLodging =
+        rate.pricing_type === "PER_NIGHT"
+          ? rate.amount_cents * input.nightsCount
+          : rate.amount_cents;
+      lodgingFee += groupLodging;
+      breakdown.push({
+        description:
+          rate.pricing_type === "PER_NIGHT"
+            ? `Group ${gi + 1}: ${rate.name_en} (${input.nightsCount} nights)`
+            : `Group ${gi + 1}: ${rate.name_en}`,
+        descriptionKo: `그룹 ${gi + 1}: 숙박비`,
+        quantity: rate.pricing_type === "PER_NIGHT" ? input.nightsCount : 1,
+        unitPrice: rate.amount_cents,
+        amount: groupLodging,
+      });
+    }
+  }
+
+  // 3. Additional lodging fee if group exceeds threshold
   for (let gi = 0; gi < input.roomGroups.length; gi++) {
     const group = input.roomGroups[gi];
     if (group.participants.length > input.additionalLodgingThreshold) {
@@ -63,7 +94,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     }
   }
 
-  // 3. Key Deposit
+  // 4. Key Deposit
   const totalKeys = input.roomGroups.reduce(
     (sum, g) => sum + g.keyCount,
     0

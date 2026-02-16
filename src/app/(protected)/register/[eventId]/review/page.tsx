@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -21,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import type { PriceEstimate } from "@/lib/types/registration";
 
 export default function ReviewStep() {
@@ -28,47 +28,45 @@ export default function ReviewStep() {
   const { eventId } = useParams<{ eventId: string }>();
   const { state } = useRegistration();
   const [estimate, setEstimate] = useState<PriceEstimate | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!state.startDate) {
       router.push(`/register/${eventId}`);
+      return;
     }
-  }, [state.startDate, router, eventId]);
+
+    const fetchEstimate = async () => {
+      try {
+        const res = await fetch("/api/registration/estimate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId: state.eventId,
+            startDate: state.startDate,
+            endDate: state.endDate,
+            nightsCount: state.nightsCount,
+            registrationGroupId: state.registrationGroupId,
+            roomGroups: state.roomGroups,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setEstimate(data);
+        }
+      } catch {
+        // silently fail — pricing section will show fallback
+      }
+      setLoading(false);
+    };
+
+    fetchEstimate();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!state.startDate) {
     return null;
   }
-
-  const fetchEstimate = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/registration/estimate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventId: state.eventId,
-          startDate: state.startDate,
-          endDate: state.endDate,
-          nightsCount: state.nightsCount,
-          registrationGroupId: state.registrationGroupId,
-          roomGroups: state.roomGroups,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        toast.error(err.error || "Failed to get estimate");
-        setLoading(false);
-        return;
-      }
-      const data = await res.json();
-      setEstimate(data);
-    } catch {
-      toast.error("Network error");
-    }
-    setLoading(false);
-  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -94,9 +92,7 @@ export default function ReviewStep() {
         return;
       }
       const data = await res.json();
-      // Clear session storage
       sessionStorage.removeItem("eckcm_registration");
-      // Navigate to payment
       router.push(
         `/register/${eventId}/payment?registrationId=${data.registrationId}&code=${data.confirmationCode}`
       );
@@ -110,6 +106,8 @@ export default function ReviewStep() {
     (sum, g) => sum + g.participants.length,
     0
   );
+
+  const formatDollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
@@ -147,15 +145,16 @@ export default function ReviewStep() {
             <CardTitle className="text-base">
               Group {gi + 1} - {group.participants.length} participant(s), {group.keyCount} key(s)
             </CardTitle>
-            <CardDescription>
+            <p className="text-sm text-muted-foreground">
               {[
+                group.lodgingType && `Lodging: ${group.lodgingType.replace("LODGING_", "").replace("_", " ")}`,
                 group.preferences.elderly && "Elderly",
                 group.preferences.handicapped && "Accessible",
                 group.preferences.firstFloor && "1st Floor",
               ]
                 .filter(Boolean)
-                .join(", ") || "No special preferences"}
-            </CardDescription>
+                .join(" · ") || "No special preferences"}
+            </p>
           </CardHeader>
           <CardContent>
             <Table>
@@ -185,33 +184,38 @@ export default function ReviewStep() {
         </Card>
       ))}
 
-      {/* Price Estimate */}
+      {/* Pricing Breakdown */}
       <Card>
         <CardHeader>
-          <CardTitle>Price Estimate</CardTitle>
+          <CardTitle>Total</CardTitle>
         </CardHeader>
         <CardContent>
-          {!estimate ? (
-            <Button onClick={fetchEstimate} disabled={loading} className="w-full">
-              {loading ? "Calculating..." : "Get Price Estimate"}
-            </Button>
-          ) : (
-            <div className="space-y-3">
+          {loading ? (
+            <div className="flex items-center justify-center py-4 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Calculating...
+            </div>
+          ) : estimate ? (
+            <div className="space-y-2">
               {estimate.breakdown.map((item, i) => (
                 <div key={i} className="flex justify-between text-sm">
                   <span>
                     {item.description}
                     {item.quantity > 1 ? ` × ${item.quantity}` : ""}
                   </span>
-                  <span>${(item.amount / 100).toFixed(2)}</span>
+                  <span>{formatDollars(item.amount)}</span>
                 </div>
               ))}
               <Separator />
-              <div className="flex justify-between font-bold">
+              <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
-                <span>${(estimate.total / 100).toFixed(2)}</span>
+                <span>{formatDollars(estimate.total)}</span>
               </div>
             </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Unable to calculate pricing. Please proceed and pricing will be finalized.
+            </p>
           )}
         </CardContent>
       </Card>
