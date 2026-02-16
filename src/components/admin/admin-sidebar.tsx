@@ -16,6 +16,7 @@ import {
   FileText,
   ScrollText,
   Scale,
+  Package,
 } from "lucide-react";
 import {
   Sidebar,
@@ -115,6 +116,17 @@ export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
                   <Link href="/admin/invoices">
                     <FileText />
                     <span>Invoices</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/admin/inventory")}
+                >
+                  <Link href="/admin/inventory">
+                    <Package />
+                    <span>Inventory</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

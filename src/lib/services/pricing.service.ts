@@ -1,10 +1,20 @@
 import type { PriceEstimate, PriceLineItem, RoomGroupInput } from "@/lib/types/registration";
+import { calculateAge } from "@/lib/utils/validators";
 
 export interface LodgingRate {
   code: string;
   name_en: string;
   pricing_type: string; // "PER_NIGHT" | "FLAT"
   amount_cents: number;
+}
+
+export interface MealFeeCategory {
+  code: string;
+  name_en: string;
+  pricing_type: string; // "PER_MEAL" | "FLAT"
+  amount_cents: number;
+  age_min: number | null;
+  age_max: number | null;
 }
 
 interface PricingInput {
@@ -17,6 +27,8 @@ interface PricingInput {
   additionalLodgingThreshold: number;
   additionalLodgingFeePerNight: number; // cents
   lodgingRates: LodgingRate[]; // available lodging fee categories
+  mealFeeCategories: MealFeeCategory[]; // MEAL_* fee categories with age ranges
+  eventStartDate: string; // YYYY-MM-DD for age calculation
 }
 
 export function calculateEstimate(input: PricingInput): PriceEstimate {
@@ -110,14 +122,92 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     });
   }
 
-  const subtotal = registrationFee + lodgingFee + additionalLodgingFee;
+  // 5. Meal fees per participant (matched by fee category age_min/age_max)
+  let mealFee = 0;
+  if (input.mealFeeCategories.length > 0) {
+    const eventStart = new Date(input.eventStartDate + "T00:00:00");
+
+    const matchAge = (cat: MealFeeCategory, age: number) =>
+      (cat.age_min == null || age >= cat.age_min) &&
+      (cat.age_max == null || age <= cat.age_max);
+
+    for (const group of input.roomGroups) {
+      for (const participant of group.participants) {
+        const birthDate = new Date(
+          participant.birthYear,
+          participant.birthMonth - 1,
+          participant.birthDay
+        );
+        const age = calculateAge(birthDate, eventStart);
+
+        // Find matching PER_MEAL category for this age
+        const perMealCat = input.mealFeeCategories.find(
+          (c) => c.pricing_type === "PER_MEAL" && matchAge(c, age)
+        );
+        // Find matching FLAT (full-day) category for this age
+        const fullDayCat = input.mealFeeCategories.find(
+          (c) => c.pricing_type === "FLAT" && matchAge(c, age)
+        );
+
+        if (!perMealCat) continue; // no matching category
+        if (perMealCat.amount_cents === 0) continue; // free tier
+
+        const priceEach = perMealCat.amount_cents;
+        const priceDay = fullDayCat?.amount_cents ?? priceEach * 3;
+        const tierLabel = perMealCat.name_en.replace("Meal - ", "");
+
+        // Group selected meals by date
+        const selectedByDate = new Map<string, number>();
+        for (const sel of participant.mealSelections) {
+          if (!sel.selected) continue;
+          selectedByDate.set(
+            sel.date,
+            (selectedByDate.get(sel.date) ?? 0) + 1
+          );
+        }
+
+        let participantMealTotal = 0;
+        let totalMealCount = 0;
+        let fullDayCount = 0;
+
+        for (const [, mealCount] of selectedByDate) {
+          if (mealCount === 3) {
+            const dayCost = Math.min(priceDay, 3 * priceEach);
+            participantMealTotal += dayCost;
+            fullDayCount++;
+          } else {
+            participantMealTotal += mealCount * priceEach;
+            totalMealCount += mealCount;
+          }
+        }
+
+        if (participantMealTotal > 0) {
+          mealFee += participantMealTotal;
+          const name = `${participant.firstName} ${participant.lastName}`;
+          const parts: string[] = [];
+          if (fullDayCount > 0) parts.push(`${fullDayCount} full day(s)`);
+          if (totalMealCount > 0) parts.push(`${totalMealCount} meal(s)`);
+
+          breakdown.push({
+            description: `Meals - ${name} (${tierLabel}, ${parts.join(" + ")})`,
+            descriptionKo: `식사 - ${name} (${tierLabel})`,
+            quantity: 1,
+            unitPrice: participantMealTotal,
+            amount: participantMealTotal,
+          });
+        }
+      }
+    }
+  }
+
+  const subtotal = registrationFee + lodgingFee + additionalLodgingFee + mealFee;
   const total = subtotal + keyDeposit;
 
   return {
     registrationFee,
     lodgingFee,
     additionalLodgingFee,
-    mealFee: 0, // meals calculated separately in Phase 9
+    mealFee,
     vbsFee: 0,
     keyDeposit,
     subtotal,

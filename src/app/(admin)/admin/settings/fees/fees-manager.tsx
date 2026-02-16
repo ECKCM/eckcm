@@ -29,8 +29,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+
+type FeeTab = "all" | "general" | "lodging" | "meals";
+
+function getTabForCode(code: string): Exclude<FeeTab, "all"> {
+  if (code.startsWith("LODGING_")) return "lodging";
+  if (code.startsWith("MEAL_")) return "meals";
+  return "general";
+}
 
 interface FeeCategory {
   id: string;
@@ -42,6 +51,9 @@ interface FeeCategory {
   metadata: Record<string, unknown>;
   is_active: boolean;
   sort_order: number;
+  age_min: number | null;
+  age_max: number | null;
+  is_inventory_trackable: boolean;
 }
 
 const PRICING_TYPES = ["FLAT", "PER_NIGHT", "PER_MEAL", "TIERED"];
@@ -54,9 +66,14 @@ const emptyForm = {
   amount_cents: "",
   sort_order: "0",
   is_active: true,
+  age_min: "",
+  age_max: "",
+  is_inventory_trackable: false,
 };
 
 export function FeeCategoriesManager() {
+  const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<FeeTab>("all");
   const [fees, setFees] = useState<FeeCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -76,6 +93,7 @@ export function FeeCategoriesManager() {
   }, []);
 
   useEffect(() => {
+    setMounted(true);
     loadFees();
   }, [loadFees]);
 
@@ -95,6 +113,9 @@ export function FeeCategoriesManager() {
       amount_cents: fee.amount_cents.toString(),
       sort_order: fee.sort_order.toString(),
       is_active: fee.is_active,
+      age_min: fee.age_min != null ? fee.age_min.toString() : "",
+      age_max: fee.age_max != null ? fee.age_max.toString() : "",
+      is_inventory_trackable: fee.is_inventory_trackable,
     });
     setDialogOpen(true);
   };
@@ -115,6 +136,9 @@ export function FeeCategoriesManager() {
       amount_cents: parseInt(form.amount_cents) || 0,
       sort_order: parseInt(form.sort_order) || 0,
       is_active: form.is_active,
+      age_min: form.age_min ? parseInt(form.age_min) : null,
+      age_max: form.age_max ? parseInt(form.age_max) : null,
+      is_inventory_trackable: form.is_inventory_trackable,
     };
 
     if (editingId) {
@@ -159,10 +183,22 @@ export function FeeCategoriesManager() {
     loadFees();
   };
 
+  const filteredFees = activeTab === "all"
+    ? fees
+    : fees.filter((f) => getTabForCode(f.code) === activeTab);
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <div className="flex items-center justify-between">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FeeTab)}>
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="lodging">Lodging</TabsTrigger>
+            <TabsTrigger value="meals">Meals</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        {mounted && <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openCreate}>
               <Plus className="mr-2 size-4" />
@@ -254,14 +290,49 @@ export function FeeCategoriesManager() {
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={form.is_active}
-                  onCheckedChange={(checked) =>
-                    setForm({ ...form, is_active: checked })
-                  }
-                />
-                <Label>Active</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Age Min</Label>
+                  <Input
+                    type="number"
+                    value={form.age_min}
+                    onChange={(e) =>
+                      setForm({ ...form, age_min: e.target.value })
+                    }
+                    placeholder="No minimum"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Age Max</Label>
+                  <Input
+                    type="number"
+                    value={form.age_max}
+                    onChange={(e) =>
+                      setForm({ ...form, age_max: e.target.value })
+                    }
+                    placeholder="No maximum"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.is_active}
+                    onCheckedChange={(checked) =>
+                      setForm({ ...form, is_active: checked })
+                    }
+                  />
+                  <Label>Active</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.is_inventory_trackable}
+                    onCheckedChange={(checked) =>
+                      setForm({ ...form, is_inventory_trackable: checked })
+                    }
+                  />
+                  <Label>Inventory Trackable</Label>
+                </div>
               </div>
               <Button
                 onClick={handleSave}
@@ -272,8 +343,9 @@ export function FeeCategoriesManager() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </div>
+
 
       {loading ? (
         <p className="text-center text-muted-foreground py-8">Loading...</p>
@@ -285,22 +357,23 @@ export function FeeCategoriesManager() {
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Amount</TableHead>
+              <TableHead>Age</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {fees.length === 0 ? (
+            {filteredFees.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="text-center text-muted-foreground py-8"
                 >
-                  No fee categories yet.
+                  {activeTab === "all" ? "No fee categories yet." : `No ${activeTab} fee categories.`}
                 </TableCell>
               </TableRow>
             ) : (
-              fees.map((fee) => (
+              filteredFees.map((fee) => (
                 <TableRow key={fee.id}>
                   <TableCell className="font-mono text-sm">
                     {fee.code}
@@ -319,12 +392,22 @@ export function FeeCategoriesManager() {
                     <Badge variant="outline">{fee.pricing_type}</Badge>
                   </TableCell>
                   <TableCell>${(fee.amount_cents / 100).toFixed(2)}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {fee.age_min != null || fee.age_max != null
+                      ? `${fee.age_min ?? "0"}–${fee.age_max ?? "∞"}`
+                      : "—"}
+                  </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={fee.is_active ? "default" : "secondary"}
-                    >
-                      {fee.is_active ? "Active" : "Inactive"}
-                    </Badge>
+                    <div className="flex gap-1">
+                      <Badge
+                        variant={fee.is_active ? "default" : "secondary"}
+                      >
+                        {fee.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                      {fee.is_inventory_trackable && (
+                        <Badge variant="outline">Inv</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
