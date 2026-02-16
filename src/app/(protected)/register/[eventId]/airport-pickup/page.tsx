@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { useRegistration } from "@/lib/context/registration-context";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
 import { Button } from "@/components/ui/button";
@@ -21,11 +22,26 @@ export default function AirportPickupStep() {
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
 
+  const [showKeyDeposit, setShowKeyDeposit] = useState(true);
+
   useEffect(() => {
     if (!state.startDate) {
       router.push(`/register/${eventId}`);
+      return;
     }
-  }, [state.startDate, router, eventId]);
+
+    const fetchGroupSettings = async () => {
+      if (!state.registrationGroupId) return;
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("eckcm_registration_groups")
+        .select("show_key_deposit")
+        .eq("id", state.registrationGroupId)
+        .single();
+      setShowKeyDeposit(data?.show_key_deposit ?? true);
+    };
+    fetchGroupSettings();
+  }, [state.startDate, state.registrationGroupId, router, eventId]);
 
   if (!state.startDate) {
     return null;
@@ -85,7 +101,13 @@ export default function AirportPickupStep() {
       <div className="flex justify-between">
         <Button
           variant="outline"
-          onClick={() => router.push(`/register/${eventId}/key-deposit`)}
+          onClick={() =>
+            router.push(
+              showKeyDeposit
+                ? `/register/${eventId}/key-deposit`
+                : `/register/${eventId}/lodging`
+            )
+          }
         >
           Back
         </Button>

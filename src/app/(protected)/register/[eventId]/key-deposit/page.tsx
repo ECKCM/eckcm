@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { useRegistration } from "@/lib/context/registration-context";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
 import { Button } from "@/components/ui/button";
@@ -26,13 +27,32 @@ export default function KeyDepositStep() {
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
 
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+
   useEffect(() => {
     if (!state.startDate) {
       router.push(`/register/${eventId}`);
+      return;
     }
-  }, [state.startDate, router, eventId]);
 
-  if (!state.startDate) {
+    const checkKeyDeposit = async () => {
+      if (!state.registrationGroupId) return;
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("eckcm_registration_groups")
+        .select("show_key_deposit")
+        .eq("id", state.registrationGroupId)
+        .single();
+      if (data?.show_key_deposit === false) {
+        router.push(`/register/${eventId}/airport-pickup`);
+      } else {
+        setAllowed(true);
+      }
+    };
+    checkKeyDeposit();
+  }, [state.startDate, state.registrationGroupId, router, eventId]);
+
+  if (!state.startDate || allowed !== true) {
     return null;
   }
 

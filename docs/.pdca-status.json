@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-16T09:46:47.155Z",
+  "lastUpdated": "2026-02-16T10:10:57.458Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -299,7 +299,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:47:06.044Z",
-        "lastUpdated": "2026-02-16T09:27:23.940Z"
+        "lastUpdated": "2026-02-16T10:09:28.514Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/groups/groups-manager.tsx"
     },
@@ -390,7 +390,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:53:54.115Z",
-        "lastUpdated": "2026-02-16T06:13:59.801Z"
+        "lastUpdated": "2026-02-16T10:10:02.190Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/lodging/page.tsx"
     },
@@ -403,7 +403,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:07.897Z",
-        "lastUpdated": "2026-02-13T15:48:09.047Z"
+        "lastUpdated": "2026-02-16T10:10:27.337Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/key-deposit/page.tsx"
     },
@@ -416,7 +416,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:20.413Z",
-        "lastUpdated": "2026-02-13T15:48:10.485Z"
+        "lastUpdated": "2026-02-16T10:10:57.458Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/airport-pickup/page.tsx"
     },
@@ -780,7 +780,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-16T09:46:47.155Z"
+    "lastActivity": "2026-02-16T10:10:57.458Z"
   },
   "history": [
     {
@@ -4653,6 +4653,138 @@
     {
       "timestamp": "2026-02-16T09:46:47.155Z",
       "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:02:35.222Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:02:40.937Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:02:46.326Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:02:51.884Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:02:59.621Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:03:11.731Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:03:20.895Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:03:32.816Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:09:04.309Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:09:08.913Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:09:15.127Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:09:21.054Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:09:28.514Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:09:45.440Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:09:51.058Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:09:57.120Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:10:02.190Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:10:19.778Z",
+      "feature": "key-deposit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:10:27.337Z",
+      "feature": "key-deposit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:10:43.846Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:10:52.270Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T10:10:57.458Z",
+      "feature": "airport-pickup",
       "phase": "do",
       "action": "updated"
     }

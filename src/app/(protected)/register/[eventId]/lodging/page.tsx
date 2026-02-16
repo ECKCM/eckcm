@@ -32,6 +32,8 @@ export default function LodgingStep() {
   const [lodgingOptions, setLodgingOptions] = useState<LodgingOption[]>([]);
   const [hasExtraFee, setHasExtraFee] = useState(false);
   const [extraFeeAmount, setExtraFeeAmount] = useState(0);
+  const [showSpecialPreferences, setShowSpecialPreferences] = useState(true);
+  const [showKeyDeposit, setShowKeyDeposit] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,6 +44,15 @@ export default function LodgingStep() {
 
     const fetchLodgingOptions = async () => {
       const supabase = createClient();
+
+      // Fetch group settings for toggles
+      const { data: groupData } = await supabase
+        .from("eckcm_registration_groups")
+        .select("show_special_preferences, show_key_deposit")
+        .eq("id", state.registrationGroupId!)
+        .single();
+      setShowSpecialPreferences(groupData?.show_special_preferences ?? true);
+      setShowKeyDeposit(groupData?.show_key_deposit ?? true);
 
       const { data, error } = await supabase
         .from("eckcm_registration_group_fee_categories")
@@ -117,8 +128,13 @@ export default function LodgingStep() {
       }
     }
 
-    dispatch({ type: "SET_STEP", step: 4 });
-    router.push(`/register/${eventId}/key-deposit`);
+    if (showKeyDeposit) {
+      dispatch({ type: "SET_STEP", step: 4 });
+      router.push(`/register/${eventId}/key-deposit`);
+    } else {
+      dispatch({ type: "SET_STEP", step: 5 });
+      router.push(`/register/${eventId}/airport-pickup`);
+    }
   };
 
   const isSingleOption = lodgingOptions.length === 1;
@@ -224,34 +240,36 @@ export default function LodgingStep() {
               )}
 
               {/* Special Preferences */}
-              <div className="space-y-3 pt-2 border-t">
-                <p className="text-sm font-medium text-muted-foreground">Special Preferences</p>
-                <div className="flex items-center justify-between">
-                  <Label>Elderly / Senior member in group</Label>
-                  <Switch
-                    checked={group.preferences.elderly}
-                    onCheckedChange={(v) => updatePreference(gi, "elderly", v)}
-                  />
+              {showSpecialPreferences && (
+                <div className="space-y-3 pt-2 border-t">
+                  <p className="text-sm font-medium text-muted-foreground">Special Preferences</p>
+                  <div className="flex items-center justify-between">
+                    <Label>Elderly / Senior member in group</Label>
+                    <Switch
+                      checked={group.preferences.elderly}
+                      onCheckedChange={(v) => updatePreference(gi, "elderly", v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>Handicapped / Accessibility needed</Label>
+                    <Switch
+                      checked={group.preferences.handicapped}
+                      onCheckedChange={(v) =>
+                        updatePreference(gi, "handicapped", v)
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>First floor preferred</Label>
+                    <Switch
+                      checked={group.preferences.firstFloor}
+                      onCheckedChange={(v) =>
+                        updatePreference(gi, "firstFloor", v)
+                      }
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label>Handicapped / Accessibility needed</Label>
-                  <Switch
-                    checked={group.preferences.handicapped}
-                    onCheckedChange={(v) =>
-                      updatePreference(gi, "handicapped", v)
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label>First floor preferred</Label>
-                  <Switch
-                    checked={group.preferences.firstFloor}
-                    onCheckedChange={(v) =>
-                      updatePreference(gi, "firstFloor", v)
-                    }
-                  />
-                </div>
-              </div>
+              )}
             </div>
           ))}
         </CardContent>
@@ -264,7 +282,9 @@ export default function LodgingStep() {
         >
           Back
         </Button>
-        <Button onClick={handleNext}>Next: Key Deposit</Button>
+        <Button onClick={handleNext}>
+          {showKeyDeposit ? "Next: Key Deposit" : "Next: Airport Pickup"}
+        </Button>
       </div>
     </div>
   );

@@ -45,6 +45,8 @@ interface RegistrationGroup {
   global_early_bird_fee_cents: number | null;
   early_bird_deadline: string | null;
   department_id: string | null;
+  show_special_preferences: boolean;
+  show_key_deposit: boolean;
   is_default: boolean;
   is_active: boolean;
 }
@@ -72,6 +74,8 @@ const emptyForm = {
   global_early_bird_fee_cents: "",
   early_bird_deadline: "",
   department_id: "",
+  show_special_preferences: true,
+  show_key_deposit: true,
   is_default: false,
   is_active: true,
 };
@@ -165,6 +169,8 @@ export function RegistrationGroupsManager() {
         group.global_early_bird_fee_cents?.toString() ?? "",
       early_bird_deadline: group.early_bird_deadline ?? "",
       department_id: group.department_id ?? "",
+      show_special_preferences: group.show_special_preferences,
+      show_key_deposit: group.show_key_deposit,
       is_default: group.is_default,
       is_active: group.is_active,
     });
@@ -206,6 +212,8 @@ export function RegistrationGroupsManager() {
         : null,
       early_bird_deadline: form.early_bird_deadline || null,
       department_id: form.department_id || null,
+      show_special_preferences: form.show_special_preferences,
+      show_key_deposit: form.show_key_deposit,
       is_default: form.is_default,
       is_active: form.is_active,
     };
@@ -428,7 +436,7 @@ export function RegistrationGroupsManager() {
                   }
                 />
               </div>
-              <div className="flex items-center gap-6">
+              <div className="flex flex-wrap items-center gap-6">
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={form.is_default}
@@ -446,6 +454,24 @@ export function RegistrationGroupsManager() {
                     }
                   />
                   <Label>Active</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.show_special_preferences}
+                    onCheckedChange={(checked) =>
+                      setForm({ ...form, show_special_preferences: checked })
+                    }
+                  />
+                  <Label>Special Preferences</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.show_key_deposit}
+                    onCheckedChange={(checked) =>
+                      setForm({ ...form, show_key_deposit: checked })
+                    }
+                  />
+                  <Label>Key Deposit</Label>
                 </div>
               </div>
 
