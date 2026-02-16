@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-16T07:36:53.435Z",
+  "lastUpdated": "2026-02-16T08:17:09.476Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -259,9 +259,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:44:31.720Z",
-        "lastUpdated": "2026-02-16T06:56:42.209Z"
+        "lastUpdated": "2026-02-16T08:14:39.551Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/admin/admin-sidebar.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/admin/confirm-delete-dialog.tsx"
     },
     "events": {
       "phase": "do",
@@ -298,7 +298,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:47:06.044Z",
-        "lastUpdated": "2026-02-11T22:13:21.632Z"
+        "lastUpdated": "2026-02-16T08:17:09.476Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/groups/groups-manager.tsx"
     },
@@ -311,7 +311,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:47:55.404Z",
-        "lastUpdated": "2026-02-16T07:36:53.434Z"
+        "lastUpdated": "2026-02-16T08:16:55.454Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/fees/fees-manager.tsx"
     },
@@ -324,7 +324,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:48:47.747Z",
-        "lastUpdated": "2026-02-11T22:10:51.194Z"
+        "lastUpdated": "2026-02-16T08:16:59.531Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/departments/departments-manager.tsx"
     },
@@ -337,7 +337,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:49:25.808Z",
-        "lastUpdated": "2026-02-11T07:49:47.328Z"
+        "lastUpdated": "2026-02-16T08:17:04.552Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/churches/churches-manager.tsx"
     },
@@ -766,7 +766,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-16T07:36:53.435Z"
+    "lastActivity": "2026-02-16T08:17:09.476Z"
   },
   "history": [
     {
@@ -4237,6 +4237,180 @@
     {
       "timestamp": "2026-02-16T07:36:53.434Z",
       "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:05:38.873Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:05:46.176Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:05:53.781Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:05:59.353Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:06:06.340Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:06:13.275Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:06:25.488Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:06:35.057Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:06:41.252Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:06:47.667Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:08:20.785Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:08:25.691Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:14:39.551Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:16:42.451Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:16:43.637Z",
+      "feature": "departments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:16:44.767Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:16:46.014Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:16:51.229Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:16:53.082Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:16:55.454Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:16:56.531Z",
+      "feature": "departments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:16:58.017Z",
+      "feature": "departments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:16:59.531Z",
+      "feature": "departments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:17:01.625Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:17:03.018Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:17:04.552Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:17:05.985Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:17:07.419Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-16T08:17:09.476Z",
+      "feature": "groups",
       "phase": "do",
       "action": "updated"
     }

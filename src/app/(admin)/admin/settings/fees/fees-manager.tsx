@@ -32,18 +32,16 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 
-type FeeTab = "all" | "general" | "lodging" | "meals";
+type FeeTab = "all" | "GENERAL" | "LODGING" | "MEALS";
 
-function getTabForCode(code: string): Exclude<FeeTab, "all"> {
-  if (code.startsWith("LODGING_")) return "lodging";
-  if (code.startsWith("MEAL_")) return "meals";
-  return "general";
-}
+const CATEGORIES = ["GENERAL", "LODGING", "MEALS"] as const;
 
 interface FeeCategory {
   id: string;
   code: string;
+  category: string;
   name_en: string;
   name_ko: string | null;
   pricing_type: string;
@@ -60,6 +58,7 @@ const PRICING_TYPES = ["FLAT", "PER_NIGHT", "PER_MEAL", "TIERED"];
 
 const emptyForm = {
   code: "",
+  category: "GENERAL",
   name_en: "",
   name_ko: "",
   pricing_type: "FLAT",
@@ -80,6 +79,7 @@ export function FeeCategoriesManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const loadFees = useCallback(async () => {
     setLoading(true);
@@ -87,6 +87,7 @@ export function FeeCategoriesManager() {
     const { data } = await supabase
       .from("eckcm_fee_categories")
       .select("*")
+      .order("category")
       .order("sort_order");
     setFees(data ?? []);
     setLoading(false);
@@ -107,6 +108,7 @@ export function FeeCategoriesManager() {
     setEditingId(fee.id);
     setForm({
       code: fee.code,
+      category: fee.category,
       name_en: fee.name_en,
       name_ko: fee.name_ko ?? "",
       pricing_type: fee.pricing_type,
@@ -130,6 +132,7 @@ export function FeeCategoriesManager() {
 
     const payload = {
       code: form.code.toUpperCase(),
+      category: form.category,
       name_en: form.name_en,
       name_ko: form.name_ko || null,
       pricing_type: form.pricing_type,
@@ -185,7 +188,15 @@ export function FeeCategoriesManager() {
 
   const filteredFees = activeTab === "all"
     ? fees
-    : fees.filter((f) => getTabForCode(f.code) === activeTab);
+    : fees.filter((f) => f.category === activeTab);
+
+  if (!mounted) {
+    return (
+      <div className="space-y-4">
+        <p className="text-center text-muted-foreground py-8">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -193,12 +204,12 @@ export function FeeCategoriesManager() {
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FeeTab)}>
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="lodging">Lodging</TabsTrigger>
-            <TabsTrigger value="meals">Meals</TabsTrigger>
+            <TabsTrigger value="GENERAL">General</TabsTrigger>
+            <TabsTrigger value="LODGING">Lodging</TabsTrigger>
+            <TabsTrigger value="MEALS">Meals</TabsTrigger>
           </TabsList>
         </Tabs>
-        {mounted && <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openCreate}>
               <Plus className="mr-2 size-4" />
@@ -227,20 +238,20 @@ export function FeeCategoriesManager() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label>Pricing Type</Label>
+                  <Label>Category</Label>
                   <Select
-                    value={form.pricing_type}
+                    value={form.category}
                     onValueChange={(v) =>
-                      setForm({ ...form, pricing_type: v })
+                      setForm({ ...form, category: v })
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PRICING_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
+                      {CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c.charAt(0) + c.slice(1).toLowerCase()}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -267,7 +278,27 @@ export function FeeCategoriesManager() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label>Pricing Type</Label>
+                  <Select
+                    value={form.pricing_type}
+                    onValueChange={(v) =>
+                      setForm({ ...form, pricing_type: v })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRICING_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-1">
                   <Label>Amount (cents)</Label>
                   <Input
@@ -343,7 +374,7 @@ export function FeeCategoriesManager() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>}
+        </Dialog>
       </div>
 
 
@@ -369,7 +400,7 @@ export function FeeCategoriesManager() {
                   colSpan={7}
                   className="text-center text-muted-foreground py-8"
                 >
-                  {activeTab === "all" ? "No fee categories yet." : `No ${activeTab} fee categories.`}
+                  {activeTab === "all" ? "No fee categories yet." : `No ${activeTab.toLowerCase()} fee categories.`}
                 </TableCell>
               </TableRow>
             ) : (
@@ -420,7 +451,7 @@ export function FeeCategoriesManager() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(fee.id)}
+                      onClick={() => setDeleteTarget(fee.id)}
                     >
                       <Trash2 className="size-4" />
                     </Button>
@@ -431,6 +462,17 @@ export function FeeCategoriesManager() {
           </TableBody>
         </Table>
       )}
+
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) handleDelete(deleteTarget);
+          setDeleteTarget(null);
+        }}
+        title="Delete fee category?"
+        description="This will permanently delete this fee category. This action cannot be undone."
+      />
     </div>
   );
 }

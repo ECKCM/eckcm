@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 
 interface Department {
   id: string;
@@ -49,6 +50,7 @@ export function DepartmentsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const loadDepartments = useCallback(async () => {
     setLoading(true);
@@ -276,7 +278,7 @@ export function DepartmentsManager() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(dept.id)}
+                      onClick={() => setDeleteTarget(dept.id)}
                     >
                       <Trash2 className="size-4" />
                     </Button>
@@ -287,6 +289,17 @@ export function DepartmentsManager() {
           </TableBody>
         </Table>
       )}
+
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) handleDelete(deleteTarget);
+          setDeleteTarget(null);
+        }}
+        title="Delete department?"
+        description="This will permanently delete this department. This action cannot be undone."
+      />
     </div>
   );
 }

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 
 interface Church {
   id: string;
@@ -49,6 +50,7 @@ export function ChurchesManager({
     sort_order: "0",
     is_active: true,
   });
+  const [deleteTarget, setDeleteTarget] = useState<Church | null>(null);
 
   const openCreate = () => {
     setEditingId(null);
@@ -235,7 +237,7 @@ export function ChurchesManager({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(church)}
+                    onClick={() => setDeleteTarget(church)}
                   >
                     <Trash2 className="size-4" />
                   </Button>
@@ -245,6 +247,17 @@ export function ChurchesManager({
           ))}
         </TableBody>
       </Table>
+
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) handleDelete(deleteTarget);
+          setDeleteTarget(null);
+        }}
+        title="Delete church?"
+        description="This will permanently delete this church. This action cannot be undone."
+      />
     </div>
   );
 }

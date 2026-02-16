@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 
 interface RegistrationGroup {
   id: string;
@@ -68,6 +69,7 @@ export function RegistrationGroupsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   // Fee category linking
   const [allFees, setAllFees] = useState<FeeCategory[]>([]);
@@ -490,7 +492,7 @@ export function RegistrationGroupsManager() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(group.id)}
+                        onClick={() => setDeleteTarget(group.id)}
                       >
                         <Trash2 className="size-4" />
                       </Button>
@@ -536,6 +538,17 @@ export function RegistrationGroupsManager() {
           })}
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) handleDelete(deleteTarget);
+          setDeleteTarget(null);
+        }}
+        title="Delete registration group?"
+        description="This will permanently delete this registration group and its fee category mappings. This action cannot be undone."
+      />
     </div>
   );
 }
