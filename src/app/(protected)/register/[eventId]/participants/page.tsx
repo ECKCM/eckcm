@@ -38,7 +38,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, ChevronDown, CheckCircle2, Info, CircleHelp } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ParticipantInput, RoomGroupInput, MealSelection } from "@/lib/types/registration";
 import type { Gender, Grade } from "@/lib/types/database";
 import { MAX_GROUPS, MAX_PARTICIPANTS_PER_GROUP, GRADE_LABELS } from "@/lib/utils/constants";
@@ -613,25 +614,25 @@ export default function ParticipantsStep() {
                         {/* Names */}
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <Label className="text-xs">First Name (EN) <span className="text-destructive">*</span></Label>
+                            <Label className="text-xs">First Name (Legal) <span className="text-destructive">*</span></Label>
                             <Input
                               value={p.firstName}
                               onChange={(e) =>
                                 handleNameChange(gi, pi, "firstName", e.target.value)
                               }
-                              placeholder="JOHN"
+                              placeholder="FIRST NAME"
                               className={errs.firstName ? "border-destructive" : ""}
                             />
                             {errs.firstName && <p className="text-xs text-destructive">{errs.firstName}</p>}
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs">Last Name (EN) <span className="text-destructive">*</span></Label>
+                            <Label className="text-xs">Last Name (Legal) <span className="text-destructive">*</span></Label>
                             <Input
                               value={p.lastName}
                               onChange={(e) =>
                                 handleNameChange(gi, pi, "lastName", e.target.value)
                               }
-                              placeholder="KIM"
+                              placeholder="LAST NAME"
                               className={errs.lastName ? "border-destructive" : ""}
                             />
                             {errs.lastName && <p className="text-xs text-destructive">{errs.lastName}</p>}
@@ -641,19 +642,43 @@ export default function ParticipantsStep() {
                         {/* Display Name + Gender */}
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <Label className="text-xs">Display Name <span className="text-destructive">*</span></Label>
+                            <div className="flex items-center gap-1">
+                              <Label className="text-xs">Display Name <span className="text-destructive">*</span></Label>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button type="button" className="text-muted-foreground hover:text-foreground">
+                                    <CircleHelp className="h-3.5 w-3.5" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="text-xs">
+                                  This name will be printed on your name badge.
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                             <Input
                               value={p.displayNameKo ?? ""}
                               onChange={(e) =>
                                 updateParticipant(gi, pi, "displayNameKo", e.target.value)
                               }
-                              placeholder="Scott Kim"
+                              placeholder="NAME ON BADGE"
                               className={errs.displayNameKo ? "border-destructive" : ""}
                             />
                             {errs.displayNameKo && <p className="text-xs text-destructive">{errs.displayNameKo}</p>}
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs">Gender <span className="text-destructive">*</span></Label>
+                            <div className="flex items-center gap-1">
+                              <Label className="text-xs">Gender <span className="text-destructive">*</span></Label>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button type="button" className="text-muted-foreground hover:text-foreground">
+                                    <Info className="h-3.5 w-3.5" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="text-xs">
+                                  We collect gender information for administrative and accommodation purposes only. It is not used for eligibility, pricing, or discriminatory decisions. You may choose &quot;Prefer not to say&quot; if you are uncomfortable sharing.
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                             <Select
                               value={p.gender}
                               onValueChange={(v) =>
@@ -672,9 +697,6 @@ export default function ParticipantsStep() {
                             </Select>
                           </div>
                         </div>
-                        <p className="text-muted-foreground" style={{ fontSize: "0.625rem" }}>
-                          We collect gender information for statistical and program accommodation purposes only. It will not be used for discriminatory decisions.
-                        </p>
 
                         {/* Birth Date */}
                         <BirthDatePicker
@@ -797,7 +819,19 @@ export default function ParticipantsStep() {
 
                         {/* Phone */}
                         <div className="space-y-1">
-                          <Label className="text-xs">Phone <span className="text-destructive">*</span></Label>
+                          <div className="flex items-center gap-1">
+                            <Label className="text-xs">Phone <span className="text-destructive">*</span></Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button type="button" className="text-muted-foreground hover:text-foreground">
+                                  <Info className="h-3.5 w-3.5" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="text-xs">
+                                By providing your number, you agree to receive service-related messages.
+                              </PopoverContent>
+                            </Popover>
+                          </div>
                           <PhoneInput
                             value={p.phone}
                             countryCode={p.phoneCountry}

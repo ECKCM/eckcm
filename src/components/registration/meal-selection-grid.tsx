@@ -87,7 +87,7 @@ export function MealSelectionGrid({
         const existing = selections.find(
           (s) => s.date === date && s.mealType === meal.type
         );
-        const defaultSelected = dayType === "fullday"; // full days default checked, partial days unchecked
+        const defaultSelected = dayType === "fullday" || dayType === "partial";
         newSelections.push({
           date,
           mealType: meal.type,
@@ -127,11 +127,11 @@ export function MealSelectionGrid({
       <Label className="text-xs">Meals ({selectedCount} selected)</Label>
       <div className="rounded-md border overflow-hidden">
         {/* Header */}
-        <div className="grid grid-cols-[1fr_repeat(3,48px)] gap-0 bg-muted/50 px-2 py-1.5 text-xs font-medium text-muted-foreground">
+        <div className="grid grid-cols-[1fr_repeat(3,64px)] gap-0 bg-muted/50 px-2 py-1.5 text-xs font-medium text-muted-foreground">
           <span>Date</span>
           {MEAL_TYPES.map((m) => (
             <span key={m.type} className="text-center">
-              {m.short}
+              {m.label}
             </span>
           ))}
         </div>
@@ -142,7 +142,7 @@ export function MealSelectionGrid({
           return (
             <div
               key={date}
-              className={`grid grid-cols-[1fr_repeat(3,48px)] gap-0 items-center px-2 py-1.5 border-t text-xs ${
+              className={`grid grid-cols-[1fr_repeat(3,64px)] gap-0 items-center px-2 py-1.5 border-t text-xs ${
                 isFullDay ? "bg-muted/30" : ""
               }`}
             >

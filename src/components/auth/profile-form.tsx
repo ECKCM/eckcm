@@ -17,6 +17,8 @@ import {
   NAME_PATTERN,
 } from "@/lib/utils/field-helpers";
 import { PhoneInput } from "@/components/shared/phone-input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Info, CircleHelp } from "lucide-react";
 import type { Gender, Grade } from "@/lib/types/database";
 
 interface Church {
@@ -196,7 +198,7 @@ export function ProfileForm({
             id="firstName"
             value={form.firstName}
             onChange={(e) => handleNameChange("firstName", e.target.value)}
-            placeholder="JOHN"
+            placeholder="FIRST NAME"
             className={errors.firstName ? "border-destructive" : ""}
           />
           {errors.firstName && (
@@ -209,7 +211,7 @@ export function ProfileForm({
             id="lastName"
             value={form.lastName}
             onChange={(e) => handleNameChange("lastName", e.target.value)}
-            placeholder="KIM"
+            placeholder="LAST NAME"
             className={errors.lastName ? "border-destructive" : ""}
           />
           {errors.lastName && (
@@ -219,12 +221,24 @@ export function ProfileForm({
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="displayNameKo">Display Name <span className="text-destructive">*</span></Label>
+        <div className="flex items-center gap-1">
+          <Label htmlFor="displayNameKo">Display Name <span className="text-destructive">*</span></Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="text-muted-foreground hover:text-foreground">
+                <CircleHelp className="h-3.5 w-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="text-xs">
+              This name will be printed on your name badge.
+            </PopoverContent>
+          </Popover>
+        </div>
         <Input
           id="displayNameKo"
           value={form.displayNameKo}
           onChange={(e) => update("displayNameKo", e.target.value)}
-          placeholder="Scott Kim"
+          placeholder="NAME ON BADGE"
           className={errors.displayNameKo ? "border-destructive" : ""}
         />
         {errors.displayNameKo && (
@@ -234,7 +248,19 @@ export function ProfileForm({
 
       {/* Gender */}
       <div className="space-y-1">
-        <Label>Gender <span className="text-destructive">*</span></Label>
+        <div className="flex items-center gap-1">
+          <Label>Gender <span className="text-destructive">*</span></Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="text-muted-foreground hover:text-foreground">
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="text-xs">
+              We collect gender information for administrative and accommodation purposes only. It is not used for eligibility, pricing, or discriminatory decisions. You may choose &quot;Prefer not to say&quot; if you are uncomfortable sharing.
+            </PopoverContent>
+          </Popover>
+        </div>
         <Select
           value={form.gender}
           onValueChange={(v) => update("gender", v)}
@@ -252,9 +278,6 @@ export function ProfileForm({
         {errors.gender && (
           <p className="text-xs text-destructive">{errors.gender}</p>
         )}
-        <p className="text-muted-foreground" style={{ fontSize: "0.625rem" }}>
-          We collect gender information for statistical and program accommodation purposes only. It will not be used for discriminatory decisions.
-        </p>
       </div>
 
       {/* Birth Date + K-12 + Grade (hidden on signup) */}
@@ -356,7 +379,19 @@ export function ProfileForm({
 
       {/* Phone */}
       <div className="space-y-1">
-        <Label htmlFor="phone">Phone Number <span className="text-destructive">*</span></Label>
+        <div className="flex items-center gap-1">
+          <Label htmlFor="phone">Phone Number <span className="text-destructive">*</span></Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="text-muted-foreground hover:text-foreground">
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="text-xs">
+              By providing your number, you agree to receive service-related messages.
+            </PopoverContent>
+          </Popover>
+        </div>
         <PhoneInput
           id="phone"
           value={form.phone}
@@ -371,9 +406,6 @@ export function ProfileForm({
         {errors.phone && (
           <p className="text-xs text-destructive">{errors.phone}</p>
         )}
-        <p className="text-muted-foreground" style={{ fontSize: "0.625rem" }}>
-          By providing your number, you agree to receive service-related messages.
-        </p>
       </div>
 
       {/* Church */}

@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Info } from "lucide-react";
 
 interface BirthDatePickerProps {
   year: number | undefined;
@@ -79,7 +81,19 @@ export function BirthDatePicker({
 
   return (
     <div className="space-y-2">
-      <Label className={labelClassName}>Date of Birth <span className="text-destructive">*</span></Label>
+      <div className="flex items-center gap-1">
+        <Label className={labelClassName}>Date of Birth <span className="text-destructive">*</span></Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" className="text-muted-foreground hover:text-foreground">
+              <Info className="h-3.5 w-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="text-xs">
+            We collect your date of birth to determine your appropriate room assignment, calculate accurate meal pricing, and assign you to the correct department or group for this event. This information helps us coordinate travel logistics, dietary accommodations, and group organization efficiently. Your date of birth is securely stored, used only for these stated purposes, and never sold to third parties. It may be shared with authorized event organizers only as needed to support your participation. Participants under age 13 require parental consent in accordance with applicable U.S. regulations.
+          </PopoverContent>
+        </Popover>
+      </div>
       <div className="grid grid-cols-3 gap-2">
         {/* Month - Dropdown */}
         <div className="space-y-1">
