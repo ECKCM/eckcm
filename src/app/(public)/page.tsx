@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Toolbar } from "@/components/shared/toolbar";
+import { AdventistLogo } from "@/components/shared/adventist-logo";
+import { EckcmLogo } from "@/components/shared/eckcm-logo";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function HomePage() {
@@ -19,6 +21,10 @@ export default async function HomePage() {
         <Toolbar />
       </div>
       <div className="mx-auto max-w-2xl text-center">
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <AdventistLogo className="h-12 w-12 sm:h-16 sm:w-16" />
+          <EckcmLogo className="h-12 w-12 sm:h-16 sm:w-16" />
+        </div>
         <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
           ECKCM
         </h1>
