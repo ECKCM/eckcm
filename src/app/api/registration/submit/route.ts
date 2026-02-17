@@ -50,6 +50,7 @@ interface SubmitBody {
 }
 
 export async function POST(request: Request) {
+  try {
   const supabase = await createClient();
   const {
     data: { user },
@@ -324,4 +325,11 @@ export async function POST(request: Request) {
     confirmationCode,
     total: estimate.total,
   });
+  } catch (err) {
+    console.error("[registration/submit] Unhandled error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

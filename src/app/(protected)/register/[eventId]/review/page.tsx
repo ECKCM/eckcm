@@ -21,6 +21,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { WizardStepper } from "@/components/registration/wizard-stepper";
 import type { PriceEstimate } from "@/lib/types/registration";
 
 export default function ReviewStep() {
@@ -86,8 +87,15 @@ export default function ReviewStep() {
         }),
       });
       if (!res.ok) {
-        const err = await res.json();
-        toast.error(err.error || "Submission failed");
+        const text = await res.text();
+        let message = `Submission failed (${res.status})`;
+        try {
+          const err = JSON.parse(text);
+          message = err.error || message;
+        } catch {
+          if (text) message = text;
+        }
+        toast.error(message);
         setSubmitting(false);
         return;
       }
@@ -96,8 +104,11 @@ export default function ReviewStep() {
       router.push(
         `/register/${eventId}/payment?registrationId=${data.registrationId}&code=${data.confirmationCode}`
       );
-    } catch {
-      toast.error("Network error");
+    } catch (err) {
+      console.error("[ReviewStep] Submit error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Network error. Please try again."
+      );
     }
     setSubmitting(false);
   };
@@ -111,6 +122,7 @@ export default function ReviewStep() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
+      <WizardStepper currentStep={7} />
       <h2 className="text-xl font-bold text-center">Review Registration</h2>
 
       {/* Summary */}
@@ -228,7 +240,14 @@ export default function ReviewStep() {
           Back
         </Button>
         <Button onClick={handleSubmit} disabled={submitting} size="lg">
-          {submitting ? "Submitting..." : "Submit Registration"}
+          {submitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Processing...
+            </>
+          ) : (
+            "Next: Payment"
+          )}
         </Button>
       </div>
     </div>

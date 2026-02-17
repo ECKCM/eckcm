@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeServer } from "@/lib/stripe/config";
 
 interface CreateIntentBody {
@@ -51,8 +52,9 @@ export async function POST(request: Request) {
     );
   }
 
-  // Load invoice
-  const { data: invoice } = await supabase
+  // Load invoice (use admin client to bypass RLS)
+  const admin = createAdminClient();
+  const { data: invoice } = await admin
     .from("eckcm_invoices")
     .select("id, total_cents, status")
     .eq("registration_id", registrationId)
@@ -92,9 +94,7 @@ export async function POST(request: Request) {
       userId: user.id,
       confirmationCode: registration.confirmation_code,
     },
-    automatic_payment_methods: {
-      enabled: true,
-    },
+    payment_method_types: ["card", "us_bank_account"],
   });
 
   // Create pending payment record

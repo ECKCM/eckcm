@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,16 +76,9 @@ export function EPassDetail({ token }: EPassDetailProps) {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* QR Code placeholder - uses token URL */}
+          {/* QR Code */}
           <div className="flex justify-center p-4">
-            <div className="w-48 h-48 bg-muted rounded-lg flex items-center justify-center border-2 border-dashed">
-              <div className="text-center text-xs text-muted-foreground">
-                <p className="font-mono text-[10px] break-all px-2">
-                  {qrUrl}
-                </p>
-                <p className="mt-2">QR Code</p>
-              </div>
-            </div>
+            <QRCodeSVG value={qrUrl} size={192} level="M" />
           </div>
 
           {reg.confirmation_code && (

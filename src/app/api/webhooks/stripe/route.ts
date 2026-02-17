@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { getStripeServer } from "@/lib/stripe/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateEPassToken } from "@/lib/services/epass.service";
+import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import type Stripe from "stripe";
 
 export async function POST(request: Request) {
@@ -116,12 +117,17 @@ async function handlePaymentIntentSucceeded(
         is_active: true,
       });
 
-      // Store the raw token temporarily in metadata for email delivery
-      // In production, you'd send the email here with the token
       console.log(
         `E-Pass generated for person ${membership.person_id}: ${token}`
       );
     }
+  }
+
+  // 6. Send confirmation email (non-blocking, non-fatal)
+  try {
+    await sendConfirmationEmail(registrationId);
+  } catch (err) {
+    console.error("[webhook] Failed to send confirmation email:", err);
   }
 }
 

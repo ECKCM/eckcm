@@ -1,8 +1,9 @@
 "use client";
 
+import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { QrCode, User, Calendar, MapPin, ShieldCheck } from "lucide-react";
+import { User, Calendar, MapPin, ShieldCheck } from "lucide-react";
 
 interface EPassViewerProps {
   token: string;
@@ -34,6 +35,9 @@ interface EPassViewerProps {
 export function EPassViewer({ token, epass }: EPassViewerProps) {
   const { person, registration } = epass;
   const { event } = registration;
+  const qrUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/epass/${token}`
+    : `/epass/${token}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-950 dark:to-gray-900 flex items-center justify-center p-4">
@@ -56,14 +60,9 @@ export function EPassViewer({ token, epass }: EPassViewerProps) {
         </CardHeader>
 
         <CardContent className="space-y-6 pt-6">
-          {/* QR Code Area */}
+          {/* QR Code */}
           <div className="flex flex-col items-center gap-2">
-            <div className="w-48 h-48 bg-muted rounded-lg flex items-center justify-center border-2 border-dashed">
-              <QrCode className="h-20 w-20 text-muted-foreground" />
-            </div>
-            <p className="font-mono text-xs text-muted-foreground break-all text-center">
-              {token}
-            </p>
+            <QRCodeSVG value={qrUrl} size={192} level="M" />
           </div>
 
           {/* Person Info */}
