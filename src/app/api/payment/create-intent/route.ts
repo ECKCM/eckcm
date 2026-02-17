@@ -94,7 +94,12 @@ export async function POST(request: Request) {
       userId: user.id,
       confirmationCode: registration.confirmation_code,
     },
-    payment_method_types: ["card", "us_bank_account"],
+    payment_method_types: [
+      "card",
+      "us_bank_account",
+      "klarna",
+      "amazon_pay",
+    ],
   });
 
   // Create pending payment record

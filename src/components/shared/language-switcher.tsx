@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n/context";
 import { locales, getLocaleLabel } from "@/lib/i18n/config";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,13 @@ import { Languages } from "lucide-react";
 
 export function LanguageSwitcher() {
   const { locale, setLocale } = useI18n();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
 
   return (
     <DropdownMenu>

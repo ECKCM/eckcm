@@ -6,28 +6,36 @@ import { Input } from "@/components/ui/input";
 interface CheckVisualProps {
   accountName: string;
   routingNumber: string;
+  confirmRoutingNumber: string;
   accountNumber: string;
+  confirmAccountNumber: string;
   accountType: "checking" | "savings";
   amount: number;
   onAccountNameChange: (v: string) => void;
   onRoutingNumberChange: (v: string) => void;
+  onConfirmRoutingNumberChange: (v: string) => void;
   onAccountNumberChange: (v: string) => void;
+  onConfirmAccountNumberChange: (v: string) => void;
   onAccountTypeChange: (v: "checking" | "savings") => void;
 }
 
 export function CheckVisual({
   accountName,
   routingNumber,
+  confirmRoutingNumber,
   accountNumber,
+  confirmAccountNumber,
   accountType,
   amount,
   onAccountNameChange,
   onRoutingNumberChange,
+  onConfirmRoutingNumberChange,
   onAccountNumberChange,
+  onConfirmAccountNumberChange,
   onAccountTypeChange,
 }: CheckVisualProps) {
   return (
-    <div className="relative overflow-hidden rounded-xl border-2 border-teal-200 bg-gradient-to-br from-teal-50 via-emerald-50 to-cyan-50 p-5">
+    <div className="relative overflow-hidden border-2 border-teal-200 bg-gradient-to-br from-teal-50 via-emerald-50 to-cyan-50 p-5">
       {/* Security pattern overlay */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.03]"
@@ -109,51 +117,106 @@ export function CheckVisual({
         </p>
 
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[11px] font-mono font-semibold text-teal-700 mb-1.5">
-              <span className="text-teal-400 mr-0.5">⑆</span> Routing Number
-            </label>
-            <Input
-              value={routingNumber}
-              onChange={(e) => {
-                const v = e.target.value.replace(/\D/g, "").slice(0, 9);
-                onRoutingNumberChange(v);
-              }}
-              placeholder="9 digits"
-              className="bg-white/80 border-teal-200 focus-visible:ring-teal-500 font-mono tracking-[0.2em] text-center text-sm"
-              inputMode="numeric"
-              maxLength={9}
-              required
-            />
-            <p className="text-[9px] text-teal-500 mt-0.5 text-center">
-              First 9 digits on check
-            </p>
+          <div className="space-y-2">
+            <div>
+              <label className="block text-[11px] font-mono font-semibold text-teal-700 mb-1.5">
+                <span className="text-teal-400 mr-0.5">⑆</span> Routing Number
+              </label>
+              <Input
+                value={routingNumber}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 9);
+                  onRoutingNumberChange(v);
+                }}
+                placeholder="9 digits"
+                className="bg-white/80 border-teal-200 focus-visible:ring-teal-500 tracking-[0.2em] text-center text-sm"
+                style={{ fontFamily: '"MICR E13B", monospace' }}
+                inputMode="numeric"
+                maxLength={9}
+                required
+              />
+              <p className="text-[9px] text-teal-500 mt-0.5 text-center">
+                First 9 digits on check
+              </p>
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono font-semibold text-teal-700 mb-1.5">
+                Confirm Routing Number
+              </label>
+              <Input
+                value={confirmRoutingNumber}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 9);
+                  onConfirmRoutingNumberChange(v);
+                }}
+                placeholder="Re-enter routing number"
+                className={`bg-white/80 border-teal-200 focus-visible:ring-teal-500 tracking-[0.2em] text-center text-sm ${confirmRoutingNumber && confirmRoutingNumber !== routingNumber ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+                style={{ fontFamily: '"MICR E13B", monospace' }}
+                inputMode="numeric"
+                maxLength={9}
+                required
+              />
+              {confirmRoutingNumber && confirmRoutingNumber !== routingNumber && (
+                <p className="text-[9px] text-red-500 mt-0.5 text-center">
+                  Numbers do not match
+                </p>
+              )}
+            </div>
           </div>
-          <div>
-            <label className="block text-[11px] font-mono font-semibold text-teal-700 mb-1.5">
-              <span className="text-teal-400 mr-0.5">⑈</span> Account Number
-            </label>
-            <Input
-              value={accountNumber}
-              onChange={(e) => {
-                const v = e.target.value.replace(/\D/g, "").slice(0, 17);
-                onAccountNumberChange(v);
-              }}
-              placeholder="Up to 17 digits"
-              className="bg-white/80 border-teal-200 focus-visible:ring-teal-500 font-mono tracking-[0.2em] text-center text-sm"
-              inputMode="numeric"
-              maxLength={17}
-              required
-            />
-            <p className="text-[9px] text-teal-500 mt-0.5 text-center">
-              Middle number on check
-            </p>
+          <div className="space-y-2">
+            <div>
+              <label className="block text-[11px] font-mono font-semibold text-teal-700 mb-1.5">
+                <span className="text-teal-400 mr-0.5">⑈</span> Account Number
+              </label>
+              <Input
+                value={accountNumber}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 17);
+                  onAccountNumberChange(v);
+                }}
+                placeholder="Up to 17 digits"
+                className="bg-white/80 border-teal-200 focus-visible:ring-teal-500 tracking-[0.2em] text-center text-sm"
+                style={{ fontFamily: '"MICR E13B", monospace' }}
+                inputMode="numeric"
+                maxLength={17}
+                required
+              />
+              <p className="text-[9px] text-teal-500 mt-0.5 text-center">
+                Middle number on check
+              </p>
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono font-semibold text-teal-700 mb-1.5">
+                Confirm Account Number
+              </label>
+              <Input
+                value={confirmAccountNumber}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 17);
+                  onConfirmAccountNumberChange(v);
+                }}
+                placeholder="Re-enter account number"
+                className={`bg-white/80 border-teal-200 focus-visible:ring-teal-500 tracking-[0.2em] text-center text-sm ${confirmAccountNumber && confirmAccountNumber !== accountNumber ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+                style={{ fontFamily: '"MICR E13B", monospace' }}
+                inputMode="numeric"
+                maxLength={17}
+                required
+              />
+              {confirmAccountNumber && confirmAccountNumber !== accountNumber && (
+                <p className="text-[9px] text-red-500 mt-0.5 text-center">
+                  Numbers do not match
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Check diagram hint */}
         <div className="rounded-lg bg-white/50 border border-teal-100 px-3 py-2 mt-2">
-          <p className="text-[10px] text-teal-600 text-center font-mono">
+          <p
+            className="text-[10px] text-teal-600 text-center"
+            style={{ fontFamily: '"MICR E13B", monospace' }}
+          >
             ⑆ <span className="underline">routing</span> ⑆{" "}
             <span className="underline">account number</span> ⑈{" "}
             <span className="text-teal-400">check #</span>

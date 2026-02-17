@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RegistrationProvider } from "@/lib/context/registration-context";
 import { ForceLightMode } from "@/components/registration/force-light-mode";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 export default async function RegisterLayout({
   children,
@@ -27,6 +28,9 @@ export default async function RegisterLayout({
   return (
     <RegistrationProvider eventId={eventId}>
       <ForceLightMode />
+      <div className="fixed top-3 right-3 z-50">
+        <LanguageSwitcher />
+      </div>
       {children}
     </RegistrationProvider>
   );

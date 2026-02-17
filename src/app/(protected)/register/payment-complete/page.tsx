@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { getStripe } from "@/lib/stripe/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -15,10 +14,10 @@ export default function PaymentCompletePage() {
 
   useEffect(() => {
     async function handleRedirect() {
-      const clientSecret = searchParams.get("payment_intent_client_secret");
+      const paymentIntentId = searchParams.get("payment_intent");
       const redirectStatus = searchParams.get("redirect_status");
 
-      if (!clientSecret) {
+      if (!paymentIntentId) {
         setError("Invalid payment session.");
         return;
       }
@@ -28,43 +27,35 @@ export default function PaymentCompletePage() {
         return;
       }
 
-      // Retrieve the PaymentIntent to get metadata
-      const stripe = await getStripe();
-      if (!stripe) {
-        setError("Failed to load payment system.");
+      // Retrieve PaymentIntent server-side to access metadata
+      const res = await fetch("/api/payment/retrieve-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentIntentId }),
+      });
+
+      if (!res.ok) {
+        setError("Could not verify payment.");
         return;
       }
 
-      const { paymentIntent, error: retrieveError } =
-        await stripe.retrievePaymentIntent(clientSecret);
+      const { status, registrationId, confirmationCode } = await res.json();
 
-      if (retrieveError || !paymentIntent) {
-        setError(retrieveError?.message || "Could not verify payment.");
-        return;
-      }
-
-      if (
-        paymentIntent.status === "succeeded" ||
-        paymentIntent.status === "processing"
-      ) {
-        // Stripe.js PaymentIntent doesn't type metadata, but it's present at runtime
-        const metadata = (paymentIntent as unknown as { metadata: Record<string, string> }).metadata;
-        const { registrationId, confirmationCode } = metadata;
-        // Find the eventId from the registration via API
-        const res = await fetch(
+      if (status === "succeeded" || status === "processing") {
+        // Find the eventId from the registration
+        const eventRes = await fetch(
           `/api/registration/${registrationId}/event-id`
         );
-        if (res.ok) {
-          const { eventId } = await res.json();
+        if (eventRes.ok) {
+          const { eventId } = await eventRes.json();
           router.replace(
             `/register/${eventId}/confirmation?registrationId=${registrationId}&code=${confirmationCode || ""}`
           );
         } else {
-          // Fallback: go to dashboard
           router.replace("/dashboard");
         }
       } else {
-        setError(`Payment status: ${paymentIntent.status}. Please try again.`);
+        setError(`Payment status: ${status}. Please try again.`);
       }
     }
 
