@@ -27,6 +27,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n/context";
 import { buildPhoneValue, stripDialCode } from "@/lib/utils/field-helpers";
 import {
   ProfileForm,
@@ -85,10 +86,16 @@ export function ProfileSettings({
   const [saving, setSaving] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingData, setPendingData] = useState<ProfileFormData | null>(null);
+  const { locale: i18nLocale, setLocale: setI18nLocale } = useI18n();
   const [locale, setLocale] = useState(profile?.locale ?? "en");
   const { theme, setTheme } = useTheme();
 
   useEffect(() => setMounted(true), []);
+
+  // Keep form locale in sync with i18n context (e.g., toolbar toggle)
+  useEffect(() => {
+    setLocale(i18nLocale);
+  }, [i18nLocale]);
 
   // Parse birth date for ProfileForm initial data
   const parsedBirth = person?.birth_date
@@ -176,6 +183,9 @@ export function ProfileSettings({
         return;
       }
     }
+
+    // Sync locale to i18n context so toolbar updates immediately
+    setI18nLocale(locale as "en" | "ko");
 
     toast.success("Settings saved");
     setSaving(false);

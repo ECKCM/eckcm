@@ -82,7 +82,7 @@ export function DashboardContent({
             </CardHeader>
             <CardContent>
               <Button
-                className="w-full text-lg font-bold tracking-wide neon-sign"
+                className="w-full text-lg font-bold tracking-wide"
                 size="lg"
                 onClick={() => handleRegister(event.id)}
                 disabled={navigatingTo === event.id}

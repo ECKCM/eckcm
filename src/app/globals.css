@@ -250,25 +250,6 @@
   --tracking-widest: calc(var(--tracking-normal) + 0.1em);
 }
 
-.neon-sign {
-  text-shadow:
-    0 0 7px oklch(1 0 0 / 0.7),
-    0 0 20px oklch(0.70 0.21 143 / 0.5);
-  box-shadow:
-    0 0 10px oklch(0.70 0.21 143 / 0.4),
-    0 0 30px oklch(0.70 0.21 143 / 0.15),
-    inset 0 0 10px oklch(0.70 0.21 143 / 0.1);
-}
-
-.neon-sign:hover {
-  text-shadow:
-    0 0 10px oklch(1 0 0 / 0.9),
-    0 0 30px oklch(0.70 0.21 143 / 0.7);
-  box-shadow:
-    0 0 15px oklch(0.70 0.21 143 / 0.6),
-    0 0 45px oklch(0.70 0.21 143 / 0.25),
-    inset 0 0 15px oklch(0.70 0.21 143 / 0.15);
-}
 
 @layer base {
   * {

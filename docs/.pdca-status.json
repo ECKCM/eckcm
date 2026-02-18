@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-18T07:22:25.344Z",
+  "lastUpdated": "2026-02-18T16:59:46.162Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -63,7 +63,8 @@
     "templates",
     "retrieve-intent",
     "configuration",
-    "hard-reset-event"
+    "hard-reset-event",
+    "app-config"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -85,9 +86,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:16:45.184Z",
-        "lastUpdated": "2026-02-18T07:21:45.353Z"
+        "lastUpdated": "2026-02-18T16:37:52.517Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/layout.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/language-switcher.tsx"
     },
     "supabase": {
       "phase": "do",
@@ -254,7 +255,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:32:59.415Z",
-        "lastUpdated": "2026-02-18T06:56:07.527Z"
+        "lastUpdated": "2026-02-18T16:17:20.736Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/dashboard-content.tsx"
     },
@@ -618,7 +619,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T08:18:29.772Z",
-        "lastUpdated": "2026-02-16T14:56:18.548Z"
+        "lastUpdated": "2026-02-18T16:59:46.162Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/settings/profile-settings.tsx"
     },
@@ -852,7 +853,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-17T18:17:32.676Z",
-        "lastUpdated": "2026-02-18T07:22:25.344Z"
+        "lastUpdated": "2026-02-18T13:58:12.841Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/configuration/configuration-manager.tsx"
     },
@@ -868,6 +869,19 @@
         "lastUpdated": "2026-02-17T18:18:59.760Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/hard-reset-event/route.ts"
+    },
+    "app-config": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-18T13:57:03.158Z",
+        "lastUpdated": "2026-02-18T13:57:03.158Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/app-config/route.ts"
     }
   },
   "pipeline": {
@@ -878,7 +892,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-18T07:22:25.344Z"
+    "lastActivity": "2026-02-18T16:59:46.162Z"
   },
   "history": [
     {
@@ -6317,6 +6331,90 @@
     {
       "timestamp": "2026-02-18T07:22:25.344Z",
       "feature": "configuration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T13:56:55.648Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T13:57:03.158Z",
+      "feature": "app-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T13:57:17.383Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T13:57:19.513Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T13:57:22.517Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T13:57:34.462Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T13:58:12.841Z",
+      "feature": "configuration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T16:17:20.736Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T16:32:17.648Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T16:37:52.517Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T16:41:33.356Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T16:41:43.235Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T16:41:53.389Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-18T16:59:46.162Z",
+      "feature": "settings",
       "phase": "do",
       "action": "updated"
     }
