@@ -253,6 +253,51 @@ const THEME_PALETTES: Record<
 
 function ThemeSection() {
   const { colorTheme, setColorTheme } = useColorTheme();
+  const [savedTheme, setSavedTheme] = useState<ColorThemeId>(colorTheme);
+  const [pendingTheme, setPendingTheme] = useState<ColorThemeId>(colorTheme);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Fetch the currently saved theme from DB on mount
+  useEffect(() => {
+    fetch("/api/admin/app-config")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.color_theme) {
+          setSavedTheme(data.color_theme);
+          setPendingTheme(data.color_theme);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const hasChanges = pendingTheme !== savedTheme;
+
+  async function handleApply() {
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/admin/app-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ color_theme: pendingTheme }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || `Failed to save theme (${res.status})`);
+        return;
+      }
+
+      setSavedTheme(pendingTheme);
+      setColorTheme(pendingTheme);
+      toast.success(
+        `Theme changed to ${COLOR_THEMES[pendingTheme].name}. Applied globally.`
+      );
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <Card>
@@ -264,29 +309,27 @@ function ThemeSection() {
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground mb-4">
-          Select the color theme for the entire application. Changes apply
-          immediately.
+          Select the color theme for the entire application. Changes are saved
+          globally and apply to all users.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {COLOR_THEME_IDS.map((id) => {
             const theme = COLOR_THEMES[id];
             const palette = THEME_PALETTES[id];
-            const isActive = colorTheme === id;
+            const isSelected = pendingTheme === id;
+            const isCurrent = savedTheme === id;
 
             return (
               <button
                 key={id}
-                onClick={() => {
-                  setColorTheme(id);
-                  toast.success(`Theme changed to ${theme.name}`);
-                }}
+                onClick={() => setPendingTheme(id)}
                 className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-md ${
-                  isActive
+                  isSelected
                     ? "border-primary bg-primary/5 shadow-sm"
                     : "border-border hover:border-primary/40"
                 }`}
               >
-                {isActive && (
+                {isSelected && (
                   <div className="absolute top-2.5 right-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
                     <Check className="h-3 w-3 text-primary-foreground" />
                   </div>
@@ -294,7 +337,14 @@ function ThemeSection() {
 
                 <div className="space-y-3">
                   <div>
-                    <h3 className="font-semibold text-sm">{theme.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-sm">{theme.name}</h3>
+                      {isCurrent && (
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                          Current
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {theme.description}
                     </p>
@@ -336,6 +386,28 @@ function ThemeSection() {
             );
           })}
         </div>
+
+        {hasChanges && (
+          <div className="mt-4 flex items-center gap-3">
+            <Button onClick={handleApply} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Applying...
+                </>
+              ) : (
+                "Apply Theme"
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setPendingTheme(savedTheme)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

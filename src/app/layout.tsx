@@ -3,6 +3,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import { ColorThemeProvider } from "@/components/shared/color-theme-provider";
 import { I18nProvider } from "@/lib/i18n/context";
+import { getAppColorTheme } from "@/lib/app-config";
+import { DEFAULT_COLOR_THEME } from "@/lib/color-theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,24 +29,27 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const colorTheme = await getAppColorTheme();
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      {...(colorTheme !== DEFAULT_COLOR_THEME
+        ? { "data-color-theme": colorTheme }
+        : {})}
+    >
       <head>
         <link
           rel="stylesheet"
           as="style"
           crossOrigin="anonymous"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('color-theme');if(t&&t!=='eckcm')document.documentElement.setAttribute('data-color-theme',t)}catch(e){}})()`,
-          }}
         />
       </head>
       <body className="min-h-screen bg-background antialiased">
@@ -54,7 +59,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ColorThemeProvider>
+          <ColorThemeProvider initialTheme={colorTheme}>
             <I18nProvider>
               {children}
             </I18nProvider>

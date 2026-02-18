@@ -26,7 +26,5 @@ export const COLOR_THEMES = {
 export type ColorThemeId = keyof typeof COLOR_THEMES;
 
 export const DEFAULT_COLOR_THEME: ColorThemeId = "eckcm";
-export const COLOR_THEME_STORAGE_KEY = "color-theme";
-export const COLOR_THEME_COOKIE = "color-theme";
 
 export const COLOR_THEME_IDS = Object.keys(COLOR_THEMES) as ColorThemeId[];

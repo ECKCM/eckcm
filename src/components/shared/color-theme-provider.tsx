@@ -8,12 +8,7 @@ import {
   useCallback,
 } from "react";
 import type { ColorThemeId } from "@/lib/color-theme";
-import {
-  DEFAULT_COLOR_THEME,
-  COLOR_THEME_STORAGE_KEY,
-  COLOR_THEME_COOKIE,
-  COLOR_THEME_IDS,
-} from "@/lib/color-theme";
+import { DEFAULT_COLOR_THEME } from "@/lib/color-theme";
 
 interface ColorThemeContextType {
   colorTheme: ColorThemeId;
@@ -39,36 +34,24 @@ function applyThemeAttribute(theme: ColorThemeId) {
 
 export function ColorThemeProvider({
   children,
+  initialTheme = DEFAULT_COLOR_THEME,
 }: {
   children: React.ReactNode;
+  initialTheme?: ColorThemeId;
 }) {
   const [colorTheme, setColorThemeState] =
-    useState<ColorThemeId>(DEFAULT_COLOR_THEME);
-  const [mounted, setMounted] = useState(false);
+    useState<ColorThemeId>(initialTheme);
 
-  useEffect(() => {
-    const stored = localStorage.getItem(
-      COLOR_THEME_STORAGE_KEY
-    ) as ColorThemeId | null;
-    if (stored && COLOR_THEME_IDS.includes(stored)) {
-      setColorThemeState(stored);
-      applyThemeAttribute(stored);
-    }
-    setMounted(true);
-  }, []);
-
+  // Optimistic UI update — applies DOM attribute immediately
   const setColorTheme = useCallback((theme: ColorThemeId) => {
     setColorThemeState(theme);
-    localStorage.setItem(COLOR_THEME_STORAGE_KEY, theme);
-    document.cookie = `${COLOR_THEME_COOKIE}=${theme};path=/;max-age=31536000;SameSite=Lax`;
     applyThemeAttribute(theme);
   }, []);
 
-  // Keep attribute in sync if state changes externally
+  // Keep attribute in sync with state
   useEffect(() => {
-    if (!mounted) return;
     applyThemeAttribute(colorTheme);
-  }, [colorTheme, mounted]);
+  }, [colorTheme]);
 
   return (
     <ColorThemeContext.Provider value={{ colorTheme, setColorTheme }}>
