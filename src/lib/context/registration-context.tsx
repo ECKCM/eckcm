@@ -5,6 +5,7 @@ import {
   useContext,
   useReducer,
   useEffect,
+  useState,
   type ReactNode,
 } from "react";
 import type {
@@ -113,6 +114,7 @@ function reducer(state: RegistrationState, action: Action): RegistrationState {
 interface RegistrationContextValue {
   state: RegistrationState;
   dispatch: React.Dispatch<Action>;
+  hydrated: boolean;
 }
 
 const RegistrationContext = createContext<RegistrationContextValue | null>(null);
@@ -128,6 +130,7 @@ export function RegistrationProvider({
     ...initialState,
     eventId,
   });
+  const [hydrated, setHydrated] = useState(false);
 
   // Restore from sessionStorage on mount
   useEffect(() => {
@@ -168,6 +171,7 @@ export function RegistrationProvider({
         // ignore parse errors
       }
     }
+    setHydrated(true);
   }, [eventId]);
 
   // Persist to sessionStorage on change
@@ -176,7 +180,7 @@ export function RegistrationProvider({
   }, [state]);
 
   return (
-    <RegistrationContext.Provider value={{ state, dispatch }}>
+    <RegistrationContext.Provider value={{ state, dispatch, hydrated }}>
       {children}
     </RegistrationContext.Provider>
   );

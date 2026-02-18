@@ -10,9 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Toolbar } from "@/components/shared/toolbar";
-import { UserMenu } from "@/components/shared/user-menu";
-import { Loader2 } from "lucide-react";
+import { Loader2, QrCode, Receipt, ClipboardList, Settings } from "lucide-react";
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -50,7 +48,6 @@ export function DashboardContent({
   user,
   person,
   events,
-  isAdmin,
 }: DashboardContentProps) {
   const router = useRouter();
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
@@ -68,15 +65,9 @@ export function DashboardContent({
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-4 pt-8">
       {/* Welcome */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Welcome, {displayName}</h1>
-          <p className="text-sm text-muted-foreground">{user.email}</p>
-        </div>
-        <div className="flex items-center gap-1">
-          <Toolbar />
-          <UserMenu isAdmin={isAdmin} />
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold">Welcome, {displayName}</h1>
+        <p className="text-sm text-muted-foreground">{user.email}</p>
       </div>
 
       {/* Active Events */}
@@ -91,7 +82,7 @@ export function DashboardContent({
             </CardHeader>
             <CardContent>
               <Button
-                className="w-full text-lg font-bold tracking-wide"
+                className="w-full text-lg font-bold tracking-wide neon-sign"
                 size="lg"
                 onClick={() => handleRegister(event.id)}
                 disabled={navigatingTo === event.id}
@@ -123,6 +114,7 @@ export function DashboardContent({
           className="h-auto py-4 flex-col"
           onClick={() => router.push("/dashboard/epass")}
         >
+          <QrCode className="h-5 w-5" />
           <span className="text-lg">E-Pass</span>
           <span className="text-xs text-muted-foreground">View your passes</span>
         </Button>
@@ -131,6 +123,7 @@ export function DashboardContent({
           className="h-auto py-4 flex-col"
           onClick={() => router.push("/dashboard/receipts")}
         >
+          <Receipt className="h-5 w-5" />
           <span className="text-lg">Receipts</span>
           <span className="text-xs text-muted-foreground">View receipts</span>
         </Button>
@@ -139,6 +132,7 @@ export function DashboardContent({
           className="h-auto py-4 flex-col"
           onClick={() => router.push("/dashboard/registrations")}
         >
+          <ClipboardList className="h-5 w-5" />
           <span className="text-lg">Registrations</span>
           <span className="text-xs text-muted-foreground">View history</span>
         </Button>
@@ -147,6 +141,7 @@ export function DashboardContent({
           className="h-auto py-4 flex-col"
           onClick={() => router.push("/dashboard/settings")}
         >
+          <Settings className="h-5 w-5" />
           <span className="text-lg">Settings</span>
           <span className="text-xs text-muted-foreground">Edit profile</span>
         </Button>

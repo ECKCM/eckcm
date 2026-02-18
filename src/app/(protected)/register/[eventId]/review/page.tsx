@@ -27,12 +27,13 @@ import type { PriceEstimate } from "@/lib/types/registration";
 export default function ReviewStep() {
   const router = useRouter();
   const { eventId } = useParams<{ eventId: string }>();
-  const { state } = useRegistration();
+  const { state, hydrated } = useRegistration();
   const [estimate, setEstimate] = useState<PriceEstimate | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!state.startDate) {
       router.push(`/register/${eventId}`);
       return;
@@ -63,9 +64,9 @@ export default function ReviewStep() {
     };
 
     fetchEstimate();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!state.startDate) {
+  if (!hydrated || !state.startDate) {
     return null;
   }
 

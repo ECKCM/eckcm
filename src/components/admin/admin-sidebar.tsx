@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Calendar,
   Settings,
+  Settings2,
   Users,
   DollarSign,
   Building2,
@@ -50,6 +51,7 @@ const settingsLinks = [
   { href: "/admin/settings/departments", label: "Departments", icon: Building2 },
   { href: "/admin/settings/churches", label: "Churches", icon: Church },
   { href: "/admin/settings/legal", label: "Legal Pages", icon: Scale },
+  { href: "/admin/settings/configuration", label: "Configuration", icon: Settings2 },
 ];
 
 export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
