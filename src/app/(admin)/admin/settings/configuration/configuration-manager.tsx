@@ -22,8 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Palette, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useColorTheme } from "@/components/shared/color-theme-provider";
+import {
+  COLOR_THEMES,
+  COLOR_THEME_IDS,
+  type ColorThemeId,
+} from "@/lib/color-theme";
 
 interface EventOption {
   id: string;
@@ -98,6 +104,9 @@ export function ConfigurationManager() {
 
   return (
     <div className="space-y-8">
+      {/* Color Theme */}
+      <ThemeSection />
+
       {/* Danger Zone */}
       <Card className="border-destructive/50">
         <CardHeader>
@@ -223,5 +232,111 @@ export function ConfigurationManager() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/* ── Theme Section ── */
+
+const THEME_PALETTES: Record<
+  ColorThemeId,
+  { swatches: string[]; darkSwatches: string[] }
+> = {
+  eckcm: {
+    swatches: ["#4a9e3f", "#81c784", "#c8e6c9", "#2e7d32", "#ffffff"],
+    darkSwatches: ["#66bb6a", "#388e3c", "#1b5e20", "#a5d6a7", "#0a0a0a"],
+  },
+  upj: {
+    swatches: ["#003594", "#ffb81c", "#dbeeff", "#00205b", "#ffffff"],
+    darkSwatches: ["#5b93ff", "#ffb81c", "#162a48", "#66b2e3", "#080e1e"],
+  },
+};
+
+function ThemeSection() {
+  const { colorTheme, setColorTheme } = useColorTheme();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Palette className="h-5 w-5" />
+          Color Theme
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-4">
+          Select the color theme for the entire application. Changes apply
+          immediately.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {COLOR_THEME_IDS.map((id) => {
+            const theme = COLOR_THEMES[id];
+            const palette = THEME_PALETTES[id];
+            const isActive = colorTheme === id;
+
+            return (
+              <button
+                key={id}
+                onClick={() => {
+                  setColorTheme(id);
+                  toast.success(`Theme changed to ${theme.name}`);
+                }}
+                className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-md ${
+                  isActive
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-border hover:border-primary/40"
+                }`}
+              >
+                {isActive && (
+                  <div className="absolute top-2.5 right-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
+                    <Check className="h-3 w-3 text-primary-foreground" />
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-sm">{theme.name}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {theme.description}
+                    </p>
+                  </div>
+
+                  {/* Light mode palette */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                      Light
+                    </span>
+                    <div className="flex gap-1.5">
+                      {palette.swatches.map((color, i) => (
+                        <div
+                          key={i}
+                          className="h-6 w-6 rounded-full border border-black/10"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Dark mode palette */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                      Dark
+                    </span>
+                    <div className="flex gap-1.5">
+                      {palette.darkSwatches.map((color, i) => (
+                        <div
+                          key={i}
+                          className="h-6 w-6 rounded-full border border-white/10"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
