@@ -242,7 +242,7 @@ export default function PaymentStep() {
                 </p>
               </div>
             )}
-            <Button onClick={goToConfirmation} size="lg" className="mt-4">
+            <Button onClick={() => goToConfirmation()} size="lg" className="mt-4">
               Continue
             </Button>
           </CardContent>

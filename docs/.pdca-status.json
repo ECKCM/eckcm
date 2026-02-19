@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-19T19:06:24.830Z",
+  "lastUpdated": "2026-02-19T19:14:14.920Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -455,7 +455,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:55.352Z",
-        "lastUpdated": "2026-02-19T19:06:15.794Z"
+        "lastUpdated": "2026-02-19T19:14:14.920Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
     },
@@ -962,7 +962,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-19T19:06:24.830Z"
+    "lastActivity": "2026-02-19T19:14:14.920Z"
   },
   "history": [
     {
@@ -7187,6 +7187,12 @@
     {
       "timestamp": "2026-02-19T19:06:24.829Z",
       "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T19:14:14.920Z",
+      "feature": "payment",
       "phase": "do",
       "action": "updated"
     }
