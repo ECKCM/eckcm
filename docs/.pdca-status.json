@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-19T13:41:53.887Z",
+  "lastUpdated": "2026-02-19T19:06:24.830Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -67,7 +67,9 @@
     "app-config",
     "stripe-config",
     "publishable-key",
-    "confirm"
+    "confirm",
+    "airport-rides",
+    "airport"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -89,9 +91,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:16:45.184Z",
-        "lastUpdated": "2026-02-19T10:20:17.998Z"
+        "lastUpdated": "2026-02-19T18:58:41.722Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/site-footer.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/types/registration.ts"
     },
     "supabase": {
       "phase": "do",
@@ -141,9 +143,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:22:35.232Z",
-        "lastUpdated": "2026-02-19T10:56:40.783Z"
+        "lastUpdated": "2026-02-19T14:33:52.945Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/stripe/stripe-config-manager.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/webhooks/stripe/route.ts"
     },
     "email": {
       "phase": "do",
@@ -154,7 +156,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:22:37.694Z",
-        "lastUpdated": "2026-02-16T22:36:08.734Z"
+        "lastUpdated": "2026-02-19T15:34:38.969Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/email/send-confirmation.ts"
     },
@@ -271,9 +273,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:44:31.720Z",
-        "lastUpdated": "2026-02-19T09:27:18.988Z"
+        "lastUpdated": "2026-02-19T18:50:52.218Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/layout.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/admin/admin-sidebar.tsx"
     },
     "events": {
       "phase": "do",
@@ -362,7 +364,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:51:40.198Z",
-        "lastUpdated": "2026-02-17T18:01:24.562Z"
+        "lastUpdated": "2026-02-19T18:24:21.109Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/context/registration-context.tsx"
     },
@@ -427,7 +429,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:20.413Z",
-        "lastUpdated": "2026-02-16T10:44:11.870Z"
+        "lastUpdated": "2026-02-19T18:59:27.649Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/airport-pickup/page.tsx"
     },
@@ -440,7 +442,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:46.919Z",
-        "lastUpdated": "2026-02-17T18:01:43.845Z"
+        "lastUpdated": "2026-02-19T18:59:51.033Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
     },
@@ -453,7 +455,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:55.352Z",
-        "lastUpdated": "2026-02-19T10:54:40.777Z"
+        "lastUpdated": "2026-02-19T19:06:15.794Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
     },
@@ -518,7 +520,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:56:55.924Z",
-        "lastUpdated": "2026-02-19T08:39:32.423Z"
+        "lastUpdated": "2026-02-19T18:59:40.525Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/submit/route.ts"
     },
@@ -557,7 +559,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T08:08:34.566Z",
-        "lastUpdated": "2026-02-19T10:43:13.678Z"
+        "lastUpdated": "2026-02-19T19:06:24.829Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/create-intent/route.ts"
     },
@@ -895,7 +897,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-19T08:23:54.061Z",
-        "lastUpdated": "2026-02-19T08:23:54.061Z"
+        "lastUpdated": "2026-02-19T14:20:50.154Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/stripe-config/route.ts"
     },
@@ -924,6 +926,32 @@
         "lastUpdated": "2026-02-19T10:53:37.119Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/confirm/route.ts"
+    },
+    "airport-rides": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-19T18:23:11.306Z",
+        "lastUpdated": "2026-02-19T18:23:48.295Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/airport-rides/airport-rides-manager.tsx"
+    },
+    "airport": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-19T18:51:11.453Z",
+        "lastUpdated": "2026-02-19T18:51:57.699Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/airport/airport-checklist.tsx"
     }
   },
   "pipeline": {
@@ -934,7 +962,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-19T13:41:53.887Z"
+    "lastActivity": "2026-02-19T19:06:24.830Z"
   },
   "history": [
     {
@@ -6973,6 +7001,192 @@
     {
       "timestamp": "2026-02-19T13:41:53.887Z",
       "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T14:10:51.545Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T14:20:25.012Z",
+      "feature": "stripe-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T14:20:30.309Z",
+      "feature": "stripe-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T14:20:36.476Z",
+      "feature": "stripe-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T14:20:44.845Z",
+      "feature": "stripe-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T14:20:50.154Z",
+      "feature": "stripe-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T14:21:33.552Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T14:21:55.026Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T14:22:05.194Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T14:22:10.682Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T14:33:52.945Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T15:34:37.842Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T15:34:38.969Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:22:50.510Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:22:52.238Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:23:11.306Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:23:48.295Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:24:09.163Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:24:21.109Z",
+      "feature": "context",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:24:59.308Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:25:25.417Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:25:40.514Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:50:52.218Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:51:11.453Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:51:57.699Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:58:41.722Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:59:27.649Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:59:40.525Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T18:59:51.033Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T19:06:15.794Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T19:06:24.829Z",
+      "feature": "create-intent",
       "phase": "do",
       "action": "updated"
     }
