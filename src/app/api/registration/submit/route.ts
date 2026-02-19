@@ -84,6 +84,23 @@ export async function POST(request: Request) {
   // Use admin client for multi-table inserts (bypasses RLS for server-side transaction)
   const admin = createAdminClient();
 
+  // 0. Check for duplicate registration (one user, one registration per event)
+  const { data: existingReg } = await admin
+    .from("eckcm_registrations")
+    .select("id, confirmation_code")
+    .eq("event_id", eventId)
+    .eq("created_by_user_id", user.id)
+    .in("status", ["SUBMITTED", "PAID"])
+    .limit(1)
+    .maybeSingle();
+
+  if (existingReg) {
+    return NextResponse.json(
+      { error: "You already have a registration for this event", confirmationCode: existingReg.confirmation_code },
+      { status: 409 }
+    );
+  }
+
   // 1. Load registration group
   const { data: regGroup } = await admin
     .from("eckcm_registration_groups")

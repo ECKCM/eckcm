@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { AlertCircle } from "lucide-react";
 import { DateRangePicker } from "@/components/registration/date-range-picker";
 
 interface EventData {
@@ -42,10 +43,15 @@ export default function RegistrationStep1() {
   const [groups, setGroups] = useState<RegGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [accessCode, setAccessCode] = useState(state.accessCode ?? "");
+  const [existingRegistration, setExistingRegistration] = useState<{
+    confirmationCode: string;
+  } | null>(null);
 
   useEffect(() => {
     const load = async () => {
       const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
       const [{ data: ev }, { data: grps }] = await Promise.all([
         supabase
           .from("eckcm_events")
@@ -60,6 +66,24 @@ export default function RegistrationStep1() {
       ]);
       setEvent(ev);
       setGroups(grps ?? []);
+
+      // Check if user already has an active registration for this event
+      if (user) {
+        const { data: existing } = await supabase
+          .from("eckcm_registrations")
+          .select("id, confirmation_code")
+          .eq("event_id", eventId)
+          .eq("created_by_user_id", user.id)
+          .in("status", ["SUBMITTED", "PAID"])
+          .limit(1)
+          .maybeSingle();
+
+        if (existing) {
+          setExistingRegistration({
+            confirmationCode: existing.confirmation_code,
+          });
+        }
+      }
 
       // Default dates to event dates if not set
       if (!state.startDate && ev) {
@@ -154,6 +178,33 @@ export default function RegistrationStep1() {
     return (
       <div className="mx-auto max-w-2xl p-4 pt-8 text-center text-muted-foreground">
         Event not found.
+      </div>
+    );
+  }
+
+  if (existingRegistration) {
+    return (
+      <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
+        <h1 className="text-2xl font-bold text-center">{event.name_en}</h1>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <AlertCircle className="size-12 text-amber-500" />
+              <div className="space-y-2">
+                <h2 className="text-lg font-semibold">Already Registered</h2>
+                <p className="text-muted-foreground">
+                  You already have a registration for this event.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Confirmation Code: <span className="font-mono font-semibold text-foreground">{existingRegistration.confirmationCode}</span>
+                </p>
+              </div>
+              <Button onClick={() => router.push("/dashboard")}>
+                Go to Dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

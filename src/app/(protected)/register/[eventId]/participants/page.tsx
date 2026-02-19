@@ -517,6 +517,36 @@ export default function ParticipantsStep() {
       return next;
     });
 
+    // --- Duplicate checks (client-side: within current form) ---
+    const birthDate = `${p.birthYear}-${String(p.birthMonth).padStart(2, "0")}-${String(p.birthDay).padStart(2, "0")}`;
+
+    for (let gIdx = 0; gIdx < state.roomGroups.length; gIdx++) {
+      for (let pIdx = 0; pIdx < state.roomGroups[gIdx].participants.length; pIdx++) {
+        if (gIdx === gi && pIdx === pi) continue;
+        const other = state.roomGroups[gIdx].participants[pIdx];
+
+        // Email duplicate within form
+        if (p.email && !p.noEmail && !other.noEmail && other.email &&
+            other.email.toLowerCase() === p.email.toLowerCase()) {
+          setFieldErrors((prev) => ({ ...prev, [key]: { email: "Unable to use this email" } }));
+          return;
+        }
+
+        // Person duplicate within form (firstName + lastName + birthDate + gender)
+        const otherBirthDate = `${other.birthYear}-${String(other.birthMonth).padStart(2, "0")}-${String(other.birthDay).padStart(2, "0")}`;
+        if (
+          other.firstName && other.lastName &&
+          other.firstName.toUpperCase() === p.firstName.toUpperCase() &&
+          other.lastName.toUpperCase() === p.lastName.toUpperCase() &&
+          otherBirthDate === birthDate &&
+          other.gender === p.gender
+        ) {
+          setFieldErrors((prev) => ({ ...prev, [key]: { firstName: "이미 등록된 사람입니다" } }));
+          return;
+        }
+      }
+    }
+
     setSavingPanel(key);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -525,6 +555,30 @@ export default function ParticipantsStep() {
       toast.error("Not authenticated");
       setSavingPanel(null);
       return;
+    }
+
+    // --- Duplicate checks (server-side: against DB via Postgres function) ---
+    const { data: dupCheck, error: dupError } = await supabase.rpc(
+      "check_registration_duplicates",
+      {
+        p_event_id: eventId,
+        p_email: (!p.noEmail && p.email) ? p.email.trim() : null,
+        p_first_name: p.firstName.trim(),
+        p_last_name: p.lastName.trim(),
+        p_birth_date: birthDate,
+        p_gender: p.gender,
+      }
+    );
+
+    if (!dupError && dupCheck) {
+      const dupErrs: Record<string, string> = {};
+      if (dupCheck.emailDuplicate) dupErrs.email = "Unable to use this email";
+      if (dupCheck.personDuplicate) dupErrs.firstName = "이미 등록된 사람입니다";
+      if (Object.keys(dupErrs).length > 0) {
+        setFieldErrors((prev) => ({ ...prev, [key]: dupErrs }));
+        setSavingPanel(null);
+        return;
+      }
     }
 
     const { error: dbError } = await supabase

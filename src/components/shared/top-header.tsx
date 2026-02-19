@@ -67,7 +67,7 @@ export function TopHeader({
 
   if (!mounted) {
     return (
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full border-b bg-primary text-white">
         <div className="mx-auto flex h-14 max-w-7xl items-center px-4 sm:px-6">
           <div className="h-8 w-24 animate-pulse rounded bg-muted" />
         </div>
@@ -76,12 +76,12 @@ export function TopHeader({
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-primary text-white">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
         {/* Mobile menu */}
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="md:hidden">
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/15 hover:text-white md:hidden">
               <Menu className="h-5 w-5" />
               <span className="sr-only">Menu</span>
             </Button>
@@ -158,18 +158,19 @@ export function TopHeader({
         {/* Logo / Brand */}
         <button
           onClick={() => router.push("/dashboard")}
-          className="hidden font-bold tracking-tight md:block"
+          className="hidden font-bold tracking-tight text-(--chart-2) md:block"
         >
           ECKCM
         </button>
 
-        <Separator orientation="vertical" className="hidden h-6 md:block" />
+        <Separator orientation="vertical" className="hidden h-6 bg-white/30 md:block" />
 
         {/* Desktop nav links */}
         <nav className="hidden items-center gap-1 md:flex">
           <Button
             variant="ghost"
             size="sm"
+            className="text-white/90 hover:bg-white/15 hover:text-white"
             onClick={() => router.push("/dashboard")}
           >
             Dashboard
@@ -177,6 +178,7 @@ export function TopHeader({
           <Button
             variant="ghost"
             size="sm"
+            className="text-white/90 hover:bg-white/15 hover:text-white"
             onClick={() => router.push("/dashboard/epass")}
           >
             E-Pass
@@ -184,6 +186,7 @@ export function TopHeader({
           <Button
             variant="ghost"
             size="sm"
+            className="text-white/90 hover:bg-white/15 hover:text-white"
             onClick={() => router.push("/dashboard/registrations")}
           >
             Registrations
@@ -196,23 +199,23 @@ export function TopHeader({
         {/* Actions */}
         <div className="flex items-center gap-1">
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
+          <Button variant="ghost" size="icon" className="relative text-white hover:bg-white/15 hover:text-white">
             <Bell className="h-5 w-5" />
             <span className="sr-only">Notifications</span>
           </Button>
 
           {/* Language Switcher */}
-          <LanguageSwitcher />
+          <LanguageSwitcher className="text-white hover:bg-white/15 hover:text-white" />
 
           {/* Theme Toggle */}
-          <ThemeToggle />
+          <ThemeToggle className="text-white hover:bg-white/15 hover:text-white" />
 
           {/* Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="relative h-9 w-9 rounded-full"
+                className="relative h-9 w-9 rounded-full hover:bg-white/15"
               >
                 <Avatar size="default">
                   <AvatarImage alt={displayName} />

@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n/context";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
-export function LanguageSwitcher() {
+export function LanguageSwitcher({ className }: { className?: string }) {
   const { locale, setLocale } = useI18n();
   const [mounted, setMounted] = useState(false);
 
@@ -33,9 +33,9 @@ export function LanguageSwitcher() {
   };
 
   return (
-    <Button variant="ghost" size="icon" onClick={toggle}>
+    <Button variant="ghost" size="icon" onClick={toggle} className={className}>
       <span className="flex h-7 w-7 items-center justify-center text-sm font-bold leading-none">
-        {locale === "en" ? "A" : "한"}
+        {locale === "en" ? "한" : "A"}
       </span>
       <span className="sr-only">Switch language</span>
     </Button>
