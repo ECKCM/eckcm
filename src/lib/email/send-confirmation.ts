@@ -3,7 +3,7 @@ import { getResendClient } from "@/lib/email/resend";
 import { buildConfirmationEmail } from "@/lib/email/templates/confirmation";
 
 const FROM_EMAIL =
-  process.env.EMAIL_FROM || "ECKCM <noreply@eckcm.org>";
+  process.env.EMAIL_FROM || "ECKCM <noreply@my.eckcm.com>";
 
 export async function sendConfirmationEmail(
   registrationId: string
@@ -72,7 +72,7 @@ export async function sendConfirmationEmail(
     (tokens ?? []).map((t) => [t.person_id, t.token])
   );
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://eckcm.org";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://my.eckcm.com";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const participants = (memberships ?? []).map((m: any) => {

@@ -20,6 +20,7 @@ import {
   Scale,
   Package,
   ShieldCheck,
+  Plane,
 } from "lucide-react";
 import {
   Sidebar,
@@ -53,6 +54,7 @@ const settingsLinks = [
   { href: "/admin/settings/churches", label: "Churches", icon: Church },
   { href: "/admin/settings/legal", label: "Legal Pages", icon: Scale },
   { href: "/admin/settings/stripe", label: "Stripe", icon: CreditCard },
+  { href: "/admin/settings/airport-rides", label: "Airport Rides", icon: Plane },
   { href: "/admin/settings/configuration", label: "Configuration", icon: Settings2 },
 ];
 
@@ -133,6 +135,17 @@ export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
                   <Link href="/admin/inventory">
                     <Package />
                     <span>Inventory</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/admin/airport")}
+                >
+                  <Link href="/admin/airport">
+                    <Plane />
+                    <span>Airport</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

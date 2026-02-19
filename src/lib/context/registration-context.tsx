@@ -45,7 +45,7 @@ const initialState: RegistrationState = {
   roomGroups: [],
   step: 1,
   keyDeposit: 1,
-  airportPickup: { needed: false },
+  airportPickup: { needed: false, selectedRides: [] },
 };
 
 function reducer(state: RegistrationState, action: Action): RegistrationState {

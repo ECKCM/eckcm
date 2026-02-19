@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,32 +26,21 @@ interface StripeConfig {
   stripe_test_secret_key: KeyStatus;
   stripe_live_publishable_key: KeyStatus;
   stripe_live_secret_key: KeyStatus;
+  stripe_test_webhook_secret: KeyStatus;
+  stripe_live_webhook_secret: KeyStatus;
 }
-
-type KeyField = keyof StripeConfig;
-
-const KEY_LABELS: Record<KeyField, { label: string; prefix: string }> = {
-  stripe_test_publishable_key: {
-    label: "Publishable Key",
-    prefix: "pk_test_",
-  },
-  stripe_test_secret_key: { label: "Secret Key", prefix: "sk_test_" },
-  stripe_live_publishable_key: {
-    label: "Publishable Key",
-    prefix: "pk_live_",
-  },
-  stripe_live_secret_key: { label: "Secret Key", prefix: "sk_live_" },
-};
 
 export function StripeConfigManager() {
   const [config, setConfig] = useState<StripeConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [testKeys, setTestKeys] = useState({ publishable: "", secret: "" });
-  const [liveKeys, setLiveKeys] = useState({ publishable: "", secret: "" });
+  const [testKeys, setTestKeys] = useState({ publishable: "", secret: "", webhook: "" });
+  const [liveKeys, setLiveKeys] = useState({ publishable: "", secret: "", webhook: "" });
   const [showSecret, setShowSecret] = useState({
     test: false,
     live: false,
+    testWebhook: false,
+    liveWebhook: false,
   });
 
   useEffect(() => {
@@ -83,6 +73,9 @@ export function StripeConfigManager() {
     if (keys.secret.trim()) {
       updates[`stripe_${mode}_secret_key`] = keys.secret.trim();
     }
+    if (keys.webhook.trim()) {
+      updates[`stripe_${mode}_webhook_secret`] = keys.webhook.trim();
+    }
 
     if (Object.keys(updates).length === 0) {
       toast.error("Enter at least one key to save");
@@ -108,8 +101,8 @@ export function StripeConfigManager() {
       );
 
       // Clear inputs and refresh
-      if (mode === "test") setTestKeys({ publishable: "", secret: "" });
-      else setLiveKeys({ publishable: "", secret: "" });
+      if (mode === "test") setTestKeys({ publishable: "", secret: "", webhook: "" });
+      else setLiveKeys({ publishable: "", secret: "", webhook: "" });
 
       await fetchConfig();
     } catch {
@@ -145,6 +138,10 @@ export function StripeConfigManager() {
         onToggleSecret={() =>
           setShowSecret((s) => ({ ...s, test: !s.test }))
         }
+        showWebhook={showSecret.testWebhook}
+        onToggleWebhook={() =>
+          setShowSecret((s) => ({ ...s, testWebhook: !s.testWebhook }))
+        }
         onSave={() => handleSave("test")}
         saving={saving}
       />
@@ -159,12 +156,30 @@ export function StripeConfigManager() {
         onToggleSecret={() =>
           setShowSecret((s) => ({ ...s, live: !s.live }))
         }
+        showWebhook={showSecret.liveWebhook}
+        onToggleWebhook={() =>
+          setShowSecret((s) => ({ ...s, liveWebhook: !s.liveWebhook }))
+        }
         onSave={() => handleSave("live")}
         saving={saving}
       />
     </div>
   );
 }
+
+/** Anti-autofill props for text inputs */
+const noAutoFillText = {
+  autoComplete: "one-time-code",
+  "data-1p-ignore": true,
+  "data-lpignore": "true",
+} as const;
+
+/** Anti-autofill props for password inputs */
+const noAutoFillPassword = {
+  autoComplete: "new-password",
+  "data-1p-ignore": true,
+  "data-lpignore": "true",
+} as const;
 
 function KeyCard({
   mode,
@@ -173,24 +188,29 @@ function KeyCard({
   onKeysChange,
   showSecret,
   onToggleSecret,
+  showWebhook,
+  onToggleWebhook,
   onSave,
   saving,
 }: {
   mode: "test" | "live";
   config: StripeConfig | null;
-  keys: { publishable: string; secret: string };
-  onKeysChange: (keys: { publishable: string; secret: string }) => void;
+  keys: { publishable: string; secret: string; webhook: string };
+  onKeysChange: (keys: { publishable: string; secret: string; webhook: string }) => void;
   showSecret: boolean;
   onToggleSecret: () => void;
+  showWebhook: boolean;
+  onToggleWebhook: () => void;
   onSave: () => void;
   saving: boolean;
 }) {
   const isLive = mode === "live";
   const publishableStatus =
-    config?.[`stripe_${mode}_publishable_key` as KeyField];
-  const secretStatus = config?.[`stripe_${mode}_secret_key` as KeyField];
+    config?.[`stripe_${mode}_publishable_key` as keyof StripeConfig];
+  const secretStatus = config?.[`stripe_${mode}_secret_key` as keyof StripeConfig];
+  const webhookStatus = config?.[`stripe_${mode}_webhook_secret` as keyof StripeConfig];
 
-  const hasChanges = keys.publishable.trim() || keys.secret.trim();
+  const hasChanges = keys.publishable.trim() || keys.secret.trim() || keys.webhook.trim();
 
   return (
     <Card className={isLive ? "border-orange-500/30" : ""}>
@@ -212,7 +232,7 @@ function KeyCard({
       <CardContent className="space-y-4">
         {/* Publishable Key */}
         <div className="space-y-1.5">
-          <Label>{KEY_LABELS[`stripe_${mode}_publishable_key`].label}</Label>
+          <Label>Publishable Key</Label>
           {publishableStatus?.is_set && !keys.publishable && (
             <p className="text-xs text-muted-foreground">
               Current: pk_{mode}_****{publishableStatus.last4}
@@ -224,14 +244,14 @@ function KeyCard({
             onChange={(e) =>
               onKeysChange({ ...keys, publishable: e.target.value })
             }
-            autoComplete="off"
+            {...noAutoFillText}
           />
         </div>
 
         {/* Secret Key */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label>{KEY_LABELS[`stripe_${mode}_secret_key`].label}</Label>
+            <Label>Secret Key</Label>
             <Button
               variant="ghost"
               size="sm"
@@ -258,8 +278,47 @@ function KeyCard({
             onChange={(e) =>
               onKeysChange({ ...keys, secret: e.target.value })
             }
-            autoComplete="off"
+            {...noAutoFillPassword}
           />
+        </div>
+
+        <Separator />
+
+        {/* Webhook Secret */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label>Webhook Secret</Label>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={onToggleWebhook}
+            >
+              {showWebhook ? (
+                <EyeOff className="h-3 w-3 mr-1" />
+              ) : (
+                <Eye className="h-3 w-3 mr-1" />
+              )}
+              {showWebhook ? "Hide" : "Show"}
+            </Button>
+          </div>
+          {webhookStatus?.is_set && !keys.webhook && (
+            <p className="text-xs text-muted-foreground">
+              Current: whsec_****{webhookStatus.last4}
+            </p>
+          )}
+          <Input
+            type={showWebhook ? "text" : "password"}
+            placeholder="whsec_..."
+            value={keys.webhook}
+            onChange={(e) =>
+              onKeysChange({ ...keys, webhook: e.target.value })
+            }
+            {...noAutoFillPassword}
+          />
+          <p className="text-xs text-muted-foreground">
+            Found in Stripe Dashboard &rarr; Developers &rarr; Webhooks &rarr; Signing secret
+          </p>
         </div>
 
         {/* Save Button */}
@@ -278,7 +337,7 @@ function KeyCard({
           {hasChanges && (
             <Button
               variant="ghost"
-              onClick={() => onKeysChange({ publishable: "", secret: "" })}
+              onClick={() => onKeysChange({ publishable: "", secret: "", webhook: "" })}
               disabled={saving}
             >
               Cancel

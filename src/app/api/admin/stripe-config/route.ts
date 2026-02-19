@@ -6,13 +6,17 @@ type StripeKeyField =
   | "stripe_test_publishable_key"
   | "stripe_test_secret_key"
   | "stripe_live_publishable_key"
-  | "stripe_live_secret_key";
+  | "stripe_live_secret_key"
+  | "stripe_test_webhook_secret"
+  | "stripe_live_webhook_secret";
 
 const STRIPE_KEY_FIELDS: StripeKeyField[] = [
   "stripe_test_publishable_key",
   "stripe_test_secret_key",
   "stripe_live_publishable_key",
   "stripe_live_secret_key",
+  "stripe_test_webhook_secret",
+  "stripe_live_webhook_secret",
 ];
 
 function maskKey(key: string | null): { is_set: boolean; last4: string } {
@@ -53,7 +57,7 @@ export async function GET() {
   const { data, error } = await admin
     .from("eckcm_app_config")
     .select(
-      "stripe_test_publishable_key, stripe_test_secret_key, stripe_live_publishable_key, stripe_live_secret_key"
+      "stripe_test_publishable_key, stripe_test_secret_key, stripe_live_publishable_key, stripe_live_secret_key, stripe_test_webhook_secret, stripe_live_webhook_secret"
     )
     .eq("id", 1)
     .single();
@@ -70,6 +74,8 @@ export async function GET() {
     stripe_test_secret_key: maskKey(data.stripe_test_secret_key),
     stripe_live_publishable_key: maskKey(data.stripe_live_publishable_key),
     stripe_live_secret_key: maskKey(data.stripe_live_secret_key),
+    stripe_test_webhook_secret: maskKey(data.stripe_test_webhook_secret),
+    stripe_live_webhook_secret: maskKey(data.stripe_live_webhook_secret),
   });
 }
 
@@ -112,7 +118,13 @@ export async function PATCH(request: Request) {
         { status: 400 }
       );
     }
-    if (field.includes("secret") && !value.startsWith("sk_")) {
+    if (field.includes("webhook_secret") && !value.startsWith("whsec_")) {
+      return NextResponse.json(
+        { error: `${field} must start with whsec_` },
+        { status: 400 }
+      );
+    }
+    if (field.includes("secret_key") && !value.startsWith("sk_")) {
       return NextResponse.json(
         { error: `${field} must start with sk_` },
         { status: 400 }
@@ -136,7 +148,7 @@ export async function PATCH(request: Request) {
   // Audit log (mask secret keys)
   const auditData: Record<string, string> = {};
   for (const [field, value] of Object.entries(updates)) {
-    auditData[field] = field.includes("secret")
+    auditData[field] = (field.includes("secret") || field.includes("webhook"))
       ? `****${value.slice(-4)}`
       : value;
   }

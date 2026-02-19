@@ -116,6 +116,7 @@ export default function PaymentStep() {
   const [stripePromise, setStripePromise] = useState<Promise<StripeType | null>>(
     () => getStripe()
   );
+  const createIntentCalled = useRef(false);
 
   // Fetch event-specific publishable key
   useEffect(() => {
@@ -134,6 +135,9 @@ export default function PaymentStep() {
 
   useEffect(() => {
     if (!registrationId) return;
+    // Prevent duplicate calls (React 18 strict mode fires effects twice)
+    if (createIntentCalled.current) return;
+    createIntentCalled.current = true;
 
     async function createIntent() {
       try {

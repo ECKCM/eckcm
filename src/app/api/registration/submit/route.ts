@@ -314,13 +314,23 @@ export async function POST(request: Request) {
     }
   }
 
-  // 7. Airport pickup (if needed)
-  if (airportPickup?.needed) {
-    // Store as registration notes for now (airport_pickups table not yet created)
+  // 7. Airport rides (if any selected)
+  if (airportPickup?.selectedRides?.length) {
+    for (const ride of airportPickup.selectedRides) {
+      const passengerCount = ride.selectedParticipantIds?.length ?? 1;
+      await admin.from("eckcm_registration_rides").insert({
+        registration_id: registration.id,
+        ride_id: ride.rideId,
+        passenger_count: passengerCount,
+        flight_info: ride.flightInfo || null,
+      });
+    }
+  } else if (airportPickup?.needed && airportPickup?.details) {
+    // Legacy fallback: free-text only
     await admin
       .from("eckcm_registrations")
       .update({
-        notes: `Airport pickup needed: ${airportPickup.details || "No details provided"}`,
+        notes: `Airport pickup needed: ${airportPickup.details}`,
       })
       .eq("id", registration.id);
   }

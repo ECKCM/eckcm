@@ -93,9 +93,45 @@ export async function POST(request: Request) {
   const stripeMode = (event?.stripe_mode as "test" | "live") ?? "test";
   const paymentTestMode = event?.payment_test_mode === true;
 
-  // Create Stripe PaymentIntent (override to $1 in payment test mode)
+  // Reuse existing pending PaymentIntent if one exists (idempotent)
   const chargeAmount = paymentTestMode ? 100 : amountCents;
   const stripe = await getStripeForMode(stripeMode);
+
+  const { data: existingPayment } = await admin
+    .from("eckcm_payments")
+    .select("stripe_payment_intent_id")
+    .eq("invoice_id", invoice.id)
+    .eq("status", "PENDING")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingPayment?.stripe_payment_intent_id) {
+    try {
+      const existing = await stripe.paymentIntents.retrieve(
+        existingPayment.stripe_payment_intent_id
+      );
+      if (
+        existing.status === "requires_payment_method" ||
+        existing.status === "requires_confirmation" ||
+        existing.status === "requires_action"
+      ) {
+        // Update amount in case payment_test_mode changed
+        const updated = await stripe.paymentIntents.update(existing.id, {
+          amount: chargeAmount,
+        });
+        return NextResponse.json({
+          clientSecret: updated.client_secret,
+          amount: chargeAmount,
+          paymentTestMode,
+        });
+      }
+    } catch {
+      // Existing intent invalid — fall through to create new one
+    }
+  }
+
+  // Create new Stripe PaymentIntent (with idempotency key to prevent duplicates)
   const paymentIntent = await stripe.paymentIntents.create({
     amount: chargeAmount,
     currency: "usd",
@@ -111,10 +147,12 @@ export async function POST(request: Request) {
       "klarna",
       "amazon_pay",
     ],
+  }, {
+    idempotencyKey: `pi_create_${invoice.id}`,
   });
 
   // Create pending payment record
-  await supabase.from("eckcm_payments").insert({
+  await admin.from("eckcm_payments").insert({
     invoice_id: invoice.id,
     stripe_payment_intent_id: paymentIntent.id,
     payment_method: "STRIPE",

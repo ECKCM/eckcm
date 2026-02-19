@@ -59,9 +59,16 @@ export interface LodgingPreferences {
   firstFloor: boolean;
 }
 
+export interface AirportRideSelection {
+  rideId: string;
+  selectedParticipantIds: string[]; // client-side temp IDs from ParticipantInput
+  flightInfo: string;
+}
+
 export interface AirportPickupInput {
   needed: boolean;
-  details?: string;
+  details?: string; // legacy free-text fallback
+  selectedRides: AirportRideSelection[];
 }
 
 /**

@@ -145,8 +145,12 @@ export default function ReviewStep() {
             <span>
               {state.roomGroups.reduce((sum, g) => sum + g.keyCount, 0)}
             </span>
-            <span className="text-muted-foreground">Airport Pickup:</span>
-            <span>{state.airportPickup.needed ? "Yes" : "No"}</span>
+            <span className="text-muted-foreground">Airport Rides:</span>
+            <span>
+              {state.airportPickup.selectedRides?.length
+                ? `${state.airportPickup.selectedRides.length} ride(s), ${state.airportPickup.selectedRides.reduce((sum, r) => sum + (r.selectedParticipantIds?.length ?? 0), 0)} passenger(s)`
+                : "None"}
+            </span>
           </div>
         </CardContent>
       </Card>
