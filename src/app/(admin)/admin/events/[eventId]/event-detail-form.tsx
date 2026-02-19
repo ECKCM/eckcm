@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
@@ -22,6 +23,7 @@ interface EventDetailFormProps {
     registration_end_date: string | null;
     location: string | null;
     is_active: boolean;
+    stripe_mode: string;
   };
 }
 
@@ -47,6 +49,7 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
     registration_end_date: toDatetimeLocal(event.registration_end_date),
     location: event.location ?? "",
     is_active: event.is_active,
+    stripe_mode: event.stripe_mode ?? "test",
   });
 
   const handleSave = async () => {
@@ -64,6 +67,7 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
         registration_end_date: form.registration_end_date || null,
         location: form.location || null,
         is_active: form.is_active,
+        stripe_mode: form.stripe_mode,
       })
       .eq("id", event.id);
 
@@ -172,6 +176,19 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
             }
           />
           <Label>Active</Label>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={form.stripe_mode === "live"}
+            onCheckedChange={(checked) =>
+              setForm({ ...form, stripe_mode: checked ? "live" : "test" })
+            }
+          />
+          <Label>Stripe Mode</Label>
+          <Badge variant={form.stripe_mode === "live" ? "destructive" : "secondary"}>
+            {form.stripe_mode === "live" ? "LIVE" : "TEST"}
+          </Badge>
         </div>
 
         <div className="flex gap-3 pt-4">

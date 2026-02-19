@@ -12,8 +12,8 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
-import type { PaymentRequest as StripePaymentRequest } from "@stripe/stripe-js";
-import { getStripe } from "@/lib/stripe/client";
+import type { Stripe as StripeType, PaymentRequest as StripePaymentRequest } from "@stripe/stripe-js";
+import { getStripe, getStripeWithKey } from "@/lib/stripe/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -113,6 +113,24 @@ export default function PaymentStep() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [freeRegistration, setFreeRegistration] = useState(false);
+  const [stripePromise, setStripePromise] = useState<Promise<StripeType | null>>(
+    () => getStripe()
+  );
+
+  // Fetch event-specific publishable key
+  useEffect(() => {
+    if (!eventId) return;
+    fetch(`/api/stripe/publishable-key?eventId=${eventId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.publishableKey) {
+          setStripePromise(getStripeWithKey(data.publishableKey));
+        }
+      })
+      .catch(() => {
+        // Fallback to env var key
+      });
+  }, [eventId]);
 
   useEffect(() => {
     if (!registrationId) return;
@@ -275,12 +293,13 @@ export default function PaymentStep() {
         </Card>
       ) : clientSecret ? (
         <Elements
-          stripe={getStripe()}
+          stripe={stripePromise}
           options={{ appearance: STRIPE_APPEARANCE }}
         >
           <CustomPaymentForm
             clientSecret={clientSecret}
             amount={amount}
+            stripePromise={stripePromise}
             onSuccess={goToConfirmation}
             onCancel={() =>
               router.push(
@@ -310,11 +329,13 @@ export default function PaymentStep() {
 function CustomPaymentForm({
   clientSecret,
   amount,
+  stripePromise,
   onSuccess,
   onCancel,
 }: {
   clientSecret: string;
   amount: number;
+  stripePromise: Promise<StripeType | null>;
   onSuccess: () => void;
   onCancel: () => void;
 }) {
@@ -626,7 +647,7 @@ function CustomPaymentForm({
         {moreOpen && (
           <div className="mt-3">
             <Elements
-              stripe={getStripe()}
+              stripe={stripePromise}
               options={{
                 clientSecret,
                 appearance: STRIPE_APPEARANCE,

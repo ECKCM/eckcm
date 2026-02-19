@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getStripeServer } from "@/lib/stripe/config";
+import { getStripeForMode } from "@/lib/stripe/config";
 
 interface CreateIntentBody {
   registrationId: string;
@@ -27,10 +27,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // Load registration + invoice
+  // Load registration + event stripe_mode
   const { data: registration } = await supabase
     .from("eckcm_registrations")
-    .select("id, status, created_by_user_id, total_amount_cents, confirmation_code")
+    .select("id, status, created_by_user_id, total_amount_cents, confirmation_code, event_id")
     .eq("id", registrationId)
     .single();
 
@@ -83,8 +83,17 @@ export async function POST(request: Request) {
     );
   }
 
+  // Resolve event's stripe_mode
+  const { data: event } = await admin
+    .from("eckcm_events")
+    .select("stripe_mode")
+    .eq("id", registration.event_id)
+    .single();
+
+  const stripeMode = (event?.stripe_mode as "test" | "live") ?? "test";
+
   // Create Stripe PaymentIntent
-  const stripe = getStripeServer();
+  const stripe = await getStripeForMode(stripeMode);
   const paymentIntent = await stripe.paymentIntents.create({
     amount: amountCents,
     currency: "usd",

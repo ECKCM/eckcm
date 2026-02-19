@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Calendar,
+  CreditCard,
   Settings,
   Settings2,
   Users,
@@ -51,6 +52,7 @@ const settingsLinks = [
   { href: "/admin/settings/departments", label: "Departments", icon: Building2 },
   { href: "/admin/settings/churches", label: "Churches", icon: Church },
   { href: "/admin/settings/legal", label: "Legal Pages", icon: Scale },
+  { href: "/admin/settings/stripe", label: "Stripe", icon: CreditCard },
   { href: "/admin/settings/configuration", label: "Configuration", icon: Settings2 },
 ];
 

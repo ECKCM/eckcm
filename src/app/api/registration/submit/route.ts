@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     .select("id, confirmation_code")
     .eq("event_id", eventId)
     .eq("created_by_user_id", user.id)
-    .in("status", ["SUBMITTED", "PAID"])
+    .in("status", ["DRAFT", "SUBMITTED", "PAID"])
     .limit(1)
     .maybeSingle();
 
@@ -222,7 +222,7 @@ export async function POST(request: Request) {
       event_id: eventId,
       created_by_user_id: user.id,
       registration_group_id: registrationGroupId,
-      status: "SUBMITTED",
+      status: "DRAFT",
       confirmation_code: confirmationCode,
       start_date: startDate,
       end_date: endDate,

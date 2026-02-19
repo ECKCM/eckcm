@@ -167,6 +167,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
   > = {
     PAID: "default",
     SUBMITTED: "outline",
+    DRAFT: "secondary",
     CANCELLED: "destructive",
   };
 

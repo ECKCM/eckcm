@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TopHeader } from "@/components/shared/top-header";
+import { SiteFooter } from "@/components/shared/site-footer";
 
 export default async function ProtectedLayout({
   children,
@@ -65,14 +66,15 @@ export default async function ProtectedLayout({
     : email[0]?.toUpperCase() ?? "U";
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <TopHeader
         user={{ id: user.id, email }}
         displayName={displayName}
         initials={initials}
         isAdmin={isAdmin}
       />
-      <main>{children}</main>
+      <main className="flex-1">{children}</main>
+      <SiteFooter />
     </div>
   );
 }

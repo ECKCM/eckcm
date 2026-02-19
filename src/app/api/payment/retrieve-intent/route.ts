@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getStripeServer } from "@/lib/stripe/config";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getStripeForMode } from "@/lib/stripe/config";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { paymentIntentId } = await request.json();
+  const { paymentIntentId, eventId } = await request.json();
   if (!paymentIntentId || typeof paymentIntentId !== "string") {
     return NextResponse.json(
       { error: "paymentIntentId is required" },
@@ -20,7 +21,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const stripe = getStripeServer();
+  // Resolve stripe mode from event
+  let stripeMode: "test" | "live" = "test";
+  if (eventId) {
+    const admin = createAdminClient();
+    const { data: event } = await admin
+      .from("eckcm_events")
+      .select("stripe_mode")
+      .eq("id", eventId)
+      .single();
+    if (event?.stripe_mode === "live") stripeMode = "live";
+  }
+
+  const stripe = await getStripeForMode(stripeMode);
   const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
   // Verify this payment belongs to the authenticated user
