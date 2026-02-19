@@ -194,7 +194,19 @@ export default function PaymentStep() {
     );
   }
 
-  const goToConfirmation = () => {
+  const goToConfirmation = async (paymentIntentId?: string) => {
+    // Confirm payment server-side before navigating
+    if (paymentIntentId && registrationId) {
+      try {
+        await fetch("/api/payment/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ registrationId, paymentIntentId }),
+        });
+      } catch {
+        // Non-fatal: webhook can still handle it
+      }
+    }
     router.push(
       `/register/${eventId}/confirmation?registrationId=${registrationId}&code=${confirmationCode || ""}`
     );
@@ -300,7 +312,7 @@ export default function PaymentStep() {
             clientSecret={clientSecret}
             amount={amount}
             stripePromise={stripePromise}
-            onSuccess={goToConfirmation}
+            onSuccess={(piId) => goToConfirmation(piId)}
             onCancel={() =>
               router.push(
                 `/register/${eventId}/review?registrationId=${registrationId}&code=${confirmationCode || ""}`
@@ -336,7 +348,7 @@ function CustomPaymentForm({
   clientSecret: string;
   amount: number;
   stripePromise: Promise<StripeType | null>;
-  onSuccess: () => void;
+  onSuccess: (paymentIntentId?: string) => void;
   onCancel: () => void;
 }) {
   const stripe = useStripe();
@@ -403,17 +415,17 @@ function CustomPaymentForm({
       } else {
         ev.complete("success");
         if (paymentIntent?.status === "requires_action") {
-          const { error: confirmError } =
+          const { error: confirmError, paymentIntent: confirmedPI } =
             await stripe.confirmCardPayment(clientSecret);
           if (confirmError) {
             toast.error(confirmError.message || "Payment failed.");
           } else {
             toast.success("Payment successful!");
-            onSuccess();
+            onSuccess(confirmedPI?.id);
           }
         } else {
           toast.success("Payment successful!");
-          onSuccess();
+          onSuccess(paymentIntent?.id);
         }
       }
     });
@@ -459,7 +471,7 @@ function CustomPaymentForm({
     const cardNumber = elements.getElement(CardNumberElement);
     if (!cardNumber) return;
 
-    const { error } = await stripe.confirmCardPayment(clientSecret, {
+    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
       payment_method: {
         card: cardNumber,
         billing_details: {
@@ -476,7 +488,7 @@ function CustomPaymentForm({
       toast.error(error.message || "Payment failed. Please try again.");
     } else {
       toast.success("Payment successful!");
-      onSuccess();
+      onSuccess(paymentIntent?.id);
     }
   };
 
@@ -523,15 +535,15 @@ function CustomPaymentForm({
       toast.info(
         "Bank verification required. You will receive micro-deposits in 1-2 business days."
       );
-      onSuccess();
+      onSuccess(paymentIntent?.id);
     } else if (paymentIntent?.status === "processing") {
       toast.success(
         "Payment initiated! ACH transfers take 3-5 business days."
       );
-      onSuccess();
+      onSuccess(paymentIntent?.id);
     } else {
       toast.success("Payment successful!");
-      onSuccess();
+      onSuccess(paymentIntent?.id);
     }
   };
 
@@ -911,7 +923,7 @@ function MorePaymentOptions({
 }: {
   submitRef: React.MutableRefObject<(() => Promise<void>) | null>;
   returnUrl: string;
-  onSuccess: () => void;
+  onSuccess: (paymentIntentId?: string) => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -933,7 +945,7 @@ function MorePaymentOptions({
         paymentIntent?.status === "processing"
       ) {
         toast.success("Payment successful!");
-        onSuccess();
+        onSuccess(paymentIntent?.id);
       }
       // If redirect happened, user left the page — nothing to do here
     };

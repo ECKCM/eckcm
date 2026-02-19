@@ -9,6 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 interface EventDetailFormProps {
@@ -24,6 +34,7 @@ interface EventDetailFormProps {
     location: string | null;
     is_active: boolean;
     stripe_mode: string;
+    payment_test_mode: boolean;
   };
 }
 
@@ -39,6 +50,7 @@ function toDatetimeLocal(value: string | null): string {
 export function EventDetailForm({ event }: EventDetailFormProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [showPaymentTestConfirm, setShowPaymentTestConfirm] = useState(false);
   const [form, setForm] = useState({
     name_en: event.name_en,
     name_ko: event.name_ko ?? "",
@@ -50,6 +62,7 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
     location: event.location ?? "",
     is_active: event.is_active,
     stripe_mode: event.stripe_mode ?? "test",
+    payment_test_mode: event.payment_test_mode ?? false,
   });
 
   const handleSave = async () => {
@@ -68,6 +81,7 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
         location: form.location || null,
         is_active: form.is_active,
         stripe_mode: form.stripe_mode,
+        payment_test_mode: form.payment_test_mode,
       })
       .eq("id", event.id);
 
@@ -190,6 +204,42 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
             {form.stripe_mode === "live" ? "LIVE" : "TEST"}
           </Badge>
         </div>
+
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={form.payment_test_mode}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                setShowPaymentTestConfirm(true);
+              } else {
+                setForm({ ...form, payment_test_mode: false });
+              }
+            }}
+          />
+          <Label>Payment Test</Label>
+          {form.payment_test_mode && (
+            <Badge variant="destructive">$1 TEST</Badge>
+          )}
+        </div>
+
+        <AlertDialog open={showPaymentTestConfirm} onOpenChange={setShowPaymentTestConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Enable Payment Test Mode?</AlertDialogTitle>
+              <AlertDialogDescription>
+                All payments for this event will be charged <strong>$1.00</strong> instead of the actual total. Make sure to turn this off before going live.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => setForm({ ...form, payment_test_mode: true })}
+              >
+                Enable
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <div className="flex gap-3 pt-4">
           <Button onClick={handleSave} disabled={saving}>

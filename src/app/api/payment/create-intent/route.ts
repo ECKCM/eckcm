@@ -83,19 +83,21 @@ export async function POST(request: Request) {
     );
   }
 
-  // Resolve event's stripe_mode
+  // Resolve event's stripe_mode and payment_test_mode
   const { data: event } = await admin
     .from("eckcm_events")
-    .select("stripe_mode")
+    .select("stripe_mode, payment_test_mode")
     .eq("id", registration.event_id)
     .single();
 
   const stripeMode = (event?.stripe_mode as "test" | "live") ?? "test";
+  const paymentTestMode = event?.payment_test_mode === true;
 
-  // Create Stripe PaymentIntent
+  // Create Stripe PaymentIntent (override to $1 in payment test mode)
+  const chargeAmount = paymentTestMode ? 100 : amountCents;
   const stripe = await getStripeForMode(stripeMode);
   const paymentIntent = await stripe.paymentIntents.create({
-    amount: amountCents,
+    amount: chargeAmount,
     currency: "usd",
     metadata: {
       registrationId,
@@ -122,6 +124,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     clientSecret: paymentIntent.client_secret,
-    amount: amountCents,
+    amount: chargeAmount,
+    paymentTestMode,
   });
 }

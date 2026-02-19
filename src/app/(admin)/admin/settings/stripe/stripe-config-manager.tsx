@@ -224,6 +224,7 @@ function KeyCard({
             onChange={(e) =>
               onKeysChange({ ...keys, publishable: e.target.value })
             }
+            autoComplete="off"
           />
         </div>
 
@@ -257,6 +258,7 @@ function KeyCard({
             onChange={(e) =>
               onKeysChange({ ...keys, secret: e.target.value })
             }
+            autoComplete="off"
           />
         </div>
 

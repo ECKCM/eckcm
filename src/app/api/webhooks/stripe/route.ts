@@ -60,6 +60,18 @@ async function handlePaymentIntentSucceeded(
     return;
   }
 
+  // Idempotent check: skip if already confirmed
+  const { data: reg } = await admin
+    .from("eckcm_registrations")
+    .select("status")
+    .eq("id", registrationId)
+    .single();
+
+  if (reg?.status === "PAID") {
+    console.log(`[webhook] Registration ${registrationId} already PAID, skipping.`);
+    return;
+  }
+
   // 1. Update payment record
   await admin
     .from("eckcm_payments")

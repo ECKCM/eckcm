@@ -129,10 +129,11 @@ export default function RegistrationStep1() {
   };
 
   const handleAccessCodeChange = (value: string) => {
-    setAccessCode(value);
-    dispatch({ type: "SET_ACCESS_CODE", code: value });
+    const sanitized = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    setAccessCode(sanitized);
+    dispatch({ type: "SET_ACCESS_CODE", code: sanitized });
 
-    const group = resolveGroup(value);
+    const group = resolveGroup(sanitized);
     if (group) {
       dispatch({ type: "SET_REGISTRATION_GROUP", groupId: group.id });
     }

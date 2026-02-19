@@ -371,7 +371,7 @@ export function RegistrationGroupsManager() {
                 <Input
                   value={form.access_code}
                   onChange={(e) =>
-                    setForm({ ...form, access_code: e.target.value })
+                    setForm({ ...form, access_code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })
                   }
                   placeholder="Leave empty for public group"
                 />
