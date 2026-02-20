@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-19T19:14:14.920Z",
+  "lastUpdated": "2026-02-19T22:52:28.876Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -429,7 +429,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:20.413Z",
-        "lastUpdated": "2026-02-19T18:59:27.649Z"
+        "lastUpdated": "2026-02-19T22:23:22.487Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/airport-pickup/page.tsx"
     },
@@ -455,9 +455,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:55.352Z",
-        "lastUpdated": "2026-02-19T19:14:14.920Z"
+        "lastUpdated": "2026-02-19T22:52:28.876Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/payment/check-visual.tsx"
     },
     "confirmation": {
       "phase": "do",
@@ -936,7 +936,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-19T18:23:11.306Z",
-        "lastUpdated": "2026-02-19T18:23:48.295Z"
+        "lastUpdated": "2026-02-19T22:08:55.370Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/airport-rides/airport-rides-manager.tsx"
     },
@@ -949,7 +949,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-19T18:51:11.453Z",
-        "lastUpdated": "2026-02-19T18:51:57.699Z"
+        "lastUpdated": "2026-02-19T22:09:16.075Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/airport/airport-checklist.tsx"
     }
@@ -962,7 +962,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-19T19:14:14.920Z"
+    "lastActivity": "2026-02-19T22:52:28.876Z"
   },
   "history": [
     {
@@ -7192,6 +7192,174 @@
     },
     {
       "timestamp": "2026-02-19T19:14:14.920Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:08:03.049Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:08:12.456Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:08:19.007Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:08:24.852Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:08:38.735Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:08:44.289Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:08:48.809Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:08:55.370Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:09:04.570Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:09:09.179Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:09:16.075Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:09:37.335Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:09:42.058Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:09:48.566Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:23:04.739Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:23:11.904Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:23:22.487Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:39:04.713Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:39:14.135Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:47:53.695Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:47:59.102Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:48:37.430Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:48:42.325Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:52:04.861Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:52:11.377Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:52:17.771Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:52:23.031Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-19T22:52:28.876Z",
       "feature": "payment",
       "phase": "do",
       "action": "updated"

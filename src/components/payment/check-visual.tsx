@@ -36,6 +36,7 @@ export function CheckVisual({
 }: CheckVisualProps) {
   return (
     <div className="relative overflow-hidden border-2 border-teal-200 bg-gradient-to-br from-teal-50 via-emerald-50 to-cyan-50 p-5">
+      <style>{`.micr-input { font-size: 1.25rem !important; } .micr-input::placeholder { font-size: 1rem !important; }`}</style>
       {/* Security pattern overlay */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.03]"
@@ -129,7 +130,7 @@ export function CheckVisual({
                   onRoutingNumberChange(v);
                 }}
                 placeholder="9 digits"
-                className="bg-white/80 border-teal-200 focus-visible:ring-teal-500 tracking-[0.2em] text-center text-sm"
+                className="micr-input bg-white/80 border-teal-200 focus-visible:ring-teal-500 tracking-[0.2em] text-center"
                 style={{ fontFamily: '"MICR E13B", monospace' }}
                 inputMode="numeric"
                 maxLength={9}
@@ -150,7 +151,7 @@ export function CheckVisual({
                   onConfirmRoutingNumberChange(v);
                 }}
                 placeholder="Re-enter routing number"
-                className={`bg-white/80 border-teal-200 focus-visible:ring-teal-500 tracking-[0.2em] text-center text-sm ${confirmRoutingNumber && confirmRoutingNumber !== routingNumber ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+                className={`micr-input bg-white/80 border-teal-200 focus-visible:ring-teal-500 tracking-[0.2em] text-center ${confirmRoutingNumber && confirmRoutingNumber !== routingNumber ? "border-red-400 focus-visible:ring-red-400" : ""}`}
                 style={{ fontFamily: '"MICR E13B", monospace' }}
                 inputMode="numeric"
                 maxLength={9}
@@ -175,7 +176,7 @@ export function CheckVisual({
                   onAccountNumberChange(v);
                 }}
                 placeholder="Up to 17 digits"
-                className="bg-white/80 border-teal-200 focus-visible:ring-teal-500 tracking-[0.2em] text-center text-sm"
+                className="micr-input bg-white/80 border-teal-200 focus-visible:ring-teal-500 tracking-[0.2em] text-center"
                 style={{ fontFamily: '"MICR E13B", monospace' }}
                 inputMode="numeric"
                 maxLength={17}
@@ -196,7 +197,7 @@ export function CheckVisual({
                   onConfirmAccountNumberChange(v);
                 }}
                 placeholder="Re-enter account number"
-                className={`bg-white/80 border-teal-200 focus-visible:ring-teal-500 tracking-[0.2em] text-center text-sm ${confirmAccountNumber && confirmAccountNumber !== accountNumber ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+                className={`micr-input bg-white/80 border-teal-200 focus-visible:ring-teal-500 tracking-[0.2em] text-center ${confirmAccountNumber && confirmAccountNumber !== accountNumber ? "border-red-400 focus-visible:ring-red-400" : ""}`}
                 style={{ fontFamily: '"MICR E13B", monospace' }}
                 inputMode="numeric"
                 maxLength={17}

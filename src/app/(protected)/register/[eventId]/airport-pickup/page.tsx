@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -26,6 +25,8 @@ interface RideOption {
   direction: "PICKUP" | "DROPOFF";
   scheduled_at: string;
   label: string | null;
+  origin: string | null;
+  destination: string | null;
 }
 
 export default function AirportPickupStep() {
@@ -75,7 +76,7 @@ export default function AirportPickupStep() {
       // Fetch available rides for this event
       const { data: rides } = await supabase
         .from("eckcm_airport_rides")
-        .select("id, direction, scheduled_at, label")
+        .select("id, direction, scheduled_at, label, origin, destination")
         .eq("event_id", eventId)
         .eq("is_active", true)
         .order("scheduled_at");
@@ -196,7 +197,10 @@ export default function AirportPickupStep() {
                 <div className="space-y-3">
                   <h3 className="text-sm font-medium flex items-center gap-2">
                     <PlaneLanding className="size-4" />
-                    Pickup (Airport → Camp)
+                    Pickup
+                    {pickups[0]?.origin || pickups[0]?.destination
+                      ? ` (${pickups[0].origin ?? ""} → ${pickups[0].destination ?? ""})`
+                      : ""}
                   </h3>
                   {pickups.map((ride) => (
                     <RideCard
@@ -223,7 +227,10 @@ export default function AirportPickupStep() {
                 <div className="space-y-3">
                   <h3 className="text-sm font-medium flex items-center gap-2">
                     <PlaneTakeoff className="size-4" />
-                    Drop-off (Camp → Airport)
+                    Drop-off
+                    {dropoffs[0]?.origin || dropoffs[0]?.destination
+                      ? ` (${dropoffs[0].origin ?? ""} → ${dropoffs[0].destination ?? ""})`
+                      : ""}
                   </h3>
                   {dropoffs.map((ride) => (
                     <RideCard
@@ -296,21 +303,9 @@ function RideCard({
       }`}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Badge
-            variant={ride.direction === "PICKUP" ? "default" : "secondary"}
-          >
-            {ride.direction === "PICKUP" ? "Pickup" : "Drop-off"}
-          </Badge>
-          <div>
-            <p className="text-sm font-medium">
-              {formatDateTime(ride.scheduled_at)}
-            </p>
-            {ride.label && (
-              <p className="text-xs text-muted-foreground">{ride.label}</p>
-            )}
-          </div>
-        </div>
+        <p className="text-sm font-medium">
+          {formatDateTime(ride.scheduled_at)}
+        </p>
         <Switch checked={selected} onCheckedChange={onToggleRide} />
       </div>
 
@@ -358,7 +353,7 @@ function RideCard({
               value={selection?.flightInfo ?? ""}
               onChange={(e) => onUpdateFlightInfo(e.target.value)}
               rows={2}
-              placeholder="e.g., Delta DL1234, JFK, arriving 2:30 PM"
+              placeholder="e.g., Delta DL1234, PIT, arriving 1:00 PM"
             />
           </div>
         </div>

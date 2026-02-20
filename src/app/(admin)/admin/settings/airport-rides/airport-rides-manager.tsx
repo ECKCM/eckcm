@@ -39,6 +39,8 @@ interface AirportRide {
   direction: "PICKUP" | "DROPOFF";
   scheduled_at: string;
   label: string | null;
+  origin: string | null;
+  destination: string | null;
   is_active: boolean;
 }
 
@@ -52,6 +54,8 @@ const emptyForm = {
   date: "",
   time: "",
   label: "",
+  origin: "",
+  destination: "",
   is_active: true,
 };
 
@@ -112,6 +116,8 @@ export function AirportRidesManager() {
       date: dt.toISOString().slice(0, 10),
       time: dt.toISOString().slice(11, 16),
       label: ride.label ?? "",
+      origin: ride.origin ?? "",
+      destination: ride.destination ?? "",
       is_active: ride.is_active,
     });
     setDialogOpen(true);
@@ -131,6 +137,8 @@ export function AirportRidesManager() {
       direction: form.direction,
       scheduled_at: scheduledAt,
       label: form.label.trim() || null,
+      origin: form.origin.trim() || null,
+      destination: form.destination.trim() || null,
       is_active: form.is_active,
     };
 
@@ -261,6 +269,26 @@ export function AirportRidesManager() {
                 </Select>
               </div>
 
+              {/* Origin & Destination */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Origin</Label>
+                  <Input
+                    value={form.origin}
+                    onChange={(e) => setForm({ ...form, origin: e.target.value })}
+                    placeholder={form.direction === "PICKUP" ? "e.g., JFK Airport" : "e.g., Camp Berkshire"}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Destination</Label>
+                  <Input
+                    value={form.destination}
+                    onChange={(e) => setForm({ ...form, destination: e.target.value })}
+                    placeholder={form.direction === "PICKUP" ? "e.g., Camp Berkshire" : "e.g., JFK Airport"}
+                  />
+                </div>
+              </div>
+
               {/* Date & Time */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -319,6 +347,7 @@ export function AirportRidesManager() {
         <TableHeader>
           <TableRow>
             <TableHead>Direction</TableHead>
+            <TableHead>Route</TableHead>
             <TableHead>Date & Time</TableHead>
             <TableHead>Label</TableHead>
             <TableHead>Status</TableHead>
@@ -329,7 +358,7 @@ export function AirportRidesManager() {
           {rides.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={5}
+                colSpan={6}
                 className="text-center text-muted-foreground py-8"
               >
                 No rides yet. Click &quot;Add Ride&quot; to create one.
@@ -350,6 +379,11 @@ export function AirportRidesManager() {
                     )}
                     {ride.direction === "PICKUP" ? "Pickup" : "Drop-off"}
                   </Badge>
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {ride.origin || ride.destination
+                    ? `${ride.origin ?? "—"} → ${ride.destination ?? "—"}`
+                    : "—"}
                 </TableCell>
                 <TableCell>{formatDateTime(ride.scheduled_at)}</TableCell>
                 <TableCell className="text-muted-foreground">

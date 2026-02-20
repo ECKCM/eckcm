@@ -29,6 +29,8 @@ interface RideWithPassengers {
   direction: "PICKUP" | "DROPOFF";
   scheduled_at: string;
   label: string | null;
+  origin: string | null;
+  destination: string | null;
   is_active: boolean;
   passengers: Passenger[];
 }
@@ -73,7 +75,7 @@ export function AirportChecklist() {
     // Fetch rides for this event
     const { data: rideRows } = await supabase
       .from("eckcm_airport_rides")
-      .select("id, direction, scheduled_at, label, is_active")
+      .select("id, direction, scheduled_at, label, origin, destination, is_active")
       .eq("event_id", selectedEventId)
       .order("scheduled_at");
 
@@ -272,6 +274,11 @@ function RideCard({
             <CardTitle className="text-base">
               {formatDateTime(ride.scheduled_at)}
             </CardTitle>
+            {(ride.origin || ride.destination) && (
+              <span className="text-sm text-muted-foreground">
+                {ride.origin ?? "—"} → {ride.destination ?? "—"}
+              </span>
+            )}
             {ride.label && (
               <span className="text-sm text-muted-foreground">
                 {ride.label}
