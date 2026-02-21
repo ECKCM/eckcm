@@ -192,28 +192,20 @@ export async function POST(request: Request) {
     eventStartDate: event?.event_start_date ?? startDate,
   });
 
-  // 4. Generate confirmation code (unique per event)
-  let confirmationCode = "";
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const candidate = generateSafeConfirmationCode();
-    const { data: existing } = await admin
-      .from("eckcm_registrations")
-      .select("id")
-      .eq("event_id", eventId)
-      .eq("confirmation_code", candidate)
-      .maybeSingle();
-    if (!existing) {
-      confirmationCode = candidate;
-      break;
-    }
-  }
+  // 4. Generate registration confirmation code: R{YY}{LASTNAME}{5-digit-seq}
+  // Find representative's last name from the first group
+  const representative = processedRoomGroups
+    .flatMap((g) => g.participants)
+    .find((p) => p.isRepresentative);
+  const repLastName = (representative?.lastName ?? "X").toUpperCase().replace(/[^A-Z]/g, "") || "X";
+  const eventYear = String(event?.event_start_date ?? startDate).slice(2, 4); // YY
 
-  if (!confirmationCode) {
-    return NextResponse.json(
-      { error: "Failed to generate unique confirmation code" },
-      { status: 500 }
-    );
-  }
+  // Atomically get-and-increment sequence
+  const { data: seqResult } = await admin.rpc("get_next_registration_seq", {
+    p_event_id: eventId,
+  });
+  const seqNum = (seqResult as number) ?? 1;
+  const confirmationCode = `R${eventYear}${repLastName}${String(seqNum).padStart(5, "0")}`;
 
   // 5. Insert registration
   const { data: registration, error: regError } = await admin
@@ -242,7 +234,7 @@ export async function POST(request: Request) {
   // 6. Insert groups, people, and memberships
   let groupCodeCounter = 1;
   for (const roomGroup of roomGroups) {
-    const groupCode = `G${String(groupCodeCounter++).padStart(4, "0")}`;
+    const groupCode = `G${String(groupCodeCounter++).padStart(2, "0")}`;
 
     const { data: group, error: groupError } = await admin
       .from("eckcm_groups")
@@ -273,6 +265,16 @@ export async function POST(request: Request) {
     for (const participant of roomGroup.participants) {
       const birthDate = `${participant.birthYear}-${String(participant.birthMonth).padStart(2, "0")}-${String(participant.birthDay).padStart(2, "0")}`;
 
+      // Calculate age at event start date
+      const eventStartStr = event?.event_start_date ?? startDate;
+      const bd = new Date(birthDate + "T00:00:00");
+      const ed = new Date(eventStartStr + "T00:00:00");
+      let ageAtEvent = ed.getFullYear() - bd.getFullYear();
+      const monthDiff = ed.getMonth() - bd.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && ed.getDate() < bd.getDate())) {
+        ageAtEvent--;
+      }
+
       const { data: person, error: personError } = await admin
         .from("eckcm_people")
         .insert({
@@ -281,6 +283,7 @@ export async function POST(request: Request) {
           display_name_ko: participant.displayNameKo || null,
           gender: participant.gender,
           birth_date: birthDate,
+          age_at_event: ageAtEvent,
           is_k12: participant.isK12,
           grade: participant.grade || null,
           email: participant.email || null,
@@ -304,12 +307,31 @@ export async function POST(request: Request) {
         );
       }
 
-      // Group membership
+      // Generate 6-char participant confirmation code (unique per event)
+      let participantCode = "";
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const candidate = generateSafeConfirmationCode();
+        const { data: existingCode } = await admin
+          .from("eckcm_group_memberships")
+          .select("id")
+          .eq("participant_code", candidate)
+          .maybeSingle();
+        if (!existingCode) {
+          participantCode = candidate;
+          break;
+        }
+      }
+      if (!participantCode) {
+        participantCode = generateSafeConfirmationCode();
+      }
+
+      // Group membership with participant code
       await admin.from("eckcm_group_memberships").insert({
         group_id: group.id,
         person_id: person.id,
         role: participant.isRepresentative ? "REPRESENTATIVE" : "MEMBER",
         status: "ACTIVE",
+        participant_code: participantCode,
       });
     }
   }

@@ -52,6 +52,7 @@ interface ParticipantRow {
   group_role: string;
   membership_status: string;
   display_group_code: string;
+  participant_code: string | null;
   room_assign_status: string | null;
   key_count: number | null;
   lodging_type: string | null;
@@ -74,6 +75,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
         person_id,
         role,
         status,
+        participant_code,
         eckcm_people!inner(
           first_name_en, last_name_en, display_name_ko,
           gender, birth_date, age_at_event, is_k12, grade,
@@ -131,6 +133,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
           group_role: m.role,
           membership_status: m.status,
           display_group_code: m.eckcm_groups.display_group_code,
+          participant_code: m.participant_code,
           room_assign_status: m.eckcm_groups.room_assign_status,
           key_count: m.eckcm_groups.key_count,
           lodging_type: lodgingType,
@@ -155,6 +158,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
       (p.email?.toLowerCase().includes(q) ?? false) ||
       (p.phone?.includes(q) ?? false) ||
       (p.confirmation_code?.toLowerCase().includes(q) ?? false) ||
+      (p.participant_code?.toLowerCase().includes(q) ?? false) ||
       p.display_group_code.toLowerCase().includes(q) ||
       (p.church_name?.toLowerCase().includes(q) ?? false) ||
       (p.department_name?.toLowerCase().includes(q) ?? false)
@@ -250,7 +254,8 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
                     <TableHead>Group</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Code</TableHead>
+                    <TableHead>Reg Code</TableHead>
+                    <TableHead>P.Code</TableHead>
                     <TableHead>Reg Status</TableHead>
                     <TableHead>Check-in</TableHead>
                     <TableHead>Check-out</TableHead>
@@ -303,6 +308,9 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         {p.confirmation_code ?? "-"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {p.participant_code ?? "-"}
                       </TableCell>
                       <TableCell>
                         <Badge

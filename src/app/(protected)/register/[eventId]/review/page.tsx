@@ -121,6 +121,22 @@ export default function ReviewStep() {
 
   const formatDollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
+  /** YYYY-MM-DD → MM.DD.YYYY */
+  const formatDate = (d: string) => {
+    const [y, m, dd] = d.split("-");
+    return `${m}.${dd}.${y}`;
+  };
+
+  /** Calculate age at event start (client-side for display) */
+  const calcAge = (birthYear: number, birthMonth: number, birthDay: number) => {
+    const eventStart = state.startDate ? new Date(state.startDate + "T00:00:00") : new Date();
+    const bd = new Date(birthYear, birthMonth - 1, birthDay);
+    let age = eventStart.getFullYear() - bd.getFullYear();
+    const mDiff = eventStart.getMonth() - bd.getMonth();
+    if (mDiff < 0 || (mDiff === 0 && eventStart.getDate() < bd.getDate())) age--;
+    return age;
+  };
+
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
       <WizardStepper currentStep={7} />
@@ -135,7 +151,7 @@ export default function ReviewStep() {
           <div className="grid grid-cols-2 gap-2 text-sm">
             <span className="text-muted-foreground">Dates:</span>
             <span>
-              {state.startDate} ~ {state.endDate} ({state.nightsCount} nights)
+              {formatDate(state.startDate)} ~ {formatDate(state.endDate)} ({state.nightsCount} nights)
             </span>
             <span className="text-muted-foreground">Room Groups:</span>
             <span>{state.roomGroups.length}</span>
@@ -178,9 +194,8 @@ export default function ReviewStep() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Gender</TableHead>
-                  <TableHead>Birth Year</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Age</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -190,9 +205,8 @@ export default function ReviewStep() {
                       {p.firstName} {p.lastName}
                       {p.displayNameKo ? ` (${p.displayNameKo})` : ""}
                     </TableCell>
-                    <TableCell>{p.gender}</TableCell>
-                    <TableCell>{p.birthYear}</TableCell>
                     <TableCell>{p.isRepresentative ? "Representative" : "Member"}</TableCell>
+                    <TableCell>{calcAge(p.birthYear, p.birthMonth, p.birthDay)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

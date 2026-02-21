@@ -179,6 +179,18 @@ export function RegistrationProvider({
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
+  // Warn before closing/refreshing tab during registration
+  useEffect(() => {
+    if (state.step <= 1) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [state.step]);
+
   return (
     <RegistrationContext.Provider value={{ state, dispatch, hydrated }}>
       {children}

@@ -189,7 +189,13 @@ export async function POST(request: Request) {
     .eq("event_id", eventId);
   await admin.from("eckcm_notifications").delete().eq("event_id", eventId);
 
-  // 5. Audit log
+  // 5. Reset registration sequence counter
+  await admin
+    .from("eckcm_events")
+    .update({ next_registration_seq: 1 })
+    .eq("id", eventId);
+
+  // 6. Audit log
   await admin.from("eckcm_audit_logs").insert({
     event_id: eventId,
     user_id: user.id,

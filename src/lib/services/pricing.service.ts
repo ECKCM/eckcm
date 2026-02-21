@@ -114,8 +114,8 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
   if (totalKeys > 0 && input.keyDepositPerKey > 0) {
     keyDeposit = totalKeys * input.keyDepositPerKey;
     breakdown.push({
-      description: "Key Deposit (refundable)",
-      descriptionKo: "키 보증금 (환불 가능)",
+      description: "Key Deposit",
+      descriptionKo: "키 보증금",
       quantity: totalKeys,
       unitPrice: input.keyDepositPerKey,
       amount: keyDeposit,
