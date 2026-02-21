@@ -192,12 +192,14 @@ export async function POST(request: Request) {
     eventStartDate: event?.event_start_date ?? startDate,
   });
 
-  // 4. Generate registration confirmation code: R{YY}{LASTNAME}{5-digit-seq}
-  // Find representative's last name from the first group
+  // 4. Generate registration confirmation code: R{YY}{NAME3}{4-digit-seq}
+  // Format: R + last 2 digits of event year + last name (max 3 chars, zero-padded) + 4-digit sequence
+  // e.g. R26KIM0001, R26YU00032, R26X000003
   const representative = processedRoomGroups
     .flatMap((g) => g.participants)
     .find((p) => p.isRepresentative);
-  const repLastName = (representative?.lastName ?? "X").toUpperCase().replace(/[^A-Z]/g, "") || "X";
+  const rawLastName = (representative?.lastName ?? "X").toUpperCase().replace(/[^A-Z]/g, "") || "X";
+  const repLastName = rawLastName.slice(0, 3).padEnd(3, "0");
   const eventYear = String(event?.event_start_date ?? startDate).slice(2, 4); // YY
 
   // Atomically get-and-increment sequence
@@ -205,7 +207,7 @@ export async function POST(request: Request) {
     p_event_id: eventId,
   });
   const seqNum = (seqResult as number) ?? 1;
-  const confirmationCode = `R${eventYear}${repLastName}${String(seqNum).padStart(5, "0")}`;
+  const confirmationCode = `R${eventYear}${repLastName}${String(seqNum).padStart(4, "0")}`;
 
   // 5. Insert registration
   const { data: registration, error: regError } = await admin

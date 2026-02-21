@@ -57,7 +57,7 @@ export async function GET() {
   const { data, error } = await admin
     .from("eckcm_app_config")
     .select(
-      "stripe_test_publishable_key, stripe_test_secret_key, stripe_live_publishable_key, stripe_live_secret_key, stripe_test_webhook_secret, stripe_live_webhook_secret"
+      "stripe_test_publishable_key, stripe_test_secret_key, stripe_live_publishable_key, stripe_live_secret_key, stripe_test_webhook_secret, stripe_live_webhook_secret, enabled_payment_methods"
     )
     .eq("id", 1)
     .single();
@@ -76,6 +76,7 @@ export async function GET() {
     stripe_live_secret_key: maskKey(data.stripe_live_secret_key),
     stripe_test_webhook_secret: maskKey(data.stripe_test_webhook_secret),
     stripe_live_webhook_secret: maskKey(data.stripe_live_webhook_secret),
+    enabled_payment_methods: data.enabled_payment_methods ?? ["card", "ach", "zelle", "wallet", "more"],
   });
 }
 
@@ -94,6 +95,37 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json();
+
+  // Handle payment methods update
+  const VALID_METHODS = ["card", "ach", "zelle", "check", "wallet", "more"];
+  if (Array.isArray(body.enabled_payment_methods)) {
+    const methods = body.enabled_payment_methods.filter((m: string) =>
+      VALID_METHODS.includes(m)
+    );
+
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("eckcm_app_config")
+      .update({ enabled_payment_methods: methods })
+      .eq("id", 1);
+
+    if (error) {
+      return NextResponse.json(
+        { error: "Failed to update payment methods" },
+        { status: 500 }
+      );
+    }
+
+    await admin.from("eckcm_audit_logs").insert({
+      user_id: user.id,
+      action: "UPDATE_PAYMENT_METHODS",
+      entity_type: "app_config",
+      entity_id: "1",
+      new_data: { enabled_payment_methods: methods },
+    });
+
+    return NextResponse.json({ success: true, enabled_payment_methods: methods });
+  }
 
   // Only allow known Stripe key fields
   const updates: Partial<Record<StripeKeyField, string>> = {};

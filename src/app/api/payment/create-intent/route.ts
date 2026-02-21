@@ -54,6 +54,22 @@ export async function POST(request: Request) {
 
   // Load invoice (use admin client to bypass RLS)
   const admin = createAdminClient();
+
+  // Load primary registrant name for Zelle memo
+  // eckcm_groups.registration_id -> eckcm_group_memberships.group_id -> eckcm_people
+  const { data: repMember } = await admin
+    .from("eckcm_groups")
+    .select("eckcm_group_memberships!inner(eckcm_people!inner(first_name_en, last_name_en), role)")
+    .eq("registration_id", registrationId)
+    .limit(1)
+    .maybeSingle();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const members = (repMember as any)?.eckcm_group_memberships as any[] | undefined;
+  const rep = members?.find((m: any) => m.role === "REPRESENTATIVE") ?? members?.[0];
+  const registrantName = rep?.eckcm_people
+    ? `${rep.eckcm_people.first_name_en} ${rep.eckcm_people.last_name_en}`
+    : null;
   const { data: invoice } = await admin
     .from("eckcm_invoices")
     .select("id, total_cents, status")
@@ -124,6 +140,7 @@ export async function POST(request: Request) {
           clientSecret: updated.client_secret,
           amount: chargeAmount,
           paymentTestMode,
+          registrantName,
         });
       }
     } catch {
@@ -164,5 +181,6 @@ export async function POST(request: Request) {
     clientSecret: paymentIntent.client_secret,
     amount: chargeAmount,
     paymentTestMode,
+    registrantName,
   });
 }

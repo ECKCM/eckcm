@@ -13,13 +13,71 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Eye, EyeOff, Loader2, Save } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  Save,
+  CreditCard,
+  Landmark,
+  Building2,
+  Banknote,
+  Smartphone,
+  MoreHorizontal,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface KeyStatus {
   is_set: boolean;
   last4: string;
 }
+
+type PaymentMethodId = "card" | "ach" | "zelle" | "check" | "wallet" | "more";
+
+const PAYMENT_METHOD_OPTIONS: {
+  id: PaymentMethodId;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+}[] = [
+  {
+    id: "card",
+    label: "Credit / Debit Card",
+    description: "Visa, Mastercard, Amex",
+    icon: <CreditCard className="h-4 w-4" />,
+  },
+  {
+    id: "ach",
+    label: "ACH Transfer",
+    description: "Bank account routing/account number",
+    icon: <Building2 className="h-4 w-4" />,
+  },
+  {
+    id: "zelle",
+    label: "Zelle",
+    description: "Instructions-based, pay later via Zelle",
+    icon: <Landmark className="h-4 w-4" />,
+  },
+  {
+    id: "check",
+    label: "Bank Check",
+    description: "ACH Direct Debit via routing/account number",
+    icon: <Banknote className="h-4 w-4" />,
+  },
+  {
+    id: "wallet",
+    label: "Apple Pay / Google Pay",
+    description: "Mobile wallet payments",
+    icon: <Smartphone className="h-4 w-4" />,
+  },
+  {
+    id: "more",
+    label: "More Payment Options",
+    description: "Amazon Pay, Klarna, etc. via Stripe",
+    icon: <MoreHorizontal className="h-4 w-4" />,
+  },
+];
 
 interface StripeConfig {
   stripe_test_publishable_key: KeyStatus;
@@ -28,12 +86,17 @@ interface StripeConfig {
   stripe_live_secret_key: KeyStatus;
   stripe_test_webhook_secret: KeyStatus;
   stripe_live_webhook_secret: KeyStatus;
+  enabled_payment_methods: PaymentMethodId[];
 }
 
 export function StripeConfigManager() {
   const [config, setConfig] = useState<StripeConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingMethods, setSavingMethods] = useState(false);
+  const [enabledMethods, setEnabledMethods] = useState<PaymentMethodId[]>([
+    "card", "ach", "zelle", "check", "wallet", "more",
+  ]);
   const [testKeys, setTestKeys] = useState({ publishable: "", secret: "", webhook: "" });
   const [liveKeys, setLiveKeys] = useState({ publishable: "", secret: "", webhook: "" });
   const [showSecret, setShowSecret] = useState({
@@ -56,6 +119,9 @@ export function StripeConfigManager() {
       }
       const data: StripeConfig = await res.json();
       setConfig(data);
+      if (data.enabled_payment_methods) {
+        setEnabledMethods(data.enabled_payment_methods);
+      }
     } catch {
       toast.error("Network error loading Stripe config");
     } finally {
@@ -112,6 +178,42 @@ export function StripeConfigManager() {
     }
   }
 
+  async function handleToggleMethod(methodId: PaymentMethodId, enabled: boolean) {
+    const updated = enabled
+      ? [...enabledMethods, methodId]
+      : enabledMethods.filter((m) => m !== methodId);
+
+    if (updated.length === 0) {
+      toast.error("At least one payment method must be enabled");
+      return;
+    }
+
+    setEnabledMethods(updated);
+    setSavingMethods(true);
+
+    try {
+      const res = await fetch("/api/admin/stripe-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled_payment_methods: updated }),
+      });
+
+      if (!res.ok) {
+        // Revert on error
+        setEnabledMethods(enabledMethods);
+        toast.error("Failed to update payment methods");
+        return;
+      }
+
+      toast.success(`${enabled ? "Enabled" : "Disabled"} ${PAYMENT_METHOD_OPTIONS.find((m) => m.id === methodId)?.label}`);
+    } catch {
+      setEnabledMethods(enabledMethods);
+      toast.error("Network error. Please try again.");
+    } finally {
+      setSavingMethods(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground">
@@ -127,6 +229,41 @@ export function StripeConfigManager() {
         Configure your Stripe API keys for processing payments. Each event can
         be set to use either Test or Live mode keys.
       </p>
+
+      {/* Payment Methods */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Payment Methods</CardTitle>
+          <CardDescription>
+            Choose which payment methods are available to registrants.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {PAYMENT_METHOD_OPTIONS.map((method) => (
+            <div
+              key={method.id}
+              className="flex items-center justify-between rounded-lg border p-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="text-muted-foreground">{method.icon}</div>
+                <div>
+                  <p className="text-sm font-medium">{method.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {method.description}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={enabledMethods.includes(method.id)}
+                onCheckedChange={(checked) =>
+                  handleToggleMethod(method.id, checked)
+                }
+                disabled={savingMethods}
+              />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* Test Mode Keys */}
       <KeyCard
@@ -206,9 +343,11 @@ function KeyCard({
 }) {
   const isLive = mode === "live";
   const publishableStatus =
-    config?.[`stripe_${mode}_publishable_key` as keyof StripeConfig];
-  const secretStatus = config?.[`stripe_${mode}_secret_key` as keyof StripeConfig];
-  const webhookStatus = config?.[`stripe_${mode}_webhook_secret` as keyof StripeConfig];
+    config?.[`stripe_${mode}_publishable_key` as keyof StripeConfig] as KeyStatus | undefined;
+  const secretStatus =
+    config?.[`stripe_${mode}_secret_key` as keyof StripeConfig] as KeyStatus | undefined;
+  const webhookStatus =
+    config?.[`stripe_${mode}_webhook_secret` as keyof StripeConfig] as KeyStatus | undefined;
 
   const hasChanges = keys.publishable.trim() || keys.secret.trim() || keys.webhook.trim();
 
