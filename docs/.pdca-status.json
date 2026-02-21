@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-20T22:56:21.466Z",
+  "lastUpdated": "2026-02-21T02:15:39.105Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -69,7 +69,10 @@
     "publishable-key",
     "confirm",
     "airport-rides",
-    "airport"
+    "airport",
+    "checkin",
+    "batch-sync",
+    "epass-cache"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -273,7 +276,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:44:31.720Z",
-        "lastUpdated": "2026-02-19T18:50:52.218Z"
+        "lastUpdated": "2026-02-21T02:14:59.231Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/components/admin/admin-sidebar.tsx"
     },
@@ -952,6 +955,45 @@
         "lastUpdated": "2026-02-19T22:09:16.075Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/airport/airport-checklist.tsx"
+    },
+    "checkin": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-21T02:12:20.813Z",
+        "lastUpdated": "2026-02-21T02:15:39.105Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/checkin/checkin-scanner.tsx"
+    },
+    "batch-sync": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-21T02:12:45.939Z",
+        "lastUpdated": "2026-02-21T02:12:45.939Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/checkin/batch-sync/route.ts"
+    },
+    "epass-cache": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-21T02:12:52.436Z",
+        "lastUpdated": "2026-02-21T02:12:52.436Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/checkin/epass-cache/route.ts"
     }
   },
   "pipeline": {
@@ -962,7 +1004,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-20T22:56:21.466Z"
+    "lastActivity": "2026-02-21T02:15:39.105Z"
   },
   "history": [
     {
@@ -7469,6 +7511,72 @@
     {
       "timestamp": "2026-02-20T22:56:21.465Z",
       "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-21T02:12:20.813Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-21T02:12:45.939Z",
+      "feature": "batch-sync",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-21T02:12:52.436Z",
+      "feature": "epass-cache",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-21T02:13:11.204Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-21T02:13:18.735Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-21T02:14:26.797Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-21T02:14:41.201Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-21T02:14:53.011Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-21T02:14:59.231Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-21T02:15:34.054Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-21T02:15:39.105Z",
+      "feature": "checkin",
       "phase": "do",
       "action": "updated"
     }

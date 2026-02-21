@@ -21,6 +21,7 @@ import {
   Package,
   ShieldCheck,
   Plane,
+  ScanLine,
 } from "lucide-react";
 import {
   Sidebar,
@@ -146,6 +147,17 @@ export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
                   <Link href="/admin/airport">
                     <Plane />
                     <span>Airport</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/admin/checkin")}
+                >
+                  <Link href="/admin/checkin">
+                    <ScanLine />
+                    <span>Check-in</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
