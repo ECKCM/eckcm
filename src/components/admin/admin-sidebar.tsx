@@ -22,6 +22,8 @@ import {
   ShieldCheck,
   Plane,
   ScanLine,
+  UtensilsCrossed,
+  Presentation,
 } from "lucide-react";
 import {
   Sidebar,
@@ -55,6 +57,8 @@ const settingsLinks = [
   { href: "/admin/settings/churches", label: "Churches", icon: Church },
   { href: "/admin/settings/legal", label: "Legal Pages", icon: Scale },
   { href: "/admin/settings/stripe", label: "Stripe", icon: CreditCard },
+  { href: "/admin/settings/meals", label: "Meal Rules", icon: UtensilsCrossed },
+  { href: "/admin/settings/sessions", label: "Sessions", icon: Presentation },
   { href: "/admin/settings/airport-rides", label: "Airport Rides", icon: Plane },
   { href: "/admin/settings/configuration", label: "Configuration", icon: Settings2 },
 ];

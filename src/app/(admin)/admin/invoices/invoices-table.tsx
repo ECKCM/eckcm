@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -19,7 +22,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { MoreHorizontal, RotateCcw, CreditCard } from "lucide-react";
 
 interface Event {
   id: string;
@@ -36,6 +55,10 @@ interface InvoiceRow {
   paid_at: string | null;
   confirmation_code: string | null;
   registrant_email: string | null;
+  payment_id: string | null;
+  payment_method: string | null;
+  payment_amount_cents: number | null;
+  registration_id: string | null;
 }
 
 export function InvoicesTable({ events }: { events: Event[] }) {
@@ -43,6 +66,19 @@ export function InvoicesTable({ events }: { events: Event[] }) {
   const [search, setSearch] = useState("");
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Refund dialog state
+  const [refundTarget, setRefundTarget] = useState<InvoiceRow | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundType, setRefundType] = useState<"full" | "partial">("full");
+  const [refunding, setRefunding] = useState(false);
+
+  // Manual payment dialog state
+  const [manualPayTarget, setManualPayTarget] = useState<InvoiceRow | null>(null);
+  const [manualPayMethod, setManualPayMethod] = useState("MANUAL");
+  const [manualPayNote, setManualPayNote] = useState("");
+  const [paying, setPaying] = useState(false);
 
   const loadInvoices = useCallback(async () => {
     if (!eventId) return;
@@ -58,27 +94,41 @@ export function InvoicesTable({ events }: { events: Event[] }) {
         status,
         issued_at,
         paid_at,
+        registration_id,
         eckcm_registrations!inner(
           confirmation_code,
           event_id,
           eckcm_users:created_by_user_id(email)
-        )
+        ),
+        eckcm_payments(id, payment_method, amount_cents, status)
       `)
       .eq("eckcm_registrations.event_id", eventId)
       .order("issued_at", { ascending: false });
 
     if (data) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rows: InvoiceRow[] = data.map((inv: any) => ({
-        id: inv.id,
-        invoice_number: inv.invoice_number,
-        total_cents: inv.total_cents,
-        status: inv.status,
-        issued_at: inv.issued_at,
-        paid_at: inv.paid_at,
-        confirmation_code: inv.eckcm_registrations?.confirmation_code,
-        registrant_email: inv.eckcm_registrations?.eckcm_users?.email ?? null,
-      }));
+      const rows: InvoiceRow[] = data.map((inv: any) => {
+        const successPayment = inv.eckcm_payments?.find(
+          (p: { status: string }) => p.status === "SUCCEEDED" || p.status === "PARTIALLY_REFUNDED"
+        );
+        const anyPayment = inv.eckcm_payments?.[0];
+        const payment = successPayment || anyPayment;
+
+        return {
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          total_cents: inv.total_cents,
+          status: inv.status,
+          issued_at: inv.issued_at,
+          paid_at: inv.paid_at,
+          confirmation_code: inv.eckcm_registrations?.confirmation_code,
+          registrant_email: inv.eckcm_registrations?.eckcm_users?.email ?? null,
+          payment_id: payment?.id ?? null,
+          payment_method: payment?.payment_method ?? null,
+          payment_amount_cents: payment?.amount_cents ?? null,
+          registration_id: inv.registration_id,
+        };
+      });
       setInvoices(rows);
     }
     setLoading(false);
@@ -103,7 +153,108 @@ export function InvoicesTable({ events }: { events: Event[] }) {
     PENDING: "outline",
     FAILED: "destructive",
     REFUNDED: "destructive",
+    PARTIALLY_REFUNDED: "secondary",
   };
+
+  const statusLabel: Record<string, string> = {
+    SUCCEEDED: "Paid",
+    PENDING: "Pending",
+    FAILED: "Failed",
+    REFUNDED: "Refunded",
+    PARTIALLY_REFUNDED: "Partial Refund",
+  };
+
+  // --- Refund ---
+  const openRefundDialog = (inv: InvoiceRow) => {
+    setRefundTarget(inv);
+    setRefundType("full");
+    setRefundAmount(((inv.payment_amount_cents ?? inv.total_cents) / 100).toFixed(2));
+    setRefundReason("");
+  };
+
+  const handleRefund = async () => {
+    if (!refundTarget?.payment_id) return;
+    setRefunding(true);
+
+    const amountCents = refundType === "full"
+      ? undefined
+      : Math.round(parseFloat(refundAmount) * 100);
+
+    if (refundType === "partial" && (!amountCents || amountCents <= 0)) {
+      toast.error("Enter a valid refund amount");
+      setRefunding(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/refund", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentId: refundTarget.payment_id,
+          amountCents,
+          reason: refundReason || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Refund failed");
+      } else {
+        toast.success(
+          `Refund of $${((data.amountCents ?? 0) / 100).toFixed(2)} issued successfully`
+        );
+        loadInvoices();
+      }
+    } catch {
+      toast.error("Network error");
+    }
+
+    setRefunding(false);
+    setRefundTarget(null);
+  };
+
+  // --- Manual Payment ---
+  const openManualPayDialog = (inv: InvoiceRow) => {
+    setManualPayTarget(inv);
+    setManualPayMethod("MANUAL");
+    setManualPayNote("");
+  };
+
+  const handleManualPay = async () => {
+    if (!manualPayTarget) return;
+    setPaying(true);
+
+    try {
+      const res = await fetch("/api/admin/payment/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceId: manualPayTarget.id,
+          paymentMethod: manualPayMethod,
+          note: manualPayNote || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Payment recording failed");
+      } else {
+        toast.success("Payment recorded successfully");
+        loadInvoices();
+      }
+    } catch {
+      toast.error("Network error");
+    }
+
+    setPaying(false);
+    setManualPayTarget(null);
+  };
+
+  const canRefund = (inv: InvoiceRow) =>
+    inv.payment_id && (inv.status === "SUCCEEDED" || inv.status === "PARTIALLY_REFUNDED");
+
+  const canManualPay = (inv: InvoiceRow) => inv.status === "PENDING";
 
   return (
     <div className="space-y-4">
@@ -148,9 +299,11 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                   <TableHead>Code</TableHead>
                   <TableHead>Registrant</TableHead>
                   <TableHead>Amount</TableHead>
+                  <TableHead>Method</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Issued</TableHead>
                   <TableHead>Paid</TableHead>
+                  <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -168,9 +321,12 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                     <TableCell className="font-medium">
                       ${(inv.total_cents / 100).toFixed(2)}
                     </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {inv.payment_method ?? "-"}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={statusVariant[inv.status] ?? "secondary"}>
-                        {inv.status === "SUCCEEDED" ? "Paid" : inv.status}
+                        {statusLabel[inv.status] ?? inv.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm">
@@ -181,12 +337,37 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                         ? new Date(inv.paid_at).toLocaleDateString("en-US")
                         : "-"}
                     </TableCell>
+                    <TableCell>
+                      {(canRefund(inv) || canManualPay(inv)) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="size-8">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {canRefund(inv) && (
+                              <DropdownMenuItem onClick={() => openRefundDialog(inv)}>
+                                <RotateCcw className="mr-2 size-4" />
+                                Refund
+                              </DropdownMenuItem>
+                            )}
+                            {canManualPay(inv) && (
+                              <DropdownMenuItem onClick={() => openManualPayDialog(inv)}>
+                                <CreditCard className="mr-2 size-4" />
+                                Record Payment
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {filtered.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={9}
                       className="text-center text-muted-foreground py-8"
                     >
                       No invoices found.
@@ -198,6 +379,114 @@ export function InvoicesTable({ events }: { events: Event[] }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Refund Dialog */}
+      <Dialog open={!!refundTarget} onOpenChange={(open) => !open && setRefundTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Issue Refund</DialogTitle>
+            <DialogDescription>
+              Invoice {refundTarget?.invoice_number} &middot; ${((refundTarget?.payment_amount_cents ?? refundTarget?.total_cents ?? 0) / 100).toFixed(2)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label>Refund Type</Label>
+              <Select value={refundType} onValueChange={(v) => setRefundType(v as "full" | "partial")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Full Refund</SelectItem>
+                  <SelectItem value="partial">Partial Refund</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {refundType === "partial" && (
+              <div className="space-y-1">
+                <Label>Amount ($)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max={((refundTarget?.payment_amount_cents ?? 0) / 100).toFixed(2)}
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                />
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <Label>Reason (optional)</Label>
+              <Textarea
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                placeholder="e.g., Customer requested cancellation"
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefundTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRefund}
+              disabled={refunding}
+            >
+              {refunding ? "Processing..." : "Issue Refund"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Payment Dialog */}
+      <Dialog open={!!manualPayTarget} onOpenChange={(open) => !open && setManualPayTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Record Manual Payment</DialogTitle>
+            <DialogDescription>
+              Invoice {manualPayTarget?.invoice_number} &middot; ${((manualPayTarget?.total_cents ?? 0) / 100).toFixed(2)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label>Payment Method</Label>
+              <Select value={manualPayMethod} onValueChange={setManualPayMethod}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MANUAL">Manual / Cash</SelectItem>
+                  <SelectItem value="CHECK">Check</SelectItem>
+                  <SelectItem value="ZELLE">Zelle</SelectItem>
+                  <SelectItem value="ACH">ACH Transfer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Note (optional)</Label>
+              <Textarea
+                value={manualPayNote}
+                onChange={(e) => setManualPayNote(e.target.value)}
+                placeholder="e.g., Cash received at front desk"
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManualPayTarget(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleManualPay} disabled={paying}>
+              {paying ? "Processing..." : "Record Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
