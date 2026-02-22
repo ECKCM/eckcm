@@ -30,11 +30,15 @@ export default function LoginPage() {
   const [captchaToken, setCaptchaToken] = useState<string>();
   const turnstileRef = useRef<TurnstileInstance>(null);
   const [callbackError, setCallbackError] = useState(false);
+  const [passwordUpdated, setPasswordUpdated] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("error") === "auth_callback_error") {
       setCallbackError(true);
+    }
+    if (params.get("message") === "password_updated") {
+      setPasswordUpdated(true);
     }
   }, []);
 
@@ -74,6 +78,11 @@ export default function LoginPage() {
             Authentication failed. Please try again.
           </p>
         )}
+        {passwordUpdated && (
+          <p className="text-sm text-center text-green-600">
+            Password updated successfully. Please sign in.
+          </p>
+        )}
         <OAuthButtons />
 
         <div className="relative">
@@ -103,7 +112,15 @@ export default function LoginPage() {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Link
+                href="/forgot-password"
+                className="text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+              >
+                Forgot Password?
+              </Link>
+            </div>
             <PasswordInput
               id="password"
               value={password}

@@ -129,6 +129,8 @@ export default function PaymentStep() {
   const [error, setError] = useState<string | null>(null);
   const [freeRegistration, setFreeRegistration] = useState(false);
   const [registrantName, setRegistrantName] = useState<string>("");
+  const [registrantPhone, setRegistrantPhone] = useState<string>("");
+  const [registrantEmail, setRegistrantEmail] = useState<string>("");
   const [stripePromise, setStripePromise] = useState<Promise<StripeType | null>>(
     () => getStripe()
   );
@@ -205,6 +207,8 @@ export default function PaymentStep() {
         setClientSecret(data.clientSecret as string);
         setAmount(data.amount as number);
         if (data.registrantName) setRegistrantName(data.registrantName as string);
+        if (data.registrantPhone) setRegistrantPhone(data.registrantPhone as string);
+        if (data.registrantEmail) setRegistrantEmail(data.registrantEmail as string);
       } catch {
         setError("Network error. Please try again.");
       }
@@ -354,6 +358,8 @@ export default function PaymentStep() {
             registrationId={registrationId}
             confirmationCode={confirmationCode || ""}
             registrantName={registrantName}
+            registrantPhone={registrantPhone}
+            registrantEmail={registrantEmail}
             onSuccess={(piId) => goToConfirmation(piId)}
             onCancel={() =>
               router.push(
@@ -388,6 +394,8 @@ function CustomPaymentForm({
   registrationId,
   confirmationCode,
   registrantName,
+  registrantPhone,
+  registrantEmail,
   onSuccess,
   onCancel,
 }: {
@@ -398,6 +406,8 @@ function CustomPaymentForm({
   registrationId: string;
   confirmationCode: string;
   registrantName: string;
+  registrantPhone: string;
+  registrantEmail: string;
   onSuccess: (paymentIntentId?: string) => void;
   onCancel: () => void;
 }) {
@@ -416,6 +426,9 @@ function CustomPaymentForm({
 
   // Ref for imperative PaymentElement submission
   const moreSubmitRef = useRef<(() => Promise<void>) | null>(null);
+
+  // Zelle agreement
+  const [zelleAgreed, setZelleAgreed] = useState(false);
 
   // Card billing fields
   const [cardholderName, setCardholderName] = useState("");
@@ -919,10 +932,12 @@ function CustomPaymentForm({
                     <div className="space-y-1">
                       <p className="flex items-center gap-1 flex-wrap">
                         <span>5. Memo/Note <strong className="text-red-600">(Required)</strong>:</span>
-                        <CopyButton text={`${confirmationCode} - ${registrantName}`} />
                       </p>
+                      <div className="pl-5">
+                        <CopyButton text={`${confirmationCode} / ${registrantName} / ${registrantPhone.replace(/\D/g, "")} / ${registrantEmail}`} />
+                      </div>
                       <p className="text-xs text-purple-700 pl-5">
-                        Please include your registration code in the memo so we can match your payment.
+                        Please copy and paste the memo exactly as shown so we can match your payment.
                       </p>
                     </div>
                   </div>
@@ -937,6 +952,19 @@ function CustomPaymentForm({
                     </p>
                   </div>
                 </div>
+                <label className="flex items-start gap-3 cursor-pointer rounded-lg border p-3">
+                  <input
+                    type="checkbox"
+                    checked={zelleAgreed}
+                    onChange={(e) => setZelleAgreed(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300"
+                  />
+                  <span className="text-sm">
+                    I agree to send the Zelle payment of{" "}
+                    <strong className="font-mono">${(amount / 100).toFixed(2)}</strong>{" "}
+                    with the memo/note shown above.
+                  </span>
+                </label>
               </div>
             )}
           </CardContent>
@@ -946,7 +974,7 @@ function CustomPaymentForm({
       {/* ===== Pay / Cancel ===== */}
       <Button
         type="submit"
-        disabled={(!stripe && method !== "zelle") || processing}
+        disabled={(!stripe && method !== "zelle") || processing || (method === "zelle" && !zelleAgreed)}
         className="w-full"
         size="lg"
       >

@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   // eckcm_groups.registration_id -> eckcm_group_memberships.group_id -> eckcm_people
   const { data: repMember } = await admin
     .from("eckcm_groups")
-    .select("eckcm_group_memberships!inner(eckcm_people!inner(first_name_en, last_name_en), role)")
+    .select("eckcm_group_memberships!inner(eckcm_people!inner(first_name_en, last_name_en, phone, email), role)")
     .eq("registration_id", registrationId)
     .limit(1)
     .maybeSingle();
@@ -70,6 +70,8 @@ export async function POST(request: Request) {
   const registrantName = rep?.eckcm_people
     ? `${rep.eckcm_people.first_name_en} ${rep.eckcm_people.last_name_en}`
     : null;
+  const registrantPhone = rep?.eckcm_people?.phone ?? null;
+  const registrantEmail = rep?.eckcm_people?.email ?? null;
   const { data: invoice } = await admin
     .from("eckcm_invoices")
     .select("id, total_cents, status")
@@ -141,6 +143,8 @@ export async function POST(request: Request) {
           amount: chargeAmount,
           paymentTestMode,
           registrantName,
+          registrantPhone,
+          registrantEmail,
         });
       }
     } catch {
@@ -182,5 +186,7 @@ export async function POST(request: Request) {
     amount: chargeAmount,
     paymentTestMode,
     registrantName,
+    registrantPhone,
+    registrantEmail,
   });
 }
