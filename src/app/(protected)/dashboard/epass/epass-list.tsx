@@ -13,10 +13,13 @@ interface EPassToken {
   created_at: string;
   person_id: string;
   registration_id: string;
+  participant_code: string | null;
   eckcm_people: {
     first_name_en: string;
     last_name_en: string;
     display_name_ko: string | null;
+    gender: string;
+    birth_date: string;
   };
   eckcm_registrations: {
     confirmation_code: string | null;
@@ -29,6 +32,17 @@ interface EPassToken {
       name_ko: string | null;
     };
   };
+}
+
+function getMealCategory(birthDate: string, eventDate: string): string {
+  const birth = new Date(birthDate);
+  const ref = new Date(eventDate);
+  let age = ref.getFullYear() - birth.getFullYear();
+  const m = ref.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && ref.getDate() < birth.getDate())) age--;
+  if (age >= 11) return "Adult";
+  if (age >= 5) return "Youth";
+  return "Free";
 }
 
 export function EPassList({ tokens }: { tokens: EPassToken[] }) {
@@ -57,6 +71,7 @@ export function EPassList({ tokens }: { tokens: EPassToken[] }) {
           const displayName =
             person.display_name_ko ??
             `${person.first_name_en} ${person.last_name_en}`;
+          const meal = getMealCategory(person.birth_date, reg.start_date);
 
           return (
             <Link key={token.id} href={`/dashboard/epass/${token.id}`}>
@@ -64,9 +79,33 @@ export function EPassList({ tokens }: { tokens: EPassToken[] }) {
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{displayName}</CardTitle>
-                    <Badge variant={token.is_active ? "default" : "secondary"}>
-                      {token.is_active ? "Active" : "Inactive"}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge
+                        variant="outline"
+                        className={
+                          person.gender === "MALE"
+                            ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                            : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                        }
+                      >
+                        {person.gender === "MALE" ? "Male" : "Female"}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={
+                          meal === "Adult"
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                            : meal === "Youth"
+                              ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                              : "border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
+                        }
+                      >
+                        {meal}
+                      </Badge>
+                      <Badge variant={token.is_active ? "default" : "secondary"}>
+                        {token.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -76,9 +115,9 @@ export function EPassList({ tokens }: { tokens: EPassToken[] }) {
                       <p>
                         {reg.start_date} ~ {reg.end_date}
                       </p>
-                      {reg.confirmation_code && (
+                      {token.participant_code && (
                         <p className="font-mono font-medium text-foreground">
-                          {reg.confirmation_code}
+                          {token.participant_code}
                         </p>
                       )}
                     </div>

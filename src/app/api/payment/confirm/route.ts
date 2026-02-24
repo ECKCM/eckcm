@@ -118,11 +118,16 @@ export async function POST(request: Request) {
     .eq("id", registrationId);
 
   // 4. Generate E-Pass tokens
-  const { data: memberships } = await admin
+  const { data: memberships, error: membershipError } = await admin
     .from("eckcm_group_memberships")
     .select("person_id, eckcm_groups!inner(registration_id)")
     .eq("eckcm_groups.registration_id", registrationId);
 
+  if (membershipError) {
+    console.error("[payment/confirm] Failed to load memberships:", membershipError);
+  }
+
+  let tokensGenerated = 0;
   if (memberships) {
     for (const membership of memberships) {
       // Check if token already exists (idempotent)
@@ -135,16 +140,24 @@ export async function POST(request: Request) {
 
       if (!existing) {
         const { token, tokenHash } = generateEPassToken();
-        await admin.from("eckcm_epass_tokens").insert({
-          person_id: membership.person_id,
-          registration_id: registrationId,
-          token,
-          token_hash: tokenHash,
-          is_active: true,
-        });
+        const { error: insertError } = await admin
+          .from("eckcm_epass_tokens")
+          .insert({
+            person_id: membership.person_id,
+            registration_id: registrationId,
+            token,
+            token_hash: tokenHash,
+            is_active: true,
+          });
+        if (insertError) {
+          console.error("[payment/confirm] Failed to insert epass token:", insertError);
+        } else {
+          tokensGenerated++;
+        }
       }
     }
   }
+  console.log(`[payment/confirm] E-Pass: ${tokensGenerated} generated for ${memberships?.length ?? 0} members`);
 
   // 5. Send confirmation email (non-blocking)
   try {

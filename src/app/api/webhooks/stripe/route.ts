@@ -185,11 +185,16 @@ async function handlePaymentIntentSucceeded(
   if (!registration) return;
 
   // 5. Generate E-Pass tokens for each participant (idempotent)
-  const { data: memberships } = await admin
+  const { data: memberships, error: membershipError } = await admin
     .from("eckcm_group_memberships")
     .select("person_id, eckcm_groups!inner(registration_id)")
     .eq("eckcm_groups.registration_id", registrationId);
 
+  if (membershipError) {
+    console.error("[webhook] Failed to load memberships:", membershipError);
+  }
+
+  let tokensGenerated = 0;
   if (memberships) {
     for (const membership of memberships) {
       const { data: existingToken } = await admin
@@ -202,20 +207,28 @@ async function handlePaymentIntentSucceeded(
       if (!existingToken) {
         const { token, tokenHash } = generateEPassToken();
 
-        await admin.from("eckcm_epass_tokens").insert({
-          person_id: membership.person_id,
-          registration_id: registrationId,
-          token: token,
-          token_hash: tokenHash,
-          is_active: true,
-        });
+        const { error: insertError } = await admin
+          .from("eckcm_epass_tokens")
+          .insert({
+            person_id: membership.person_id,
+            registration_id: registrationId,
+            token: token,
+            token_hash: tokenHash,
+            is_active: true,
+          });
 
-        console.log(
-          `E-Pass generated for person ${membership.person_id}: ${token}`
-        );
+        if (insertError) {
+          console.error("[webhook] Failed to insert epass token:", insertError);
+        } else {
+          tokensGenerated++;
+          console.log(
+            `[webhook] E-Pass generated for person ${membership.person_id}`
+          );
+        }
       }
     }
   }
+  console.log(`[webhook] E-Pass: ${tokensGenerated} generated for ${memberships?.length ?? 0} members`);
 
   // 6. Send confirmation email (non-blocking, non-fatal)
   try {

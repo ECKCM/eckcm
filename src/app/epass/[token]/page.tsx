@@ -41,6 +41,16 @@ export default async function EPassPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = epass as any;
 
+  // Fetch participant_code from group_memberships
+  const { data: membership } = await admin
+    .from("eckcm_group_memberships")
+    .select("participant_code, eckcm_groups!inner(registration_id)")
+    .eq("person_id", data.person_id)
+    .eq("eckcm_groups.registration_id", data.registration_id)
+    .maybeSingle();
+
+  const participantCode = (membership as any)?.participant_code ?? null;
+
   return (
     <EPassViewer
       token={token}
@@ -48,6 +58,7 @@ export default async function EPassPage({
         id: data.id,
         isActive: data.is_active,
         createdAt: data.created_at,
+        participantCode,
         person: {
           firstName: data.eckcm_people.first_name_en,
           lastName: data.eckcm_people.last_name_en,
@@ -56,7 +67,6 @@ export default async function EPassPage({
           birthDate: data.eckcm_people.birth_date,
         },
         registration: {
-          confirmationCode: data.eckcm_registrations.confirmation_code,
           event: {
             nameEn: data.eckcm_registrations.eckcm_events.name_en,
             nameKo: data.eckcm_registrations.eckcm_events.name_ko,

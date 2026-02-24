@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,7 @@ interface EPassViewerProps {
     id: string;
     isActive: boolean;
     createdAt: string;
+    participantCode: string | null;
     person: {
       firstName: string;
       lastName: string;
@@ -19,7 +21,6 @@ interface EPassViewerProps {
       birthDate: string;
     };
     registration: {
-      confirmationCode: string;
       event: {
         nameEn: string;
         nameKo: string | null;
@@ -32,12 +33,26 @@ interface EPassViewerProps {
   };
 }
 
+function getMealCategory(birthDate: string, eventDate: string): string {
+  const birth = new Date(birthDate);
+  const ref = new Date(eventDate);
+  let age = ref.getFullYear() - birth.getFullYear();
+  const m = ref.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && ref.getDate() < birth.getDate())) age--;
+  if (age >= 11) return "Adult";
+  if (age >= 5) return "Youth";
+  return "Free";
+}
+
 export function EPassViewer({ token, epass }: EPassViewerProps) {
   const { person, registration } = epass;
   const { event } = registration;
-  const qrUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/epass/${token}`
-    : `/epass/${token}`;
+  const meal = getMealCategory(person.birthDate, event.startDate);
+
+  const [qrUrl, setQrUrl] = useState(`/epass/${token}`);
+  useEffect(() => {
+    setQrUrl(`${window.location.origin}/epass/${token}`);
+  }, [token]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-950 dark:to-gray-900 flex items-center justify-center p-4">
@@ -51,12 +66,35 @@ export function EPassViewer({ token, epass }: EPassViewerProps) {
             {event.nameEn} {event.year}
             {event.nameKo && ` / ${event.nameKo}`}
           </p>
-          <Badge
-            variant={epass.isActive ? "default" : "destructive"}
-            className="mt-2"
-          >
-            {epass.isActive ? "Active" : "Inactive"}
-          </Badge>
+          <div className="flex justify-center gap-1.5 mt-2">
+            <Badge
+              variant={epass.isActive ? "default" : "destructive"}
+            >
+              {epass.isActive ? "Active" : "Inactive"}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={
+                person.gender === "MALE"
+                  ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                  : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
+              }
+            >
+              {person.gender === "MALE" ? "Male" : "Female"}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={
+                meal === "Adult"
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                  : meal === "Youth"
+                    ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                    : "border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
+              }
+            >
+              {meal}
+            </Badge>
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-6 pt-6">
@@ -78,9 +116,6 @@ export function EPassViewer({ token, epass }: EPassViewerProps) {
                     {person.koreanName}
                   </p>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  {person.gender} &middot; {person.birthDate}
-                </p>
               </div>
             </div>
 
@@ -101,13 +136,15 @@ export function EPassViewer({ token, epass }: EPassViewerProps) {
             </div>
           </div>
 
-          {/* Confirmation Code */}
-          <div className="text-center border-t pt-4">
-            <p className="text-xs text-muted-foreground">Confirmation Code</p>
-            <p className="font-mono text-lg font-bold tracking-wider">
-              {registration.confirmationCode}
-            </p>
-          </div>
+          {/* Participant Code */}
+          {epass.participantCode && (
+            <div className="text-center border-t pt-4">
+              <p className="text-xs text-muted-foreground">Participant Code</p>
+              <p className="font-mono text-lg font-bold tracking-wider">
+                {epass.participantCode}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

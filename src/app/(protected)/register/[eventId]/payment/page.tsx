@@ -275,16 +275,20 @@ export default function PaymentStep() {
   };
 
   const goToConfirmation = async (paymentIntentId?: string) => {
-    // Confirm payment server-side before navigating
+    // Confirm payment server-side before navigating (generates E-Pass tokens)
     if (paymentIntentId && registrationId) {
       try {
-        await fetch("/api/payment/confirm", {
+        const res = await fetch("/api/payment/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ registrationId, paymentIntentId }),
         });
-      } catch {
-        // Non-fatal: webhook can still handle it
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error("[payment] confirm failed:", res.status, err);
+        }
+      } catch (err) {
+        console.error("[payment] confirm fetch error:", err);
       }
     }
     router.push(
