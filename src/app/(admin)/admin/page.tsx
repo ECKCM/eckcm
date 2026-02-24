@@ -9,6 +9,7 @@ export default async function AdminDashboardPage() {
   const { data: events } = await supabase
     .from("eckcm_events")
     .select("id, name_en, year, is_active")
+    .order("is_default", { ascending: false })
     .order("year", { ascending: false });
 
   const activeEvents = events?.filter((e) => e.is_active) ?? [];

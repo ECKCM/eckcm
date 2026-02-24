@@ -10,6 +10,7 @@ export default async function CheckinPage() {
     .from("eckcm_events")
     .select("id, name_en, year")
     .eq("is_active", true)
+    .order("is_default", { ascending: false })
     .order("year", { ascending: false });
 
   return (

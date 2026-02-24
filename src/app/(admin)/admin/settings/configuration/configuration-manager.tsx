@@ -57,6 +57,7 @@ export function ConfigurationManager() {
       const { data } = await supabase
         .from("eckcm_events")
         .select("id, name_en, year")
+        .order("is_default", { ascending: false })
         .order("year", { ascending: false });
       if (data) setEvents(data);
       setLoading(false);

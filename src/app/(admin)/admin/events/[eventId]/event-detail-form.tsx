@@ -35,6 +35,7 @@ interface EventDetailFormProps {
     is_active: boolean;
     stripe_mode: string;
     payment_test_mode: boolean;
+    is_default: boolean;
   };
 }
 
@@ -63,11 +64,21 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
     is_active: event.is_active,
     stripe_mode: event.stripe_mode ?? "test",
     payment_test_mode: event.payment_test_mode ?? false,
+    is_default: event.is_default ?? false,
   });
 
   const handleSave = async () => {
     setSaving(true);
     const supabase = createClient();
+
+    // If setting as default, unset current default first
+    if (form.is_default && !event.is_default) {
+      await supabase
+        .from("eckcm_events")
+        .update({ is_default: false })
+        .eq("is_default", true);
+    }
+
     const { error } = await supabase
       .from("eckcm_events")
       .update({
@@ -80,6 +91,7 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
         registration_end_date: form.registration_end_date || null,
         location: form.location || null,
         is_active: form.is_active,
+        is_default: form.is_default,
         stripe_mode: form.stripe_mode,
         payment_test_mode: form.payment_test_mode,
       })
@@ -190,6 +202,21 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
             }
           />
           <Label>Active</Label>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={form.is_default}
+            onCheckedChange={(checked) =>
+              setForm({ ...form, is_default: checked })
+            }
+          />
+          <Label>Default Event</Label>
+          {form.is_default && (
+            <Badge variant="outline" className="text-yellow-600 border-yellow-400">
+              Default
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-3">

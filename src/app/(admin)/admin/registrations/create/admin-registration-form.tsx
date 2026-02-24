@@ -146,6 +146,7 @@ export function AdminRegistrationForm() {
           .from("eckcm_events")
           .select("id, name_en, event_start_date, event_end_date")
           .eq("is_active", true)
+          .order("is_default", { ascending: false })
           .order("year", { ascending: false }),
         supabase
           .from("eckcm_departments")

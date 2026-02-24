@@ -1,40 +1,52 @@
 # Gap Detector Memory - ECKCM Project
 
-## Last Analysis: online-registration (2026-02-24, v2.0)
-- **Match Rate**: 76% (was 62%, +14% from design sync)
+## Last Analysis: online-registration (2026-02-24, v4.0)
+- **Match Rate**: 75% (stable since v3.0)
 - **Report**: `docs/03-analysis/features/online-registration.analysis.md`
 - **Design Doc**: `docs/02-design/features/online-registration.design.md` (v3)
-- **Designed items**: 222 total, 165 implemented, 57 missing
-- **Threshold**: 90% (need 35 more items)
+- **Designed items**: 222 total, 166 implemented, 56 missing
+- **Threshold**: 90% (need 34 more items)
+- **Weighted rate**: 72.3% (impact-based)
 
-## Key Findings (Post Iteration 1)
-- Design v3 synced with impl: added 18 impl-only features, updated table names, enums, paths
-- Score improvement came ENTIRELY from design sync, no code changes
+## Key Findings (v4.0 Analysis)
+- No code changes since v3.0 -- match rate stable at 75%
 - Core user flows (auth, wizard, dashboard, payment) remain 90%+ complete
 - Admin sub-pages still biggest gap: 16 of 44 designed pages missing
+- Check-in sub-pages (5 missing) are highest priority cluster
 - 6/10 designed services missing (inline in route handlers)
-- 4/5 hooks missing (only use-mobile exists)
-- 3 files still reference old `eckcm_system_settings` table name (BUG)
-- `eckcm_fee_category_inventory` table in code but NOT in design
+- 3/5 hooks missing (use-mobile + useRegistration exist)
+- 13 undocumented impl items need design sync
 
-## Active Bugs Found
-- `src/app/api/registration/submit/route.ts:120` references `eckcm_system_settings`
+## Active Bugs (UNFIXED since v2.0 -- CRITICAL)
+- `src/app/api/registration/submit/route.ts:128` references `eckcm_system_settings`
 - `src/app/api/registration/estimate/route.ts:73` references `eckcm_system_settings`
 - `src/app/api/admin/registration/route.ts:125` references `eckcm_system_settings`
+- All should be `eckcm_app_config` -- causes runtime errors
+
+## Undocumented Implementation Items (13 total, need design sync)
+- Table: `eckcm_fee_category_inventory` (inventory-manager.tsx)
+- Service: `refund.service.ts`
+- API routes: stripe-sync, refund/info, update-cover-fees
+- Components: force-light-mode, payment-icons, check-visual
+- Middleware: `src/proxy.ts` exists instead of `src/middleware.ts`
+- Lib: `app-config.ts`, `color-theme.ts`, `offline-store.ts`, `registration-context.tsx`
 
 ## Project Structure Notes
-- Tables use lowercase: `eckcm_users` (design v3 now matches)
+- Tables use lowercase: `eckcm_users` (design v3 matches)
 - Design v3 acknowledges co-location pattern for components
 - No SQL migration files in repository (DB managed via Supabase dashboard)
-- No root `src/middleware.ts` exists (design says it should)
+- `src/proxy.ts` serves as middleware but isn't standard `middleware.ts`
 
 ## Analysis Patterns
 - Use `.from("eckcm_*")` grep to discover DB tables in use
 - Admin components co-located with pages (e.g., `admin/participants/participants-table.tsx`)
 - Design v3 component list only covers globally shared components (26 items)
-- For weighted scoring: core user routes 25%, admin 20%, API 20%, services+hooks 10%
+- Weighted scoring: core user routes 25%, admin 20%, API 20%, services+hooks 10%
+- Check `useRegistration` in context file, not hooks directory
+- DB tables only in RLS functions (permissions, role_permissions) count as implemented
 
-## Gap Priority for 90%
-- High: admin sub-pages (16), API routes (12), services (6), hooks (4)
-- Medium: email templates (3), types (2), middleware (1)
-- Low/Deferrable: PWA (3), print pages (2), public pay/donate (2)
+## Gap Priority for 90% (34 items needed)
+- Tier 1 (15 items, ~30hrs): checkin sub-pages, service extractions, email routes, middleware
+- Tier 2 (12 items, ~31hrs): admin lodging/meals/users pages, export, types
+- Tier 3 (7 items, ~31hrs): PWA, print, donate, sheets -- deferrable
+- Alternative: Implement Tier 1+2 (27 items) + defer Tier 3 from design = 90%

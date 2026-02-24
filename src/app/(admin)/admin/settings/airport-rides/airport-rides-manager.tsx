@@ -78,6 +78,7 @@ export function AirportRidesManager() {
         .from("eckcm_events")
         .select("id, name_en")
         .eq("is_active", true)
+        .order("is_default", { ascending: false })
         .order("year", { ascending: false });
       setEvents(data ?? []);
       if (data && data.length > 0) {

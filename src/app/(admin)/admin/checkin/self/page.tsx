@@ -1,14 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { InvoicesTable } from "./invoices-table";
+import { SelfCheckinClient } from "./self-checkin-client";
 
-export default async function InvoicesPage() {
+export default async function SelfCheckinPage() {
   const supabase = await createClient();
 
   const { data: events } = await supabase
     .from("eckcm_events")
     .select("id, name_en, year")
+    .eq("is_active", true)
     .order("is_default", { ascending: false })
     .order("year", { ascending: false });
 
@@ -17,10 +18,10 @@ export default async function InvoicesPage() {
       <header className="flex h-14 items-center gap-2 border-b px-4">
         <SidebarTrigger />
         <Separator orientation="vertical" className="h-6" />
-        <h1 className="text-lg font-semibold">Invoices</h1>
+        <h1 className="text-lg font-semibold">Self Check-in</h1>
       </header>
       <div className="p-6">
-        <InvoicesTable events={events ?? []} />
+        <SelfCheckinClient events={events ?? []} />
       </div>
     </div>
   );

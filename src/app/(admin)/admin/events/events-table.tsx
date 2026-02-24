@@ -22,9 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, Star } from "lucide-react";
 
 interface Event {
   id: string;
@@ -37,6 +36,7 @@ interface Event {
   registration_end_date: string | null;
   location: string | null;
   is_active: boolean;
+  is_default: boolean;
 }
 
 export function EventsTable({ events: initial }: { events: Event[] }) {
@@ -114,6 +114,33 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
     toast.success(
       event.is_active ? "Event deactivated" : "Event activated"
     );
+  };
+
+  const setDefault = async (event: Event) => {
+    if (event.is_default) return;
+    const supabase = createClient();
+    // Unset current default first, then set new one
+    const { error: unsetError } = await supabase
+      .from("eckcm_events")
+      .update({ is_default: false })
+      .eq("is_default", true);
+    if (unsetError) {
+      toast.error(unsetError.message);
+      return;
+    }
+    const { error } = await supabase
+      .from("eckcm_events")
+      .update({ is_default: true })
+      .eq("id", event.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setEvents(
+      events.map((e) => ({ ...e, is_default: e.id === event.id }))
+    );
+    toast.success(`"${event.name_en}" set as default event`);
+    router.refresh();
   };
 
   return (
@@ -215,6 +242,7 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
             <TableHead>Year</TableHead>
             <TableHead>Dates</TableHead>
             <TableHead>Location</TableHead>
+            <TableHead>Default</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -223,7 +251,7 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
           {events.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={6}
+                colSpan={7}
                 className="text-center text-muted-foreground py-8"
               >
                 No events yet. Create your first event.
@@ -247,6 +275,19 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
                   {event.event_start_date} ~ {event.event_end_date}
                 </TableCell>
                 <TableCell>{event.location ?? "-"}</TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDefault(event)}
+                    disabled={event.is_default}
+                    className="p-1"
+                  >
+                    <Star
+                      className={`size-4 ${event.is_default ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
+                    />
+                  </Button>
+                </TableCell>
                 <TableCell>
                   <Badge variant={event.is_active ? "default" : "secondary"}>
                     {event.is_active ? "Active" : "Inactive"}

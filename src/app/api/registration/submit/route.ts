@@ -125,7 +125,7 @@ export async function POST(request: Request) {
 
   // 2. Load system settings
   const { data: settings } = await admin
-    .from("eckcm_system_settings")
+    .from("eckcm_app_config")
     .select("*")
     .eq("event_id", eventId)
     .single();

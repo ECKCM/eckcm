@@ -70,7 +70,7 @@ export async function POST(request: Request) {
 
   // Load system settings for the event
   const { data: settings } = await supabase
-    .from("eckcm_system_settings")
+    .from("eckcm_app_config")
     .select("*")
     .eq("event_id", eventId)
     .single();

@@ -24,6 +24,7 @@ import {
   ScanLine,
   Presentation,
   ClipboardPlus,
+  Star,
 } from "lucide-react";
 import {
   Sidebar,
@@ -45,6 +46,7 @@ interface AdminSidebarProps {
     name_ko: string | null;
     year: number;
     is_active: boolean;
+    is_default: boolean;
   }[];
   isSuperAdmin: boolean;
 }
@@ -250,7 +252,11 @@ export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
                       isActive={pathname === `/admin/events/${event.id}`}
                     >
                       <Link href={`/admin/events/${event.id}`}>
-                        <Calendar />
+                        {event.is_default ? (
+                          <Star className="fill-yellow-400 text-yellow-400" />
+                        ) : (
+                          <Calendar />
+                        )}
                         <span>
                           {event.name_en} ({event.year})
                         </span>

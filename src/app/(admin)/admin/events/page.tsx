@@ -9,6 +9,7 @@ export default async function EventsPage() {
   const { data: events } = await supabase
     .from("eckcm_events")
     .select("*")
+    .order("is_default", { ascending: false })
     .order("year", { ascending: false });
 
   return (

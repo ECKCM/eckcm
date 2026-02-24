@@ -38,7 +38,8 @@ export default async function AdminLayout({
   // Get events for sidebar
   const { data: events } = await supabase
     .from("eckcm_events")
-    .select("id, name_en, name_ko, year, is_active")
+    .select("id, name_en, name_ko, year, is_active, is_default")
+    .order("is_default", { ascending: false })
     .order("year", { ascending: false });
 
   return (
