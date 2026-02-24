@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeForMode } from "@/lib/stripe/config";
+import { getRefundSummary, createRefundWithGuard, RefundOverLimitError } from "@/lib/services/refund.service";
 
 interface RefundBody {
   paymentId: string;
@@ -40,14 +41,34 @@ export async function POST(request: Request) {
   }
 
   // 3. Parse body
-  const body: RefundBody = await request.json();
+  let body: RefundBody;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const { paymentId, amountCents, reason } = body;
 
-  if (!paymentId) {
+  if (!paymentId || typeof paymentId !== "string") {
     return NextResponse.json(
-      { error: "Missing paymentId" },
+      { error: "Missing or invalid paymentId" },
       { status: 400 }
     );
+  }
+
+  // Validate amountCents if provided: must be a positive integer
+  if (amountCents !== undefined) {
+    if (
+      typeof amountCents !== "number" ||
+      !Number.isFinite(amountCents) ||
+      !Number.isInteger(amountCents) ||
+      amountCents <= 0
+    ) {
+      return NextResponse.json(
+        { error: "amountCents must be a positive integer" },
+        { status: 400 }
+      );
+    }
   }
 
   const admin = createAdminClient();
@@ -73,14 +94,24 @@ export async function POST(request: Request) {
     );
   }
 
-  // 5. Determine refund amount
-  const refundAmount = amountCents ?? payment.amount_cents;
-  if (refundAmount <= 0 || refundAmount > payment.amount_cents) {
+  // 5. Compute remaining refundable amount
+  const { totalRefundedCents, remainingCents } = await getRefundSummary(
+    admin,
+    payment.id,
+    payment.amount_cents
+  );
+
+  const refundAmount = amountCents ?? remainingCents;
+  if (refundAmount <= 0 || refundAmount > remainingCents) {
     return NextResponse.json(
-      { error: `Invalid refund amount. Payment is $${(payment.amount_cents / 100).toFixed(2)}` },
+      {
+        error: `Invalid refund amount. Remaining: $${(remainingCents / 100).toFixed(2)} (already refunded: $${(totalRefundedCents / 100).toFixed(2)} of $${(payment.amount_cents / 100).toFixed(2)})`,
+      },
       { status: 400 }
     );
   }
+
+  const isFullRefund = refundAmount === remainingCents;
 
   // 6. Resolve event info for Stripe mode
   let eventId: string | null = null;
@@ -108,7 +139,10 @@ export async function POST(request: Request) {
     }
   }
 
+  const refundReason = reason || "Admin-initiated refund";
+
   // 7. For Stripe payments, issue refund via Stripe API
+  // Stripe itself prevents over-refunding, providing double protection
   if (payment.stripe_payment_intent_id) {
     try {
       const stripe = await getStripeForMode(stripeMode);
@@ -118,15 +152,14 @@ export async function POST(request: Request) {
         reason: "requested_by_customer",
       });
 
-      // The webhook will handle updating payment/invoice/registration status
-      // But we still insert our own refund record for immediate tracking
-
-      await admin.from("eckcm_refunds").insert({
-        payment_id: payment.id,
-        stripe_refund_id: stripeRefund.id,
-        amount_cents: refundAmount,
-        reason: reason || "Admin-initiated refund",
-        refunded_by: user.id,
+      // Insert with post-insert guard to catch race conditions
+      await createRefundWithGuard(admin, {
+        paymentId: payment.id,
+        paymentAmountCents: payment.amount_cents,
+        amountCents: refundAmount,
+        stripeRefundId: stripeRefund.id,
+        reason: refundReason,
+        refundedBy: user.id,
       });
 
       // Audit log
@@ -139,8 +172,8 @@ export async function POST(request: Request) {
         new_data: {
           stripe_refund_id: stripeRefund.id,
           amount_cents: refundAmount,
-          reason: reason || "Admin-initiated refund",
-          is_full_refund: refundAmount === payment.amount_cents,
+          reason: refundReason,
+          is_full_refund: isFullRefund,
         },
       });
 
@@ -150,6 +183,9 @@ export async function POST(request: Request) {
         amountCents: refundAmount,
       });
     } catch (err) {
+      if (err instanceof RefundOverLimitError) {
+        return NextResponse.json({ error: err.message }, { status: 409 });
+      }
       console.error("[admin/refund] Stripe refund failed:", err);
       return NextResponse.json(
         { error: err instanceof Error ? err.message : "Stripe refund failed" },
@@ -158,16 +194,30 @@ export async function POST(request: Request) {
     }
   }
 
-  // 8. For non-Stripe payments (Zelle, Check, Manual), just update status directly
-  const isFullRefund = refundAmount === payment.amount_cents;
-  const refundStatus = isFullRefund ? "REFUNDED" : "PARTIALLY_REFUNDED";
+  // 8. For non-Stripe payments (Zelle, Check, Manual)
+  // Post-insert guard is critical here since there's no external API preventing over-refund
+  try {
+    await createRefundWithGuard(admin, {
+      paymentId: payment.id,
+      paymentAmountCents: payment.amount_cents,
+      amountCents: refundAmount,
+      reason: refundReason,
+      refundedBy: user.id,
+    });
+  } catch (err) {
+    if (err instanceof RefundOverLimitError) {
+      return NextResponse.json({ error: err.message }, { status: 409 });
+    }
+    console.error("[admin/refund] Refund record creation failed:", err);
+    return NextResponse.json(
+      { error: "Failed to create refund record" },
+      { status: 500 }
+    );
+  }
 
-  await admin.from("eckcm_refunds").insert({
-    payment_id: payment.id,
-    amount_cents: refundAmount,
-    reason: reason || "Admin-initiated refund",
-    refunded_by: user.id,
-  });
+  // Re-compute after insert to determine correct status
+  const postRefundSummary = await getRefundSummary(admin, payment.id, payment.amount_cents);
+  const refundStatus = postRefundSummary.remainingCents <= 0 ? "REFUNDED" : "PARTIALLY_REFUNDED";
 
   await admin
     .from("eckcm_payments")
@@ -180,7 +230,7 @@ export async function POST(request: Request) {
       .update({ status: refundStatus })
       .eq("id", payment.invoice_id);
 
-    if (isFullRefund) {
+    if (refundStatus === "REFUNDED") {
       const { data: inv } = await admin
         .from("eckcm_invoices")
         .select("registration_id")
@@ -210,8 +260,8 @@ export async function POST(request: Request) {
     entity_id: payment.id,
     new_data: {
       amount_cents: refundAmount,
-      reason: reason || "Admin-initiated refund",
-      is_full_refund: isFullRefund,
+      reason: refundReason,
+      is_full_refund: refundStatus === "REFUNDED",
       payment_method: payment.payment_method,
     },
   });

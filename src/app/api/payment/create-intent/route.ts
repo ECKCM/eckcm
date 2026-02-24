@@ -5,6 +5,7 @@ import { getStripeForMode } from "@/lib/stripe/config";
 
 interface CreateIntentBody {
   registrationId: string;
+  coversFees?: boolean;
 }
 
 export async function POST(request: Request) {
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
   }
 
   const body: CreateIntentBody = await request.json();
-  const { registrationId } = body;
+  const { registrationId, coversFees } = body;
 
   if (!registrationId) {
     return NextResponse.json(
@@ -76,7 +77,10 @@ export async function POST(request: Request) {
     .from("eckcm_invoices")
     .select("id, total_cents, status")
     .eq("registration_id", registrationId)
-    .single();
+    .neq("status", "REFUNDED")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (!invoice) {
     return NextResponse.json(
@@ -112,7 +116,11 @@ export async function POST(request: Request) {
   const paymentTestMode = event?.payment_test_mode === true;
 
   // Reuse existing pending PaymentIntent if one exists (idempotent)
-  const chargeAmount = paymentTestMode ? 100 : amountCents;
+  const baseChargeAmount = paymentTestMode ? 100 : amountCents;
+  // If donor covers fees, add Stripe processing fee (2.9% + $0.30)
+  const chargeAmount = coversFees
+    ? Math.ceil((baseChargeAmount + 30) / (1 - 0.029))
+    : baseChargeAmount;
   const stripe = await getStripeForMode(stripeMode);
 
   const { data: existingPayment } = await admin
@@ -145,6 +153,8 @@ export async function POST(request: Request) {
           registrantName,
           registrantPhone,
           registrantEmail,
+          coversFees: !!coversFees,
+          feeCents: coversFees ? chargeAmount - baseChargeAmount : 0,
         });
       }
     } catch {
@@ -152,15 +162,48 @@ export async function POST(request: Request) {
     }
   }
 
+  // Find or create Stripe Customer with representative info
+  let stripeCustomerId: string | undefined;
+  const customerEmail = registrantEmail || user.email || undefined;
+  const customerName = registrantName || undefined;
+  const customerPhone = registrantPhone || undefined;
+
+  if (customerEmail) {
+    // Search for existing customer by email
+    const existing = await stripe.customers.list({ email: customerEmail, limit: 1 });
+    if (existing.data.length > 0) {
+      stripeCustomerId = existing.data[0].id;
+      // Update name/phone if missing
+      const c = existing.data[0];
+      if ((!c.name && customerName) || (!c.phone && customerPhone)) {
+        await stripe.customers.update(stripeCustomerId, {
+          ...(customerName && !c.name ? { name: customerName } : {}),
+          ...(customerPhone && !c.phone ? { phone: customerPhone } : {}),
+        });
+      }
+    } else {
+      const customer = await stripe.customers.create({
+        email: customerEmail,
+        name: customerName,
+        phone: customerPhone,
+        metadata: { userId: user.id, confirmationCode: registration.confirmation_code },
+      });
+      stripeCustomerId = customer.id;
+    }
+  }
+
   // Create new Stripe PaymentIntent (with idempotency key to prevent duplicates)
   const paymentIntent = await stripe.paymentIntents.create({
     amount: chargeAmount,
     currency: "usd",
+    ...(stripeCustomerId ? { customer: stripeCustomerId } : {}),
+    receipt_email: customerEmail,
     metadata: {
       registrationId,
       invoiceId: invoice.id,
       userId: user.id,
       confirmationCode: registration.confirmation_code,
+      coversFees: coversFees ? "true" : "false",
     },
     payment_method_types: [
       "card",
@@ -173,13 +216,27 @@ export async function POST(request: Request) {
   });
 
   // Create pending payment record
-  await admin.from("eckcm_payments").insert({
-    invoice_id: invoice.id,
-    stripe_payment_intent_id: paymentIntent.id,
-    payment_method: "STRIPE",
-    amount_cents: amountCents,
-    status: "PENDING",
-  });
+  // Check if one already exists for this PI (e.g., from a previous page load)
+  const { data: existingRecord } = await admin
+    .from("eckcm_payments")
+    .select("id")
+    .eq("stripe_payment_intent_id", paymentIntent.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (!existingRecord) {
+    const { error: paymentInsertError } = await admin.from("eckcm_payments").insert({
+      invoice_id: invoice.id,
+      stripe_payment_intent_id: paymentIntent.id,
+      payment_method: "STRIPE",
+      amount_cents: chargeAmount,
+      status: "PENDING",
+    });
+
+    if (paymentInsertError) {
+      console.error("[create-intent] Failed to insert payment record:", paymentInsertError);
+    }
+  }
 
   return NextResponse.json({
     clientSecret: paymentIntent.client_secret,
@@ -188,5 +245,7 @@ export async function POST(request: Request) {
     registrantName,
     registrantPhone,
     registrantEmail,
+    coversFees: !!coversFees,
+    feeCents: coversFees ? chargeAmount - baseChargeAmount : 0,
   });
 }

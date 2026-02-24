@@ -138,6 +138,11 @@ export default function PaymentStep() {
   const [enabledMethods, setEnabledMethods] = useState<string[]>([
     "card", "ach", "zelle", "check", "wallet", "more",
   ]);
+  const [donorCoversFees, setDonorCoversFees] = useState(false);
+  const [coversFees, setCoversFees] = useState(false);
+  const [feeCents, setFeeCents] = useState(0);
+  const [baseAmount, setBaseAmount] = useState(0);
+  const [updatingFees, setUpdatingFees] = useState(false);
 
   // Fetch enabled payment methods
   useEffect(() => {
@@ -146,6 +151,9 @@ export default function PaymentStep() {
       .then((data) => {
         if (Array.isArray(data.enabled)) {
           setEnabledMethods(data.enabled);
+        }
+        if (data.donorCoversFees === true) {
+          setDonorCoversFees(true);
         }
       })
       .catch(() => {
@@ -206,6 +214,7 @@ export default function PaymentStep() {
 
         setClientSecret(data.clientSecret as string);
         setAmount(data.amount as number);
+        setBaseAmount(data.amount as number);
         if (data.registrantName) setRegistrantName(data.registrantName as string);
         if (data.registrantPhone) setRegistrantPhone(data.registrantPhone as string);
         if (data.registrantEmail) setRegistrantEmail(data.registrantEmail as string);
@@ -235,6 +244,35 @@ export default function PaymentStep() {
       </div>
     );
   }
+
+  const handleToggleCoverFees = async (checked: boolean) => {
+    if (!registrationId) return;
+    setCoversFees(checked);
+    setUpdatingFees(true);
+    try {
+      // Extract PI ID from clientSecret (format: pi_xxx_secret_yyy)
+      const piId = clientSecret?.split("_secret_")[0] || undefined;
+      const res = await fetch("/api/payment/update-cover-fees", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationId, coversFees: checked, paymentIntentId: piId }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        setCoversFees(!checked);
+        toast.error(errData.error || "Failed to update fee coverage");
+        return;
+      }
+      const data = await res.json();
+      setAmount(data.amount);
+      setFeeCents(data.feeCents);
+    } catch {
+      setCoversFees(!checked);
+      toast.error("Network error");
+    } finally {
+      setUpdatingFees(false);
+    }
+  };
 
   const goToConfirmation = async (paymentIntentId?: string) => {
     // Confirm payment server-side before navigating
@@ -315,12 +353,45 @@ export default function PaymentStep() {
                 <span className="font-mono font-bold">{confirmationCode}</span>
               </div>
               <Separator className="my-3" />
+              {coversFees && feeCents > 0 && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>${(baseAmount / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Processing fee</span>
+                    <span>+${(feeCents / 100).toFixed(2)}</span>
+                  </div>
+                  <Separator className="my-2" />
+                </>
+              )}
               <div className="flex justify-between items-center">
                 <span className="font-medium">Total Due</span>
                 <span className="text-2xl font-bold">
                   ${(amount / 100).toFixed(2)}
                 </span>
               </div>
+              {donorCoversFees && (
+                <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-dashed p-3 mt-3 hover:bg-muted/30 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={coversFees}
+                    onChange={(e) => handleToggleCoverFees(e.target.checked)}
+                    disabled={updatingFees}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300"
+                  />
+                  <span className="text-sm">
+                    I&rsquo;d like to cover the payment processing fee.
+                    {!coversFees && baseAmount > 0 && (
+                      <span className="text-muted-foreground">
+                        {" "}(+${(Math.ceil((baseAmount + 30) / (1 - 0.029) - baseAmount) / 100).toFixed(2)})
+                      </span>
+                    )}
+                  </span>
+                  {updatingFees && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
+                </label>
+              )}
             </>
           )}
         </CardContent>
