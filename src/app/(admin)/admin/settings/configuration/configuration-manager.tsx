@@ -244,6 +244,7 @@ export function ConfigurationManager() {
 
 function SecuritySection() {
   const [turnstileEnabled, setTurnstileEnabled] = useState<boolean>(true);
+  const [allowDuplicateEmail, setAllowDuplicateEmail] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -252,18 +253,19 @@ function SecuritySection() {
       .then((res) => res.json())
       .then((data) => {
         setTurnstileEnabled(data.turnstile_enabled ?? true);
+        setAllowDuplicateEmail(data.allow_duplicate_email ?? false);
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
   }, []);
 
-  async function handleToggle(checked: boolean) {
+  async function handleToggle(field: string, checked: boolean) {
     setIsSaving(true);
     try {
       const res = await fetch("/api/admin/app-config", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turnstile_enabled: checked }),
+        body: JSON.stringify({ [field]: checked }),
       });
 
       if (!res.ok) {
@@ -272,12 +274,13 @@ function SecuritySection() {
         return;
       }
 
-      setTurnstileEnabled(checked);
-      toast.success(
-        checked
-          ? "Cloudflare Turnstile enabled."
-          : "Cloudflare Turnstile disabled."
-      );
+      if (field === "turnstile_enabled") {
+        setTurnstileEnabled(checked);
+        toast.success(checked ? "Cloudflare Turnstile enabled." : "Cloudflare Turnstile disabled.");
+      } else if (field === "allow_duplicate_email") {
+        setAllowDuplicateEmail(checked);
+        toast.success(checked ? "Duplicate emails allowed." : "Duplicate email check restored.");
+      }
     } catch {
       toast.error("Network error. Please try again.");
     } finally {
@@ -308,7 +311,7 @@ function SecuritySection() {
           </div>
           <Switch
             checked={turnstileEnabled}
-            onCheckedChange={handleToggle}
+            onCheckedChange={(checked) => handleToggle("turnstile_enabled", checked)}
             disabled={isSaving}
           />
         </div>
@@ -326,6 +329,31 @@ function SecuritySection() {
             </a>{" "}
             → Security and Protection. Otherwise auth will still fail without a
             captcha token.
+          </div>
+        )}
+
+        {/* Allow Duplicate Email */}
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="space-y-0.5">
+            <Label className="text-base font-medium">
+              Allow Duplicate Email
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Skip the duplicate email check during registration. Useful for
+              testing with the same email across multiple participants.
+            </p>
+          </div>
+          <Switch
+            checked={allowDuplicateEmail}
+            onCheckedChange={(checked) => handleToggle("allow_duplicate_email", checked)}
+            disabled={isSaving}
+          />
+        </div>
+        {allowDuplicateEmail && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-800 dark:text-amber-300">
+            <strong>Testing mode:</strong> Duplicate email validation is
+            disabled. Multiple participants can register with the same email
+            address. Disable this before going live.
           </div>
         )}
       </CardContent>

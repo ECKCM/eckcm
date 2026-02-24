@@ -8,7 +8,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("eckcm_app_config")
-    .select("color_theme, turnstile_enabled")
+    .select("color_theme, turnstile_enabled, allow_duplicate_email")
     .eq("id", 1)
     .single();
 
@@ -22,6 +22,7 @@ export async function GET() {
   return NextResponse.json({
     color_theme: data.color_theme,
     turnstile_enabled: data.turnstile_enabled ?? true,
+    allow_duplicate_email: data.allow_duplicate_email ?? false,
   });
 }
 
@@ -80,6 +81,16 @@ export async function PATCH(request: Request) {
       );
     }
     updates.turnstile_enabled = body.turnstile_enabled;
+  }
+
+  if ("allow_duplicate_email" in body) {
+    if (typeof body.allow_duplicate_email !== "boolean") {
+      return NextResponse.json(
+        { error: "allow_duplicate_email must be a boolean" },
+        { status: 400 }
+      );
+    }
+    updates.allow_duplicate_email = body.allow_duplicate_email;
   }
 
   if (Object.keys(updates).length === 0) {

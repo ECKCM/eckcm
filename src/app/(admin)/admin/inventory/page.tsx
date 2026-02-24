@@ -1,16 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { InventoryManager } from "./inventory-manager";
 
-export default async function InventoryPage() {
-  const supabase = await createClient();
-
-  const { data: events } = await supabase
-    .from("eckcm_events")
-    .select("id, name_en, year")
-    .order("year", { ascending: false });
-
+export default function InventoryPage() {
   return (
     <div className="flex flex-col">
       <header className="flex h-14 items-center gap-2 border-b px-4">
@@ -19,7 +11,7 @@ export default async function InventoryPage() {
         <h1 className="text-lg font-semibold">Inventory</h1>
       </header>
       <div className="p-6">
-        <InventoryManager events={events ?? []} />
+        <InventoryManager />
       </div>
     </div>
   );

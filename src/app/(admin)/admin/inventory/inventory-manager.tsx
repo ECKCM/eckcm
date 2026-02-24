@@ -24,15 +24,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Plus } from "lucide-react";
 
-interface Event {
-  id: string;
-  name_en: string;
-  year: number;
-}
-
 interface InventoryRow {
   id: string;
-  fee_category_id: string;
   fee_category_code: string;
   fee_category_name: string;
   total_quantity: number;
@@ -46,9 +39,8 @@ interface TrackableCategory {
   name_en: string;
 }
 
-export function InventoryManager({ events }: { events: Event[] }) {
+export function InventoryManager() {
   const [mounted, setMounted] = useState(false);
-  const [eventId, setEventId] = useState(events[0]?.id ?? "");
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -57,7 +49,6 @@ export function InventoryManager({ events }: { events: Event[] }) {
   const [adding, setAdding] = useState(false);
 
   const loadInventory = useCallback(async () => {
-    if (!eventId) return;
     setLoading(true);
     const supabase = createClient();
 
@@ -69,7 +60,6 @@ export function InventoryManager({ events }: { events: Event[] }) {
         eckcm_fee_categories!inner(code, name_en, is_inventory_trackable)
       `
       )
-      .eq("event_id", eventId)
       .eq("eckcm_fee_categories.is_inventory_trackable", true)
       .order("created_at");
 
@@ -81,7 +71,6 @@ export function InventoryManager({ events }: { events: Event[] }) {
 
     const inventoryRows = (data ?? []).map((row: any) => ({
       id: row.id,
-      fee_category_id: "", // not needed for display
       fee_category_code: row.eckcm_fee_categories.code,
       fee_category_name: row.eckcm_fee_categories.name_en,
       total_quantity: row.total_quantity,
@@ -90,7 +79,7 @@ export function InventoryManager({ events }: { events: Event[] }) {
     }));
     setRows(inventoryRows);
 
-    // Load trackable categories not yet in inventory for this event
+    // Load trackable categories not yet in inventory
     const { data: allTrackable } = await supabase
       .from("eckcm_fee_categories")
       .select("id, code, name_en")
@@ -103,7 +92,7 @@ export function InventoryManager({ events }: { events: Event[] }) {
     );
 
     setLoading(false);
-  }, [eventId]);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -155,13 +144,11 @@ export function InventoryManager({ events }: { events: Event[] }) {
   };
 
   const handleAddCategory = async (categoryId: string) => {
-    if (!eventId) return;
     setAdding(true);
     const supabase = createClient();
     const { error } = await supabase
       .from("eckcm_fee_category_inventory")
       .insert({
-        event_id: eventId,
         fee_category_id: categoryId,
         total_quantity: 0,
       });
@@ -216,18 +203,6 @@ export function InventoryManager({ events }: { events: Event[] }) {
         <div className="flex items-center justify-between">
           <CardTitle>Fee Category Inventory</CardTitle>
           <div className="flex items-center gap-3">
-            <Select value={eventId} onValueChange={setEventId}>
-              <SelectTrigger className="w-[280px]">
-                <SelectValue placeholder="Select event" />
-              </SelectTrigger>
-              <SelectContent>
-                {events.map((event) => (
-                  <SelectItem key={event.id} value={event.id}>
-                    {event.name_en} ({event.year})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             {addableCategories.length > 0 && (
               <Select
                 onValueChange={handleAddCategory}
@@ -267,7 +242,7 @@ export function InventoryManager({ events }: { events: Event[] }) {
           </div>
         ) : rows.length === 0 ? (
           <p className="text-center py-12 text-muted-foreground">
-            No inventory records found for this event.
+            No inventory records found.
           </p>
         ) : (
           <Table>

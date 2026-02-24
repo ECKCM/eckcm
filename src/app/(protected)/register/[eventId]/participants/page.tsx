@@ -130,6 +130,9 @@ export default function ParticipantsStep() {
   // Confirmation dialog for removing an entire group
   const [removeGroupTarget, setRemoveGroupTarget] = useState<number | null>(null);
 
+  // App config: allow duplicate email for testing
+  const [allowDuplicateEmail, setAllowDuplicateEmail] = useState(false);
+
   // HANSAMO policy: representative-only registration unless general lodging opted
   const [hansamoGeneralLodging, setHansamoGeneralLodging] = useState(false);
 
@@ -198,6 +201,16 @@ export default function ParticipantsStep() {
           eventEndDate: ev.event_end_date,
         });
       }
+
+      // Fetch app config for duplicate email setting
+      try {
+        const configRes = await fetch("/api/admin/app-config");
+        if (configRes.ok) {
+          const configData = await configRes.json();
+          setAllowDuplicateEmail(configData.allow_duplicate_email ?? false);
+        }
+      } catch {}
+
 
       // Auto-fill representative from user's profile (only once)
       if (user && !representativeFilledRef.current) {
@@ -526,7 +539,7 @@ export default function ParticipantsStep() {
         const other = state.roomGroups[gIdx].participants[pIdx];
 
         // Email duplicate within form
-        if (p.email && !p.noEmail && !other.noEmail && other.email &&
+        if (!allowDuplicateEmail && p.email && !p.noEmail && !other.noEmail && other.email &&
             other.email.toLowerCase() === p.email.toLowerCase()) {
           setFieldErrors((prev) => ({ ...prev, [key]: { email: "Unable to use this email" } }));
           return;
@@ -572,7 +585,7 @@ export default function ParticipantsStep() {
 
     if (!dupError && dupCheck) {
       const dupErrs: Record<string, string> = {};
-      if (dupCheck.emailDuplicate) dupErrs.email = "Unable to use this email";
+      if (dupCheck.emailDuplicate && !allowDuplicateEmail) dupErrs.email = "Unable to use this email";
       if (dupCheck.personDuplicate) dupErrs.firstName = "이미 등록된 사람입니다";
       if (Object.keys(dupErrs).length > 0) {
         setFieldErrors((prev) => ({ ...prev, [key]: dupErrs }));

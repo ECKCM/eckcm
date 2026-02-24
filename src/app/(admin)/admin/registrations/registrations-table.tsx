@@ -51,7 +51,20 @@ interface RegistrationRow {
   people_count: number;
   registrant_name: string;
   registrant_name_ko: string | null;
+  registrant_email: string | null;
+  registrant_phone: string | null;
+  registrant_church: string | null;
+  registrant_department: string | null;
   registration_group_name: string | null;
+  invoice_number: string | null;
+  payment_status: string | null;
+  payment_method: string | null;
+  paid_at: string | null;
+  // On-site check-in/out (Yes/No)
+  checked_in: boolean;
+  checked_out: boolean;
+  // Room info
+  room_numbers: string[];
 }
 
 interface PersonDetail {
@@ -79,12 +92,23 @@ const statusVariant: Record<string, "default" | "secondary" | "destructive" | "o
   REFUNDED: "destructive",
 };
 
+const paymentStatusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  SUCCEEDED: "default",
+  PENDING: "outline",
+  FAILED: "destructive",
+  REFUNDED: "destructive",
+  PARTIALLY_REFUNDED: "destructive",
+};
+
 export function RegistrationsTable({ events }: { events: Event[] }) {
+  const [mounted, setMounted] = useState(false);
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [registrations, setRegistrations] = useState<RegistrationRow[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   // Detail dialog
   const [detailReg, setDetailReg] = useState<RegistrationRow | null>(null);
@@ -99,6 +123,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
     setLoading(true);
     const supabase = createClient();
 
+    // Main registration query
     const { data } = await supabase
       .from("eckcm_registrations")
       .select(`
@@ -113,18 +138,43 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         created_at,
         updated_at,
         eckcm_registration_groups(name_en),
+        eckcm_invoices(
+          invoice_number,
+          status,
+          paid_at,
+          eckcm_payments(payment_method, status)
+        ),
         eckcm_groups(
           id,
           display_group_code,
+          eckcm_room_assignments(
+            eckcm_rooms(room_number)
+          ),
           eckcm_group_memberships(
             person_id,
             role,
-            eckcm_people!inner(first_name_en, last_name_en, display_name_ko)
+            eckcm_people!inner(
+              first_name_en, last_name_en, display_name_ko,
+              email, phone,
+              eckcm_churches(name_en),
+              eckcm_departments(name_en)
+            )
           )
         )
       `)
       .eq("event_id", eventId)
       .order("created_at", { ascending: false });
+
+    // Fetch all MAIN check-ins for this event (arrival check-in)
+    const { data: checkins } = await supabase
+      .from("eckcm_checkins")
+      .select("person_id")
+      .eq("event_id", eventId)
+      .eq("checkin_type", "MAIN");
+
+    const checkinSet = new Set(
+      (checkins ?? []).map((c) => c.person_id)
+    );
 
     if (data) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -133,15 +183,51 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         let peopleCount = 0;
         let registrantName = "Unknown";
         let registrantNameKo: string | null = null;
+        let registrantEmail: string | null = null;
+        let registrantPhone: string | null = null;
+        let registrantChurch: string | null = null;
+        let registrantDept: string | null = null;
+        let repPersonId: string | null = null;
+        const roomNumbers: string[] = [];
 
         for (const g of groups) {
+          // Room assignments
+          const roomAssignments = g.eckcm_room_assignments ?? [];
+          for (const ra of roomAssignments) {
+            if (ra.eckcm_rooms?.room_number) {
+              roomNumbers.push(ra.eckcm_rooms.room_number);
+            }
+          }
+
           const members = g.eckcm_group_memberships ?? [];
           peopleCount += members.length;
           for (const m of members) {
             if (m.role === "REPRESENTATIVE" && registrantName === "Unknown") {
+              repPersonId = m.person_id;
               registrantName = `${m.eckcm_people.first_name_en} ${m.eckcm_people.last_name_en}`;
               registrantNameKo = m.eckcm_people.display_name_ko;
+              registrantEmail = m.eckcm_people.email;
+              registrantPhone = m.eckcm_people.phone;
+              registrantChurch = m.eckcm_people.eckcm_churches?.name_en ?? null;
+              registrantDept = m.eckcm_people.eckcm_departments?.name_en ?? null;
             }
+          }
+        }
+
+        // Check if representative has checked in on-site
+        const checkedIn = repPersonId ? checkinSet.has(repPersonId) : false;
+
+        // Invoice & payment info
+        const invoices = r.eckcm_invoices ?? [];
+        const invoice = invoices[0];
+        let paymentMethod: string | null = null;
+        let paymentStatus: string | null = null;
+        if (invoice) {
+          const payments = invoice.eckcm_payments ?? [];
+          const successPayment = payments.find((p: any) => p.status === "SUCCEEDED") ?? payments[0];
+          if (successPayment) {
+            paymentMethod = successPayment.payment_method;
+            paymentStatus = successPayment.status;
           }
         }
 
@@ -160,7 +246,18 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
           people_count: peopleCount,
           registrant_name: registrantName,
           registrant_name_ko: registrantNameKo,
+          registrant_email: registrantEmail,
+          registrant_phone: registrantPhone,
+          registrant_church: registrantChurch,
+          registrant_department: registrantDept,
           registration_group_name: r.eckcm_registration_groups?.name_en ?? null,
+          invoice_number: invoice?.invoice_number ?? null,
+          payment_status: paymentStatus ?? invoice?.status ?? null,
+          payment_method: paymentMethod,
+          paid_at: invoice?.paid_at ?? null,
+          checked_in: checkedIn,
+          checked_out: false, // Not tracked yet
+          room_numbers: roomNumbers,
         };
       });
       setRegistrations(rows);
@@ -247,6 +344,11 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
       r.confirmation_code.toLowerCase().includes(q) ||
       r.registrant_name.toLowerCase().includes(q) ||
       (r.registrant_name_ko?.toLowerCase().includes(q) ?? false) ||
+      (r.registrant_email?.toLowerCase().includes(q) ?? false) ||
+      (r.registrant_phone?.includes(q) ?? false) ||
+      (r.registrant_church?.toLowerCase().includes(q) ?? false) ||
+      (r.invoice_number?.toLowerCase().includes(q) ?? false) ||
+      r.room_numbers.some((rn) => rn.toLowerCase().includes(q)) ||
       (r.notes?.toLowerCase().includes(q) ?? false)
     );
   });
@@ -275,6 +377,8 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
   const totalPeople = registrations
     .filter((r) => r.status === "PAID")
     .reduce((sum, r) => sum + r.people_count, 0);
+
+  if (!mounted) return null;
 
   return (
     <div className="space-y-4">
@@ -307,7 +411,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         </Select>
 
         <Input
-          placeholder="Search code, name..."
+          placeholder="Search code, name, room..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-[250px]"
@@ -341,26 +445,54 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Registrant</TableHead>
-                    <TableHead>Group</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>People</TableHead>
-                    <TableHead>Rooms</TableHead>
-                    <TableHead>Check-in</TableHead>
-                    <TableHead>Check-out</TableHead>
-                    <TableHead>Nights</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Registered</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {/* User-specified order first */}
+                    <TableHead className="whitespace-nowrap">Actions</TableHead>
+                    <TableHead className="whitespace-nowrap">Code</TableHead>
+                    <TableHead className="whitespace-nowrap">Name</TableHead>
+                    <TableHead className="whitespace-nowrap">Reg Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Pay Status</TableHead>
+                    <TableHead className="whitespace-nowrap">C-IN</TableHead>
+                    <TableHead className="whitespace-nowrap">C-OUT</TableHead>
+                    <TableHead className="whitespace-nowrap">Room</TableHead>
+                    <TableHead className="whitespace-nowrap">Pay Method</TableHead>
+                    <TableHead className="whitespace-nowrap">People</TableHead>
+                    <TableHead className="whitespace-nowrap">Invoice</TableHead>
+                    {/* Remaining columns by importance */}
+                    <TableHead className="whitespace-nowrap">Amount</TableHead>
+                    <TableHead className="whitespace-nowrap">Email</TableHead>
+                    <TableHead className="whitespace-nowrap">Phone</TableHead>
+                    <TableHead className="whitespace-nowrap">Church</TableHead>
+                    <TableHead className="whitespace-nowrap">Department</TableHead>
+                    <TableHead className="whitespace-nowrap">Reg. Group</TableHead>
+                    <TableHead className="whitespace-nowrap">Check-in</TableHead>
+                    <TableHead className="whitespace-nowrap">Check-out</TableHead>
+                    <TableHead className="whitespace-nowrap">Nights</TableHead>
+                    <TableHead className="whitespace-nowrap">Paid At</TableHead>
+                    <TableHead className="whitespace-nowrap">Notes</TableHead>
+                    <TableHead className="whitespace-nowrap">Registered</TableHead>
+                    <TableHead className="whitespace-nowrap">Updated</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.map((r) => (
                     <TableRow key={r.id}>
-                      <TableCell className="font-mono text-sm">
+                      {/* Actions */}
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => openDetail(r)}
+                        >
+                          <Eye className="mr-1 size-3" />
+                          View
+                        </Button>
+                      </TableCell>
+                      {/* Code */}
+                      <TableCell className="font-mono text-sm whitespace-nowrap">
                         {r.confirmation_code}
                       </TableCell>
+                      {/* Name */}
                       <TableCell className="whitespace-nowrap">
                         <div className="font-medium text-sm">{r.registrant_name}</div>
                         {r.registrant_name_ko && (
@@ -369,53 +501,112 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs">
-                        {r.registration_group_name ?? "-"}
-                      </TableCell>
+                      {/* Reg Status */}
                       <TableCell>
                         <Badge variant={statusVariant[r.status] ?? "secondary"}>
                           {r.status}
                         </Badge>
                       </TableCell>
+                      {/* Pay Status */}
+                      <TableCell>
+                        {r.payment_status ? (
+                          <Badge
+                            variant={paymentStatusVariant[r.payment_status] ?? "secondary"}
+                            className="text-xs"
+                          >
+                            {r.payment_status}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      {/* C-IN */}
+                      <TableCell className="text-center">
+                        <Badge variant={r.checked_in ? "default" : "secondary"} className="text-xs">
+                          {r.checked_in ? "Yes" : "No"}
+                        </Badge>
+                      </TableCell>
+                      {/* C-OUT */}
+                      <TableCell className="text-center">
+                        <Badge variant={r.checked_out ? "default" : "secondary"} className="text-xs">
+                          {r.checked_out ? "Yes" : "No"}
+                        </Badge>
+                      </TableCell>
+                      {/* Room */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.room_numbers.length > 0 ? r.room_numbers.join(", ") : "-"}
+                      </TableCell>
+                      {/* Pay Method */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.payment_method?.replace(/_/g, " ") ?? "-"}
+                      </TableCell>
+                      {/* People */}
                       <TableCell>
                         <span className="flex items-center gap-1 text-sm">
                           <Users className="size-3" />
                           {r.people_count}
                         </span>
                       </TableCell>
-                      <TableCell>{r.group_count}</TableCell>
+                      {/* Invoice */}
+                      <TableCell className="font-mono text-xs whitespace-nowrap">
+                        {r.invoice_number ?? "-"}
+                      </TableCell>
+                      {/* Amount */}
+                      <TableCell className="font-mono text-sm whitespace-nowrap">
+                        {formatMoney(r.total_amount_cents)}
+                      </TableCell>
+                      {/* Email */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registrant_email ?? "-"}
+                      </TableCell>
+                      {/* Phone */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registrant_phone ?? "-"}
+                      </TableCell>
+                      {/* Church */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registrant_church ?? "-"}
+                      </TableCell>
+                      {/* Department */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registrant_department ?? "-"}
+                      </TableCell>
+                      {/* Reg. Group */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registration_group_name ?? "-"}
+                      </TableCell>
+                      {/* Check-in date */}
                       <TableCell className="text-xs whitespace-nowrap">
                         {r.start_date}
                       </TableCell>
+                      {/* Check-out date */}
                       <TableCell className="text-xs whitespace-nowrap">
                         {r.end_date}
                       </TableCell>
+                      {/* Nights */}
                       <TableCell>{r.nights_count}</TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {formatMoney(r.total_amount_cents)}
+                      {/* Paid At */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.paid_at ? formatTimestamp(r.paid_at) : "-"}
                       </TableCell>
+                      {/* Notes */}
+                      <TableCell className="text-xs max-w-[200px] truncate" title={r.notes ?? ""}>
+                        {r.notes ?? "-"}
+                      </TableCell>
+                      {/* Registered */}
                       <TableCell className="text-xs whitespace-nowrap">
                         {formatTimestamp(r.created_at)}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => openDetail(r)}
-                          >
-                            <Eye className="mr-1 size-3" />
-                            View
-                          </Button>
-                        </div>
+                      {/* Updated */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {formatTimestamp(r.updated_at)}
                       </TableCell>
                     </TableRow>
                   ))}
                   {filtered.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={12}
+                        colSpan={24}
                         className="text-center text-muted-foreground py-8"
                       >
                         No registrations found.
@@ -455,10 +646,77 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                   )}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Status:</span>{" "}
+                  <span className="text-muted-foreground">Reg Status:</span>{" "}
                   <Badge variant={statusVariant[detailReg.status] ?? "secondary"}>
                     {detailReg.status}
                   </Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Pay Status:</span>{" "}
+                  {detailReg.payment_status ? (
+                    <Badge
+                      variant={paymentStatusVariant[detailReg.payment_status] ?? "secondary"}
+                      className="text-xs"
+                    >
+                      {detailReg.payment_status}
+                    </Badge>
+                  ) : (
+                    "-"
+                  )}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">C-IN:</span>{" "}
+                  {detailReg.checked_in ? "Yes" : "No"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">C-OUT:</span>{" "}
+                  {detailReg.checked_out ? "Yes" : "No"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Room:</span>{" "}
+                  {detailReg.room_numbers.length > 0
+                    ? detailReg.room_numbers.join(", ")
+                    : "-"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Pay Method:</span>{" "}
+                  {detailReg.payment_method?.replace(/_/g, " ") ?? "-"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">People:</span>{" "}
+                  {detailReg.people_count}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Invoice:</span>{" "}
+                  <span className="font-mono">
+                    {detailReg.invoice_number ?? "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Amount:</span>{" "}
+                  <span className="font-mono">
+                    {formatMoney(detailReg.total_amount_cents)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Email:</span>{" "}
+                  {detailReg.registrant_email ?? "-"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Phone:</span>{" "}
+                  {detailReg.registrant_phone ?? "-"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Church:</span>{" "}
+                  {detailReg.registrant_church ?? "-"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Department:</span>{" "}
+                  {detailReg.registrant_department ?? "-"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Reg. Group:</span>{" "}
+                  {detailReg.registration_group_name ?? "-"}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Check-in:</span>{" "}
@@ -473,18 +731,20 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                   {detailReg.nights_count}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Amount:</span>{" "}
-                  <span className="font-mono">
-                    {formatMoney(detailReg.total_amount_cents)}
-                  </span>
+                  <span className="text-muted-foreground">Paid At:</span>{" "}
+                  {detailReg.paid_at ? formatTimestamp(detailReg.paid_at) : "-"}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Groups:</span>{" "}
                   {detailReg.group_count}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">People:</span>{" "}
-                  {detailReg.people_count}
+                  <span className="text-muted-foreground">Registered:</span>{" "}
+                  {formatTimestamp(detailReg.created_at)}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Updated:</span>{" "}
+                  {formatTimestamp(detailReg.updated_at)}
                 </div>
                 {detailReg.notes && (
                   <div className="col-span-2">
