@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 
 interface TurnstileWidgetProps {
@@ -12,8 +12,16 @@ interface TurnstileWidgetProps {
 export const TurnstileWidget = forwardRef<TurnstileInstance, TurnstileWidgetProps>(
   function TurnstileWidget({ onSuccess, onError, onExpire }, ref) {
     const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    const [enabled, setEnabled] = useState<boolean | null>(null);
 
-    if (!siteKey) return null;
+    useEffect(() => {
+      fetch("/api/admin/app-config")
+        .then((res) => res.json())
+        .then((data) => setEnabled(data.turnstile_enabled ?? true))
+        .catch(() => setEnabled(true));
+    }, []);
+
+    if (!siteKey || enabled === null || enabled === false) return null;
 
     return (
       <Turnstile

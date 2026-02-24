@@ -22,8 +22,8 @@ import {
   ShieldCheck,
   Plane,
   ScanLine,
-  UtensilsCrossed,
   Presentation,
+  ClipboardPlus,
 } from "lucide-react";
 import {
   Sidebar,
@@ -57,7 +57,7 @@ const settingsLinks = [
   { href: "/admin/settings/churches", label: "Churches", icon: Church },
   { href: "/admin/settings/legal", label: "Legal Pages", icon: Scale },
   { href: "/admin/settings/stripe", label: "Stripe", icon: CreditCard },
-  { href: "/admin/settings/meals", label: "Meal Rules", icon: UtensilsCrossed },
+  { href: "/admin/settings/lodging", label: "Lodging", icon: BedDouble },
   { href: "/admin/settings/sessions", label: "Sessions", icon: Presentation },
   { href: "/admin/settings/airport-rides", label: "Airport Rides", icon: Plane },
   { href: "/admin/settings/configuration", label: "Configuration", icon: Settings2 },
@@ -85,6 +85,28 @@ export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
                   <Link href="/admin">
                     <LayoutDashboard />
                     <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/admin/registrations"}
+                >
+                  <Link href="/admin/registrations">
+                    <FileText />
+                    <span>Registrations</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/admin/registrations/create"}
+                >
+                  <Link href="/admin/registrations/create">
+                    <ClipboardPlus />
+                    <span>Manual Registration</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

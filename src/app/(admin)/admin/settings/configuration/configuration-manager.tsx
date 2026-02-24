@@ -22,9 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, Check, Loader2, Palette, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Palette, Shield, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useColorTheme } from "@/components/shared/color-theme-provider";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   COLOR_THEMES,
   COLOR_THEME_IDS,
@@ -106,6 +108,9 @@ export function ConfigurationManager() {
     <div className="space-y-8">
       {/* Color Theme */}
       <ThemeSection />
+
+      {/* Security */}
+      <SecuritySection />
 
       {/* Danger Zone */}
       <Card className="border-destructive/50">
@@ -232,6 +237,99 @@ export function ConfigurationManager() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/* ── Security Section ── */
+
+function SecuritySection() {
+  const [turnstileEnabled, setTurnstileEnabled] = useState<boolean>(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/app-config")
+      .then((res) => res.json())
+      .then((data) => {
+        setTurnstileEnabled(data.turnstile_enabled ?? true);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  async function handleToggle(checked: boolean) {
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/admin/app-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ turnstile_enabled: checked }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || `Failed to update (${res.status})`);
+        return;
+      }
+
+      setTurnstileEnabled(checked);
+      toast.success(
+        checked
+          ? "Cloudflare Turnstile enabled."
+          : "Cloudflare Turnstile disabled."
+      );
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  if (!loaded) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Shield className="h-5 w-5" />
+          Security
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="space-y-0.5">
+            <Label className="text-base font-medium">
+              Cloudflare Turnstile
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Show the Turnstile CAPTCHA widget on login, signup, and
+              forgot-password pages.
+            </p>
+          </div>
+          <Switch
+            checked={turnstileEnabled}
+            onCheckedChange={handleToggle}
+            disabled={isSaving}
+          />
+        </div>
+        {!turnstileEnabled && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-800 dark:text-amber-300">
+            <strong>Action required:</strong> Also disable &ldquo;Enable Captcha
+            protection&rdquo; in{" "}
+            <a
+              href="https://supabase.com/dashboard/project/ldepcbxuktigbsgnufcb/auth/providers"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:opacity-80"
+            >
+              Supabase Authentication Settings
+            </a>{" "}
+            → Security and Protection. Otherwise auth will still fail without a
+            captcha token.
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

@@ -96,7 +96,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form onSubmit={handleEmailLogin} className="space-y-3">
+        <form onSubmit={handleEmailLogin} className="space-y-3" suppressHydrationWarning>
           <div className="space-y-1">
             <Label htmlFor="email">Email</Label>
             <Input

@@ -103,13 +103,6 @@ export async function POST(request: Request) {
     (f: any) => f.code.startsWith("MEAL_")
   );
 
-  // Load meal rules for date range (used to populate default meals)
-  const { data: mealRules } = await supabase
-    .from("eckcm_meal_rules")
-    .select("meal_start_date, meal_end_date")
-    .eq("event_id", eventId)
-    .maybeSingle();
-
   // Load event start date for age calculation
   const { data: event } = await supabase
     .from("eckcm_events")
@@ -118,14 +111,11 @@ export async function POST(request: Request) {
     .single();
 
   // Populate default meals for participants with empty selections
-  let processedRoomGroups = roomGroups;
-  if (mealRules) {
-    processedRoomGroups = populateDefaultMeals(
-      roomGroups,
-      mealRules.meal_start_date,
-      mealRules.meal_end_date
-    );
-  }
+  const processedRoomGroups = populateDefaultMeals(
+    roomGroups,
+    startDate,
+    endDate
+  );
 
   const estimate = calculateEstimate({
     nightsCount,

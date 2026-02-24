@@ -150,14 +150,7 @@ export async function POST(request: Request) {
     (f: any) => f.code.startsWith("MEAL_")
   );
 
-  // 3d. Load meal rules for date range (used to populate default meals)
-  const { data: mealRules } = await admin
-    .from("eckcm_meal_rules")
-    .select("meal_start_date, meal_end_date")
-    .eq("event_id", eventId)
-    .maybeSingle();
-
-  // 3e. Load event start date for age calculation
+  // 3d. Load event start date for age calculation
   const { data: event } = await admin
     .from("eckcm_events")
     .select("event_start_date")
@@ -169,14 +162,11 @@ export async function POST(request: Request) {
     regGroup.early_bird_deadline != null &&
     new Date() < new Date(regGroup.early_bird_deadline);
 
-  let processedRoomGroups = roomGroups;
-  if (mealRules) {
-    processedRoomGroups = populateDefaultMeals(
-      roomGroups,
-      mealRules.meal_start_date,
-      mealRules.meal_end_date
-    );
-  }
+  const processedRoomGroups = populateDefaultMeals(
+    roomGroups,
+    startDate,
+    endDate
+  );
 
   const estimate = calculateEstimate({
     nightsCount,

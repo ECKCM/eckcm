@@ -8,7 +8,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("eckcm_app_config")
-    .select("color_theme")
+    .select("color_theme, turnstile_enabled")
     .eq("id", 1)
     .single();
 
@@ -19,7 +19,10 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json({ color_theme: data.color_theme });
+  return NextResponse.json({
+    color_theme: data.color_theme,
+    turnstile_enabled: data.turnstile_enabled ?? true,
+  });
 }
 
 export async function PATCH(request: Request) {
@@ -55,20 +58,39 @@ export async function PATCH(request: Request) {
 
   // 3. Validate body
   const body = await request.json();
-  const colorTheme = body.color_theme as ColorThemeId;
 
-  if (!colorTheme || !COLOR_THEME_IDS.includes(colorTheme)) {
-    return NextResponse.json(
-      { error: `Invalid color_theme. Must be one of: ${COLOR_THEME_IDS.join(", ")}` },
-      { status: 400 }
-    );
+  const updates: Record<string, unknown> = {};
+
+  if ("color_theme" in body) {
+    const colorTheme = body.color_theme as ColorThemeId;
+    if (!colorTheme || !COLOR_THEME_IDS.includes(colorTheme)) {
+      return NextResponse.json(
+        { error: `Invalid color_theme. Must be one of: ${COLOR_THEME_IDS.join(", ")}` },
+        { status: 400 }
+      );
+    }
+    updates.color_theme = colorTheme;
+  }
+
+  if ("turnstile_enabled" in body) {
+    if (typeof body.turnstile_enabled !== "boolean") {
+      return NextResponse.json(
+        { error: "turnstile_enabled must be a boolean" },
+        { status: 400 }
+      );
+    }
+    updates.turnstile_enabled = body.turnstile_enabled;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
   // 4. Update DB
   const admin = createAdminClient();
   const { error } = await admin
     .from("eckcm_app_config")
-    .update({ color_theme: colorTheme })
+    .update(updates)
     .eq("id", 1);
 
   if (error) {
@@ -84,8 +106,8 @@ export async function PATCH(request: Request) {
     action: "UPDATE_APP_CONFIG",
     entity_type: "app_config",
     entity_id: "1",
-    new_data: { color_theme: colorTheme },
+    new_data: updates,
   });
 
-  return NextResponse.json({ success: true, color_theme: colorTheme });
+  return NextResponse.json({ success: true, ...updates });
 }
