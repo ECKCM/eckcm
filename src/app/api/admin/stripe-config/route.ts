@@ -57,7 +57,7 @@ export async function GET() {
   const { data, error } = await admin
     .from("eckcm_app_config")
     .select(
-      "stripe_test_publishable_key, stripe_test_secret_key, stripe_live_publishable_key, stripe_live_secret_key, stripe_test_webhook_secret, stripe_live_webhook_secret, enabled_payment_methods"
+      "stripe_test_publishable_key, stripe_test_secret_key, stripe_live_publishable_key, stripe_live_secret_key, stripe_test_webhook_secret, stripe_live_webhook_secret, enabled_payment_methods, deduct_stripe_fees_on_refund, donor_covers_fees_registration, donor_covers_fees_donation"
     )
     .eq("id", 1)
     .single();
@@ -77,6 +77,9 @@ export async function GET() {
     stripe_test_webhook_secret: maskKey(data.stripe_test_webhook_secret),
     stripe_live_webhook_secret: maskKey(data.stripe_live_webhook_secret),
     enabled_payment_methods: data.enabled_payment_methods ?? ["card", "ach", "zelle", "wallet", "more"],
+    deduct_stripe_fees_on_refund: data.deduct_stripe_fees_on_refund ?? false,
+    donor_covers_fees_registration: data.donor_covers_fees_registration ?? false,
+    donor_covers_fees_donation: data.donor_covers_fees_donation ?? false,
   });
 }
 
@@ -95,6 +98,75 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json();
+
+  // Handle deduct_stripe_fees_on_refund toggle
+  if ("deduct_stripe_fees_on_refund" in body) {
+    if (typeof body.deduct_stripe_fees_on_refund !== "boolean") {
+      return NextResponse.json(
+        { error: "deduct_stripe_fees_on_refund must be a boolean" },
+        { status: 400 }
+      );
+    }
+
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("eckcm_app_config")
+      .update({ deduct_stripe_fees_on_refund: body.deduct_stripe_fees_on_refund })
+      .eq("id", 1);
+
+    if (error) {
+      return NextResponse.json(
+        { error: "Failed to update refund fee setting" },
+        { status: 500 }
+      );
+    }
+
+    await admin.from("eckcm_audit_logs").insert({
+      user_id: user.id,
+      action: "UPDATE_STRIPE_CONFIG",
+      entity_type: "app_config",
+      entity_id: "1",
+      new_data: { deduct_stripe_fees_on_refund: body.deduct_stripe_fees_on_refund },
+    });
+
+    return NextResponse.json({ success: true, deduct_stripe_fees_on_refund: body.deduct_stripe_fees_on_refund });
+  }
+
+  // Handle donor_covers_fees toggles
+  const DONOR_FEE_FIELDS = ["donor_covers_fees_registration", "donor_covers_fees_donation"] as const;
+  for (const field of DONOR_FEE_FIELDS) {
+    if (field in body) {
+      if (typeof body[field] !== "boolean") {
+        return NextResponse.json(
+          { error: `${field} must be a boolean` },
+          { status: 400 }
+        );
+      }
+
+      const admin = createAdminClient();
+      const { error } = await admin
+        .from("eckcm_app_config")
+        .update({ [field]: body[field] })
+        .eq("id", 1);
+
+      if (error) {
+        return NextResponse.json(
+          { error: `Failed to update ${field}` },
+          { status: 500 }
+        );
+      }
+
+      await admin.from("eckcm_audit_logs").insert({
+        user_id: user.id,
+        action: "UPDATE_STRIPE_CONFIG",
+        entity_type: "app_config",
+        entity_id: "1",
+        new_data: { [field]: body[field] },
+      });
+
+      return NextResponse.json({ success: true, [field]: body[field] });
+    }
+  }
 
   // Handle payment methods update
   const VALID_METHODS = ["card", "ach", "zelle", "check", "wallet", "more"];

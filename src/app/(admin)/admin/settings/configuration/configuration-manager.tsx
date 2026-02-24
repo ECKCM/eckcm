@@ -245,6 +245,7 @@ export function ConfigurationManager() {
 function SecuritySection() {
   const [turnstileEnabled, setTurnstileEnabled] = useState<boolean>(true);
   const [allowDuplicateEmail, setAllowDuplicateEmail] = useState<boolean>(false);
+  const [allowDuplicateRegistration, setAllowDuplicateRegistration] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -254,6 +255,7 @@ function SecuritySection() {
       .then((data) => {
         setTurnstileEnabled(data.turnstile_enabled ?? true);
         setAllowDuplicateEmail(data.allow_duplicate_email ?? false);
+        setAllowDuplicateRegistration(data.allow_duplicate_registration ?? false);
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
@@ -280,6 +282,9 @@ function SecuritySection() {
       } else if (field === "allow_duplicate_email") {
         setAllowDuplicateEmail(checked);
         toast.success(checked ? "Duplicate emails allowed." : "Duplicate email check restored.");
+      } else if (field === "allow_duplicate_registration") {
+        setAllowDuplicateRegistration(checked);
+        toast.success(checked ? "Duplicate registrations allowed." : "Duplicate registration check restored.");
       }
     } catch {
       toast.error("Network error. Please try again.");
@@ -354,6 +359,30 @@ function SecuritySection() {
             <strong>Testing mode:</strong> Duplicate email validation is
             disabled. Multiple participants can register with the same email
             address. Disable this before going live.
+          </div>
+        )}
+
+        {/* Allow Duplicate Registration */}
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="space-y-0.5">
+            <Label className="text-base font-medium">
+              Allow Duplicate Registration
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Allow the same account to register multiple times for the same
+              event. Useful for testing the full payment flow repeatedly.
+            </p>
+          </div>
+          <Switch
+            checked={allowDuplicateRegistration}
+            onCheckedChange={(checked) => handleToggle("allow_duplicate_registration", checked)}
+            disabled={isSaving}
+          />
+        </div>
+        {allowDuplicateRegistration && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-800 dark:text-amber-300">
+            <strong>Testing mode:</strong> The same user can create multiple
+            registrations for the same event. Disable this before going live.
           </div>
         )}
       </CardContent>

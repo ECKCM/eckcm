@@ -117,10 +117,37 @@ async function handlePaymentIntentSucceeded(
     return;
   }
 
-  // 1. Update payment record
-  await admin
+  // 1. Update or create payment record
+  const { data: existingPayment } = await admin
     .from("eckcm_payments")
-    .update({
+    .select("id")
+    .eq("stripe_payment_intent_id", paymentIntent.id)
+    .maybeSingle();
+
+  if (existingPayment) {
+    await admin
+      .from("eckcm_payments")
+      .update({
+        status: "SUCCEEDED",
+        metadata: {
+          stripe_payment_method: paymentIntent.payment_method,
+          stripe_charge_id:
+            typeof paymentIntent.latest_charge === "string"
+              ? paymentIntent.latest_charge
+              : null,
+        },
+      })
+      .eq("id", existingPayment.id);
+  } else {
+    // Payment record missing (e.g., create-intent insert failed) — create it now
+    console.log(`[webhook] No payment record for PI ${paymentIntent.id}, creating one.`);
+    const paymentMethodType = paymentIntent.payment_method_types?.[0] ?? "card";
+    const method = paymentMethodType === "us_bank_account" ? "ACH" : "CARD";
+    await admin.from("eckcm_payments").insert({
+      invoice_id: invoiceId,
+      stripe_payment_intent_id: paymentIntent.id,
+      payment_method: method,
+      amount_cents: paymentIntent.amount,
       status: "SUCCEEDED",
       metadata: {
         stripe_payment_method: paymentIntent.payment_method,
@@ -128,9 +155,10 @@ async function handlePaymentIntentSucceeded(
           typeof paymentIntent.latest_charge === "string"
             ? paymentIntent.latest_charge
             : null,
+        created_by_webhook: true,
       },
-    })
-    .eq("stripe_payment_intent_id", paymentIntent.id);
+    });
+  }
 
   // 2. Update invoice
   await admin
@@ -329,14 +357,35 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
   // Get the latest refund from the charge's refunds list
   const latestRefund = charge.refunds?.data?.[0];
 
-  // 1. Insert refund record
-  await admin.from("eckcm_refunds").insert({
-    payment_id: payment.id,
-    stripe_refund_id: latestRefund?.id ?? null,
-    amount_cents: latestRefund?.amount ?? charge.amount_refunded,
-    reason: latestRefund?.reason ?? null,
-    refunded_by: null, // Stripe-initiated
-  });
+  // 1. Insert refund record (skip if admin API already created it)
+  const stripeRefundId = latestRefund?.id ?? null;
+  if (stripeRefundId) {
+    const { data: existingRefund } = await admin
+      .from("eckcm_refunds")
+      .select("id")
+      .eq("stripe_refund_id", stripeRefundId)
+      .maybeSingle();
+
+    if (existingRefund) {
+      console.log(`[webhook] Refund record for ${stripeRefundId} already exists, skipping insert.`);
+    } else {
+      await admin.from("eckcm_refunds").insert({
+        payment_id: payment.id,
+        stripe_refund_id: stripeRefundId,
+        amount_cents: latestRefund?.amount ?? charge.amount_refunded,
+        reason: latestRefund?.reason ?? null,
+        refunded_by: null,
+      });
+    }
+  } else {
+    await admin.from("eckcm_refunds").insert({
+      payment_id: payment.id,
+      stripe_refund_id: null,
+      amount_cents: charge.amount_refunded,
+      reason: null,
+      refunded_by: null,
+    });
+  }
 
   // 2. Update payment status
   await admin

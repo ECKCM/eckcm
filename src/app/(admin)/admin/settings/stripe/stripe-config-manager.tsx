@@ -87,6 +87,9 @@ interface StripeConfig {
   stripe_test_webhook_secret: KeyStatus;
   stripe_live_webhook_secret: KeyStatus;
   enabled_payment_methods: PaymentMethodId[];
+  deduct_stripe_fees_on_refund: boolean;
+  donor_covers_fees_registration: boolean;
+  donor_covers_fees_donation: boolean;
 }
 
 export function StripeConfigManager() {
@@ -97,6 +100,9 @@ export function StripeConfigManager() {
   const [enabledMethods, setEnabledMethods] = useState<PaymentMethodId[]>([
     "card", "ach", "zelle", "check", "wallet", "more",
   ]);
+  const [deductFees, setDeductFees] = useState(false);
+  const [donorCoversRegistration, setDonorCoversRegistration] = useState(false);
+  const [donorCoversDonation, setDonorCoversDonation] = useState(false);
   const [testKeys, setTestKeys] = useState({ publishable: "", secret: "", webhook: "" });
   const [liveKeys, setLiveKeys] = useState({ publishable: "", secret: "", webhook: "" });
   const [showSecret, setShowSecret] = useState({
@@ -122,6 +128,9 @@ export function StripeConfigManager() {
       if (data.enabled_payment_methods) {
         setEnabledMethods(data.enabled_payment_methods);
       }
+      setDeductFees(data.deduct_stripe_fees_on_refund ?? false);
+      setDonorCoversRegistration(data.donor_covers_fees_registration ?? false);
+      setDonorCoversDonation(data.donor_covers_fees_donation ?? false);
     } catch {
       toast.error("Network error loading Stripe config");
     } finally {
@@ -214,6 +223,48 @@ export function StripeConfigManager() {
     }
   }
 
+  async function handleToggleDeductFees(checked: boolean) {
+    setDeductFees(checked);
+    try {
+      const res = await fetch("/api/admin/stripe-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deduct_stripe_fees_on_refund: checked }),
+      });
+      if (!res.ok) {
+        setDeductFees(!checked);
+        toast.error("Failed to update setting");
+        return;
+      }
+      toast.success(checked ? "Stripe fees will be deducted from refunds" : "Full refund amount will be issued");
+    } catch {
+      setDeductFees(!checked);
+      toast.error("Network error");
+    }
+  }
+
+  async function handleToggleDonorCoversFees(field: "donor_covers_fees_registration" | "donor_covers_fees_donation", checked: boolean) {
+    const setter = field === "donor_covers_fees_registration" ? setDonorCoversRegistration : setDonorCoversDonation;
+    setter(checked);
+    try {
+      const res = await fetch("/api/admin/stripe-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: checked }),
+      });
+      if (!res.ok) {
+        setter(!checked);
+        toast.error("Failed to update setting");
+        return;
+      }
+      const label = field === "donor_covers_fees_registration" ? "Registration" : "Donation";
+      toast.success(checked ? `Donor fee coverage enabled for ${label}` : `Donor fee coverage disabled for ${label}`);
+    } catch {
+      setter(!checked);
+      toast.error("Network error");
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground">
@@ -262,6 +313,68 @@ export function StripeConfigManager() {
               />
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* Refund Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Refund Settings</CardTitle>
+          <CardDescription>
+            Control how refund amounts are calculated.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div>
+              <p className="text-sm font-medium">Deduct Stripe Processing Fees</p>
+              <p className="text-xs text-muted-foreground">
+                When enabled, refunds will exclude Stripe processing fees (2.9% + $0.30 for cards, 0.8% capped at $5 for ACH).
+                Stripe does not refund their processing fees.
+              </p>
+            </div>
+            <Switch
+              checked={deductFees}
+              onCheckedChange={handleToggleDeductFees}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Donor Covers Fees */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Donor Covers Fees</CardTitle>
+          <CardDescription>
+            Allow payers to optionally cover Stripe processing fees (2.9% + $0.30).
+            When enabled, a checkbox will appear at checkout.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div>
+              <p className="text-sm font-medium">Registration Payment</p>
+              <p className="text-xs text-muted-foreground">
+                Show &ldquo;I&rsquo;d like to cover the payment processing fee&rdquo; checkbox on the registration checkout page.
+              </p>
+            </div>
+            <Switch
+              checked={donorCoversRegistration}
+              onCheckedChange={(checked) => handleToggleDonorCoversFees("donor_covers_fees_registration", checked)}
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div>
+              <p className="text-sm font-medium">Donation Payment Portal</p>
+              <p className="text-xs text-muted-foreground">
+                Show &ldquo;I&rsquo;d like to cover the payment processing fee&rdquo; checkbox on the donation payment page.
+              </p>
+            </div>
+            <Switch
+              checked={donorCoversDonation}
+              onCheckedChange={(checked) => handleToggleDonorCoversFees("donor_covers_fees_donation", checked)}
+            />
+          </div>
         </CardContent>
       </Card>
 

@@ -71,21 +71,28 @@ export default function RegistrationStep1() {
 
       // Check if user already has an active registration for this event
       if (user) {
-        const { data: existing } = await supabase
-          .from("eckcm_registrations")
-          .select("id, confirmation_code, status")
-          .eq("event_id", eventId)
-          .eq("created_by_user_id", user.id)
-          .in("status", ["DRAFT", "SUBMITTED", "PAID"])
-          .limit(1)
-          .maybeSingle();
+        // Check if duplicate registration is allowed
+        const configRes = await fetch("/api/admin/app-config");
+        const configData = configRes.ok ? await configRes.json() : {};
+        const allowDupReg = configData.allow_duplicate_registration ?? false;
 
-        if (existing) {
-          setExistingRegistration({
-            id: existing.id,
-            confirmationCode: existing.confirmation_code,
-            status: existing.status,
-          });
+        if (!allowDupReg) {
+          const { data: existing } = await supabase
+            .from("eckcm_registrations")
+            .select("id, confirmation_code, status")
+            .eq("event_id", eventId)
+            .eq("created_by_user_id", user.id)
+            .in("status", ["DRAFT", "SUBMITTED", "PAID"])
+            .limit(1)
+            .maybeSingle();
+
+          if (existing) {
+            setExistingRegistration({
+              id: existing.id,
+              confirmationCode: existing.confirmation_code,
+              status: existing.status,
+            });
+          }
         }
       }
 

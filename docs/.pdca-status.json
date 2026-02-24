@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-24T08:25:12.321Z",
+  "lastUpdated": "2026-02-24T17:52:04.358Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -83,7 +83,12 @@
     "meals",
     "sessions",
     "create",
-    "stats"
+    "stats",
+    "refund.service.ts",
+    "info",
+    "stripe-sync",
+    "scripts",
+    "update-cover-fees"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -160,7 +165,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:22:35.232Z",
-        "lastUpdated": "2026-02-21T08:34:36.290Z"
+        "lastUpdated": "2026-02-24T17:08:01.178Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/stripe/stripe-config-manager.tsx"
     },
@@ -316,7 +321,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:46:31.411Z",
-        "lastUpdated": "2026-02-20T05:38:59.975Z"
+        "lastUpdated": "2026-02-24T15:03:58.366Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/page.tsx"
     },
@@ -472,7 +477,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:54:55.352Z",
-        "lastUpdated": "2026-02-22T05:22:55.611Z"
+        "lastUpdated": "2026-02-24T17:52:04.358Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
     },
@@ -537,7 +542,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T07:56:55.924Z",
-        "lastUpdated": "2026-02-23T01:31:42.615Z"
+        "lastUpdated": "2026-02-24T15:04:10.390Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/submit/route.ts"
     },
@@ -576,7 +581,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T08:08:34.566Z",
-        "lastUpdated": "2026-02-22T05:20:07.388Z"
+        "lastUpdated": "2026-02-24T17:45:56.285Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/create-intent/route.ts"
     },
@@ -680,7 +685,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-11T10:42:53.903Z",
-        "lastUpdated": "2026-02-22T16:09:54.100Z"
+        "lastUpdated": "2026-02-24T17:30:57.953Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/invoices/invoices-table.tsx"
     },
@@ -875,7 +880,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-17T18:17:32.676Z",
-        "lastUpdated": "2026-02-24T06:40:58.345Z"
+        "lastUpdated": "2026-02-24T15:03:45.422Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/configuration/configuration-manager.tsx"
     },
@@ -901,7 +906,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-18T13:57:03.158Z",
-        "lastUpdated": "2026-02-24T06:40:20.233Z"
+        "lastUpdated": "2026-02-24T15:03:18.856Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/app-config/route.ts"
     },
@@ -914,7 +919,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-19T08:23:54.061Z",
-        "lastUpdated": "2026-02-21T08:34:01.456Z"
+        "lastUpdated": "2026-02-24T17:07:04.982Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/stripe-config/route.ts"
     },
@@ -1018,7 +1023,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-21T07:44:01.868Z",
-        "lastUpdated": "2026-02-21T08:34:43.722Z"
+        "lastUpdated": "2026-02-24T17:07:20.855Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/methods/route.ts"
     },
@@ -1083,7 +1088,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-22T16:09:04.899Z",
-        "lastUpdated": "2026-02-22T16:09:04.899Z"
+        "lastUpdated": "2026-02-24T17:29:55.784Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/refund/route.ts"
     },
@@ -1151,6 +1156,71 @@
         "lastUpdated": "2026-02-22T16:33:56.588Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/checkin/stats/route.ts"
+    },
+    "refund.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-24T14:05:11.112Z",
+        "lastUpdated": "2026-02-24T17:29:23.551Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/refund.service.ts"
+    },
+    "info": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-24T14:06:17.407Z",
+        "lastUpdated": "2026-02-24T16:24:56.669Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/refund/info/route.ts"
+    },
+    "stripe-sync": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-24T15:56:50.421Z",
+        "lastUpdated": "2026-02-24T16:02:45.855Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/stripe-sync/route.ts"
+    },
+    "scripts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-24T15:57:33.267Z",
+        "lastUpdated": "2026-02-24T15:57:33.267Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/scripts/stripe-sync.ts"
+    },
+    "update-cover-fees": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-24T17:08:27.656Z",
+        "lastUpdated": "2026-02-24T17:51:52.780Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/update-cover-fees/route.ts"
     }
   },
   "pipeline": {
@@ -1161,7 +1231,7 @@
   "session": {
     "startedAt": "2026-02-09T20:06:18.025Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-02-24T08:25:12.321Z"
+    "lastActivity": "2026-02-24T17:52:04.358Z"
   },
   "history": [
     {
@@ -9144,6 +9214,522 @@
     {
       "timestamp": "2026-02-24T08:25:12.321Z",
       "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T14:05:11.112Z",
+      "feature": "refund.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T14:05:24.559Z",
+      "feature": "refund",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T14:05:32.329Z",
+      "feature": "refund",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T14:05:36.984Z",
+      "feature": "refund",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T14:05:42.697Z",
+      "feature": "refund",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T14:05:59.493Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T14:06:17.407Z",
+      "feature": "info",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T14:06:31.082Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T14:06:39.868Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T14:06:47.798Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T14:07:07.472Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:03:06.894Z",
+      "feature": "app-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:03:12.682Z",
+      "feature": "app-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:03:18.856Z",
+      "feature": "app-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:03:30.201Z",
+      "feature": "configuration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:03:35.981Z",
+      "feature": "configuration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:03:45.422Z",
+      "feature": "configuration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:03:58.366Z",
+      "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:04:10.390Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:38:11.574Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:38:20.155Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:38:29.671Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:56:02.802Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:56:13.545Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:56:50.421Z",
+      "feature": "stripe-sync",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T15:57:33.267Z",
+      "feature": "scripts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:02:33.551Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:02:45.855Z",
+      "feature": "stripe-sync",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:12:43.243Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:12:55.579Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:13:01.469Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:13:07.861Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:23:43.723Z",
+      "feature": "stripe-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:23:49.113Z",
+      "feature": "stripe-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:23:57.963Z",
+      "feature": "stripe-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:24:09.455Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:24:15.466Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:24:21.490Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:24:28.699Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:24:37.353Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:24:56.669Z",
+      "feature": "info",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:25:07.131Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:25:23.354Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:25:39.975Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:25:50.204Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:25:56.054Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T16:49:28.097Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:06:49.638Z",
+      "feature": "stripe-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:06:55.512Z",
+      "feature": "stripe-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:07:04.982Z",
+      "feature": "stripe-config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:07:10.485Z",
+      "feature": "methods",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:07:15.784Z",
+      "feature": "methods",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:07:20.855Z",
+      "feature": "methods",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:07:32.426Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:07:37.786Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:07:42.784Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:07:51.025Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:08:01.178Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:08:27.656Z",
+      "feature": "update-cover-fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:08:39.675Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:08:46.762Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:08:52.537Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:09:00.314Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:09:19.079Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:09:29.960Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:09:34.642Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:09:41.959Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:09:48.527Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:09:54.152Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:09:59.838Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:28:55.275Z",
+      "feature": "refund",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:29:23.551Z",
+      "feature": "refund.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:29:31.925Z",
+      "feature": "refund",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:29:55.784Z",
+      "feature": "refund",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:30:17.030Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:30:50.454Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:30:57.953Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:44:24.567Z",
+      "feature": "update-cover-fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:44:31.923Z",
+      "feature": "update-cover-fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:45:02.968Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:45:10.426Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:45:56.285Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:46:03.645Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:46:14.767Z",
+      "feature": "update-cover-fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:51:52.780Z",
+      "feature": "update-cover-fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-24T17:52:04.358Z",
+      "feature": "payment",
       "phase": "do",
       "action": "updated"
     }

@@ -85,20 +85,28 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   // 0. Check for duplicate registration (one user, one registration per event)
-  const { data: existingReg } = await admin
-    .from("eckcm_registrations")
-    .select("id, confirmation_code")
-    .eq("event_id", eventId)
-    .eq("created_by_user_id", user.id)
-    .in("status", ["DRAFT", "SUBMITTED", "PAID"])
-    .limit(1)
-    .maybeSingle();
+  const { data: appConfig } = await admin
+    .from("eckcm_app_config")
+    .select("allow_duplicate_registration")
+    .eq("id", 1)
+    .single();
 
-  if (existingReg) {
-    return NextResponse.json(
-      { error: "You already have a registration for this event", confirmationCode: existingReg.confirmation_code },
-      { status: 409 }
-    );
+  if (!appConfig?.allow_duplicate_registration) {
+    const { data: existingReg } = await admin
+      .from("eckcm_registrations")
+      .select("id, confirmation_code")
+      .eq("event_id", eventId)
+      .eq("created_by_user_id", user.id)
+      .in("status", ["DRAFT", "SUBMITTED", "PAID"])
+      .limit(1)
+      .maybeSingle();
+
+    if (existingReg) {
+      return NextResponse.json(
+        { error: "You already have a registration for this event", confirmationCode: existingReg.confirmation_code },
+        { status: 409 }
+      );
+    }
   }
 
   // 1. Load registration group
