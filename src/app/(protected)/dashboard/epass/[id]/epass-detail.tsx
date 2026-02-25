@@ -1,40 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Copy, Check } from "lucide-react";
 
 interface EPassDetailProps {
   token: {
-    id: string;
     token: string;
     is_active: boolean;
-    created_at: string;
-    person_id: string;
-    registration_id: string;
     participant_code: string | null;
+    qr_value: string | null;
     eckcm_people: {
       first_name_en: string;
       last_name_en: string;
-      display_name_ko: string | null;
       gender: string;
       birth_date: string;
     };
     eckcm_registrations: {
-      confirmation_code: string | null;
-      status: string;
       start_date: string;
-      end_date: string;
-      event_id: string;
       eckcm_events: {
-        name_en: string;
-        name_ko: string | null;
-        location: string | null;
+        year: number;
       };
     };
   };
@@ -51,22 +40,37 @@ function getMealCategory(birthDate: string, eventDate: string): string {
   return "Free";
 }
 
+function buildEPassSlug(
+  firstName: string,
+  lastName: string,
+  token: string,
+): string {
+  const name = `${firstName}${lastName}`.replace(/[^a-zA-Z0-9]/g, "");
+  return `${name}_${token}`;
+}
+
 export function EPassDetail({ token }: EPassDetailProps) {
   const person = token.eckcm_people;
   const reg = token.eckcm_registrations;
   const event = reg.eckcm_events;
-  const displayName =
-    person.display_name_ko ??
-    `${person.first_name_en} ${person.last_name_en}`;
   const meal = getMealCategory(person.birth_date, reg.start_date);
+  const slug = buildEPassSlug(
+    person.first_name_en,
+    person.last_name_en,
+    token.token,
+  );
 
-  const [qrUrl, setQrUrl] = useState(`/epass/${token.token}`);
-  useEffect(() => {
-    setQrUrl(`${window.location.origin}/epass/${token.token}`);
-  }, [token.token]);
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopyLink() {
+    const url = `${window.location.origin}/epass/${slug}`;
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   return (
-    <div className="mx-auto max-w-md p-4 pt-8 space-y-6">
+    <div className="mx-auto max-w-md p-4 pt-8 space-y-4">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/dashboard/epass">
@@ -76,85 +80,96 @@ export function EPassDetail({ token }: EPassDetailProps) {
         <h1 className="text-2xl font-bold">E-Pass</h1>
       </div>
 
-      <Card>
-        <CardHeader className="text-center pb-2">
-          <div className="flex justify-center gap-1.5 mb-2">
+      <Card className="shadow-xl overflow-hidden">
+        <CardHeader className="text-center pb-4 relative">
+          {token.participant_code && (
+            <p className="absolute top-4 right-4 font-mono text-sm font-bold tracking-wider text-muted-foreground">
+              {token.participant_code}
+            </p>
+          )}
+          <div className="flex justify-center mb-2">
+            <ShieldCheck className="h-10 w-10 text-primary" />
+          </div>
+          <CardTitle className="text-xl">
+            {event.year} ECKCM E-PASS
+          </CardTitle>
+          <div className="flex justify-center gap-1.5 mt-2">
             <Badge
-              variant={token.is_active ? "default" : "secondary"}
-              className="text-sm"
+              variant={token.is_active ? "default" : "destructive"}
+              className="text-base px-3 py-1"
             >
               {token.is_active ? "Active" : "Inactive"}
             </Badge>
+            {(person.gender === "MALE" || person.gender === "FEMALE") && (
+              <Badge
+                variant="outline"
+                className={`text-base px-3 py-1 ${
+                  person.gender === "MALE"
+                    ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                    : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                }`}
+              >
+                {person.gender === "MALE" ? "Male" : "Female"}
+              </Badge>
+            )}
             <Badge
               variant="outline"
-              className={
-                person.gender === "MALE"
-                  ? "text-sm border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300"
-                  : "text-sm border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
-              }
-            >
-              {person.gender === "MALE" ? "Male" : "Female"}
-            </Badge>
-            <Badge
-              variant="outline"
-              className={
+              className={`text-base px-3 py-1 ${
                 meal === "Adult"
-                  ? "text-sm border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
                   : meal === "Youth"
-                    ? "text-sm border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300"
-                    : "text-sm border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
-              }
+                    ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                    : "border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
+              }`}
             >
               {meal}
             </Badge>
           </div>
-          <CardTitle className="text-xl">{displayName}</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {person.first_name_en} {person.last_name_en}
-          </p>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          {/* QR Code */}
-          <div className="flex justify-center p-4">
-            <QRCodeSVG value={qrUrl} size={192} level="M" />
-          </div>
+        {/* Ticket notch divider */}
+        <div className="relative flex items-center">
+          <div className="w-6 h-6 rounded-full bg-background -ml-3 shrink-0" />
+          <div className="flex-1 border-t border-dashed border-border" />
+          <div className="w-6 h-6 rounded-full bg-background -mr-3 shrink-0" />
+        </div>
 
-          {token.participant_code && (
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">Participant Code</p>
-              <p className="text-2xl font-mono font-bold tracking-wider">
-                {token.participant_code}
-              </p>
-            </div>
-          )}
+        <CardContent className="pt-6">
+          <div className="flex flex-col items-center gap-3">
+            <h2 className="text-2xl font-bold tracking-tight">
+              {person.first_name_en} {person.last_name_en}
+            </h2>
 
-          <Separator />
-
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Event</span>
-              <span className="font-medium">{event.name_en}</span>
-            </div>
-            {event.location && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Location</span>
-                <span>{event.location}</span>
+            {token.qr_value && (
+              <div className="bg-white p-3 rounded-lg">
+                <QRCodeSVG
+                  value={token.qr_value}
+                  size={200}
+                  level="H"
+                  fgColor="#000000"
+                  bgColor="#ffffff"
+                />
               </div>
             )}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Dates</span>
-              <span>
-                {reg.start_date} ~ {reg.end_date}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Status</span>
-              <Badge variant="outline">{reg.status}</Badge>
-            </div>
           </div>
         </CardContent>
       </Card>
+
+      <Button
+        variant="outline"
+        className="w-full gap-2"
+        onClick={handleCopyLink}
+      >
+        {copied ? (
+          <>
+            <Check className="h-4 w-4" /> Link Copied!
+          </>
+        ) : (
+          <>
+            <Copy className="h-4 w-4" /> Copy E-Pass Link
+          </>
+        )}
+      </Button>
     </div>
   );
 }

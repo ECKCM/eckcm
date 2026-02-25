@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, QrCode } from "lucide-react";
+import { ArrowLeft, QrCode, Copy, Check } from "lucide-react";
 
 interface EPassToken {
   id: string;
@@ -14,6 +15,7 @@ interface EPassToken {
   person_id: string;
   registration_id: string;
   participant_code: string | null;
+  qr_value: string | null;
   eckcm_people: {
     first_name_en: string;
     last_name_en: string;
@@ -30,6 +32,7 @@ interface EPassToken {
     eckcm_events: {
       name_en: string;
       name_ko: string | null;
+      year: number;
     };
   };
 }
@@ -43,6 +46,43 @@ function getMealCategory(birthDate: string, eventDate: string): string {
   if (age >= 11) return "Adult";
   if (age >= 5) return "Youth";
   return "Free";
+}
+
+function buildEPassSlug(firstName: string, lastName: string, token: string): string {
+  const name = `${firstName}${lastName}`.replace(/[^a-zA-Z0-9]/g, "");
+  return `${name}_${token}`;
+}
+
+function CopyLinkButton({ slug }: { slug: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/epass/${slug}`;
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-7 gap-1 text-xs text-muted-foreground"
+      onClick={handleCopy}
+    >
+      {copied ? (
+        <>
+          <Check className="h-3 w-3" /> Copied
+        </>
+      ) : (
+        <>
+          <Copy className="h-3 w-3" /> Copy Link
+        </>
+      )}
+    </Button>
+  );
 }
 
 export function EPassList({ tokens }: { tokens: EPassToken[] }) {
@@ -72,24 +112,31 @@ export function EPassList({ tokens }: { tokens: EPassToken[] }) {
             person.display_name_ko ??
             `${person.first_name_en} ${person.last_name_en}`;
           const meal = getMealCategory(person.birth_date, reg.start_date);
+          const slug = buildEPassSlug(
+            person.first_name_en,
+            person.last_name_en,
+            token.token
+          );
 
           return (
-            <Link key={token.id} href={`/dashboard/epass/${token.id}`}>
-              <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
+            <Card key={token.id} className="hover:bg-accent/50 transition-colors">
+              <Link href={`/dashboard/epass/${token.id}`}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{displayName}</CardTitle>
                     <div className="flex items-center gap-1.5">
-                      <Badge
-                        variant="outline"
-                        className={
-                          person.gender === "MALE"
-                            ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300"
-                            : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
-                        }
-                      >
-                        {person.gender === "MALE" ? "Male" : "Female"}
-                      </Badge>
+                      {(person.gender === "MALE" || person.gender === "FEMALE") && (
+                        <Badge
+                          variant="outline"
+                          className={
+                            person.gender === "MALE"
+                              ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                              : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                          }
+                        >
+                          {person.gender === "MALE" ? "Male" : "Female"}
+                        </Badge>
+                      )}
                       <Badge
                         variant="outline"
                         className={
@@ -112,9 +159,6 @@ export function EPassList({ tokens }: { tokens: EPassToken[] }) {
                   <div className="flex items-center justify-between">
                     <div className="space-y-1 text-sm text-muted-foreground">
                       <p>{event.name_en}</p>
-                      <p>
-                        {reg.start_date} ~ {reg.end_date}
-                      </p>
                       {token.participant_code && (
                         <p className="font-mono font-medium text-foreground">
                           {token.participant_code}
@@ -124,8 +168,11 @@ export function EPassList({ tokens }: { tokens: EPassToken[] }) {
                     <QrCode className="h-10 w-10 text-muted-foreground" />
                   </div>
                 </CardContent>
-              </Card>
-            </Link>
+              </Link>
+              <div className="px-6 pb-3 flex items-center justify-end border-t pt-2">
+                <CopyLinkButton slug={slug} />
+              </div>
+            </Card>
           );
         })
       )}

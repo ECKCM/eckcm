@@ -8,7 +8,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("eckcm_app_config")
-    .select("color_theme, turnstile_enabled, allow_duplicate_email, allow_duplicate_registration")
+    .select("color_theme, turnstile_enabled, allow_duplicate_email, allow_duplicate_registration, epass_hmac_secret")
     .eq("id", 1)
     .single();
 
@@ -19,11 +19,16 @@ export async function GET() {
     );
   }
 
+  const hmacSecret = data.epass_hmac_secret as string | null;
+
   return NextResponse.json({
     color_theme: data.color_theme,
     turnstile_enabled: data.turnstile_enabled ?? true,
     allow_duplicate_email: data.allow_duplicate_email ?? false,
     allow_duplicate_registration: data.allow_duplicate_registration ?? false,
+    epass_hmac_secret: hmacSecret
+      ? { is_set: true, last4: hmacSecret.slice(-4) }
+      : { is_set: false, last4: "" },
   });
 }
 
@@ -104,6 +109,16 @@ export async function PATCH(request: Request) {
     updates.allow_duplicate_registration = body.allow_duplicate_registration;
   }
 
+  if ("epass_hmac_secret" in body) {
+    if (typeof body.epass_hmac_secret !== "string" || body.epass_hmac_secret.length < 16) {
+      return NextResponse.json(
+        { error: "epass_hmac_secret must be a string of at least 16 characters" },
+        { status: 400 }
+      );
+    }
+    updates.epass_hmac_secret = body.epass_hmac_secret;
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
@@ -122,13 +137,18 @@ export async function PATCH(request: Request) {
     );
   }
 
-  // 5. Audit log
+  // 5. Audit log (mask secrets)
+  const auditData = { ...updates };
+  if (auditData.epass_hmac_secret) {
+    const s = auditData.epass_hmac_secret as string;
+    auditData.epass_hmac_secret = `***${s.slice(-4)}`;
+  }
   await admin.from("eckcm_audit_logs").insert({
     user_id: user.id,
     action: "UPDATE_APP_CONFIG",
     entity_type: "app_config",
     entity_id: "1",
-    new_data: updates,
+    new_data: auditData,
   });
 
   return NextResponse.json({ success: true, ...updates });

@@ -2,13 +2,27 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createHash } from "crypto";
 import { notFound } from "next/navigation";
 import { EPassViewer } from "./epass-viewer";
+import { signParticipantCode } from "@/lib/services/epass.service";
+
+/**
+ * Parse slug format: "FirstNameLastName_<token>" or plain "<token>"
+ * Names are alphanumeric only (no underscores), so first "_" is the separator.
+ */
+function extractTokenFromSlug(slug: string): string {
+  const separatorIdx = slug.indexOf("_");
+  if (separatorIdx !== -1) {
+    return slug.substring(separatorIdx + 1);
+  }
+  return slug;
+}
 
 export default async function EPassPage({
   params,
 }: {
   params: Promise<{ token: string }>;
 }) {
-  const { token } = await params;
+  const { token: slug } = await params;
+  const token = extractTokenFromSlug(decodeURIComponent(slug));
   const tokenHash = createHash("sha256").update(token).digest("hex");
 
   const admin = createAdminClient();
@@ -23,7 +37,7 @@ export default async function EPassPage({
       created_at,
       person_id,
       registration_id,
-      eckcm_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date),
+      eckcm_people!inner(first_name_en, last_name_en, gender, birth_date),
       eckcm_registrations!inner(
         confirmation_code,
         event_id,
@@ -51,18 +65,31 @@ export default async function EPassPage({
 
   const participantCode = (membership as any)?.participant_code ?? null;
 
+  // Sign participant code with HMAC if secret is configured
+  let qrValue = participantCode;
+  if (participantCode) {
+    const { data: config } = await admin
+      .from("eckcm_app_config")
+      .select("epass_hmac_secret")
+      .eq("id", 1)
+      .single();
+    const secret = (config as any)?.epass_hmac_secret;
+    if (secret) {
+      qrValue = signParticipantCode(participantCode, secret);
+    }
+  }
+
   return (
     <EPassViewer
-      token={token}
       epass={{
         id: data.id,
         isActive: data.is_active,
         createdAt: data.created_at,
         participantCode,
+        qrValue,
         person: {
           firstName: data.eckcm_people.first_name_en,
           lastName: data.eckcm_people.last_name_en,
-          koreanName: data.eckcm_people.display_name_ko,
           gender: data.eckcm_people.gender,
           birthDate: data.eckcm_people.birth_date,
         },

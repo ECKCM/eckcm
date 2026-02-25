@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { signParticipantCode } from "@/lib/services/epass.service";
 import { EPassDetail } from "./epass-detail";
 
 export default async function EPassDetailPage({
@@ -34,7 +35,7 @@ export default async function EPassDetailPage({
         end_date,
         event_id,
         created_by_user_id,
-        eckcm_events!inner(name_en, name_ko, location)
+        eckcm_events!inner(name_en, name_ko, year, location)
       )
     `)
     .eq("id", id)
@@ -63,16 +64,27 @@ export default async function EPassDetailPage({
   const participantCode =
     (membership as any)?.participant_code ?? null;
 
+  // Sign participant code with HMAC if secret is configured
+  let qrValue = participantCode;
+  if (participantCode) {
+    const { data: config } = await admin
+      .from("eckcm_app_config")
+      .select("epass_hmac_secret")
+      .eq("id", 1)
+      .single();
+    const secret = (config as any)?.epass_hmac_secret as string | null;
+    if (secret) {
+      qrValue = signParticipantCode(participantCode, secret);
+    }
+  }
+
   return (
     <EPassDetail
       token={{
-        id: t.id,
         token: t.token,
         is_active: t.is_active,
-        created_at: t.created_at,
-        person_id: t.person_id,
-        registration_id: t.registration_id,
         participant_code: participantCode,
+        qr_value: qrValue,
         eckcm_people: t.eckcm_people,
         eckcm_registrations: t.eckcm_registrations,
       }}

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { signParticipantCode } from "@/lib/services/epass.service";
 import { EPassList } from "./epass-list";
 
 export default async function EPassPage() {
@@ -31,7 +32,7 @@ export default async function EPassPage() {
         end_date,
         event_id,
         created_by_user_id,
-        eckcm_events!inner(name_en, name_ko)
+        eckcm_events!inner(name_en, name_ko, year)
       )
     `)
     .eq("eckcm_registrations.created_by_user_id", user.id)
@@ -68,11 +69,23 @@ export default async function EPassPage() {
     if (regId) codeMap.set(`${m.person_id}:${regId}`, m.participant_code);
   }
 
-  // Merge participant_code into tokens
-  const enriched = (tokens as any[]).map((t: any) => ({
-    ...t,
-    participant_code: codeMap.get(`${t.person_id}:${t.registration_id}`) ?? null,
-  }));
+  // Fetch HMAC secret for signing
+  const { data: config } = await admin
+    .from("eckcm_app_config")
+    .select("epass_hmac_secret")
+    .eq("id", 1)
+    .single();
+  const hmacSecret = (config as any)?.epass_hmac_secret as string | null;
+
+  // Merge participant_code and qr_value into tokens
+  const enriched = (tokens as any[]).map((t: any) => {
+    const code = codeMap.get(`${t.person_id}:${t.registration_id}`) ?? null;
+    return {
+      ...t,
+      participant_code: code,
+      qr_value: code && hmacSecret ? signParticipantCode(code, hmacSecret) : code,
+    };
+  });
 
   return <EPassList tokens={enriched as any} />;
 }

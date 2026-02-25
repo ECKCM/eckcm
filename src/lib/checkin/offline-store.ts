@@ -1,10 +1,12 @@
 import { openDB, type IDBPDatabase } from "idb";
 
 const DB_NAME = "eckcm-checkin";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 interface EPassCacheEntry {
   tokenHash: string;
+  participantCode: string | null;
+  signedCode: string | null;
   personName: string;
   koreanName: string | null;
   confirmationCode: string;
@@ -42,9 +44,17 @@ async function getDB(): Promise<IDBPDatabase> {
   if (dbInstance) return dbInstance;
 
   dbInstance = await openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
+    upgrade(db, oldVersion) {
       if (!db.objectStoreNames.contains("epass_cache")) {
-        db.createObjectStore("epass_cache", { keyPath: "tokenHash" });
+        const store = db.createObjectStore("epass_cache", { keyPath: "tokenHash" });
+        store.createIndex("by_participant_code", "participantCode", { unique: false });
+      } else if (oldVersion < 2) {
+        // Add index to existing store
+        const tx = (db as any).transaction("epass_cache", "readwrite");
+        const store = tx.objectStore("epass_cache");
+        if (!store.indexNames.contains("by_participant_code")) {
+          store.createIndex("by_participant_code", "participantCode", { unique: false });
+        }
       }
       if (!db.objectStoreNames.contains("pending_checkins")) {
         db.createObjectStore("pending_checkins", {
@@ -90,6 +100,16 @@ export async function lookupToken(
   const db = await getDB();
   const hash = await hashToken(token);
   const entry = await db.get("epass_cache", hash);
+  return entry ?? null;
+}
+
+export async function lookupByParticipantCode(
+  code: string
+): Promise<EPassCacheEntry | null> {
+  const db = await getDB();
+  const tx = db.transaction("epass_cache", "readonly");
+  const index = tx.store.index("by_participant_code");
+  const entry = await index.get(code);
   return entry ?? null;
 }
 

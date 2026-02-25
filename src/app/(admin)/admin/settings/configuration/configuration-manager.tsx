@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, Check, Loader2, Palette, Shield, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, Copy, Key, Loader2, Palette, RefreshCw, Shield, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useColorTheme } from "@/components/shared/color-theme-provider";
 import { Switch } from "@/components/ui/switch";
@@ -247,7 +247,10 @@ function SecuritySection() {
   const [turnstileEnabled, setTurnstileEnabled] = useState<boolean>(true);
   const [allowDuplicateEmail, setAllowDuplicateEmail] = useState<boolean>(false);
   const [allowDuplicateRegistration, setAllowDuplicateRegistration] = useState<boolean>(false);
+  const [hmacStatus, setHmacStatus] = useState<{ is_set: boolean; last4: string }>({ is_set: false, last4: "" });
+  const [hmacDraft, setHmacDraft] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [hmacSaving, setHmacSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -257,6 +260,7 @@ function SecuritySection() {
         setTurnstileEnabled(data.turnstile_enabled ?? true);
         setAllowDuplicateEmail(data.allow_duplicate_email ?? false);
         setAllowDuplicateRegistration(data.allow_duplicate_registration ?? false);
+        if (data.epass_hmac_secret) setHmacStatus(data.epass_hmac_secret);
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
@@ -386,6 +390,108 @@ function SecuritySection() {
             registrations for the same event. Disable this before going live.
           </div>
         )}
+
+        {/* E-Pass HMAC Secret */}
+        <div className="rounded-lg border p-4 space-y-3">
+          <div className="space-y-0.5">
+            <Label className="text-base font-medium flex items-center gap-2">
+              <Key className="h-4 w-4" />
+              E-Pass QR Signing Key
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              HMAC secret used to sign QR codes. Prevents QR code forgery —
+              without this key, no one can create a valid QR code.
+            </p>
+          </div>
+
+          {hmacStatus.is_set && (
+            <div className="flex items-center gap-2 text-sm">
+              <Check className="h-4 w-4 text-green-600" />
+              <span className="text-muted-foreground">
+                Key set (ends with <span className="font-mono font-medium">{hmacStatus.last4}</span>)
+              </span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Input
+              type="text"
+              value={hmacDraft}
+              onChange={(e) => setHmacDraft(e.target.value)}
+              placeholder={hmacStatus.is_set ? "Enter new key to replace..." : "Generate or paste a key..."}
+              className="font-mono text-sm"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              title="Generate random key"
+              onClick={() => {
+                const arr = new Uint8Array(16);
+                crypto.getRandomValues(arr);
+                setHmacDraft(Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join(""));
+              }}
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            {hmacDraft && (
+              <Button
+                variant="outline"
+                size="icon"
+                title="Copy key"
+                onClick={() => {
+                  navigator.clipboard.writeText(hmacDraft);
+                  toast.success("Key copied to clipboard");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          {hmacDraft && (
+            <Button
+              disabled={hmacSaving || hmacDraft.length < 16}
+              onClick={async () => {
+                setHmacSaving(true);
+                try {
+                  const res = await fetch("/api/admin/app-config", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ epass_hmac_secret: hmacDraft }),
+                  });
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    toast.error(data.error || "Failed to save key");
+                    return;
+                  }
+                  setHmacStatus({ is_set: true, last4: hmacDraft.slice(-4) });
+                  setHmacDraft("");
+                  toast.success("E-Pass signing key saved. New QR codes will use this key.");
+                } catch {
+                  toast.error("Network error. Please try again.");
+                } finally {
+                  setHmacSaving(false);
+                }
+              }}
+            >
+              {hmacSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : (
+                "Save Key"
+              )}
+            </Button>
+          )}
+
+          {!hmacStatus.is_set && !hmacDraft && (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-800 dark:text-amber-300">
+              <strong>Not configured:</strong> QR codes are not signed. Generate
+              a key to enable QR forgery protection.
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

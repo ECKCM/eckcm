@@ -30,6 +30,7 @@ import {
 import {
   cacheEPassData,
   lookupToken,
+  lookupByParticipantCode,
   addPendingCheckin,
   getPendingCheckins,
   clearPendingCheckins,
@@ -49,10 +50,35 @@ interface CheckinScannerProps {
   events: EventOption[];
 }
 
-function extractTokenFromQR(scannedValue: string): string | null {
-  const urlMatch = scannedValue.match(/\/epass\/([A-Za-z0-9_-]{20,})/);
-  if (urlMatch) return urlMatch[1];
-  if (/^[A-Za-z0-9_-]{20,40}$/.test(scannedValue)) return scannedValue;
+/**
+ * Parse scanned QR value. Returns either:
+ * - { participantCode } for participant codes (plain or HMAC-signed CODE.SIGNATURE format)
+ * - { token } for legacy epass tokens
+ * - null if unrecognized
+ */
+function parseQRValue(
+  scannedValue: string
+): { participantCode: string } | { token: string } | null {
+  const trimmed = scannedValue.trim();
+
+  // Primary: HMAC-signed participant code (e.g. "ABCD23.a1b2c3d4")
+  if (/^[A-HJ-NP-Z2-9]{6}\.[a-f0-9]{8}$/.test(trimmed)) {
+    // Send full signed code to server for verification
+    return { participantCode: trimmed };
+  }
+
+  // Primary: plain 6-char participant code (fallback when HMAC not configured)
+  if (/^[A-HJ-NP-Z2-9]{6}$/.test(trimmed)) {
+    return { participantCode: trimmed };
+  }
+
+  // Legacy: URL containing /epass/<name>_<token> or /epass/<token>
+  const urlMatch = trimmed.match(/\/epass\/(?:[A-Za-z0-9]+_)?([A-Za-z0-9_-]{20,})/);
+  if (urlMatch) return { token: urlMatch[1] };
+
+  // Legacy: raw token string
+  if (/^[A-Za-z0-9_-]{20,40}$/.test(trimmed)) return { token: trimmed };
+
   return null;
 }
 
@@ -209,7 +235,10 @@ export function CheckinScanner({ events }: CheckinScannerProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           checkins: pending.map((p) => ({
-            token: p.token,
+            // If token starts with "pc:", it's a participant code
+            ...(p.token.startsWith("pc:")
+              ? { participantCode: p.token.slice(3) }
+              : { token: p.token }),
             checkinType: p.checkinType,
             sessionId: p.sessionId,
             nonce: p.nonce,
@@ -264,13 +293,17 @@ export function CheckinScanner({ events }: CheckinScannerProps) {
     if (processing || !detectedCodes.length) return;
 
     const rawValue = detectedCodes[0].rawValue;
-    const token = extractTokenFromQR(rawValue);
+    const parsed = parseQRValue(rawValue);
 
-    if (!token) return;
+    if (!parsed) return;
 
-    // Prevent duplicate rapid scans of the same token
-    if (lastScannedRef.current === token) return;
-    lastScannedRef.current = token;
+    // Dedupe key for preventing rapid duplicate scans
+    const dedupeKey = "participantCode" in parsed
+      ? parsed.participantCode
+      : parsed.token;
+
+    if (lastScannedRef.current === dedupeKey) return;
+    lastScannedRef.current = dedupeKey;
 
     setProcessing(true);
     setScanning(false);
@@ -283,13 +316,17 @@ export function CheckinScanner({ events }: CheckinScannerProps) {
 
     if (isOnline) {
       try {
+        const verifyBody: Record<string, string> = { checkinType };
+        if ("participantCode" in parsed) {
+          verifyBody.participantCode = parsed.participantCode;
+        } else {
+          verifyBody.token = parsed.token;
+        }
+
         const res = await fetch("/api/checkin/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token,
-            checkinType,
-          }),
+          body: JSON.stringify(verifyBody),
         });
 
         const data = await res.json();
@@ -321,10 +358,10 @@ export function CheckinScanner({ events }: CheckinScannerProps) {
         }
       } catch {
         // Network error - fall back to offline
-        result = await handleOfflineScan(token);
+        result = await handleOfflineScan(parsed);
       }
     } else {
-      result = await handleOfflineScan(token);
+      result = await handleOfflineScan(parsed);
     }
 
     const isSuccess = result.status !== "error";
@@ -350,13 +387,24 @@ export function CheckinScanner({ events }: CheckinScannerProps) {
     startResumeCountdown();
   }
 
-  async function handleOfflineScan(token: string): Promise<ScanResult> {
-    const cached = await lookupToken(token);
+  async function handleOfflineScan(
+    parsed: { participantCode: string } | { token: string }
+  ): Promise<ScanResult> {
+    let cached;
+    if ("participantCode" in parsed) {
+      // For signed codes (CODE.SIGNATURE), extract plain code for lookup
+      const plainCode = parsed.participantCode.includes(".")
+        ? parsed.participantCode.split(".")[0]
+        : parsed.participantCode;
+      cached = await lookupByParticipantCode(plainCode);
+    } else {
+      cached = await lookupToken(parsed.token);
+    }
 
     if (!cached) {
       return {
         status: "error",
-        errorMessage: "Token not found in cache",
+        errorMessage: "Not found in cache",
         timestamp: new Date(),
         isOffline: true,
       };
@@ -383,8 +431,13 @@ export function CheckinScanner({ events }: CheckinScannerProps) {
     }
 
     const nonce = crypto.randomUUID();
+    // For offline pending sync, store signed code (or plain code) or token
+    // Use cached signedCode if available (contains HMAC signature for server verification)
+    const pendingToken = "participantCode" in parsed
+      ? `pc:${cached.signedCode ?? parsed.participantCode}`
+      : parsed.token;
     await addPendingCheckin({
-      token,
+      token: pendingToken,
       checkinType,
       sessionId: null,
       timestamp: new Date().toISOString(),
