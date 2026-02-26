@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { clearStripeCache } from "@/lib/stripe/config";
+import { requireSuperAdmin } from "@/lib/auth/admin";
 
 type StripeKeyField =
   | "stripe_test_publishable_key"
@@ -24,32 +25,9 @@ function maskKey(key: string | null): { is_set: boolean; last4: string } {
   return { is_set: true, last4: key.slice(-4) };
 }
 
-async function checkSuperAdmin(userId: string) {
-  const supabase = await createClient();
-  const { data: assignments } = await supabase
-    .from("eckcm_staff_assignments")
-    .select("id, eckcm_roles(name)")
-    .eq("user_id", userId)
-    .eq("is_active", true);
-
-  return assignments?.some(
-    (a) =>
-      a.eckcm_roles &&
-      (a.eckcm_roles as unknown as { name: string }).name === "SUPER_ADMIN"
-  );
-}
-
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!(await checkSuperAdmin(user.id))) {
+  const auth = await requireSuperAdmin();
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -84,18 +62,11 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!(await checkSuperAdmin(user.id))) {
+  const auth = await requireSuperAdmin();
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  const { user } = auth;
 
   const body = await request.json();
 
@@ -248,6 +219,9 @@ export async function PATCH(request: Request) {
       { status: 500 }
     );
   }
+
+  // Invalidate cached Stripe instances so new keys take effect
+  clearStripeCache();
 
   // Audit log (mask secret keys)
   const auditData: Record<string, string> = {};

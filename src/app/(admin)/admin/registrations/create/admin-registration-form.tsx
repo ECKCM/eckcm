@@ -824,9 +824,7 @@ export function AdminRegistrationForm() {
                         <SelectItem value="MALE">Male</SelectItem>
                         <SelectItem value="FEMALE">Female</SelectItem>
                         <SelectItem value="NON_BINARY">Non-binary</SelectItem>
-                        <SelectItem value="PREFER_NOT_TO_SAY">
-                          Prefer not to say
-                        </SelectItem>
+                        <SelectItem value="PREFER_NOT_TO_SAY">Prefer not to say</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

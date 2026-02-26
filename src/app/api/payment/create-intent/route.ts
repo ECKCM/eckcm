@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeForMode } from "@/lib/stripe/config";
-
-interface CreateIntentBody {
-  registrationId: string;
-  coversFees?: boolean;
-}
+import { createIntentSchema } from "@/lib/schemas/api";
+import { rateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
+  try {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,15 +17,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body: CreateIntentBody = await request.json();
-  const { registrationId, coversFees } = body;
+  const rl = rateLimit(`create-intent:${user.id}`, 10, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
 
-  if (!registrationId) {
+  const parsed = createIntentSchema.safeParse(await request.json());
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Missing registrationId" },
+      { error: "Invalid request", details: parsed.error.flatten().fieldErrors },
       { status: 400 }
     );
   }
+  const { registrationId, coversFees } = parsed.data;
 
   // Load registration + event stripe_mode
   const { data: registration } = await supabase
@@ -65,9 +68,10 @@ export async function POST(request: Request) {
     .limit(1)
     .maybeSingle();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const members = (repMember as any)?.eckcm_group_memberships as any[] | undefined;
-  const rep = members?.find((m: any) => m.role === "REPRESENTATIVE") ?? members?.[0];
+  interface MemberRow { role: string; eckcm_people: { first_name_en: string; last_name_en: string; phone: string | null; email: string | null } }
+  const members = (repMember as unknown as { eckcm_group_memberships: MemberRow[] } | null)
+    ?.eckcm_group_memberships;
+  const rep = members?.find((m) => m.role === "REPRESENTATIVE") ?? members?.[0];
   const registrantName = rep?.eckcm_people
     ? `${rep.eckcm_people.first_name_en} ${rep.eckcm_people.last_name_en}`
     : null;
@@ -234,7 +238,7 @@ export async function POST(request: Request) {
     });
 
     if (paymentInsertError) {
-      console.error("[create-intent] Failed to insert payment record:", paymentInsertError);
+      logger.error("[create-intent] Failed to insert payment record", { error: String(paymentInsertError) });
     }
   }
 
@@ -248,4 +252,11 @@ export async function POST(request: Request) {
     coversFees: !!coversFees,
     feeCents: coversFees ? chargeAmount - baseChargeAmount : 0,
   });
+  } catch (err) {
+    logger.error("[payment/create-intent] Unhandled error", { error: String(err) });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

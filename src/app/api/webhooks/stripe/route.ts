@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { generateEPassToken } from "@/lib/services/epass.service";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import type Stripe from "stripe";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
   if (process.env.STRIPE_WEBHOOK_SECRET) secrets.push(process.env.STRIPE_WEBHOOK_SECRET);
 
   if (secrets.length === 0) {
-    console.error("No webhook secrets configured");
+    logger.error("[webhook] No webhook secrets configured");
     return NextResponse.json(
       { error: "Webhook secret not configured" },
       { status: 500 }
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
   }
 
   if (!verified || !event) {
-    console.error("Webhook signature verification failed with all secrets");
+    logger.error("[webhook] Signature verification failed with all secrets");
     return NextResponse.json(
       { error: "Webhook signature verification failed" },
       { status: 400 }
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
       await handleDisputeCreated(event.data.object as Stripe.Dispute);
       break;
     default:
-      console.log(`[webhook] Unhandled event type: ${event.type}`);
+      logger.info("[webhook] Unhandled event type", { type: event.type });
   }
 
   return NextResponse.json({ received: true });
@@ -101,7 +102,7 @@ async function handlePaymentIntentSucceeded(
   const { registrationId, invoiceId } = paymentIntent.metadata;
 
   if (!registrationId || !invoiceId) {
-    console.error("Missing metadata in PaymentIntent:", paymentIntent.id);
+    logger.error("[webhook] Missing metadata in PaymentIntent", { paymentIntentId: paymentIntent.id });
     return;
   }
 
@@ -113,7 +114,7 @@ async function handlePaymentIntentSucceeded(
     .single();
 
   if (reg?.status === "PAID") {
-    console.log(`[webhook] Registration ${registrationId} already PAID, skipping.`);
+    logger.info("[webhook] Registration already PAID, skipping", { registrationId });
     return;
   }
 
@@ -140,7 +141,7 @@ async function handlePaymentIntentSucceeded(
       .eq("id", existingPayment.id);
   } else {
     // Payment record missing (e.g., create-intent insert failed) — create it now
-    console.log(`[webhook] No payment record for PI ${paymentIntent.id}, creating one.`);
+    logger.info("[webhook] No payment record found, creating one", { paymentIntentId: paymentIntent.id });
     const paymentMethodType = paymentIntent.payment_method_types?.[0] ?? "card";
     const method = paymentMethodType === "us_bank_account" ? "ACH" : "CARD";
     await admin.from("eckcm_payments").insert({
@@ -191,50 +192,53 @@ async function handlePaymentIntentSucceeded(
     .eq("eckcm_groups.registration_id", registrationId);
 
   if (membershipError) {
-    console.error("[webhook] Failed to load memberships:", membershipError);
+    logger.error("[webhook] Failed to load memberships", { error: String(membershipError) });
   }
 
   let tokensGenerated = 0;
-  if (memberships) {
-    for (const membership of memberships) {
-      const { data: existingToken } = await admin
-        .from("eckcm_epass_tokens")
-        .select("id")
-        .eq("person_id", membership.person_id)
-        .eq("registration_id", registrationId)
-        .maybeSingle();
+  if (memberships && memberships.length > 0) {
+    // Batch check existing tokens (avoid N+1)
+    const personIds = memberships.map((m) => m.person_id);
+    const { data: existingTokens } = await admin
+      .from("eckcm_epass_tokens")
+      .select("person_id")
+      .eq("registration_id", registrationId)
+      .in("person_id", personIds);
 
-      if (!existingToken) {
+    const existingSet = new Set((existingTokens ?? []).map((t) => t.person_id));
+
+    // Batch insert missing tokens
+    const newTokens = memberships
+      .filter((m) => !existingSet.has(m.person_id))
+      .map((m) => {
         const { token, tokenHash } = generateEPassToken();
+        return {
+          person_id: m.person_id,
+          registration_id: registrationId,
+          token,
+          token_hash: tokenHash,
+          is_active: true,
+        };
+      });
 
-        const { error: insertError } = await admin
-          .from("eckcm_epass_tokens")
-          .insert({
-            person_id: membership.person_id,
-            registration_id: registrationId,
-            token: token,
-            token_hash: tokenHash,
-            is_active: true,
-          });
-
-        if (insertError) {
-          console.error("[webhook] Failed to insert epass token:", insertError);
-        } else {
-          tokensGenerated++;
-          console.log(
-            `[webhook] E-Pass generated for person ${membership.person_id}`
-          );
-        }
+    if (newTokens.length > 0) {
+      const { error: insertError } = await admin
+        .from("eckcm_epass_tokens")
+        .insert(newTokens);
+      if (insertError) {
+        logger.error("[webhook] Failed to insert epass tokens", { error: String(insertError) });
+      } else {
+        tokensGenerated = newTokens.length;
       }
     }
   }
-  console.log(`[webhook] E-Pass: ${tokensGenerated} generated for ${memberships?.length ?? 0} members`);
+  logger.info("[webhook] E-Pass tokens generated", { tokensGenerated, totalMembers: memberships?.length ?? 0 });
 
   // 6. Send confirmation email (non-blocking, non-fatal)
   try {
     await sendConfirmationEmail(registrationId);
   } catch (err) {
-    console.error("[webhook] Failed to send confirmation email:", err);
+    logger.error("[webhook] Failed to send confirmation email", { error: String(err) });
   }
 }
 
@@ -284,13 +288,13 @@ async function handlePaymentIntentCanceled(
     .maybeSingle();
 
   if (!payment) {
-    console.log(`[webhook] No payment found for canceled PI: ${paymentIntent.id}`);
+    logger.info("[webhook] No payment found for canceled PI", { paymentIntentId: paymentIntent.id });
     return;
   }
 
   // Skip if already in a terminal state
   if (payment.status !== "PENDING") {
-    console.log(`[webhook] Payment ${payment.id} already ${payment.status}, skipping cancel.`);
+    logger.info("[webhook] Payment already terminal, skipping cancel", { paymentId: payment.id, status: payment.status });
     return;
   }
 
@@ -331,7 +335,7 @@ async function handlePaymentIntentCanceled(
     },
   });
 
-  console.log(`[webhook] PaymentIntent ${paymentIntent.id} canceled, payment ${payment.id} -> FAILED`);
+  logger.info("[webhook] PaymentIntent canceled", { paymentIntentId: paymentIntent.id, paymentId: payment.id });
 }
 
 // ---------------------------------------------------------------------------
@@ -347,7 +351,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
       : charge.payment_intent?.id;
 
   if (!piId) {
-    console.error("[webhook] charge.refunded has no payment_intent:", charge.id);
+    logger.error("[webhook] charge.refunded has no payment_intent", { chargeId: charge.id });
     return;
   }
 
@@ -359,7 +363,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     .maybeSingle();
 
   if (!payment) {
-    console.log(`[webhook] No payment found for refunded charge PI: ${piId}`);
+    logger.info("[webhook] No payment found for refunded charge PI", { paymentIntentId: piId });
     return;
   }
 
@@ -380,7 +384,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
       .maybeSingle();
 
     if (existingRefund) {
-      console.log(`[webhook] Refund record for ${stripeRefundId} already exists, skipping insert.`);
+      logger.info("[webhook] Refund record already exists, skipping", { stripeRefundId });
     } else {
       await admin.from("eckcm_refunds").insert({
         payment_id: payment.id,
@@ -470,9 +474,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     },
   });
 
-  console.log(
-    `[webhook] Charge ${charge.id} refunded (${isFullRefund ? "full" : "partial"}), payment ${payment.id} -> ${refundStatus}`
-  );
+  logger.info("[webhook] Charge refunded", { chargeId: charge.id, type: isFullRefund ? "full" : "partial", paymentId: payment.id, refundStatus });
 }
 
 // ---------------------------------------------------------------------------
@@ -488,7 +490,7 @@ async function handleDisputeCreated(dispute: Stripe.Dispute) {
       : dispute.payment_intent?.id;
 
   if (!piId) {
-    console.error("[webhook] charge.dispute.created has no payment_intent:", dispute.id);
+    logger.error("[webhook] charge.dispute.created has no payment_intent", { disputeId: dispute.id });
     return;
   }
 
@@ -500,7 +502,7 @@ async function handleDisputeCreated(dispute: Stripe.Dispute) {
     .maybeSingle();
 
   if (!payment) {
-    console.log(`[webhook] No payment found for dispute PI: ${piId}`);
+    logger.info("[webhook] No payment found for dispute PI", { paymentIntentId: piId });
     return;
   }
 
@@ -579,7 +581,5 @@ async function handleDisputeCreated(dispute: Stripe.Dispute) {
     }
   }
 
-  console.log(
-    `[webhook] Dispute ${dispute.id} created for payment ${payment.id}, reason: ${dispute.reason}`
-  );
+  logger.info("[webhook] Dispute created", { disputeId: dispute.id, paymentId: payment.id, reason: dispute.reason });
 }

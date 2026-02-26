@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeForMode } from "@/lib/stripe/config";
 import { getRefundSummary, createRefundWithGuard, RefundOverLimitError } from "@/lib/services/refund.service";
+import { logger } from "@/lib/logger";
+import { requireAdmin } from "@/lib/auth/admin";
 
 interface RefundBody {
   paymentId: string;
@@ -11,34 +12,11 @@ interface RefundBody {
 }
 
 export async function POST(request: Request) {
-  // 1. Auth check
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireAdmin();
+  if (!auth) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-
-  // 2. Admin check (SUPER_ADMIN or EVENT_ADMIN)
-  const { data: assignments } = await supabase
-    .from("eckcm_staff_assignments")
-    .select("id, eckcm_roles(name)")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
-
-  const isAdmin = assignments?.some((a) => {
-    const roleName = (a.eckcm_roles as unknown as { name: string })?.name;
-    return roleName === "SUPER_ADMIN" || roleName === "EVENT_ADMIN";
-  });
-
-  if (!isAdmin) {
-    return NextResponse.json(
-      { error: "Only admins can issue refunds" },
-      { status: 403 }
-    );
-  }
+  const { user } = auth;
 
   // 3. Parse body
   let body: RefundBody;
@@ -133,8 +111,8 @@ export async function POST(request: Request) {
 
       if (reg) {
         eventId = reg.event_id;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        stripeMode = ((reg as any).eckcm_events?.stripe_mode as "test" | "live") ?? "test";
+        const events = reg.eckcm_events as unknown as { stripe_mode: string } | null;
+        stripeMode = (events?.stripe_mode as "test" | "live") ?? "test";
       }
     }
   }
@@ -186,7 +164,7 @@ export async function POST(request: Request) {
       if (err instanceof RefundOverLimitError) {
         return NextResponse.json({ error: err.message }, { status: 409 });
       }
-      console.error("[admin/refund] Stripe refund failed:", err);
+      logger.error("[admin/refund] Stripe refund failed", { error: String(err) });
       return NextResponse.json(
         { error: err instanceof Error ? err.message : "Stripe refund failed" },
         { status: 500 }
@@ -208,7 +186,7 @@ export async function POST(request: Request) {
     if (err instanceof RefundOverLimitError) {
       return NextResponse.json({ error: err.message }, { status: 409 });
     }
-    console.error("[admin/refund] Refund record creation failed:", err);
+    logger.error("[admin/refund] Refund record creation failed", { error: String(err) });
     return NextResponse.json(
       { error: "Failed to create refund record" },
       { status: 500 }

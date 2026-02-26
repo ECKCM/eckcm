@@ -1,43 +1,16 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { generateSafeConfirmationCode } from "@/lib/services/confirmation-code.service";
 import { generateEPassToken } from "@/lib/services/epass.service";
 import { calculateEstimate } from "@/lib/services/pricing.service";
 import type { MealFeeCategory } from "@/lib/services/pricing.service";
 import { createInvoice } from "@/lib/services/invoice.service";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
-import type { RoomGroupInput, MealSelection } from "@/lib/types/registration";
+import { logger } from "@/lib/logger";
+import type { RoomGroupInput } from "@/lib/types/registration";
 import { buildPhoneValue } from "@/lib/utils/field-helpers";
-
-const MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER"] as const;
-
-function populateDefaultMeals(
-  roomGroups: RoomGroupInput[],
-  mealStartDate: string,
-  mealEndDate: string
-): RoomGroupInput[] {
-  const start = new Date(mealStartDate + "T00:00:00");
-  const end = new Date(mealEndDate + "T00:00:00");
-  const mealDates: string[] = [];
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    mealDates.push(d.toISOString().split("T")[0]);
-  }
-
-  return roomGroups.map((group) => ({
-    ...group,
-    participants: group.participants.map((p) => {
-      if (p.mealSelections.length > 0) return p;
-      const defaultSelections: MealSelection[] = [];
-      for (const date of mealDates) {
-        for (const mealType of MEAL_TYPES) {
-          defaultSelections.push({ date, mealType, selected: true });
-        }
-      }
-      return { ...p, mealSelections: defaultSelections };
-    }),
-  }));
-}
+import { populateDefaultMeals } from "@/lib/services/meal.service";
 
 interface AdminRegBody {
   eventId: string;
@@ -53,34 +26,11 @@ interface AdminRegBody {
 
 export async function POST(request: Request) {
   try {
-    // 1. Auth check
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireAdmin();
+    if (!auth) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-
-    // 2. Admin check
-    const { data: assignments } = await supabase
-      .from("eckcm_staff_assignments")
-      .select("id, eckcm_roles(name)")
-      .eq("user_id", user.id)
-      .eq("is_active", true);
-
-    const isAdmin = assignments?.some((a) => {
-      const roleName = (a.eckcm_roles as unknown as { name: string })?.name;
-      return roleName === "SUPER_ADMIN" || roleName === "EVENT_ADMIN";
-    });
-
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: "Only admins can create manual registrations" },
-        { status: 403 }
-      );
-    }
+    const { user } = auth;
 
     // 3. Parse body
     const body: AdminRegBody = await request.json();
@@ -150,10 +100,10 @@ export async function POST(request: Request) {
       (f: any) => f.code.startsWith("MEAL_")
     );
 
-    // 7. Load event
+    // 7. Load event dates for age calculation and meal day filtering
     const { data: event } = await admin
       .from("eckcm_events")
-      .select("event_start_date")
+      .select("event_start_date, event_end_date")
       .eq("id", eventId)
       .single();
 
@@ -162,10 +112,14 @@ export async function POST(request: Request) {
       regGroup.early_bird_deadline != null &&
       new Date() < new Date(regGroup.early_bird_deadline);
 
+    const evStartDate = event?.event_start_date ?? startDate;
+    const evEndDate = event?.event_end_date ?? endDate;
     const processedRoomGroups = populateDefaultMeals(
       roomGroups,
       startDate,
-      endDate
+      endDate,
+      evStartDate,
+      evEndDate
     );
 
     const estimate = calculateEstimate({
@@ -354,14 +308,14 @@ export async function POST(request: Request) {
         },
       });
     } catch (invoiceErr) {
-      console.error("[admin/registration] Invoice creation failed:", invoiceErr);
+      logger.error("[admin/registration] Invoice creation failed", { error: String(invoiceErr) });
     }
 
     // 13. Send confirmation email (non-blocking)
     try {
       await sendConfirmationEmail(registration.id);
     } catch (err) {
-      console.error("[admin/registration] Failed to send confirmation email:", err);
+      logger.error("[admin/registration] Failed to send confirmation email", { error: String(err) });
     }
 
     // 14. Audit log
@@ -386,7 +340,7 @@ export async function POST(request: Request) {
       total: estimate.total,
     });
   } catch (err) {
-    console.error("[admin/registration] Unhandled error:", err);
+    logger.error("[admin/registration] Unhandled error", { error: String(err) });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
       { status: 500 }

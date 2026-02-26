@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { SanitizedHtml } from "@/components/shared/sanitized-html";
 
 export default async function PrivacyPage() {
   const supabase = await createClient();
@@ -29,9 +30,9 @@ export default async function PrivacyPage() {
       )}
 
       {data?.content ? (
-        <div
+        <SanitizedHtml
+          html={data.content}
           className="prose prose-sm max-w-none dark:prose-invert"
-          dangerouslySetInnerHTML={{ __html: data.content }}
         />
       ) : (
         <p className="text-muted-foreground">Coming soon.</p>

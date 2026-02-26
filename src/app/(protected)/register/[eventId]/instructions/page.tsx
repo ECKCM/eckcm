@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SanitizedHtml } from "@/components/shared/sanitized-html";
 
 export default function InstructionsStep() {
   const router = useRouter();
@@ -64,9 +65,9 @@ export default function InstructionsStep() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div
+          <SanitizedHtml
+            html={content}
             className="prose prose-sm max-w-none dark:prose-invert"
-            dangerouslySetInnerHTML={{ __html: content }}
           />
 
           <div className="flex items-center gap-3 rounded-lg border p-4">

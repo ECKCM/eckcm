@@ -21,12 +21,10 @@ export async function createInvoice(
     breakdown: PriceLineItem[];
   }
 ): Promise<string> {
-  // Get next sequence number
-  const { count } = await admin
-    .from("eckcm_invoices")
-    .select("id", { count: "exact", head: true });
-
-  const invoiceNumber = generateInvoiceNumber((count ?? 0) + 1);
+  // Atomically get next sequence number (race-condition safe)
+  const { data: seqResult } = await admin.rpc("get_next_invoice_seq");
+  const seq = (seqResult as number) ?? 1;
+  const invoiceNumber = generateInvoiceNumber(seq);
 
   // Create invoice
   const { data: invoice, error: invoiceError } = await admin

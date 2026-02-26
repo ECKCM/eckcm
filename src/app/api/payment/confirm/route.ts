@@ -4,13 +4,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeForMode } from "@/lib/stripe/config";
 import { generateEPassToken } from "@/lib/services/epass.service";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
-
-interface ConfirmBody {
-  registrationId: string;
-  paymentIntentId: string;
-}
+import { confirmPaymentSchema } from "@/lib/schemas/api";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
+  try {
   const supabase = await createClient();
   const {
     data: { user },
@@ -20,15 +18,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body: ConfirmBody = await request.json();
-  const { registrationId, paymentIntentId } = body;
-
-  if (!registrationId || !paymentIntentId) {
+  const parsed = confirmPaymentSchema.safeParse(await request.json());
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Missing registrationId or paymentIntentId" },
+      { error: "Invalid request", details: parsed.error.flatten().fieldErrors },
       { status: 400 }
     );
   }
+  const { registrationId, paymentIntentId } = parsed.data;
 
   const admin = createAdminClient();
 
@@ -124,47 +121,61 @@ export async function POST(request: Request) {
     .eq("eckcm_groups.registration_id", registrationId);
 
   if (membershipError) {
-    console.error("[payment/confirm] Failed to load memberships:", membershipError);
+    logger.error("[payment/confirm] Failed to load memberships", { error: String(membershipError) });
   }
 
   let tokensGenerated = 0;
-  if (memberships) {
-    for (const membership of memberships) {
-      // Check if token already exists (idempotent)
-      const { data: existing } = await admin
-        .from("eckcm_epass_tokens")
-        .select("id")
-        .eq("person_id", membership.person_id)
-        .eq("registration_id", registrationId)
-        .maybeSingle();
+  if (memberships && memberships.length > 0) {
+    // Batch check existing tokens (avoid N+1)
+    const personIds = memberships.map((m) => m.person_id);
+    const { data: existingTokens } = await admin
+      .from("eckcm_epass_tokens")
+      .select("person_id")
+      .eq("registration_id", registrationId)
+      .in("person_id", personIds);
 
-      if (!existing) {
+    const existingSet = new Set((existingTokens ?? []).map((t) => t.person_id));
+
+    // Batch insert missing tokens
+    const newTokens = memberships
+      .filter((m) => !existingSet.has(m.person_id))
+      .map((m) => {
         const { token, tokenHash } = generateEPassToken();
-        const { error: insertError } = await admin
-          .from("eckcm_epass_tokens")
-          .insert({
-            person_id: membership.person_id,
-            registration_id: registrationId,
-            token,
-            token_hash: tokenHash,
-            is_active: true,
-          });
-        if (insertError) {
-          console.error("[payment/confirm] Failed to insert epass token:", insertError);
-        } else {
-          tokensGenerated++;
-        }
+        return {
+          person_id: m.person_id,
+          registration_id: registrationId,
+          token,
+          token_hash: tokenHash,
+          is_active: true,
+        };
+      });
+
+    if (newTokens.length > 0) {
+      const { error: insertError } = await admin
+        .from("eckcm_epass_tokens")
+        .insert(newTokens);
+      if (insertError) {
+        logger.error("[payment/confirm] Failed to insert epass tokens", { error: String(insertError) });
+      } else {
+        tokensGenerated = newTokens.length;
       }
     }
   }
-  console.log(`[payment/confirm] E-Pass: ${tokensGenerated} generated for ${memberships?.length ?? 0} members`);
+  logger.info("[payment/confirm] E-Pass tokens generated", { tokensGenerated, totalMembers: memberships?.length ?? 0 });
 
   // 5. Send confirmation email (non-blocking)
   try {
     await sendConfirmationEmail(registrationId);
   } catch (err) {
-    console.error("[payment/confirm] Failed to send confirmation email:", err);
+    logger.error("[payment/confirm] Failed to send confirmation email", { error: String(err) });
   }
 
   return NextResponse.json({ status: "confirmed" });
+  } catch (err) {
+    logger.error("[payment/confirm] Unhandled error", { error: String(err) });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

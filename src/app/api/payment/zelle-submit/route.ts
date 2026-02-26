@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { zelleSubmitSchema } from "@/lib/schemas/api";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
+  try {
   const supabase = await createClient();
   const {
     data: { user },
@@ -12,15 +15,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { registrationId } = body;
-
-  if (!registrationId) {
+  const parsed = zelleSubmitSchema.safeParse(await request.json());
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Missing registrationId" },
+      { error: "Invalid request", details: parsed.error.flatten().fieldErrors },
       { status: 400 }
     );
   }
+  const { registrationId } = parsed.data;
 
   const admin = createAdminClient();
 
@@ -91,4 +93,11 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({ success: true });
+  } catch (err) {
+    logger.error("[payment/zelle-submit] Unhandled error", { error: String(err) });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

@@ -52,14 +52,31 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Admin routes: redirect to login if not authenticated
-  if (
-    !user &&
-    request.nextUrl.pathname.startsWith("/admin")
-  ) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+  // Admin routes: require authentication + admin role
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+
+    // Verify admin role (defense-in-depth, layout also checks)
+    const { data: assignments } = await supabase
+      .from("eckcm_staff_assignments")
+      .select("eckcm_roles(name)")
+      .eq("user_id", user.id)
+      .eq("is_active", true);
+
+    const isAdmin = assignments?.some((a) => {
+      const role = a.eckcm_roles as unknown as { name: string } | null;
+      return role?.name === "SUPER_ADMIN" || role?.name === "EVENT_ADMIN";
+    });
+
+    if (!isAdmin) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
   }
 
   // Auth routes: redirect to dashboard if already authenticated

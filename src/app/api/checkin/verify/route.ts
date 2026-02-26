@@ -4,6 +4,33 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createHash } from "crypto";
 import { verifySignedCode } from "@/lib/services/epass.service";
 
+interface VerifyData {
+  person_id: string;
+  is_active: boolean;
+  eckcm_people: { first_name_en: string; last_name_en: string; display_name_ko: string | null };
+  eckcm_registrations: {
+    confirmation_code: string;
+    status: string;
+    event_id: string;
+    eckcm_events: { name_en: string; year: number };
+  };
+}
+
+interface MembershipJoined {
+  person_id: string;
+  participant_code: string;
+  eckcm_groups: {
+    registration_id: string;
+    eckcm_registrations: {
+      confirmation_code: string;
+      status: string;
+      event_id: string;
+      eckcm_events: { name_en: string; year: number };
+    };
+  };
+  eckcm_people: { first_name_en: string; last_name_en: string; display_name_ko: string | null };
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
 
@@ -35,7 +62,7 @@ export async function POST(req: NextRequest) {
       .select("epass_hmac_secret")
       .eq("id", 1)
       .single();
-    const secret = (config as any)?.epass_hmac_secret as string | null;
+    const secret = (config as unknown as { epass_hmac_secret: string | null } | null)?.epass_hmac_secret ?? null;
     if (secret) {
       const { valid, participantCode: code } = verifySignedCode(participantCode, secret);
       if (!valid) {
@@ -79,7 +106,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const m = membership as any;
+    const m = membership as unknown as MembershipJoined;
     const reg = m.eckcm_groups.eckcm_registrations;
 
     // Check E-Pass is active
@@ -132,7 +159,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    data = epass as any;
+    data = epass as unknown as VerifyData;
   }
 
   if (!data.is_active) {

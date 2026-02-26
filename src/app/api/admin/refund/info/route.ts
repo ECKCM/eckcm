@@ -1,32 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRefundSummary } from "@/lib/services/refund.service";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export async function GET(request: Request) {
-  // 1. Auth check
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // 2. Admin check
-  const { data: assignments } = await supabase
-    .from("eckcm_staff_assignments")
-    .select("id, eckcm_roles(name)")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
-
-  const isAdmin = assignments?.some((a) => {
-    const roleName = (a.eckcm_roles as unknown as { name: string })?.name;
-    return roleName === "SUPER_ADMIN" || roleName === "EVENT_ADMIN";
-  });
-
-  if (!isAdmin) {
+  const auth = await requireAdmin();
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

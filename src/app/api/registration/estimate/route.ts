@@ -2,40 +2,12 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { calculateEstimate } from "@/lib/services/pricing.service";
 import type { MealFeeCategory } from "@/lib/services/pricing.service";
-import type { RoomGroupInput, MealSelection } from "@/lib/types/registration";
-
-const MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER"] as const;
-
-/** Fill default full-day selections when participant has empty mealSelections */
-function populateDefaultMeals(
-  roomGroups: RoomGroupInput[],
-  mealStartDate: string,
-  mealEndDate: string
-): RoomGroupInput[] {
-  const start = new Date(mealStartDate + "T00:00:00");
-  const end = new Date(mealEndDate + "T00:00:00");
-  const mealDates: string[] = [];
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    mealDates.push(d.toISOString().split("T")[0]);
-  }
-
-  return roomGroups.map((group) => ({
-    ...group,
-    participants: group.participants.map((p) => {
-      if (p.mealSelections.length > 0) return p;
-      // Generate full-day selections for all meal dates
-      const defaultSelections: MealSelection[] = [];
-      for (const date of mealDates) {
-        for (const mealType of MEAL_TYPES) {
-          defaultSelections.push({ date, mealType, selected: true });
-        }
-      }
-      return { ...p, mealSelections: defaultSelections };
-    }),
-  }));
-}
+import { estimateSchema } from "@/lib/schemas/api";
+import { logger } from "@/lib/logger";
+import { populateDefaultMeals } from "@/lib/services/meal.service";
 
 export async function POST(request: Request) {
+  try {
   const supabase = await createClient();
   const {
     data: { user },
@@ -45,12 +17,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { eventId, startDate, endDate, nightsCount, registrationGroupId, roomGroups } = body;
-
-  if (!eventId || !startDate || !endDate || !registrationGroupId || !roomGroups) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  const parsed = estimateSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid request", details: parsed.error.flatten().fieldErrors },
+      { status: 400 }
+    );
   }
+  const { eventId, startDate, endDate, nightsCount, registrationGroupId, roomGroups } = parsed.data;
 
   // Load registration group
   const { data: regGroup } = await supabase
@@ -103,18 +77,22 @@ export async function POST(request: Request) {
     (f: any) => f.code.startsWith("MEAL_")
   );
 
-  // Load event start date for age calculation
+  // Load event dates for age calculation and meal day filtering
   const { data: event } = await supabase
     .from("eckcm_events")
-    .select("event_start_date")
+    .select("event_start_date, event_end_date")
     .eq("id", eventId)
     .single();
 
   // Populate default meals for participants with empty selections
+  const evStartDate = event?.event_start_date ?? startDate;
+  const evEndDate = event?.event_end_date ?? endDate;
   const processedRoomGroups = populateDefaultMeals(
     roomGroups,
     startDate,
-    endDate
+    endDate,
+    evStartDate,
+    evEndDate
   );
 
   const estimate = calculateEstimate({
@@ -132,4 +110,11 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json(estimate);
+  } catch (err) {
+    logger.error("[registration/estimate] Unhandled error", { error: String(err) });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

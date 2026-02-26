@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Star } from "lucide-react";
+import { Plus, Star, Trash2 } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 
 interface Event {
   id: string;
@@ -41,8 +42,13 @@ interface Event {
 
 export function EventsTable({ events: initial }: { events: Event[] }) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [events, setEvents] = useState(initial);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+  const [deleteTarget, setDeleteTarget] = useState<Event | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name_en: "",
@@ -143,17 +149,36 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
     router.refresh();
   };
 
+  const handleDelete = async (event: Event) => {
+    setDeleting(true);
+    const res = await fetch(`/api/admin/events/${event.id}`, {
+      method: "DELETE",
+    });
+    const data = await res.json();
+    setDeleting(false);
+
+    if (!res.ok) {
+      toast.error(data.error ?? "Failed to delete event");
+      return;
+    }
+
+    setEvents(events.filter((e) => e.id !== event.id));
+    toast.success(`"${event.name_en}" deleted`);
+    router.refresh();
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">All Events</h2>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 size-4" />
-              New Event
-            </Button>
-          </DialogTrigger>
+        {mounted ? (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 size-4" />
+                New Event
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create Event</DialogTitle>
@@ -231,8 +256,14 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
                 {saving ? "Creating..." : "Create Event"}
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <Button disabled>
+            <Plus className="mr-2 size-4" />
+            New Event
+          </Button>
+        )}
       </div>
 
       <Table>
@@ -310,12 +341,35 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
                   >
                     Edit
                   </Button>
+                  {!event.is_default && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteTarget(event)}
+                      disabled={deleting}
+                    >
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))
           )}
         </TableBody>
       </Table>
+
+      {mounted && (
+        <ConfirmDeleteDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => !open && setDeleteTarget(null)}
+          onConfirm={() => {
+            if (deleteTarget) handleDelete(deleteTarget);
+            setDeleteTarget(null);
+          }}
+          title={`Delete "${deleteTarget?.name_en}"?`}
+          description="This will permanently delete this event and all related data (registrations, payments, invoices, check-ins, etc.). This action cannot be undone."
+        />
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeForMode } from "@/lib/stripe/config";
+import { logger } from "@/lib/logger";
 
 /**
  * Calculate the total charge amount that covers Stripe processing fees.
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
       metadata: { coversFees: coversFees ? "true" : "false" },
     });
   } catch (err) {
-    console.error("[update-cover-fees] Stripe update failed:", err);
+    logger.error("[update-cover-fees] Stripe update failed", { error: String(err) });
     const msg = err instanceof Error ? err.message : "Stripe error";
     return NextResponse.json(
       { error: `Failed to update payment amount: ${msg}` },

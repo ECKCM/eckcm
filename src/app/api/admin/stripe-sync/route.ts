@@ -1,38 +1,17 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeForMode } from "@/lib/stripe/config";
+import { requireSuperAdmin } from "@/lib/auth/admin";
 
 export async function POST(request: Request) {
-  // 1. Auth check
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // 2. SUPER_ADMIN check
-  const { data: assignments } = await supabase
-    .from("eckcm_staff_assignments")
-    .select("id, eckcm_roles(name)")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
-
-  const isSuperAdmin = assignments?.some(
-    (a) =>
-      a.eckcm_roles &&
-      (a.eckcm_roles as unknown as { name: string }).name === "SUPER_ADMIN"
-  );
-
-  if (!isSuperAdmin) {
+  const auth = await requireSuperAdmin();
+  if (!auth) {
     return NextResponse.json(
       { error: "Only SUPER_ADMIN can sync Stripe" },
       { status: 403 }
     );
   }
+  const { user } = auth;
 
   // 3. Parse body
   const body = await request.json();

@@ -8,7 +8,6 @@ import {
   CardExpiryElement,
   CardCvcElement,
   PaymentRequestButtonElement,
-  PaymentElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
@@ -25,8 +24,6 @@ import {
   Loader2,
   Lock,
   CreditCard,
-  Landmark,
-  Building2,
   ShieldCheck,
   CheckCircle,
   AlertTriangle,
@@ -35,82 +32,16 @@ import {
   ChevronDown,
   Clock,
   Info,
-  Copy,
-  ClipboardCheck,
 } from "lucide-react";
-
-/* ------------------------------------------------------------------ */
-/*  Payment method definitions (main methods only)                     */
-/* ------------------------------------------------------------------ */
-
-type MethodId = "card" | "ach" | "zelle" | "check";
-
-interface PaymentMethodDef {
-  id: MethodId;
-  label: string;
-  sublabel?: string;
-  icon: React.ReactNode;
-  iconBg: string;
-}
-
-const STRIPE_EL_STYLE = {
-  base: {
-    fontSize: "16px",
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    color: "#0f172a",
-    "::placeholder": { color: "#94a3b8" },
-    lineHeight: "24px",
-  },
-  invalid: { color: "#ef4444", iconColor: "#ef4444" },
-};
-
-const MAIN_METHODS: PaymentMethodDef[] = [
-  {
-    id: "card",
-    label: "Card",
-    sublabel: "Visa, Mastercard, Amex",
-    icon: <CreditCard className="h-5 w-5" />,
-    iconBg: "bg-slate-100 text-slate-700",
-  },
-  {
-    id: "ach",
-    label: "US Bank",
-    sublabel: "ACH Transfer",
-    icon: <Building2 className="h-5 w-5" />,
-    iconBg: "bg-blue-100 text-blue-700",
-  },
-  {
-    id: "zelle",
-    label: "Zelle",
-    sublabel: "Pay later via Zelle",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#6d1ed4">
-        <path d="M13.559 24h-2.841a.483.483 0 0 1-.483-.483v-2.765H5.638a.667.667 0 0 1-.666-.666v-2.234a.67.67 0 0 1 .142-.412l8.139-10.382h-7.25a.667.667 0 0 1-.667-.667V3.914c0-.367.299-.666.666-.666h4.23V.483c0-.266.217-.483.483-.483h2.841c.266 0 .483.217.483.483v2.765h4.323c.367 0 .666.299.666.666v2.137a.67.67 0 0 1-.141.41l-8.19 10.481h7.665c.367 0 .666.299.666.666v2.477a.667.667 0 0 1-.666.667h-4.32v2.765a.483.483 0 0 1-.483.483" />
-      </svg>
-    ),
-    iconBg: "bg-purple-100",
-  },
-  {
-    id: "check",
-    label: "Bank Check",
-    sublabel: "ACH Direct Debit",
-    icon: <Landmark className="h-5 w-5" />,
-    iconBg: "bg-teal-100 text-teal-700",
-  },
-];
-
-const STRIPE_APPEARANCE = {
-  theme: "stripe" as const,
-  variables: {
-    colorPrimary: "#0f172a",
-    borderRadius: "8px",
-    fontSizeBase: "16px",
-    spacingUnit: "5px",
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-  },
-};
+import {
+  type MethodId,
+  STRIPE_EL_STYLE,
+  MAIN_METHODS,
+  STRIPE_APPEARANCE,
+} from "./_components/payment-constants";
+import { MorePaymentOptions } from "./_components/more-payment-options";
+import { AchPaymentForm, AchNotice } from "./_components/ach-payment-form";
+import { CopyButton } from "./_components/copy-button";
 
 /* ------------------------------------------------------------------ */
 /*  Page component                                                     */
@@ -1086,182 +1017,3 @@ function CustomPaymentForm({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  MorePaymentOptions — Stripe PaymentElement in separate Elements    */
-/* ------------------------------------------------------------------ */
-
-function MorePaymentOptions({
-  submitRef,
-  returnUrl,
-  onSuccess,
-}: {
-  submitRef: React.MutableRefObject<(() => Promise<void>) | null>;
-  returnUrl: string;
-  onSuccess: (paymentIntentId?: string) => void;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-
-  useEffect(() => {
-    submitRef.current = async () => {
-      if (!stripe || !elements) return;
-
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: { return_url: returnUrl },
-        redirect: "if_required",
-      });
-
-      if (error) {
-        toast.error(error.message || "Payment failed.");
-      } else if (
-        paymentIntent?.status === "succeeded" ||
-        paymentIntent?.status === "processing"
-      ) {
-        toast.success("Payment successful!");
-        onSuccess(paymentIntent?.id);
-      }
-      // If redirect happened, user left the page — nothing to do here
-    };
-
-    return () => {
-      submitRef.current = null;
-    };
-  }, [stripe, elements, submitRef, returnUrl, onSuccess]);
-
-  return (
-    <PaymentElement
-      options={{
-        layout: { type: "accordion", defaultCollapsed: false, radios: true },
-        paymentMethodOrder: [
-          "amazon_pay",
-          "klarna",
-        ],
-        wallets: { applePay: "never", googlePay: "never" },
-      }}
-    />
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  AchPaymentForm — Stripe PaymentElement for US bank account (ACH)   */
-/* ------------------------------------------------------------------ */
-
-function AchPaymentForm({
-  submitRef,
-  returnUrl,
-  onSuccess,
-}: {
-  submitRef: React.MutableRefObject<(() => Promise<void>) | null>;
-  returnUrl: string;
-  onSuccess: (paymentIntentId?: string) => void;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-
-  useEffect(() => {
-    submitRef.current = async () => {
-      if (!stripe || !elements) return;
-
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: { return_url: returnUrl },
-        redirect: "if_required",
-      });
-
-      if (error) {
-        toast.error(error.message || "Payment failed.");
-      } else if (
-        paymentIntent?.status === "succeeded" ||
-        paymentIntent?.status === "processing"
-      ) {
-        toast.success(
-          paymentIntent.status === "processing"
-            ? "Payment initiated! ACH transfers take 3-5 business days."
-            : "Payment successful!"
-        );
-        onSuccess(paymentIntent?.id);
-      }
-    };
-
-    return () => {
-      submitRef.current = null;
-    };
-  }, [stripe, elements, submitRef, returnUrl, onSuccess]);
-
-  return (
-    <PaymentElement
-      options={{
-        layout: { type: "accordion", defaultCollapsed: false, radios: false },
-        paymentMethodOrder: ["us_bank_account"],
-        wallets: { applePay: "never", googlePay: "never" },
-      }}
-    />
-  );
-}
-
-/* ---- Shared ACH notice ---- */
-
-function AchNotice() {
-  return (
-    <>
-      <div className="flex gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-        <div>
-          <p className="font-semibold">ACH Processing Time</p>
-          <p className="mt-0.5 text-amber-700">
-            Bank transfers take 3-5 business days to process. Your registration
-            will be confirmed once the payment clears.
-          </p>
-        </div>
-      </div>
-      <p className="text-[10px] text-muted-foreground leading-relaxed">
-        By clicking &ldquo;Pay&rdquo;, you authorize ECKCM and Stripe, our
-        payment service provider, to debit your bank account for the amount
-        stated above. You may cancel this authorization at any time by
-        contacting us.
-      </p>
-    </>
-  );
-}
-
-/* ---- Copy button for Zelle memo ---- */
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  const [pulse, setPulse] = useState(false);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      if (copied) {
-        // Already copied before — trigger pulse animation
-        setPulse(true);
-        setTimeout(() => setPulse(false), 300);
-      }
-      setCopied(true);
-    } catch {
-      toast.error("Failed to copy");
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-sm font-mono font-semibold transition-all duration-200 ${
-        copied
-          ? "bg-green-100 border-green-400 text-green-800"
-          : "bg-purple-100 border-purple-300 text-purple-900 hover:bg-purple-200"
-      }`}
-      style={pulse ? { transform: "scale(1.08)" } : undefined}
-    >
-      {text}
-      {copied ? (
-        <ClipboardCheck className="h-3.5 w-3.5 text-green-600" />
-      ) : (
-        <Copy className="h-3.5 w-3.5 text-purple-600" />
-      )}
-    </button>
-  );
-}

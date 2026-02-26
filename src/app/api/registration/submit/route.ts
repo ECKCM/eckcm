@@ -5,49 +5,13 @@ import { generateSafeConfirmationCode } from "@/lib/services/confirmation-code.s
 import { calculateEstimate } from "@/lib/services/pricing.service";
 import type { MealFeeCategory } from "@/lib/services/pricing.service";
 import { createInvoice } from "@/lib/services/invoice.service";
-import type { RoomGroupInput, AirportPickupInput, MealSelection } from "@/lib/types/registration";
+import type { RoomGroupInput, AirportPickupInput } from "@/lib/types/registration";
 import { buildPhoneValue } from "@/lib/utils/field-helpers";
+import { submitRegistrationSchema } from "@/lib/schemas/api";
+import { rateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
+import { populateDefaultMeals } from "@/lib/services/meal.service";
 
-const MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER"] as const;
-
-/** Fill default full-day selections when participant has empty mealSelections */
-function populateDefaultMeals(
-  roomGroups: RoomGroupInput[],
-  mealStartDate: string,
-  mealEndDate: string
-): RoomGroupInput[] {
-  const start = new Date(mealStartDate + "T00:00:00");
-  const end = new Date(mealEndDate + "T00:00:00");
-  const mealDates: string[] = [];
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    mealDates.push(d.toISOString().split("T")[0]);
-  }
-
-  return roomGroups.map((group) => ({
-    ...group,
-    participants: group.participants.map((p) => {
-      if (p.mealSelections.length > 0) return p;
-      const defaultSelections: MealSelection[] = [];
-      for (const date of mealDates) {
-        for (const mealType of MEAL_TYPES) {
-          defaultSelections.push({ date, mealType, selected: true });
-        }
-      }
-      return { ...p, mealSelections: defaultSelections };
-    }),
-  }));
-}
-
-interface SubmitBody {
-  eventId: string;
-  startDate: string;
-  endDate: string;
-  nightsCount: number;
-  registrationGroupId: string;
-  roomGroups: RoomGroupInput[];
-  keyDeposit: number;
-  airportPickup: AirportPickupInput;
-}
 
 export async function POST(request: Request) {
   try {
@@ -60,7 +24,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body: SubmitBody = await request.json();
+  const rl = rateLimit(`submit:${user.id}`, 5, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
+  const parsed = submitRegistrationSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid request", details: parsed.error.flatten().fieldErrors },
+      { status: 400 }
+    );
+  }
   const {
     eventId,
     startDate,
@@ -69,17 +44,7 @@ export async function POST(request: Request) {
     registrationGroupId,
     roomGroups,
     airportPickup,
-  } = body;
-
-  if (
-    !eventId ||
-    !startDate ||
-    !endDate ||
-    !registrationGroupId ||
-    !roomGroups?.length
-  ) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-  }
+  } = parsed.data;
 
   // Use admin client for multi-table inserts (bypasses RLS for server-side transaction)
   const admin = createAdminClient();
@@ -158,10 +123,10 @@ export async function POST(request: Request) {
     (f: any) => f.code.startsWith("MEAL_")
   );
 
-  // 3d. Load event start date for age calculation
+  // 3d. Load event dates for age calculation and meal day filtering
   const { data: event } = await admin
     .from("eckcm_events")
-    .select("event_start_date")
+    .select("event_start_date, event_end_date")
     .eq("id", eventId)
     .single();
 
@@ -170,10 +135,14 @@ export async function POST(request: Request) {
     regGroup.early_bird_deadline != null &&
     new Date() < new Date(regGroup.early_bird_deadline);
 
+  const evStartDate = event?.event_start_date ?? startDate;
+  const evEndDate = event?.event_end_date ?? endDate;
   const processedRoomGroups = populateDefaultMeals(
     roomGroups,
     startDate,
-    endDate
+    endDate,
+    evStartDate,
+    evEndDate
   );
 
   const estimate = calculateEstimate({
@@ -225,13 +194,39 @@ export async function POST(request: Request) {
     .single();
 
   if (regError) {
+    logger.error("[registration/submit] Registration insert error", { error: String(regError) });
     return NextResponse.json(
-      { error: "Failed to create registration: " + regError.message },
+      { error: "Failed to create registration" },
       { status: 500 }
     );
   }
 
   // 6. Insert groups, people, and memberships
+  // Track created IDs for cleanup on failure
+  const createdPersonIds: string[] = [];
+
+  // Pre-generate all participant codes in batch (avoid N+1)
+  const totalParticipants = roomGroups.reduce((sum, g) => sum + g.participants.length, 0);
+  const candidates: string[] = [];
+  for (let i = 0; i < totalParticipants + 10; i++) {
+    candidates.push(generateSafeConfirmationCode());
+  }
+  // Batch check for existing codes in one query
+  const { data: existingCodes } = await admin
+    .from("eckcm_group_memberships")
+    .select("participant_code")
+    .in("participant_code", candidates);
+  const usedCodes = new Set((existingCodes ?? []).map((c: { participant_code: string }) => c.participant_code));
+  const availableCodes = candidates.filter((c) => !usedCodes.has(c));
+  let codeIndex = 0;
+
+  async function cleanupOnFailure() {
+    if (createdPersonIds.length > 0) {
+      await admin.from("eckcm_people").delete().in("id", createdPersonIds);
+    }
+    await admin.from("eckcm_registrations").delete().eq("id", registration!.id);
+  }
+
   let groupCodeCounter = 1;
   for (const roomGroup of roomGroups) {
     const groupCode = `G${String(groupCodeCounter++).padStart(2, "0")}`;
@@ -250,13 +245,10 @@ export async function POST(request: Request) {
       .single();
 
     if (groupError) {
-      // Attempt cleanup
-      await admin
-        .from("eckcm_registrations")
-        .delete()
-        .eq("id", registration.id);
+      logger.error("[registration/submit] Group insert error", { error: String(groupError) });
+      await cleanupOnFailure();
       return NextResponse.json(
-        { error: "Failed to create group: " + groupError.message },
+        { error: "Failed to create group" },
         { status: 500 }
       );
     }
@@ -297,33 +289,18 @@ export async function POST(request: Request) {
         .single();
 
       if (personError) {
-        await admin
-          .from("eckcm_registrations")
-          .delete()
-          .eq("id", registration.id);
+        logger.error("[registration/submit] Person insert error", { error: String(personError) });
+        await cleanupOnFailure();
         return NextResponse.json(
-          { error: "Failed to create person: " + personError.message },
+          { error: "Failed to create participant" },
           { status: 500 }
         );
       }
 
-      // Generate 6-char participant confirmation code (unique per event)
-      let participantCode = "";
-      for (let attempt = 0; attempt < 10; attempt++) {
-        const candidate = generateSafeConfirmationCode();
-        const { data: existingCode } = await admin
-          .from("eckcm_group_memberships")
-          .select("id")
-          .eq("participant_code", candidate)
-          .maybeSingle();
-        if (!existingCode) {
-          participantCode = candidate;
-          break;
-        }
-      }
-      if (!participantCode) {
-        participantCode = generateSafeConfirmationCode();
-      }
+      createdPersonIds.push(person.id);
+
+      // Use pre-generated unique participant code
+      const participantCode = availableCodes[codeIndex++] || generateSafeConfirmationCode();
 
       // Group membership with participant code
       await admin.from("eckcm_group_memberships").insert({
@@ -365,7 +342,7 @@ export async function POST(request: Request) {
       breakdown: estimate.breakdown,
     });
   } catch (invoiceErr) {
-    console.error("Invoice creation failed:", invoiceErr);
+    logger.error("[registration/submit] Invoice creation failed", { error: String(invoiceErr) });
     // Non-fatal: registration is still valid, invoice can be created later
   }
 
@@ -375,9 +352,9 @@ export async function POST(request: Request) {
     total: estimate.total,
   });
   } catch (err) {
-    console.error("[registration/submit] Unhandled error:", err);
+    logger.error("[registration/submit] Unhandled error", { error: String(err) });
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Internal server error" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

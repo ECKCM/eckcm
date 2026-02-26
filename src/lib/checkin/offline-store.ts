@@ -44,14 +44,13 @@ async function getDB(): Promise<IDBPDatabase> {
   if (dbInstance) return dbInstance;
 
   dbInstance = await openDB(DB_NAME, DB_VERSION, {
-    upgrade(db, oldVersion) {
+    upgrade(db, oldVersion, _newVersion, transaction) {
       if (!db.objectStoreNames.contains("epass_cache")) {
         const store = db.createObjectStore("epass_cache", { keyPath: "tokenHash" });
         store.createIndex("by_participant_code", "participantCode", { unique: false });
       } else if (oldVersion < 2) {
-        // Add index to existing store
-        const tx = (db as any).transaction("epass_cache", "readwrite");
-        const store = tx.objectStore("epass_cache");
+        // Add index to existing store using the upgrade transaction
+        const store = transaction.objectStore("epass_cache");
         if (!store.indexNames.contains("by_participant_code")) {
           store.createIndex("by_participant_code", "participantCode", { unique: false });
         }

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -58,16 +59,30 @@ interface ParticipantRow {
   lodging_type: string | null;
 }
 
+const PAGE_SIZE = 50;
+
 export function ParticipantsTable({ events }: { events: Event[] }) {
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
   const [search, setSearch] = useState("");
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   const loadParticipants = useCallback(async () => {
     if (!eventId) return;
     setLoading(true);
     const supabase = createClient();
+
+    // Get total count for pagination
+    const { count } = await supabase
+      .from("eckcm_group_memberships")
+      .select("person_id", { count: "exact", head: true })
+      .eq("eckcm_groups.event_id", eventId);
+    setTotalCount(count ?? 0);
+
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
 
     const { data } = await supabase
       .from("eckcm_group_memberships")
@@ -96,7 +111,8 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
           )
         )
       `)
-      .eq("eckcm_groups.event_id", eventId);
+      .eq("eckcm_groups.event_id", eventId)
+      .range(from, to);
 
     if (data) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,7 +158,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
       setParticipants(rows);
     }
     setLoading(false);
-  }, [eventId]);
+  }, [eventId, page]);
 
   useEffect(() => {
     loadParticipants();
@@ -238,6 +254,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
               Loading...
             </p>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -364,6 +381,33 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
                 </TableBody>
               </Table>
             </div>
+
+            {totalCount > PAGE_SIZE && (
+              <div className="flex items-center justify-between pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Showing {page * PAGE_SIZE + 1}{"-"}{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={(page + 1) * PAGE_SIZE >= totalCount}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>

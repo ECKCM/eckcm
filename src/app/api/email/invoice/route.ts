@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getResendClient } from "@/lib/email/resend";
+import { emailInvoiceSchema } from "@/lib/schemas/api";
+import { rateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 const FROM_EMAIL =
   process.env.EMAIL_FROM || "ECKCM <noreply@my.eckcm.com>";
@@ -16,18 +19,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { invoiceId, email } = await req.json();
+  const rl = rateLimit(`email:${user.id}`, 3, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
 
-  if (!invoiceId) {
+  const parsed = emailInvoiceSchema.safeParse(await req.json());
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "invoiceId is required" },
+      { error: "Invalid request", details: parsed.error.flatten().fieldErrors },
       { status: 400 }
     );
   }
+  const { invoiceId } = parsed.data;
 
   const admin = createAdminClient();
 
-  // Load invoice with line items
+  // Load invoice with registration ownership check
   const { data: invoice } = await admin
     .from("eckcm_invoices")
     .select(
@@ -37,6 +45,7 @@ export async function POST(req: NextRequest) {
       total_amount_cents,
       status,
       created_at,
+      registration_id,
       eckcm_invoice_line_items(description, amount_cents, quantity)
     `
     )
@@ -50,9 +59,23 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const inv = invoice as any;
-  const recipientEmail = email || user.email;
+  // Verify user owns the registration linked to this invoice
+  const inv = invoice as typeof invoice & {
+    registration_id: string;
+    eckcm_invoice_line_items: { description: string; amount_cents: number; quantity: number }[];
+  };
+  const { data: reg } = await admin
+    .from("eckcm_registrations")
+    .select("created_by_user_id")
+    .eq("id", inv.registration_id)
+    .single();
+
+  if (!reg || reg.created_by_user_id !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Only send to the authenticated user's own email (prevent injection)
+  const recipientEmail = user.email;
 
   if (!recipientEmail) {
     return NextResponse.json(
@@ -79,7 +102,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[email/invoice] Failed:", error);
+    logger.error("[email/invoice] Failed", { error: String(error) });
     return NextResponse.json(
       { error: "Failed to send invoice email" },
       { status: 500 }

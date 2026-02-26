@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     .select("epass_hmac_secret")
     .eq("id", 1)
     .single();
-  const hmacSecret = (appConfig as any)?.epass_hmac_secret as string | null;
+  const hmacSecret = (appConfig as unknown as { epass_hmac_secret: string | null } | null)?.epass_hmac_secret ?? null;
 
   for (const item of checkins) {
     try {
@@ -98,7 +98,13 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        const m = membership as any;
+        const m = membership as unknown as {
+          person_id: string;
+          eckcm_groups: {
+            registration_id: string;
+            eckcm_registrations: { event_id: string; status: string };
+          };
+        };
         personId = m.person_id;
         eventId = m.eckcm_groups.eckcm_registrations.event_id;
         regStatus = m.eckcm_groups.eckcm_registrations.status;
@@ -137,7 +143,11 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        const data = epass as any;
+        const data = epass as unknown as {
+          person_id: string;
+          is_active: boolean;
+          eckcm_registrations: { event_id: string; status: string };
+        };
         personId = data.person_id;
         eventId = data.eckcm_registrations.event_id;
         regStatus = data.eckcm_registrations.status;

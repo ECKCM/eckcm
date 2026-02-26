@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
 
   // Build lookup: person_id:registration_id -> participant_code
   const codeMap = new Map<string, string>();
-  for (const m of (memberships ?? []) as any[]) {
+  for (const m of (memberships ?? []) as unknown as { person_id: string; participant_code: string; eckcm_groups: { registration_id: string } }[]) {
     const regId = m.eckcm_groups?.registration_id;
     if (regId) codeMap.set(`${m.person_id}:${regId}`, m.participant_code);
   }
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
     .select("epass_hmac_secret")
     .eq("id", 1)
     .single();
-  const hmacSecret = (appConfig as any)?.epass_hmac_secret as string | null;
+  const hmacSecret = (appConfig as unknown as { epass_hmac_secret: string | null } | null)?.epass_hmac_secret ?? null;
 
   const mapped = (tokens ?? []).map((t: any) => {
     const code = codeMap.get(`${t.person_id}:${t.registration_id}`) ?? null;

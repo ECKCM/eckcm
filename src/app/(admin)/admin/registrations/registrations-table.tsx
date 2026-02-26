@@ -82,6 +82,7 @@ interface PersonDetail {
   participant_code: string | null;
 }
 
+const PAGE_SIZE = 50;
 const STATUS_OPTIONS = ["ALL", "PAID", "SUBMITTED", "DRAFT", "CANCELLED", "REFUNDED"];
 
 const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -107,6 +108,8 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [registrations, setRegistrations] = useState<RegistrationRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => setMounted(true), []);
 
@@ -123,7 +126,16 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
     setLoading(true);
     const supabase = createClient();
 
-    // Main registration query
+    // Get total count for pagination
+    const { count } = await supabase
+      .from("eckcm_registrations")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId);
+    setTotalCount(count ?? 0);
+
+    // Main registration query with pagination
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
     const { data } = await supabase
       .from("eckcm_registrations")
       .select(`
@@ -163,7 +175,8 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         )
       `)
       .eq("event_id", eventId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     // Fetch all MAIN check-ins for this event (arrival check-in)
     const { data: checkins } = await supabase
@@ -263,7 +276,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
       setRegistrations(rows);
     }
     setLoading(false);
-  }, [eventId]);
+  }, [eventId, page]);
 
   useEffect(() => {
     loadRegistrations();
@@ -441,6 +454,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
           {loading ? (
             <p className="text-center text-muted-foreground py-8">Loading...</p>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -616,6 +630,33 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                 </TableBody>
               </Table>
             </div>
+
+            {totalCount > PAGE_SIZE && (
+              <div className="flex items-center justify-between pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Showing {page * PAGE_SIZE + 1}{"-"}{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={(page + 1) * PAGE_SIZE >= totalCount}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>
