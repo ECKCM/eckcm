@@ -15,9 +15,13 @@ export default function ConfirmationPage() {
   const searchParams = useSearchParams();
   const code = searchParams.get("code");
   const registrationId = searchParams.get("registrationId");
-  const [status, setStatus] = useState<PaymentStatus>("loading");
+  const method = searchParams.get("method");
+  const [status, setStatus] = useState<PaymentStatus>(method === "zelle" ? "pending" : "loading");
 
   useEffect(() => {
+    // Zelle payments are always pending until admin confirms — skip polling
+    if (method === "zelle") return;
+
     if (!registrationId) {
       setStatus("error");
       return;
@@ -56,7 +60,7 @@ export default function ConfirmationPage() {
       }, 2000);
       return () => clearInterval(interval);
     });
-  }, [registrationId]);
+  }, [registrationId, method]);
 
   if (status === "loading") {
     return (

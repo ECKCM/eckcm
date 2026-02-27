@@ -329,20 +329,24 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
 
   const updateStatus = async (regId: string, newStatus: string) => {
     setUpdatingId(regId);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("eckcm_registrations")
-      .update({ status: newStatus })
-      .eq("id", regId);
-
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success(`Status updated to ${newStatus}`);
-      loadRegistrations();
-      if (detailReg?.id === regId) {
-        setDetailReg({ ...detailReg, status: newStatus });
+    try {
+      const res = await fetch("/api/admin/registration/status", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationId: regId, status: newStatus }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to update status");
+      } else {
+        toast.success(`Status updated to ${newStatus}`);
+        loadRegistrations();
+        if (detailReg?.id === regId) {
+          setDetailReg({ ...detailReg, status: newStatus });
+        }
       }
+    } catch {
+      toast.error("Network error");
     }
     setUpdatingId(null);
   };

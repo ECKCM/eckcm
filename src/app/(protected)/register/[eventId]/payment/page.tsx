@@ -223,7 +223,7 @@ export default function PaymentStep() {
       }
     }
     router.push(
-      `/register/${eventId}/confirmation?registrationId=${registrationId}&code=${confirmationCode || ""}`
+      `/register/${eventId}/confirmation?registrationId=${registrationId}&code=${confirmationCode || ""}${paymentIntentId ? "" : "&method=zelle"}`
     );
   };
 
