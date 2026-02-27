@@ -33,7 +33,7 @@ function openDB(): Promise<IDBDatabase> {
 export function useOfflineCheckin() {
   const [isOnline, setIsOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
-  const syncIntervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     setIsOnline(navigator.onLine);

@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import DOMPurify from "dompurify";
+import * as DOMPurifyModule from "dompurify";
+
+const DOMPurify = DOMPurifyModule.default ?? DOMPurifyModule;
 
 interface SanitizedHtmlProps {
   html: string;

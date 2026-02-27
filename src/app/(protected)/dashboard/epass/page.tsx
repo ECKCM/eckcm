@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -24,7 +25,7 @@ export default async function EPassPage() {
       created_at,
       person_id,
       registration_id,
-      eckcm_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date),
+      eckcm_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date, phone),
       eckcm_registrations!inner(
         confirmation_code,
         status,
@@ -40,12 +41,43 @@ export default async function EPassPage() {
 
   if (!tokens || tokens.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl p-4 pt-8">
-        <h1 className="text-2xl font-bold mb-4">E-Pass</h1>
+      <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 w-9 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          </Link>
+          <h1 className="text-2xl font-bold">E-Pass</h1>
+        </div>
         <p className="text-muted-foreground">No E-Pass found.</p>
       </div>
     );
   }
+
+  // Get the logged-in user's own person IDs for "not your pass" detection
+  // Registration creates separate person records not linked via eckcm_user_people,
+  // so we match by name + birth_date to find the user's own tokens
+  const { data: userPeople } = await supabase
+    .from("eckcm_user_people")
+    .select("person_id, eckcm_people(first_name_en, last_name_en, birth_date)")
+    .eq("user_id", user.id);
+  const myIdentities = (userPeople ?? []).map((up: any) => ({
+    first_name_en: up.eckcm_people?.first_name_en,
+    last_name_en: up.eckcm_people?.last_name_en,
+    birth_date: up.eckcm_people?.birth_date,
+  }));
+  const myPersonIds = (tokens as any[])
+    .filter((t: any) =>
+      myIdentities.some(
+        (me) =>
+          me.first_name_en === t.eckcm_people.first_name_en &&
+          me.last_name_en === t.eckcm_people.last_name_en &&
+          me.birth_date === t.eckcm_people.birth_date
+      )
+    )
+    .map((t: any) => t.person_id);
 
   // Fetch participant_codes from group_memberships
   const admin = createAdminClient();
@@ -87,5 +119,5 @@ export default async function EPassPage() {
     };
   });
 
-  return <EPassList tokens={enriched as any} />;
+  return <EPassList tokens={enriched as any} myPersonIds={myPersonIds} />;
 }

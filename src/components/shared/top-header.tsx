@@ -54,6 +54,12 @@ export function TopHeader({
 }: TopHeaderProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const navigateMobile = (path: string) => {
+    setMobileMenuOpen(false);
+    router.push(path);
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -79,7 +85,7 @@ export function TopHeader({
     <header className="sticky top-0 z-50 w-full border-b bg-primary text-white">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
         {/* Mobile menu */}
-        <Sheet>
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="text-white hover:bg-white/15 hover:text-white md:hidden">
               <Menu className="h-5 w-5" />
@@ -94,7 +100,7 @@ export function TopHeader({
               <Button
                 variant="ghost"
                 className="justify-start"
-                onClick={() => router.push("/dashboard")}
+                onClick={() => navigateMobile("/dashboard")}
               >
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 Dashboard
@@ -102,7 +108,7 @@ export function TopHeader({
               <Button
                 variant="ghost"
                 className="justify-start"
-                onClick={() => router.push("/dashboard/epass")}
+                onClick={() => navigateMobile("/dashboard/epass")}
               >
                 <QrCode className="mr-2 h-4 w-4" />
                 E-Pass
@@ -110,7 +116,7 @@ export function TopHeader({
               <Button
                 variant="ghost"
                 className="justify-start"
-                onClick={() => router.push("/dashboard/receipts")}
+                onClick={() => navigateMobile("/dashboard/receipts")}
               >
                 <Receipt className="mr-2 h-4 w-4" />
                 Receipts
@@ -118,7 +124,7 @@ export function TopHeader({
               <Button
                 variant="ghost"
                 className="justify-start"
-                onClick={() => router.push("/dashboard/registrations")}
+                onClick={() => navigateMobile("/dashboard/registrations")}
               >
                 <ClipboardList className="mr-2 h-4 w-4" />
                 Registrations
@@ -127,7 +133,7 @@ export function TopHeader({
               <Button
                 variant="ghost"
                 className="justify-start"
-                onClick={() => router.push("/dashboard/settings")}
+                onClick={() => navigateMobile("/dashboard/settings")}
               >
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
@@ -136,7 +142,7 @@ export function TopHeader({
                 <Button
                   variant="ghost"
                   className="justify-start"
-                  onClick={() => router.push("/admin")}
+                  onClick={() => navigateMobile("/admin")}
                 >
                   <Shield className="mr-2 h-4 w-4" />
                   Admin Panel
@@ -146,7 +152,7 @@ export function TopHeader({
               <Button
                 variant="ghost"
                 className="justify-start text-destructive"
-                onClick={handleLogout}
+                onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout

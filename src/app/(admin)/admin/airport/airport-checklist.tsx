@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -17,7 +18,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { PlaneLanding, PlaneTakeoff, Users, Plane } from "lucide-react";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { PlaneLanding, PlaneTakeoff, Users, Plane, Search } from "lucide-react";
 
 interface EventOption {
   id: string;
@@ -50,6 +57,7 @@ export function AirportChecklist() {
   const [rides, setRides] = useState<RideWithPassengers[]>([]);
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -170,8 +178,35 @@ export function AirportChecklist() {
     });
   };
 
-  const pickups = rides.filter((r) => r.direction === "PICKUP");
-  const dropoffs = rides.filter((r) => r.direction === "DROPOFF");
+  // Filter rides by search query (matches passenger name, phone, confirmation code, flight info)
+  const filterRides = useMemo(() => {
+    if (!searchQuery.trim()) return rides;
+    const q = searchQuery.toLowerCase();
+    return rides
+      .map((ride) => ({
+        ...ride,
+        passengers: ride.passengers.filter(
+          (p) =>
+            p.registrantName.toLowerCase().includes(q) ||
+            p.registrantPhone?.toLowerCase().includes(q) ||
+            p.confirmationCode?.toLowerCase().includes(q) ||
+            p.flightInfo?.toLowerCase().includes(q)
+        ),
+      }))
+      .filter((ride) => ride.passengers.length > 0);
+  }, [rides, searchQuery]);
+
+  const pickups = filterRides.filter((r) => r.direction === "PICKUP");
+  const dropoffs = filterRides.filter((r) => r.direction === "DROPOFF");
+
+  const pickupPassengerCount = pickups.reduce(
+    (sum, r) => sum + r.passengers.reduce((s, p) => s + p.passengerCount, 0),
+    0
+  );
+  const dropoffPassengerCount = dropoffs.reduce(
+    (sum, r) => sum + r.passengers.reduce((s, p) => s + p.passengerCount, 0),
+    0
+  );
 
   if (loading && !rides.length) {
     return (
@@ -180,8 +215,8 @@ export function AirportChecklist() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
         <Select value={selectedEventId} onValueChange={setSelectedEventId}>
           <SelectTrigger className="w-[280px]">
             <SelectValue placeholder="Select event" />
@@ -194,6 +229,16 @@ export function AirportChecklist() {
             ))}
           </SelectContent>
         </Select>
+
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Search name, phone, code, flight..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
       </div>
 
       {rides.length === 0 ? (
@@ -202,34 +247,31 @@ export function AirportChecklist() {
           <p>No airport rides configured for this event.</p>
         </div>
       ) : (
-        <>
-          {/* Pickups */}
-          {pickups.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <PlaneLanding className="size-5" />
-                Pickup (Airport → Camp)
-              </h2>
-              {pickups.map((ride) => (
-                <RideCard
-                  key={ride.id}
-                  ride={ride}
-                  checked={checked}
-                  onToggleCheck={toggleCheck}
-                  formatDateTime={formatDateTime}
-                />
-              ))}
-            </div>
-          )}
+        <Tabs defaultValue="pickup">
+          <TabsList>
+            <TabsTrigger value="pickup" className="gap-2">
+              <PlaneLanding className="size-4" />
+              Pickup
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {pickupPassengerCount}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="dropoff" className="gap-2">
+              <PlaneTakeoff className="size-4" />
+              Drop-off
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {dropoffPassengerCount}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Dropoffs */}
-          {dropoffs.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <PlaneTakeoff className="size-5" />
-                Drop-off (Camp → Airport)
-              </h2>
-              {dropoffs.map((ride) => (
+          <TabsContent value="pickup" className="space-y-4 mt-4">
+            {pickups.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                {searchQuery ? "No matching passengers found." : "No pickup rides configured."}
+              </p>
+            ) : (
+              pickups.map((ride) => (
                 <RideCard
                   key={ride.id}
                   ride={ride}
@@ -237,10 +279,28 @@ export function AirportChecklist() {
                   onToggleCheck={toggleCheck}
                   formatDateTime={formatDateTime}
                 />
-              ))}
-            </div>
-          )}
-        </>
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="dropoff" className="space-y-4 mt-4">
+            {dropoffs.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                {searchQuery ? "No matching passengers found." : "No drop-off rides configured."}
+              </p>
+            ) : (
+              dropoffs.map((ride) => (
+                <RideCard
+                  key={ride.id}
+                  ride={ride}
+                  checked={checked}
+                  onToggleCheck={toggleCheck}
+                  formatDateTime={formatDateTime}
+                />
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );

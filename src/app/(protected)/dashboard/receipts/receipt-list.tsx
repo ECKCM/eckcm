@@ -34,7 +34,7 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
+        <Button variant="outline" size="icon" asChild>
           <Link href="/dashboard">
             <ArrowLeft className="h-5 w-5" />
           </Link>

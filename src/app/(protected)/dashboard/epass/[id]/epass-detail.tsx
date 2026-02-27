@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ShieldCheck, Copy, Check } from "lucide-react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 
 interface EPassDetailProps {
   token: {
@@ -40,39 +39,16 @@ function getMealCategory(birthDate: string, eventDate: string): string {
   return "Free";
 }
 
-function buildEPassSlug(
-  firstName: string,
-  lastName: string,
-  token: string,
-): string {
-  const name = `${firstName}${lastName}`.replace(/[^a-zA-Z0-9]/g, "");
-  return `${name}_${token}`;
-}
-
 export function EPassDetail({ token }: EPassDetailProps) {
   const person = token.eckcm_people;
   const reg = token.eckcm_registrations;
   const event = reg.eckcm_events;
   const meal = getMealCategory(person.birth_date, reg.start_date);
-  const slug = buildEPassSlug(
-    person.first_name_en,
-    person.last_name_en,
-    token.token,
-  );
-
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopyLink() {
-    const url = `${window.location.origin}/epass/${slug}`;
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
 
   return (
     <div className="mx-auto max-w-md p-4 pt-8 space-y-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
+        <Button variant="outline" size="icon" asChild>
           <Link href="/dashboard/epass">
             <ArrowLeft className="h-5 w-5" />
           </Link>
@@ -155,21 +131,6 @@ export function EPassDetail({ token }: EPassDetailProps) {
         </CardContent>
       </Card>
 
-      <Button
-        variant="outline"
-        className="w-full gap-2"
-        onClick={handleCopyLink}
-      >
-        {copied ? (
-          <>
-            <Check className="h-4 w-4" /> Link Copied!
-          </>
-        ) : (
-          <>
-            <Copy className="h-4 w-4" /> Copy E-Pass Link
-          </>
-        )}
-      </Button>
     </div>
   );
 }

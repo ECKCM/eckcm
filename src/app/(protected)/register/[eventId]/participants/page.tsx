@@ -103,6 +103,7 @@ export default function ParticipantsStep() {
     eventStartDate: string;
     eventEndDate: string;
   } | null>(null);
+  const [allowAddGroup, setAllowAddGroup] = useState(true);
   const [regGroups, setRegGroups] = useState<
     { id: string; department_id: string | null; is_default: boolean; only_one_person: boolean }[]
   >([]);
@@ -183,7 +184,7 @@ export default function ParticipantsStep() {
           .order("sort_order"),
         supabase
           .from("eckcm_events")
-          .select("event_start_date, event_end_date")
+          .select("event_start_date, event_end_date, allow_add_group")
           .eq("id", eventId)
           .single(),
         supabase
@@ -200,6 +201,7 @@ export default function ParticipantsStep() {
           eventStartDate: ev.event_start_date,
           eventEndDate: ev.event_end_date,
         });
+        setAllowAddGroup(ev.allow_add_group ?? true);
       }
 
       // Fetch app config for duplicate email setting
@@ -668,7 +670,7 @@ export default function ParticipantsStep() {
 
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Room Groups & Participants</h2>
-        {!isHansamoRestricted && !isOnlyOnePerson && (
+        {!isHansamoRestricted && !isOnlyOnePerson && allowAddGroup && (
           <Button variant="outline" size="sm" onClick={addGroup}>
             <Plus className="mr-1 size-4" />
             Add Group
@@ -712,7 +714,7 @@ export default function ParticipantsStep() {
 
               return (
                 <Collapsible key={p.id} open={isOpen} onOpenChange={() => togglePanel(panelKey)}>
-                  <div className="rounded-lg border">
+                  <div className="rounded-lg border bg-muted/50">
                     <CollapsibleTrigger asChild>
                       <button
                         type="button"
@@ -955,7 +957,7 @@ export default function ParticipantsStep() {
                               className="mt-0.5"
                             />
                             <Label className="text-xs font-normal leading-snug text-amber-900">
-                              참여 부서는 한사모이지만, 한사모 지정 숙소가 아닌 가족/지인과 함께 등록하는 일반 숙소를 희망합니다.
+                              본인은 이 등록 그룹의 대표 등록자로서, 한사모는 개별 등록이 필수이지만 한사모 지정 숙소가 아닌 개인 혹은 가족/지인과 함께 등록하는 <strong className="font-bold">일반 숙소</strong>를 희망합니다.
                             </Label>
                           </div>
                         )}

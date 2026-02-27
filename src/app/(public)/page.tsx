@@ -24,6 +24,22 @@ export default async function HomePage() {
         <div className="flex items-center justify-center gap-3 mb-4">
           <AdventistLogo className="h-12 w-12 sm:h-16 sm:w-16" />
           <EckcmLogo className="h-12 w-12 sm:h-16 sm:w-16" />
+          <div
+            className="h-12 w-12 sm:h-16 sm:w-16"
+            role="img"
+            aria-label="University of Pittsburgh Johnstown"
+            style={{
+              backgroundColor: "#0c1a33",
+              maskImage: "url(/images/upj-crest-128.png)",
+              WebkitMaskImage: "url(/images/upj-crest-128.png)",
+              maskSize: "contain",
+              WebkitMaskSize: "contain",
+              maskRepeat: "no-repeat",
+              WebkitMaskRepeat: "no-repeat",
+              maskPosition: "center",
+              WebkitMaskPosition: "center",
+            }}
+          />
         </div>
         <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
           ECKCM
@@ -37,13 +53,18 @@ export default async function HomePage() {
         <p className="mt-6 text-base leading-7 text-muted-foreground">
           Sign up to register for ECKCM
         </p>
-        <div className="mt-10 flex items-center justify-center gap-4">
-          <Button asChild size="lg">
-            <Link href="/signup">Sign Up</Link>
+        <div className="mt-10 flex flex-col items-center justify-center gap-4 w-full">
+          <Button asChild size="lg" variant="secondary" className="w-full">
+            <Link href="/dashboard/epass">Find My E-Pass</Link>
           </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link href="/login">Sign In</Link>
-          </Button>
+          <div className="flex w-full gap-4">
+            <Button asChild size="lg" className="flex-1">
+              <Link href="/signup">Sign Up</Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="flex-1">
+              <Link href="/login">Sign In</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </div>

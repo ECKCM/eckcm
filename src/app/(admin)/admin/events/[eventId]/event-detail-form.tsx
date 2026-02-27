@@ -36,6 +36,7 @@ interface EventDetailFormProps {
     stripe_mode: string;
     payment_test_mode: boolean;
     is_default: boolean;
+    allow_add_group: boolean;
   };
 }
 
@@ -65,6 +66,7 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
     stripe_mode: event.stripe_mode ?? "test",
     payment_test_mode: event.payment_test_mode ?? false,
     is_default: event.is_default ?? false,
+    allow_add_group: event.allow_add_group ?? true,
   });
 
   const handleSave = async () => {
@@ -94,6 +96,7 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
         is_default: form.is_default,
         stripe_mode: form.stripe_mode,
         payment_test_mode: form.payment_test_mode,
+        allow_add_group: form.allow_add_group,
       })
       .eq("id", event.id);
 
@@ -246,6 +249,19 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
           <Label>Payment Test</Label>
           {form.payment_test_mode && (
             <Badge variant="destructive">$1 TEST</Badge>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={form.allow_add_group}
+            onCheckedChange={(checked) =>
+              setForm({ ...form, allow_add_group: checked })
+            }
+          />
+          <Label>Allow Add Group</Label>
+          {!form.allow_add_group && (
+            <Badge variant="secondary">Single Group Only</Badge>
           )}
         </div>
 

@@ -82,7 +82,7 @@ export function BirthDatePicker({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1">
-        <Label className={labelClassName}>Date of Birth <span className="text-destructive">*</span></Label>
+        <Label className={labelClassName}>Date of Birth (Legal) <span className="text-destructive">*</span></Label>
         <Popover>
           <PopoverTrigger asChild>
             <button type="button" className="text-muted-foreground hover:text-foreground">

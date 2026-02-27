@@ -116,7 +116,7 @@ export function DashboardContent({
         >
           <QrCode className="h-5 w-5" />
           <span className="text-lg">E-Pass</span>
-          <span className="text-xs text-muted-foreground">View your passes</span>
+          <span className="text-xs text-muted-foreground">View group passes</span>
         </Button>
         <Button
           variant="outline"
