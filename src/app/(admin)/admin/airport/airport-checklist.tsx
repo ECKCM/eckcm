@@ -325,8 +325,8 @@ function RideCard({
   return (
     <Card className={!ride.is_active ? "opacity-50" : ""}>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge
               variant={ride.direction === "PICKUP" ? "default" : "secondary"}
             >
@@ -346,7 +346,7 @@ function RideCard({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1 text-sm text-muted-foreground shrink-0">
             <Users className="size-4" />
             <span>
               {totalPassengers} passenger{totalPassengers !== 1 ? "s" : ""}
@@ -382,7 +382,7 @@ function RideCard({
                   className="mt-0.5"
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={`font-medium text-sm ${
                         checked.has(p.registrationRideId)

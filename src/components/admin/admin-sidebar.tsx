@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -37,6 +38,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 interface AdminSidebarProps {
@@ -65,6 +67,32 @@ const settingsLinks = [
   { href: "/admin/settings/configuration", label: "Configuration", icon: Settings2 },
 ];
 
+function NavLink({
+  href,
+  isActive,
+  icon: Icon,
+  children,
+}: {
+  href: string;
+  isActive: boolean;
+  icon: React.ElementType;
+  children: React.ReactNode;
+}) {
+  const { isMobile, setOpenMobile } = useSidebar();
+  return (
+    <SidebarMenuButton
+      asChild
+      isActive={isActive}
+      onClick={() => { if (isMobile) setOpenMobile(false); }}
+    >
+      <Link href={href}>
+        <Icon />
+        <span>{children}</span>
+      </Link>
+    </SidebarMenuButton>
+  );
+}
+
 export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
   const pathname = usePathname();
 
@@ -83,134 +111,41 @@ export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === "/admin"}>
-                  <Link href="/admin">
-                    <LayoutDashboard />
-                    <span>Dashboard</span>
-                  </Link>
-                </SidebarMenuButton>
+                <NavLink href="/admin" isActive={pathname === "/admin"} icon={LayoutDashboard}>Dashboard</NavLink>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === "/admin/registrations"}
-                >
-                  <Link href="/admin/registrations">
-                    <FileText />
-                    <span>Registrations</span>
-                  </Link>
-                </SidebarMenuButton>
+                <NavLink href="/admin/registrations" isActive={pathname === "/admin/registrations"} icon={FileText}>Registrations</NavLink>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === "/admin/registrations/create"}
-                >
-                  <Link href="/admin/registrations/create">
-                    <ClipboardPlus />
-                    <span>Manual Registration</span>
-                  </Link>
-                </SidebarMenuButton>
+                <NavLink href="/admin/registrations/create" isActive={pathname === "/admin/registrations/create"} icon={ClipboardPlus}>Manual Registration</NavLink>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/admin/events")}
-                >
-                  <Link href="/admin/events">
-                    <Calendar />
-                    <span>Events</span>
-                  </Link>
-                </SidebarMenuButton>
+                <NavLink href="/admin/events" isActive={pathname.startsWith("/admin/events")} icon={Calendar}>Events</NavLink>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/admin/participants")}
-                >
-                  <Link href="/admin/participants">
-                    <UserCheck />
-                    <span>Participants</span>
-                  </Link>
-                </SidebarMenuButton>
+                <NavLink href="/admin/participants" isActive={pathname.startsWith("/admin/participants")} icon={UserCheck}>Participants</NavLink>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/admin/room-groups")}
-                >
-                  <Link href="/admin/room-groups">
-                    <BedDouble />
-                    <span>Room Groups</span>
-                  </Link>
-                </SidebarMenuButton>
+                <NavLink href="/admin/room-groups" isActive={pathname.startsWith("/admin/room-groups")} icon={BedDouble}>Room Groups</NavLink>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/admin/invoices")}
-                >
-                  <Link href="/admin/invoices">
-                    <FileText />
-                    <span>Invoices</span>
-                  </Link>
-                </SidebarMenuButton>
+                <NavLink href="/admin/invoices" isActive={pathname.startsWith("/admin/invoices")} icon={FileText}>Invoices</NavLink>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/admin/inventory")}
-                >
-                  <Link href="/admin/inventory">
-                    <Package />
-                    <span>Inventory</span>
-                  </Link>
-                </SidebarMenuButton>
+                <NavLink href="/admin/inventory" isActive={pathname.startsWith("/admin/inventory")} icon={Package}>Inventory</NavLink>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/admin/airport")}
-                >
-                  <Link href="/admin/airport">
-                    <Plane />
-                    <span>Airport</span>
-                  </Link>
-                </SidebarMenuButton>
+                <NavLink href="/admin/airport" isActive={pathname.startsWith("/admin/airport")} icon={Plane}>Airport</NavLink>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/admin/checkin")}
-                >
-                  <Link href="/admin/checkin">
-                    <ScanLine />
-                    <span>Check-in</span>
-                  </Link>
-                </SidebarMenuButton>
+                <NavLink href="/admin/checkin" isActive={pathname.startsWith("/admin/checkin")} icon={ScanLine}>Check-in</NavLink>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/admin/audit")}
-                >
-                  <Link href="/admin/audit">
-                    <ScrollText />
-                    <span>Audit Logs</span>
-                  </Link>
-                </SidebarMenuButton>
+                <NavLink href="/admin/audit" isActive={pathname.startsWith("/admin/audit")} icon={ScrollText}>Audit Logs</NavLink>
               </SidebarMenuItem>
               {isSuperAdmin && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname.startsWith("/admin/users")}
-                  >
-                    <Link href="/admin/users">
-                      <Users />
-                      <span>Users</span>
-                    </Link>
-                  </SidebarMenuButton>
+                  <NavLink href="/admin/users" isActive={pathname.startsWith("/admin/users")} icon={Users}>Users</NavLink>
                 </SidebarMenuItem>
               )}
             </SidebarMenu>
@@ -224,15 +159,9 @@ export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
             <SidebarMenu>
               {settingsLinks.map((link) => (
                 <SidebarMenuItem key={link.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === link.href}
-                  >
-                    <Link href={link.href}>
-                      <link.icon />
-                      <span>{link.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
+                  <NavLink href={link.href} isActive={pathname === link.href} icon={link.icon}>
+                    {link.label}
+                  </NavLink>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -247,21 +176,13 @@ export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
               <SidebarMenu>
                 {events.map((event) => (
                   <SidebarMenuItem key={event.id}>
-                    <SidebarMenuButton
-                      asChild
+                    <NavLink
+                      href={`/admin/events/${event.id}`}
                       isActive={pathname === `/admin/events/${event.id}`}
+                      icon={event.is_default ? () => <Star className="fill-yellow-400 text-yellow-400" /> : Calendar}
                     >
-                      <Link href={`/admin/events/${event.id}`}>
-                        {event.is_default ? (
-                          <Star className="fill-yellow-400 text-yellow-400" />
-                        ) : (
-                          <Calendar />
-                        )}
-                        <span>
-                          {event.name_en} ({event.year})
-                        </span>
-                      </Link>
-                    </SidebarMenuButton>
+                      {event.name_en} ({event.year})
+                    </NavLink>
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
@@ -273,12 +194,9 @@ export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
       <SidebarFooter className="border-t p-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link href="/dashboard">
-                <Settings />
-                <span>Back to Dashboard</span>
-              </Link>
-            </SidebarMenuButton>
+            <NavLink href="/dashboard" isActive={false} icon={Settings}>
+              Back to Dashboard
+            </NavLink>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-27T09:46:04.253Z",
+  "lastUpdated": "2026-02-28T01:29:00.288Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -62,7 +62,8 @@
     "receipts",
     "ui",
     "airport",
-    "context"
+    "context",
+    "admin"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -243,7 +244,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:27:25.775Z",
-        "lastUpdated": "2026-02-27T09:42:26.720Z"
+        "lastUpdated": "2026-02-27T13:33:56.747Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(public)/page.tsx"
     },
@@ -841,7 +842,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T07:17:29.506Z",
-        "lastUpdated": "2026-02-27T07:17:29.506Z"
+        "lastUpdated": "2026-02-27T22:50:02.665Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/airport/airport-checklist.tsx"
     },
@@ -857,6 +858,19 @@
         "lastUpdated": "2026-02-27T08:08:52.650Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/context/registration-context.tsx"
+    },
+    "admin": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-28T01:28:21.919Z",
+        "lastUpdated": "2026-02-28T01:29:00.288Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/admin/admin-sidebar.tsx"
     }
   },
   "history": [
@@ -2648,6 +2662,72 @@
     {
       "timestamp": "2026-02-27T09:46:04.253Z",
       "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-27T13:33:45.021Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-27T13:33:56.747Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-27T22:35:36.230Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-27T22:50:02.665Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-28T01:28:21.919Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-28T01:28:26.922Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-28T01:28:30.666Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-28T01:28:47.463Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-28T01:28:51.667Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-28T01:28:56.393Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-28T01:29:00.288Z",
+      "feature": "admin",
       "phase": "do",
       "action": "updated"
     }

@@ -29,7 +29,7 @@ export default async function HomePage() {
             role="img"
             aria-label="University of Pittsburgh Johnstown"
             style={{
-              backgroundColor: "#0c1a33",
+              backgroundColor: "var(--foreground)",
               maskImage: "url(/images/upj-crest-128.png)",
               WebkitMaskImage: "url(/images/upj-crest-128.png)",
               maskSize: "contain",
