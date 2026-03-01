@@ -115,7 +115,7 @@ export function DashboardContent({
           onClick={() => router.push("/dashboard/epass")}
         >
           <QrCode className="h-5 w-5" />
-          <span className="text-lg">E-Pass</span>
+          <span className="text-lg font-extrabold">E-Pass</span>
           <span className="text-xs text-muted-foreground">View group passes</span>
         </Button>
         <Button

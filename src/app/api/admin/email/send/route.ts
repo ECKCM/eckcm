@@ -1,41 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getResendClient } from "@/lib/email/resend";
 import { getEmailConfig } from "@/lib/email/email-config";
 import { logEmail } from "@/lib/email/email-log.service";
+import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { buildInvoiceEmail } from "@/lib/email/templates/invoice";
-import { emailInvoiceSchema } from "@/lib/schemas/api";
-import { rateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
+
+const schema = z.object({
+  registrationId: z.string().uuid(),
+  type: z.enum(["confirmation", "invoice"]),
+});
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireAdmin();
+  if (!auth) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const rl = rateLimit(`email:${user.id}`, 3, 60_000);
-  if (!rl.allowed) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  }
-
-  const parsed = emailInvoiceSchema.safeParse(await req.json());
+  const parsed = schema.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid request", details: parsed.error.flatten().fieldErrors },
       { status: 400 }
     );
   }
-  const { invoiceId } = parsed.data;
 
+  const { registrationId, type } = parsed.data;
   const admin = createAdminClient();
 
-  // Load invoice with line items
+  if (type === "confirmation") {
+    try {
+      await sendConfirmationEmail(registrationId, auth.user.id);
+      return NextResponse.json({ success: true });
+    } catch (error) {
+      logger.error("[admin/email/send] Confirmation failed", { error: String(error) });
+      return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
+    }
+  }
+
+  // type === "invoice"
+  // Load invoice for this registration
   const { data: invoice } = await admin
     .from("eckcm_invoices")
     .select(
@@ -45,54 +52,49 @@ export async function POST(req: NextRequest) {
       subtotal_cents,
       total_cents,
       status,
-      issued_at,
       paid_at,
       registration_id,
       eckcm_invoice_line_items(description, quantity, unit_price_cents, amount_cents)
     `
     )
-    .eq("id", invoiceId)
-    .single();
+    .eq("registration_id", registrationId)
+    .order("issued_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (!invoice) {
-    return NextResponse.json(
-      { error: "Invoice not found" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "No invoice found for this registration" }, { status: 404 });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const inv = invoice as any;
 
-  // Verify user owns the registration linked to this invoice
+  // Load registration info
   const { data: reg } = await admin
     .from("eckcm_registrations")
-    .select("created_by_user_id, confirmation_code, event_id, eckcm_events!inner(name_en)")
-    .eq("id", inv.registration_id)
+    .select("confirmation_code, event_id, created_by_user_id, eckcm_events!inner(name_en)")
+    .eq("id", registrationId)
     .single();
 
-  if (!reg || reg.created_by_user_id !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!reg) {
+    return NextResponse.json({ error: "Registration not found" }, { status: 404 });
   }
 
-  const recipientEmail = user.email;
-  if (!recipientEmail) {
-    return NextResponse.json(
-      { error: "No recipient email" },
-      { status: 400 }
-    );
+  // Get registrant email
+  const { data: { user: registrant } } = await admin.auth.admin.getUserById(reg.created_by_user_id);
+  if (!registrant?.email) {
+    return NextResponse.json({ error: "No email for registrant" }, { status: 400 });
   }
 
   // Load payment info
   const { data: payment } = await admin
     .from("eckcm_payments")
     .select("payment_method")
-    .eq("invoice_id", invoiceId)
+    .eq("invoice_id", inv.id)
     .in("status", ["SUCCEEDED", "PARTIALLY_REFUNDED"])
     .limit(1)
     .maybeSingle();
 
-  // Build HTML email using template
   const lineItems = (inv.eckcm_invoice_line_items ?? []).map(
     (li: { description: string; quantity: number; unit_price_cents: number; amount_cents: number }) => ({
       description: li.description,
@@ -128,7 +130,7 @@ export async function POST(req: NextRequest) {
     const resend = await getResendClient();
     const { data: sendResult, error } = await resend.emails.send({
       from: emailConfig.from,
-      to: recipientEmail,
+      to: registrant.email,
       ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
       subject,
       html,
@@ -137,37 +139,35 @@ export async function POST(req: NextRequest) {
     if (error) {
       await logEmail({
         eventId: reg.event_id,
-        toEmail: recipientEmail,
+        toEmail: registrant.email,
         fromEmail: emailConfig.from,
         subject,
         template: isPaid ? "receipt" : "invoice",
-        registrationId: inv.registration_id,
+        registrationId,
         invoiceId: inv.id,
         status: "failed",
         errorMessage: error.message,
+        sentBy: auth.user.id,
       });
-      logger.error("[email/invoice] Resend error", { error });
       return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
     }
 
     await logEmail({
       eventId: reg.event_id,
-      toEmail: recipientEmail,
+      toEmail: registrant.email,
       fromEmail: emailConfig.from,
       subject,
       template: isPaid ? "receipt" : "invoice",
-      registrationId: inv.registration_id,
+      registrationId,
       invoiceId: inv.id,
       status: "sent",
       resendId: sendResult?.id,
+      sentBy: auth.user.id,
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error("[email/invoice] Failed", { error: String(error) });
-    return NextResponse.json(
-      { error: "Failed to send invoice email" },
-      { status: 500 }
-    );
+    logger.error("[admin/email/send] Invoice email failed", { error: String(error) });
+    return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
   }
 }

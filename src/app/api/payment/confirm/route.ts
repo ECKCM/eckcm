@@ -81,40 +81,35 @@ export async function POST(request: Request) {
 
   const invoiceId = paymentIntent.metadata.invoiceId;
 
-  // 1. Update payment record
-  await admin
-    .from("eckcm_payments")
-    .update({
-      status: "SUCCEEDED",
-      metadata: {
-        stripe_payment_method: paymentIntent.payment_method,
-        stripe_charge_id:
-          typeof paymentIntent.latest_charge === "string"
-            ? paymentIntent.latest_charge
-            : null,
-        confirmed_by: "client",
-      },
-    })
-    .eq("stripe_payment_intent_id", paymentIntentId);
-
-  // 2. Update invoice
-  if (invoiceId) {
-    await admin
-      .from("eckcm_invoices")
+  // 1. Update payment, invoice, registration in parallel (independent writes)
+  await Promise.all([
+    admin
+      .from("eckcm_payments")
       .update({
         status: "SUCCEEDED",
-        paid_at: new Date().toISOString(),
+        metadata: {
+          stripe_payment_method: paymentIntent.payment_method,
+          stripe_charge_id:
+            typeof paymentIntent.latest_charge === "string"
+              ? paymentIntent.latest_charge
+              : null,
+          confirmed_by: "client",
+        },
       })
-      .eq("id", invoiceId);
-  }
+      .eq("stripe_payment_intent_id", paymentIntentId),
+    invoiceId
+      ? admin
+          .from("eckcm_invoices")
+          .update({ status: "SUCCEEDED", paid_at: new Date().toISOString() })
+          .eq("id", invoiceId)
+      : Promise.resolve(),
+    admin
+      .from("eckcm_registrations")
+      .update({ status: "PAID" })
+      .eq("id", registrationId),
+  ]);
 
-  // 3. Update registration status
-  await admin
-    .from("eckcm_registrations")
-    .update({ status: "PAID" })
-    .eq("id", registrationId);
-
-  // 4. Generate E-Pass tokens
+  // 2. Generate E-Pass tokens
   const { data: memberships, error: membershipError } = await admin
     .from("eckcm_group_memberships")
     .select("person_id, eckcm_groups!inner(registration_id)")
@@ -126,7 +121,6 @@ export async function POST(request: Request) {
 
   let tokensGenerated = 0;
   if (memberships && memberships.length > 0) {
-    // Batch check existing tokens (avoid N+1)
     const personIds = memberships.map((m) => m.person_id);
     const { data: existingTokens } = await admin
       .from("eckcm_epass_tokens")
@@ -136,7 +130,6 @@ export async function POST(request: Request) {
 
     const existingSet = new Set((existingTokens ?? []).map((t) => t.person_id));
 
-    // Batch insert missing tokens
     const newTokens = memberships
       .filter((m) => !existingSet.has(m.person_id))
       .map((m) => {
@@ -163,12 +156,10 @@ export async function POST(request: Request) {
   }
   logger.info("[payment/confirm] E-Pass tokens generated", { tokensGenerated, totalMembers: memberships?.length ?? 0 });
 
-  // 5. Send confirmation email (non-blocking)
-  try {
-    await sendConfirmationEmail(registrationId);
-  } catch (err) {
+  // 3. Send confirmation email (fire-and-forget — don't block response)
+  sendConfirmationEmail(registrationId).catch((err) => {
     logger.error("[payment/confirm] Failed to send confirmation email", { error: String(err) });
-  }
+  });
 
   return NextResponse.json({ status: "confirmed" });
   } catch (err) {

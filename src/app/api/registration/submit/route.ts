@@ -49,13 +49,31 @@ export async function POST(request: Request) {
   // Use admin client for multi-table inserts (bypasses RLS for server-side transaction)
   const admin = createAdminClient();
 
-  // 0. Check for duplicate registration (one user, one registration per event)
-  const { data: appConfig } = await admin
-    .from("eckcm_app_config")
-    .select("allow_duplicate_registration")
-    .eq("id", 1)
-    .single();
+  // 0. Load all reference data in parallel (5 independent queries → 1 round trip)
+  const [appConfigRes, regGroupRes, settingsRes, allFeeLinksRes, eventRes] = await Promise.all([
+    admin.from("eckcm_app_config").select("allow_duplicate_registration").eq("id", 1).single(),
+    admin.from("eckcm_registration_groups").select("*").eq("id", registrationGroupId).single(),
+    admin.from("eckcm_app_config").select("*").eq("event_id", eventId).single(),
+    admin.from("eckcm_registration_group_fee_categories")
+      .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
+      .eq("registration_group_id", registrationGroupId),
+    admin.from("eckcm_events").select("event_start_date, event_end_date").eq("id", eventId).single(),
+  ]);
 
+  const appConfig = appConfigRes.data;
+  const regGroup = regGroupRes.data;
+  const settings = settingsRes.data;
+  const allFeeLinks = allFeeLinksRes.data;
+  const event = eventRes.data;
+
+  if (!regGroup) {
+    return NextResponse.json(
+      { error: "Registration group not found" },
+      { status: 404 }
+    );
+  }
+
+  // 1. Check for duplicate registration
   if (!appConfig?.allow_duplicate_registration) {
     const { data: existingReg } = await admin
       .from("eckcm_registrations")
@@ -74,36 +92,9 @@ export async function POST(request: Request) {
     }
   }
 
-  // 1. Load registration group
-  const { data: regGroup } = await admin
-    .from("eckcm_registration_groups")
-    .select("*")
-    .eq("id", registrationGroupId)
-    .single();
-
-  if (!regGroup) {
-    return NextResponse.json(
-      { error: "Registration group not found" },
-      { status: 404 }
-    );
-  }
-
-  // 2. Load system settings
-  const { data: settings } = await admin
-    .from("eckcm_app_config")
-    .select("*")
-    .eq("event_id", eventId)
-    .single();
-
-  // 3. Load all linked fee categories for this registration group
-  const { data: allFeeLinks } = await admin
-    .from("eckcm_registration_group_fee_categories")
-    .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
-    .eq("registration_group_id", registrationGroupId);
-
+  // 2. Process fee categories from parallel-loaded data
   const allLinkedFees = (allFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
 
-  // Extract registration fees from linked fee categories
   const regFeeCat = allLinkedFees.find((f: any) => f.code === "REG_FEE");
   const earlyBirdCat = allLinkedFees.find((f: any) => f.code === "EARLY_BIRD");
 
@@ -113,22 +104,11 @@ export async function POST(request: Request) {
     regGroup.global_early_bird_fee_cents ?? earlyBirdCat?.amount_cents ?? null;
 
   const lodgingRates = allLinkedFees.filter((f: any) => f.code.startsWith("LODGING_"));
-
-  // 3b. Extract key deposit from linked fees (unlinked = $0)
   const keyDepositCat = allLinkedFees.find((f: any) => f.code === "KEY_DEPOSIT");
   const keyDepositPerKey = keyDepositCat?.amount_cents ?? 0;
-
-  // 3c. Extract meal fee categories from linked fees
   const mealFeeCategories: MealFeeCategory[] = allLinkedFees.filter(
     (f: any) => f.code.startsWith("MEAL_")
   );
-
-  // 3d. Load event dates for age calculation and meal day filtering
-  const { data: event } = await admin
-    .from("eckcm_events")
-    .select("event_start_date, event_end_date")
-    .eq("id", eventId)
-    .single();
 
   // 4. Calculate pricing
   const isEarlyBird =
@@ -201,63 +181,50 @@ export async function POST(request: Request) {
     );
   }
 
-  // 6. Insert groups, people, and memberships
-  // Track created IDs for cleanup on failure
-  const createdPersonIds: string[] = [];
+  // 6. Batch insert groups, people, and memberships
+  // (3 batch operations instead of N+1 individual inserts)
 
-  // Pre-generate all participant codes in batch (avoid N+1)
+  // Pre-generate all participant codes in batch
   const totalParticipants = roomGroups.reduce((sum, g) => sum + g.participants.length, 0);
   const candidates: string[] = [];
   for (let i = 0; i < totalParticipants + 10; i++) {
     candidates.push(generateSafeConfirmationCode());
   }
-  // Batch check for existing codes in one query
   const { data: existingCodes } = await admin
     .from("eckcm_group_memberships")
     .select("participant_code")
     .in("participant_code", candidates);
   const usedCodes = new Set((existingCodes ?? []).map((c: { participant_code: string }) => c.participant_code));
   const availableCodes = candidates.filter((c) => !usedCodes.has(c));
-  let codeIndex = 0;
 
-  async function cleanupOnFailure() {
-    if (createdPersonIds.length > 0) {
-      await admin.from("eckcm_people").delete().in("id", createdPersonIds);
-    }
-    await admin.from("eckcm_registrations").delete().eq("id", registration!.id);
+  // Batch 1: Insert all groups at once
+  const groupInserts = roomGroups.map((roomGroup, i) => ({
+    event_id: eventId,
+    registration_id: registration.id,
+    display_group_code: `${confirmationCode}-G${String(i + 1).padStart(2, "0")}`,
+    room_assign_status: "PENDING",
+    preferences: roomGroup.preferences,
+    key_count: roomGroup.keyCount,
+  }));
+
+  const { data: groups, error: groupError } = await admin
+    .from("eckcm_groups")
+    .insert(groupInserts)
+    .select("id");
+
+  if (groupError || !groups) {
+    logger.error("[registration/submit] Group batch insert error", { error: String(groupError) });
+    await admin.from("eckcm_registrations").delete().eq("id", registration.id);
+    return NextResponse.json({ error: "Failed to create groups" }, { status: 500 });
   }
 
-  let groupCodeCounter = 1;
-  for (const roomGroup of roomGroups) {
-    const groupCode = `G${String(groupCodeCounter++).padStart(2, "0")}`;
+  // Batch 2: Insert all people at once (track group index for membership mapping)
+  const personInserts: Record<string, unknown>[] = [];
+  const personGroupMap: { groupIdx: number; isRep: boolean }[] = [];
 
-    const { data: group, error: groupError } = await admin
-      .from("eckcm_groups")
-      .insert({
-        event_id: eventId,
-        registration_id: registration.id,
-        display_group_code: `${confirmationCode}-${groupCode}`,
-        room_assign_status: "PENDING",
-        preferences: roomGroup.preferences,
-        key_count: roomGroup.keyCount,
-      })
-      .select("id")
-      .single();
-
-    if (groupError) {
-      logger.error("[registration/submit] Group insert error", { error: String(groupError) });
-      await cleanupOnFailure();
-      return NextResponse.json(
-        { error: "Failed to create group" },
-        { status: 500 }
-      );
-    }
-
-    // Insert participants as people and group memberships
-    for (const participant of roomGroup.participants) {
+  for (let gi = 0; gi < roomGroups.length; gi++) {
+    for (const participant of roomGroups[gi].participants) {
       const birthDate = `${participant.birthYear}-${String(participant.birthMonth).padStart(2, "0")}-${String(participant.birthDay).padStart(2, "0")}`;
-
-      // Calculate age at event start date
       const eventStartStr = event?.event_start_date ?? startDate;
       const bd = new Date(birthDate + "T00:00:00");
       const ed = new Date(eventStartStr + "T00:00:00");
@@ -267,70 +234,74 @@ export async function POST(request: Request) {
         ageAtEvent--;
       }
 
-      const { data: person, error: personError } = await admin
-        .from("eckcm_people")
-        .insert({
-          last_name_en: participant.lastName,
-          first_name_en: participant.firstName,
-          display_name_ko: participant.displayNameKo || null,
-          gender: participant.gender,
-          birth_date: birthDate,
-          age_at_event: ageAtEvent,
-          is_k12: participant.isK12,
-          grade: participant.grade || null,
-          email: participant.email || null,
-          phone: buildPhoneValue(participant.phoneCountry || "US", participant.phone || "") || null,
-          phone_country: participant.phoneCountry || "US",
-          department_id: participant.departmentId || null,
-          church_id: participant.churchId || null,
-          church_other: participant.churchOther || null,
-        })
-        .select("id")
-        .single();
-
-      if (personError) {
-        logger.error("[registration/submit] Person insert error", { error: String(personError) });
-        await cleanupOnFailure();
-        return NextResponse.json(
-          { error: "Failed to create participant" },
-          { status: 500 }
-        );
-      }
-
-      createdPersonIds.push(person.id);
-
-      // Use pre-generated unique participant code
-      const participantCode = availableCodes[codeIndex++] || generateSafeConfirmationCode();
-
-      // Group membership with participant code
-      await admin.from("eckcm_group_memberships").insert({
-        group_id: group.id,
-        person_id: person.id,
-        role: participant.isRepresentative ? "REPRESENTATIVE" : "MEMBER",
-        status: "ACTIVE",
-        participant_code: participantCode,
+      personInserts.push({
+        last_name_en: participant.lastName,
+        first_name_en: participant.firstName,
+        display_name_ko: participant.displayNameKo || null,
+        gender: participant.gender,
+        birth_date: birthDate,
+        age_at_event: ageAtEvent,
+        is_k12: participant.isK12,
+        grade: participant.grade || null,
+        email: participant.email || null,
+        phone: buildPhoneValue(participant.phoneCountry || "US", participant.phone || "") || null,
+        phone_country: participant.phoneCountry || "US",
+        department_id: participant.departmentId || null,
+        church_id: participant.churchId || null,
+        church_other: participant.churchOther || null,
       });
+      personGroupMap.push({ groupIdx: gi, isRep: !!participant.isRepresentative });
     }
   }
 
-  // 7. Airport rides (if any selected)
+  const { data: people, error: personError } = await admin
+    .from("eckcm_people")
+    .insert(personInserts)
+    .select("id");
+
+  if (personError || !people) {
+    logger.error("[registration/submit] People batch insert error", { error: String(personError) });
+    await admin.from("eckcm_registrations").delete().eq("id", registration.id);
+    return NextResponse.json({ error: "Failed to create participants" }, { status: 500 });
+  }
+
+  // Batch 3: Insert all memberships at once
+  const membershipInserts = people.map((person, i) => {
+    const { groupIdx, isRep } = personGroupMap[i];
+    const participantCode = availableCodes[i] || generateSafeConfirmationCode();
+    return {
+      group_id: groups[groupIdx].id,
+      person_id: person.id,
+      role: isRep ? "REPRESENTATIVE" : "MEMBER",
+      status: "ACTIVE",
+      participant_code: participantCode,
+    };
+  });
+
+  const { error: membershipError } = await admin
+    .from("eckcm_group_memberships")
+    .insert(membershipInserts);
+
+  if (membershipError) {
+    logger.error("[registration/submit] Membership batch insert error", { error: String(membershipError) });
+    await admin.from("eckcm_people").delete().in("id", people.map(p => p.id));
+    await admin.from("eckcm_registrations").delete().eq("id", registration.id);
+    return NextResponse.json({ error: "Failed to create memberships" }, { status: 500 });
+  }
+
+  // 7. Airport rides (batch insert)
   if (airportPickup?.selectedRides?.length) {
-    for (const ride of airportPickup.selectedRides) {
-      const passengerCount = ride.selectedParticipantIds?.length ?? 1;
-      await admin.from("eckcm_registration_rides").insert({
-        registration_id: registration.id,
-        ride_id: ride.rideId,
-        passenger_count: passengerCount,
-        flight_info: ride.flightInfo || null,
-      });
-    }
+    const rideInserts = airportPickup.selectedRides.map((ride) => ({
+      registration_id: registration.id,
+      ride_id: ride.rideId,
+      passenger_count: ride.selectedParticipantIds?.length ?? 1,
+      flight_info: ride.flightInfo || null,
+    }));
+    await admin.from("eckcm_registration_rides").insert(rideInserts);
   } else if (airportPickup?.needed && airportPickup?.details) {
-    // Legacy fallback: free-text only
     await admin
       .from("eckcm_registrations")
-      .update({
-        notes: `Airport pickup needed: ${airportPickup.details}`,
-      })
+      .update({ notes: `Airport pickup needed: ${airportPickup.details}` })
       .eq("id", registration.id);
   }
 

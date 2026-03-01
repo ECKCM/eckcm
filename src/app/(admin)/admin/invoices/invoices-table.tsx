@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { MoreHorizontal, RotateCcw, CreditCard, Loader2 } from "lucide-react";
+import { MoreHorizontal, RotateCcw, CreditCard, Loader2, Mail, FileText } from "lucide-react";
 
 interface Event {
   id: string;
@@ -362,6 +362,35 @@ export function InvoicesTable({ events }: { events: Event[] }) {
 
   const canManualPay = (inv: InvoiceRow) => inv.status === "PENDING";
 
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+
+  const handleSendEmail = async (inv: InvoiceRow, type: "confirmation" | "invoice") => {
+    if (!inv.registration_id) {
+      toast.error("No registration linked to this invoice");
+      return;
+    }
+    setSendingEmail(inv.id);
+    try {
+      const res = await fetch("/api/admin/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationId: inv.registration_id, type }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to send email");
+      } else {
+        const label = type === "confirmation"
+          ? "Confirmation"
+          : inv.status === "SUCCEEDED" ? "Receipt" : "Invoice";
+        toast.success(`${label} email sent to ${inv.registrant_email}`);
+      }
+    } catch {
+      toast.error("Network error");
+    }
+    setSendingEmail(null);
+  };
+
   if (!mounted) return null;
 
   return (
@@ -446,11 +475,15 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                         : "-"}
                     </TableCell>
                     <TableCell>
-                      {(canRefund(inv) || canManualPay(inv)) && (
+                      {(canRefund(inv) || canManualPay(inv) || inv.registration_id) && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="size-8">
-                              <MoreHorizontal className="size-4" />
+                              {sendingEmail === inv.id ? (
+                                <Loader2 className="size-4 animate-spin" />
+                              ) : (
+                                <MoreHorizontal className="size-4" />
+                              )}
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
@@ -464,6 +497,18 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                               <DropdownMenuItem onClick={() => openManualPayDialog(inv)}>
                                 <CreditCard className="mr-2 size-4" />
                                 Record Payment
+                              </DropdownMenuItem>
+                            )}
+                            {inv.registration_id && inv.status === "SUCCEEDED" && (
+                              <DropdownMenuItem onClick={() => handleSendEmail(inv, "confirmation")}>
+                                <Mail className="mr-2 size-4" />
+                                Send Confirmation
+                              </DropdownMenuItem>
+                            )}
+                            {inv.registration_id && (
+                              <DropdownMenuItem onClick={() => handleSendEmail(inv, "invoice")}>
+                                <FileText className="mr-2 size-4" />
+                                {inv.status === "SUCCEEDED" ? "Send Receipt" : "Send Invoice"}
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
