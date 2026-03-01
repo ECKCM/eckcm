@@ -4,9 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import {
   Elements,
-  CardNumberElement,
-  CardExpiryElement,
-  CardCvcElement,
+  PaymentElement,
   PaymentRequestButtonElement,
   useStripe,
   useElements,
@@ -17,7 +15,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
-import { CheckVisual } from "@/components/payment/check-visual";
 import { toast } from "sonner";
 import Link from "next/link";
 import {
@@ -27,21 +24,23 @@ import {
   ShieldCheck,
   CheckCircle,
   AlertTriangle,
-  ExternalLink,
-  CircleCheck,
-  ChevronDown,
   Clock,
-  Info,
+  Globe,
+  Banknote,
 } from "lucide-react";
-import {
-  type MethodId,
-  STRIPE_EL_STYLE,
-  MAIN_METHODS,
-  STRIPE_APPEARANCE,
-} from "./_components/payment-constants";
-import { MorePaymentOptions } from "./_components/more-payment-options";
-import { AchPaymentForm, AchNotice } from "./_components/ach-payment-form";
+import { STRIPE_APPEARANCE } from "./_components/payment-constants";
 import { CopyButton } from "./_components/copy-button";
+
+/* ------------------------------------------------------------------ */
+/*  Zelle SVG icon                                                     */
+/* ------------------------------------------------------------------ */
+function ZelleIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={className} fill="#6d1ed4">
+      <path d="M13.559 24h-2.841a.483.483 0 0 1-.483-.483v-2.765H5.638a.667.667 0 0 1-.666-.666v-2.234a.67.67 0 0 1 .142-.412l8.139-10.382h-7.25a.667.667 0 0 1-.667-.667V3.914c0-.367.299-.666.666-.666h4.23V.483c0-.266.217-.483.483-.483h2.841c.266 0 .483.217.483.483v2.765h4.323c.367 0 .666.299.666.666v2.137a.67.67 0 0 1-.141.41l-8.19 10.481h7.665c.367 0 .666.299.666.666v2.477a.667.667 0 0 1-.666.667h-4.32v2.765a.483.483 0 0 1-.483.483" />
+    </svg>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Page component                                                     */
@@ -109,7 +108,6 @@ export default function PaymentStep() {
 
   useEffect(() => {
     if (!registrationId) return;
-    // Prevent duplicate calls (React 18 strict mode fires effects twice)
     if (createIntentCalled.current) return;
     createIntentCalled.current = true;
 
@@ -181,7 +179,6 @@ export default function PaymentStep() {
     setCoversFees(checked);
     setUpdatingFees(true);
     try {
-      // Extract PI ID from clientSecret (format: pi_xxx_secret_yyy)
       const piId = clientSecret?.split("_secret_")[0] || undefined;
       const res = await fetch("/api/payment/update-cover-fees", {
         method: "POST",
@@ -206,7 +203,6 @@ export default function PaymentStep() {
   };
 
   const goToConfirmation = async (paymentIntentId?: string) => {
-    // Confirm payment server-side before navigating (generates E-Pass tokens)
     if (paymentIntentId && registrationId) {
       try {
         const res = await fetch("/api/payment/confirm", {
@@ -261,6 +257,13 @@ export default function PaymentStep() {
       </div>
     );
   }
+
+  // Derive which modes are available from admin-enabled methods
+  const stripeEnabled = enabledMethods.some((m) =>
+    ["card", "ach", "check", "more"].includes(m)
+  );
+  const zelleEnabled = enabledMethods.includes("zelle");
+  const walletEnabled = enabledMethods.includes("wallet");
 
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
@@ -354,13 +357,14 @@ export default function PaymentStep() {
       ) : clientSecret ? (
         <Elements
           stripe={stripePromise}
-          options={{ appearance: STRIPE_APPEARANCE }}
+          options={{ clientSecret, appearance: STRIPE_APPEARANCE }}
         >
-          <CustomPaymentForm
+          <PaymentForm
             clientSecret={clientSecret}
             amount={amount}
-            stripePromise={stripePromise}
-            enabledMethods={enabledMethods}
+            stripeEnabled={stripeEnabled}
+            zelleEnabled={zelleEnabled}
+            walletEnabled={walletEnabled}
             registrationId={registrationId}
             confirmationCode={confirmationCode || ""}
             registrantName={registrantName}
@@ -389,14 +393,17 @@ export default function PaymentStep() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  CustomPaymentForm — main methods + Stripe PaymentElement for more  */
+/*  PaymentForm — PaymentElement + Zelle                               */
 /* ------------------------------------------------------------------ */
 
-function CustomPaymentForm({
+type PayMode = "stripe" | "zelle";
+
+function PaymentForm({
   clientSecret,
   amount,
-  stripePromise,
-  enabledMethods,
+  stripeEnabled,
+  zelleEnabled,
+  walletEnabled,
   registrationId,
   confirmationCode,
   registrantName,
@@ -407,8 +414,9 @@ function CustomPaymentForm({
 }: {
   clientSecret: string;
   amount: number;
-  stripePromise: Promise<StripeType | null>;
-  enabledMethods: string[];
+  stripeEnabled: boolean;
+  zelleEnabled: boolean;
+  walletEnabled: boolean;
   registrationId: string;
   confirmationCode: string;
   registrantName: string;
@@ -419,46 +427,14 @@ function CustomPaymentForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
-  const defaultMethod = (["card", "ach", "zelle", "check"] as MethodId[]).find((m) =>
-    enabledMethods.includes(m)
-  ) ?? "card";
-  const [method, setMethod] = useState<MethodId>(defaultMethod);
+  const [payMode, setPayMode] = useState<PayMode>(
+    stripeEnabled ? "stripe" : "zelle"
+  );
   const [processing, setProcessing] = useState(false);
   const [paymentRequest, setPaymentRequest] =
     useState<StripePaymentRequest | null>(null);
   const [walletAvailable, setWalletAvailable] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [usePaymentElement, setUsePaymentElement] = useState(false);
-
-  // Ref for imperative PaymentElement submission
-  const moreSubmitRef = useRef<(() => Promise<void>) | null>(null);
-
-  // Zelle agreement
   const [zelleAgreed, setZelleAgreed] = useState(false);
-
-  // Card billing fields
-  const [cardholderName, setCardholderName] = useState("");
-  const [country, setCountry] = useState("US");
-  const [zip, setZip] = useState("");
-
-  // ACH PaymentElement ref
-  const achSubmitRef = useRef<(() => Promise<void>) | null>(null);
-
-  // Bank Check form state
-  const [accountName, setAccountName] = useState("");
-  const [routingNumber, setRoutingNumber] = useState("");
-  const [confirmRoutingNumber, setConfirmRoutingNumber] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [confirmAccountNumber, setConfirmAccountNumber] = useState("");
-  const [accountType, setAccountType] = useState<"checking" | "savings">(
-    "checking"
-  );
-
-  const filteredMainMethods = MAIN_METHODS.filter((m) =>
-    enabledMethods.includes(m.id)
-  );
-  const walletEnabled = enabledMethods.includes("wallet");
-  const moreEnabled = enabledMethods.includes("more");
 
   /* ---- Apple Pay / Google Pay via PaymentRequest API ---- */
 
@@ -474,7 +450,6 @@ function CustomPaymentForm({
     });
 
     pr.canMakePayment().then((result) => {
-      // Only show native wallet button for Apple Pay / Google Pay, not Stripe Link
       if (result && (result.applePay || result.googlePay)) {
         setPaymentRequest(pr);
         setWalletAvailable(true);
@@ -515,36 +490,50 @@ function CustomPaymentForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe) return;
+    if (payMode === "zelle") {
+      setProcessing(true);
+      try {
+        await handleZelleSubmit();
+      } catch (err) {
+        console.error("[Payment] Unexpected error:", err);
+        toast.error("An unexpected error occurred. Please try again.");
+      }
+      setProcessing(false);
+      return;
+    }
+
+    if (!stripe || !elements) return;
     setProcessing(true);
 
     try {
-      if (usePaymentElement) {
-        // Delegate to PaymentElement's submit via ref
-        if (moreSubmitRef.current) {
-          await moreSubmitRef.current();
-        } else {
-          toast.error("Payment method is still loading. Please wait.");
-        }
-      } else {
-        switch (method) {
-          case "card":
-            await handleCardPayment();
-            break;
-          case "ach":
-            if (achSubmitRef.current) {
-              await achSubmitRef.current();
-            } else {
-              toast.error("Bank account form is still loading. Please wait.");
-            }
-            break;
-          case "check":
-            await handleCheckPayment();
-            break;
-          case "zelle":
-            await handleZelleSubmit();
-            break;
-        }
+      // Validate the PaymentElement form first
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        toast.error(submitError.message || "Please check your payment details.");
+        setProcessing(false);
+        return;
+      }
+
+      const returnUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/register/payment-complete`;
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        clientSecret,
+        confirmParams: { return_url: returnUrl },
+        redirect: "if_required",
+      });
+
+      if (error) {
+        toast.error(error.message || "Payment failed. Please try again.");
+      } else if (
+        paymentIntent?.status === "succeeded" ||
+        paymentIntent?.status === "processing"
+      ) {
+        toast.success(
+          paymentIntent.status === "processing"
+            ? "Payment initiated! Processing may take a few days."
+            : "Payment successful!"
+        );
+        onSuccess(paymentIntent.id);
       }
     } catch (err) {
       console.error("[Payment] Unexpected error:", err);
@@ -552,85 +541,6 @@ function CustomPaymentForm({
     }
 
     setProcessing(false);
-  };
-
-  const handleCardPayment = async () => {
-    if (!stripe || !elements) return;
-    const cardNumber = elements.getElement(CardNumberElement);
-    if (!cardNumber) return;
-
-    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: {
-        card: cardNumber,
-        billing_details: {
-          name: cardholderName || undefined,
-          address: {
-            country: country || undefined,
-            postal_code: zip || undefined,
-          },
-        },
-      },
-    });
-
-    if (error) {
-      toast.error(error.message || "Payment failed. Please try again.");
-    } else {
-      toast.success("Payment successful!");
-      onSuccess(paymentIntent?.id);
-    }
-  };
-
-  const handleCheckPayment = async () => {
-    if (!stripe) return;
-    if (!accountName.trim()) {
-      toast.error("Please enter the account holder name.");
-      return;
-    }
-    if (routingNumber.length !== 9) {
-      toast.error("Routing number must be exactly 9 digits.");
-      return;
-    }
-    if (!accountNumber) {
-      toast.error("Please enter your account number.");
-      return;
-    }
-    if (routingNumber !== confirmRoutingNumber) {
-      toast.error("Routing numbers do not match.");
-      return;
-    }
-    if (accountNumber !== confirmAccountNumber) {
-      toast.error("Account numbers do not match.");
-      return;
-    }
-
-    const { error, paymentIntent } =
-      await stripe.confirmUsBankAccountPayment(clientSecret, {
-        payment_method: {
-          us_bank_account: {
-            routing_number: routingNumber,
-            account_number: accountNumber,
-            account_holder_type: "individual",
-          },
-          billing_details: { name: accountName },
-        },
-      });
-
-    if (error) {
-      toast.error(error.message || "Payment failed. Please try again.");
-    } else if (paymentIntent?.status === "requires_action") {
-      toast.info(
-        "Bank verification required. You will receive micro-deposits in 1-2 business days."
-      );
-      onSuccess(paymentIntent?.id);
-    } else if (paymentIntent?.status === "processing") {
-      toast.success(
-        "Payment initiated! ACH transfers take 3-5 business days."
-      );
-      onSuccess(paymentIntent?.id);
-    } else {
-      toast.success("Payment successful!");
-      onSuccess(paymentIntent?.id);
-    }
   };
 
   const handleZelleSubmit = async () => {
@@ -653,8 +563,7 @@ function CustomPaymentForm({
   /* ---- button label ---- */
   const buttonLabel = (() => {
     const amt = `$${(amount / 100).toFixed(2)}`;
-    if (usePaymentElement) return `Continue to payment`;
-    if (method === "zelle") return `Complete Registration`;
+    if (payMode === "zelle") return "Complete Registration";
     return `Pay ${amt}`;
   })();
 
@@ -662,7 +571,7 @@ function CustomPaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* ===== Apple Pay / Google Pay native buttons ===== */}
+      {/* ===== Apple Pay / Google Pay express buttons ===== */}
       {walletEnabled && walletAvailable && paymentRequest && (
         <>
           <div>
@@ -689,263 +598,128 @@ function CustomPaymentForm({
         </>
       )}
 
-      {/* ===== Main Payment Methods ===== */}
-      {filteredMainMethods.length > 0 && (
-      <div>
-        <p className="text-sm font-medium mb-3">Choose payment method</p>
-        <div className={`grid gap-2 ${filteredMainMethods.length === 1 ? "grid-cols-1" : filteredMainMethods.length === 2 ? "grid-cols-2" : filteredMainMethods.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4"}`}>
-          {filteredMainMethods.map((m) => {
-            const selected = method === m.id && !usePaymentElement;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => {
-                  setMethod(m.id);
-                  setUsePaymentElement(false);
-                  setMoreOpen(false);
-                }}
-                className={`relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 text-center transition-all ${
-                  selected
-                    ? "border-primary bg-primary/5 shadow-sm"
-                    : "border-transparent bg-muted/40 hover:bg-muted/60"
-                }`}
-              >
-                {selected && (
-                  <CircleCheck className="absolute top-1.5 right-1.5 h-4 w-4 text-primary" />
-                )}
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-lg ${m.iconBg}`}
-                >
-                  {m.icon}
-                </div>
-                <div>
-                  <p className="text-xs font-medium leading-tight">
-                    {m.label}
-                  </p>
-                  {m.sublabel && (
-                    <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-                      {m.sublabel}
-                    </p>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      )}
-
-      {/* ===== More Payment Options (Accordion → Stripe PaymentElement) ===== */}
-      {moreEnabled && (
-      <div>
-        <button
-          type="button"
-          onClick={() => {
-            const opening = !moreOpen;
-            setMoreOpen(opening);
-            if (opening) {
-              setUsePaymentElement(true);
-            } else {
-              setUsePaymentElement(false);
-            }
-          }}
-          className={`flex w-full items-center justify-between rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-            usePaymentElement
-              ? "border-primary bg-primary/5 text-foreground"
-              : "border-input bg-muted/30 text-muted-foreground hover:bg-muted/50"
-          }`}
-        >
-          <span>More payment options</span>
-          <ChevronDown
-            className={`h-4 w-4 transition-transform duration-200 ${
-              moreOpen ? "rotate-180" : ""
+      {/* ===== Payment Mode Selector (Pay Online / Zelle) ===== */}
+      {stripeEnabled && zelleEnabled && (
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setPayMode("stripe")}
+            className={`relative flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${
+              payMode === "stripe"
+                ? "border-primary bg-primary/5 shadow-sm"
+                : "border-transparent bg-muted/40 hover:bg-muted/60"
             }`}
-          />
-        </button>
-        {moreOpen && (
-          <div className="mt-3">
-            <Elements
-              stripe={stripePromise}
-              options={{
-                clientSecret,
-                appearance: STRIPE_APPEARANCE,
-              }}
-            >
-              <MorePaymentOptions
-                submitRef={moreSubmitRef}
-                returnUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/register/payment-complete`}
-                onSuccess={onSuccess}
-              />
-            </Elements>
-          </div>
-        )}
-      </div>
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700 shrink-0">
+              <Globe className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium leading-tight">Online Payment</p>
+              <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+                Card, Bank, Amazon Pay, Klarna
+              </p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPayMode("zelle")}
+            className={`relative flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${
+              payMode === "zelle"
+                ? "border-primary bg-primary/5 shadow-sm"
+                : "border-transparent bg-muted/40 hover:bg-muted/60"
+            }`}
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700 shrink-0">
+              <Banknote className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium leading-tight">Manual Payment</p>
+              <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+                Zelle
+              </p>
+            </div>
+          </button>
+        </div>
       )}
 
-      {/* ===== Method-specific form (main methods only) ===== */}
-      {!usePaymentElement && (
+      {/* ===== Stripe PaymentElement ===== */}
+      {payMode === "stripe" && stripeEnabled && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              {method === "zelle" ? (
-                <Info className="h-4 w-4" />
-              ) : (
-                <Lock className="h-4 w-4" />
-              )}
-              {method === "card" && "Card Details"}
-              {method === "ach" && "US Bank Account"}
-              {method === "check" && "Bank Account Details"}
-              {method === "zelle" && "Zelle Payment Instructions"}
+              <Lock className="h-4 w-4" />
+              Payment Details
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {/* ----- Credit Card ----- */}
-            {method === "card" && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-[13px] font-medium text-foreground mb-1.5">
-                    Card information
-                  </label>
-                  <div className="rounded-lg border border-input overflow-hidden bg-background">
-                    <div className="px-3 py-3 border-b border-input">
-                      <CardNumberElement
-                        options={{ showIcon: true, style: STRIPE_EL_STYLE }}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2">
-                      <div className="px-3 py-3 border-r border-input">
-                        <CardExpiryElement
-                          options={{ style: STRIPE_EL_STYLE }}
-                        />
-                      </div>
-                      <div className="px-3 py-3">
-                        <CardCvcElement options={{ style: STRIPE_EL_STYLE }} />
-                      </div>
-                    </div>
-                  </div>
+            <PaymentElement
+              options={{
+                layout: {
+                  type: "accordion",
+                  defaultCollapsed: false,
+                  radios: true,
+                  spacedAccordionItems: true,
+                },
+                paymentMethodOrder: [
+                  "card",
+                  "us_bank_account",
+                  "amazon_pay",
+                  "klarna",
+                ],
+                wallets: { applePay: "never", googlePay: "never" },
+              }}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ===== Manual Payment ===== */}
+      {payMode === "zelle" && zelleEnabled && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Lock className="h-4 w-4" />
+              Manual Payment
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Zelle accordion-style container */}
+            <div className="rounded-lg border overflow-hidden">
+              {/* Radio header */}
+              <div className="flex items-center gap-3 p-4 bg-background">
+                <div className="h-4 w-4 rounded-full border-2 border-primary flex items-center justify-center shrink-0">
+                  <div className="h-2 w-2 rounded-full bg-primary" />
                 </div>
-
-                <div>
-                  <label className="block text-[13px] font-medium text-foreground mb-1.5">
-                    Cardholder name
-                  </label>
-                  <input
-                    type="text"
-                    value={cardholderName}
-                    onChange={(e) => setCardholderName(e.target.value)}
-                    placeholder="Full name on card"
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-base outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-muted-foreground"
-                  />
+                <ZelleIcon className="h-5 w-5 shrink-0" />
+                <p className="text-sm font-medium">Zelle</p>
+              </div>
+              {/* Expanded content */}
+              <div className="border-t px-4 pb-4 pt-3 space-y-3 bg-muted/20">
+                <div className="flex items-start gap-2">
+                  <Clock className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-purple-800">
+                    Zelle payments are processed manually. Your registration will be held
+                    until payment is confirmed by our team.
+                  </p>
                 </div>
-
-                <div>
-                  <label className="block text-[13px] font-medium text-foreground mb-1.5">
-                    Country or region
-                  </label>
-                  <div className="rounded-lg border border-input overflow-hidden bg-background">
-                    <select
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      className="w-full px-3 py-2.5 text-base border-b border-input bg-background outline-none"
-                    >
-                      <option value="US">United States</option>
-                      <option value="KR">South Korea</option>
-                      <option value="CA">Canada</option>
-                      <option value="AU">Australia</option>
-                      <option value="BR">Brazil</option>
-                      <option value="CN">China</option>
-                      <option value="DE">Germany</option>
-                      <option value="FR">France</option>
-                      <option value="GB">United Kingdom</option>
-                      <option value="IN">India</option>
-                      <option value="JP">Japan</option>
-                      <option value="MX">Mexico</option>
-                      <option value="NZ">New Zealand</option>
-                      <option value="PH">Philippines</option>
-                      <option value="SG">Singapore</option>
-                    </select>
-                    <input
-                      type="text"
-                      value={zip}
-                      onChange={(e) => setZip(e.target.value)}
-                      placeholder="ZIP"
-                      className="w-full px-3 py-2.5 text-base bg-background outline-none placeholder:text-muted-foreground"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ----- US Bank Account ----- */}
-            {method === "ach" && (
-              <div className="space-y-4">
-                <Elements
-                  stripe={stripePromise}
-                  options={{ clientSecret, appearance: STRIPE_APPEARANCE }}
-                >
-                  <AchPaymentForm
-                    submitRef={achSubmitRef}
-                    returnUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/register/payment-complete`}
-                    onSuccess={onSuccess}
-                  />
-                </Elements>
-                <AchNotice />
-              </div>
-            )}
-
-            {/* ----- Bank Check ----- */}
-            {method === "check" && (
-              <div className="space-y-4">
-                <CheckVisual
-                  accountName={accountName}
-                  routingNumber={routingNumber}
-                  confirmRoutingNumber={confirmRoutingNumber}
-                  accountNumber={accountNumber}
-                  confirmAccountNumber={confirmAccountNumber}
-                  accountType={accountType}
-                  amount={amount}
-                  onAccountNameChange={setAccountName}
-                  onRoutingNumberChange={setRoutingNumber}
-                  onConfirmRoutingNumberChange={setConfirmRoutingNumber}
-                  onAccountNumberChange={setAccountNumber}
-                  onConfirmAccountNumberChange={setConfirmAccountNumber}
-                  onAccountTypeChange={setAccountType}
-                />
-                <AchNotice />
-              </div>
-            )}
-
-            {/* ----- Zelle ----- */}
-            {method === "zelle" && (
-              <div className="space-y-4">
-                <div className="rounded-lg bg-purple-50 border border-purple-200 p-4 space-y-3">
-                  <div className="flex items-start gap-2">
-                    <Clock className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
-                    <p className="text-sm text-purple-800">
-                      Zelle payments are processed manually. Your registration will be held
-                      until payment is confirmed by our team.
-                    </p>
-                  </div>
-                  <div className="space-y-2 text-sm text-purple-900 pl-1">
-                    <p>1. Open your banking app and select <strong>Send with Zelle</strong></p>
+                <div className="space-y-2 text-sm text-purple-900 pl-1">
+                  <p>1. Open your banking app and select <strong>Send with Zelle</strong></p>
+                  <p className="flex items-center gap-1 flex-wrap">
+                    <span>2. Zelle Payment Email:</span>
+                    <CopyButton text="kimdani1@icloud.com" />
+                  </p>
+                  <p>3. Account Holder: <strong>EMPOWER MINISTRY GROUP, INC</strong></p>
+                  <p>4. Amount: <strong className="font-mono">${(amount / 100).toFixed(2)}</strong></p>
+                  <div className="space-y-1">
                     <p className="flex items-center gap-1 flex-wrap">
-                      <span>2. Zelle Payment Email:</span>
-                      <CopyButton text="kimdani1@icloud.com" />
+                      <span>5. Memo/Note <strong className="text-red-600">(Required)</strong>:</span>
                     </p>
-                    <p>3. Account Holder: <strong>EMPOWER MINISTRY GROUP, INC</strong></p>
-                    <p>4. Amount: <strong className="font-mono">${(amount / 100).toFixed(2)}</strong></p>
-                    <div className="space-y-1">
-                      <p className="flex items-center gap-1 flex-wrap">
-                        <span>5. Memo/Note <strong className="text-red-600">(Required)</strong>:</span>
-                      </p>
-                      <div className="pl-5">
-                        <CopyButton text={`${confirmationCode} / ${registrantName} / ${registrantPhone.replace(/\D/g, "")} / ${registrantEmail}`} />
-                      </div>
-                      <p className="text-xs text-purple-700 pl-5">
-                        Please copy and paste the memo exactly as shown so we can match your payment.
-                      </p>
+                    <div className="pl-5">
+                      <CopyButton text={`${confirmationCode} - ${registrantName} - ${registrantPhone.replace(/\D/g, "")} - ${registrantEmail}`} />
                     </div>
+                    <p className="text-xs text-purple-700 pl-5">
+                      Please copy and paste the memo exactly as shown so we can match your payment.
+                    </p>
                   </div>
                 </div>
                 <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
@@ -955,10 +729,11 @@ function CustomPaymentForm({
                     <p className="mt-0.5 text-amber-700">
                       Your registration will remain in &ldquo;Pending Payment&rdquo; status until
                       your Zelle payment is received and verified. This may take 1-3 business days.
+                      Room assignments will not be made until payment is confirmed.
                     </p>
                   </div>
                 </div>
-                <label className="flex items-start gap-3 cursor-pointer rounded-lg border p-3">
+                <label className="flex items-start gap-3 cursor-pointer rounded-lg border bg-background p-3">
                   <input
                     type="checkbox"
                     checked={zelleAgreed}
@@ -972,7 +747,7 @@ function CustomPaymentForm({
                   </span>
                 </label>
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -980,7 +755,11 @@ function CustomPaymentForm({
       {/* ===== Pay / Cancel ===== */}
       <Button
         type="submit"
-        disabled={(!stripe && method !== "zelle") || processing || (method === "zelle" && !zelleAgreed)}
+        disabled={
+          (payMode === "stripe" && !stripe) ||
+          processing ||
+          (payMode === "zelle" && !zelleAgreed)
+        }
         className="w-full"
         size="lg"
       >
@@ -991,10 +770,8 @@ function CustomPaymentForm({
           </>
         ) : (
           <>
-            {method === "zelle" ? (
+            {payMode === "zelle" ? (
               <CheckCircle className="h-4 w-4 mr-2" />
-            ) : usePaymentElement ? (
-              <ExternalLink className="h-4 w-4 mr-2" />
             ) : (
               <Lock className="h-4 w-4 mr-2" />
             )}
@@ -1016,4 +793,3 @@ function CustomPaymentForm({
     </form>
   );
 }
-
