@@ -137,11 +137,13 @@ function ShareButtons({ slug, personName, phone, eventYear }: { slug: string; pe
 
   return (
     <>
-      <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" asChild>
-        <a href={smsHref}>
-          <MessageSquare className="h-3.5 w-3.5" /> Send Message
-        </a>
-      </Button>
+      {phone && (
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" asChild>
+          <a href={smsHref}>
+            <MessageSquare className="h-3.5 w-3.5" /> Send Message
+          </a>
+        </Button>
+      )}
       {typeof navigator !== "undefined" && !!navigator.share && (
         <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleShare}>
           <Share2 className="h-3.5 w-3.5" /> Share

@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-01T13:03:33.615Z",
+  "lastUpdated": "2026-03-02T06:39:17.766Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -328,7 +328,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:32:38.255Z",
-        "lastUpdated": "2026-02-26T23:57:25.251Z"
+        "lastUpdated": "2026-03-02T06:38:46.948Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/zelle-submit/route.ts"
     },
@@ -601,7 +601,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:44:12.622Z",
-        "lastUpdated": "2026-02-28T21:58:53.871Z"
+        "lastUpdated": "2026-03-02T06:38:29.269Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/email/send-confirmation.ts"
     },
@@ -770,9 +770,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:46:45.786Z",
-        "lastUpdated": "2026-02-27T04:46:58.604Z"
+        "lastUpdated": "2026-03-02T06:39:17.766Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/lib/email/templates/session-attendance.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/email/templates/confirmation.tsx"
     },
     "epass": {
       "phase": "do",
@@ -783,7 +783,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T05:24:21.000Z",
-        "lastUpdated": "2026-02-27T06:50:56.216Z"
+        "lastUpdated": "2026-03-02T03:54:47.643Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/epass/epass-list.tsx"
     },
@@ -952,7 +952,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-01T13:03:10.829Z",
-        "lastUpdated": "2026-03-01T13:03:10.829Z"
+        "lastUpdated": "2026-03-02T01:51:48.674Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/lodging.service.ts"
     }
@@ -3280,6 +3280,102 @@
     {
       "timestamp": "2026-03-01T13:03:33.615Z",
       "feature": "form-fields",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T01:51:48.674Z",
+      "feature": "lodging.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T03:54:47.643Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:35:54.643Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:37:06.400Z",
+      "feature": "templates",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:37:11.560Z",
+      "feature": "templates",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:37:17.740Z",
+      "feature": "templates",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:37:23.064Z",
+      "feature": "templates",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:37:40.885Z",
+      "feature": "templates",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:37:47.042Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:38:00.707Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:38:15.444Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:38:29.269Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:38:40.932Z",
+      "feature": "zelle-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:38:46.948Z",
+      "feature": "zelle-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:39:09.378Z",
+      "feature": "templates",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-02T06:39:17.766Z",
+      "feature": "templates",
       "phase": "do",
       "action": "updated"
     }

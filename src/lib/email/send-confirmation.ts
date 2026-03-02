@@ -6,12 +6,13 @@ import { buildConfirmationEmail } from "@/lib/email/templates/confirmation";
 
 export async function sendConfirmationEmail(
   registrationId: string,
-  sentBy?: string | null
+  sentBy?: string | null,
+  options?: { paymentMethod?: string }
 ): Promise<void> {
   const admin = createAdminClient();
 
-  // 1. Load registration, memberships, and tokens in parallel (3 independent queries)
-  const [regResult, membershipsResult, tokensResult] = await Promise.all([
+  // 1. Load registration, memberships, tokens, and payment in parallel
+  const [regResult, membershipsResult, tokensResult, paymentResult] = await Promise.all([
     admin
       .from("eckcm_registrations")
       .select(
@@ -23,6 +24,7 @@ export async function sendConfirmationEmail(
         end_date,
         created_by_user_id,
         event_id,
+        status,
         eckcm_events!inner(name_en, location, event_start_date, event_end_date)
       `
       )
@@ -33,7 +35,7 @@ export async function sendConfirmationEmail(
       .select(
         `
         person_id,
-        eckcm_people!inner(first_name_en, last_name_en, display_name_ko),
+        eckcm_people!inner(first_name_en, last_name_en, display_name_ko, phone),
         eckcm_groups!inner(registration_id)
       `
       )
@@ -43,6 +45,12 @@ export async function sendConfirmationEmail(
       .select("person_id, token")
       .eq("registration_id", registrationId)
       .eq("is_active", true),
+    admin
+      .from("eckcm_invoices")
+      .select("eckcm_payments(payment_method)")
+      .eq("registration_id", registrationId)
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const registration = regResult.data;
@@ -84,14 +92,42 @@ export async function sendConfirmationEmail(
       person.display_name_ko ||
       `${person.first_name_en} ${person.last_name_en}`;
     const token = tokenMap.get(m.person_id);
+    // Build slug with name prefix so extractTokenFromSlug works correctly
+    // (tokens can contain underscores from base64url encoding)
+    const slug = token
+      ? `${person.first_name_en}${person.last_name_en}`.replace(/[^a-zA-Z0-9]/g, "") + `_${token}`
+      : null;
     return {
       name,
-      epassUrl: token ? `${baseUrl}/epass/${token}` : `${baseUrl}/dashboard/epass`,
+      epassUrl: slug ? `${baseUrl}/epass/${slug}` : `${baseUrl}/dashboard/epass`,
     };
   });
 
   const eventDates = `${reg.start_date} ~ ${reg.end_date}`;
   const totalAmount = `$${(reg.total_amount_cents / 100).toFixed(2)}`;
+
+  // Detect payment method: prefer explicit option, then DB lookup
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const paymentData = paymentResult.data as any;
+  const paymentMethod =
+    options?.paymentMethod ||
+    (paymentData?.eckcm_payments?.[0]?.payment_method as string | undefined) ||
+    null;
+
+  const isZelle = paymentMethod === "ZELLE";
+
+  // Build Zelle info for manual payment emails
+  // Get the first member's phone for memo
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const firstMember = (membershipsResult.data ?? [])[0] as any;
+  const registrantPhone = firstMember?.eckcm_people?.phone?.replace(/\D/g, "") || "";
+  const zelleInfo = isZelle
+    ? {
+        zelleEmail: "kimdani1@icloud.com",
+        accountHolder: "EMPOWER MINISTRY GROUP, INC",
+        memo: `${reg.confirmation_code} - ${participants[0]?.name || "N/A"} - ${registrantPhone} - ${user.email}`,
+      }
+    : null;
 
   const html = buildConfirmationEmail({
     confirmationCode: reg.confirmation_code,
@@ -100,8 +136,12 @@ export async function sendConfirmationEmail(
     eventDates,
     participants,
     totalAmount,
+    paymentMethod,
+    zelleInfo,
   });
-  const subject = `ECKCM Registration Confirmed - ${reg.confirmation_code}`;
+  const subject = isZelle
+    ? `ECKCM Registration Submitted - ${reg.confirmation_code}`
+    : `ECKCM Registration Confirmed - ${reg.confirmation_code}`;
 
   const { data: sendResult, error } = await resend.emails.send({
     from: emailConfig.from,

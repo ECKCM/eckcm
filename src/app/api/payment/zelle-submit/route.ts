@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateEPassToken } from "@/lib/services/epass.service";
 import { zelleSubmitSchema } from "@/lib/schemas/api";
+import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
@@ -122,6 +123,11 @@ export async function POST(request: Request) {
     }
   }
   logger.info("[payment/zelle-submit] Inactive E-Pass tokens generated", { tokensGenerated });
+
+  // Send email with Zelle payment instructions (non-blocking)
+  sendConfirmationEmail(registrationId, null, { paymentMethod: "ZELLE" }).catch((err) => {
+    logger.error("[payment/zelle-submit] Failed to send Zelle instructions email", { error: String(err) });
+  });
 
   // Audit log
   await admin.from("eckcm_audit_logs").insert({
