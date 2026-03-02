@@ -126,31 +126,40 @@ export async function getLodgingSummary(
   supabase: SupabaseClient,
   eventId: string
 ): Promise<{ totalRooms: number; assignedRooms: number; pendingGroups: number }> {
+  // Resolve building IDs for this event
+  const { data: buildings } = await supabase
+    .from("eckcm_buildings")
+    .select("id")
+    .eq("event_id", eventId);
+  const buildingIds = (buildings ?? []).map((b: { id: string }) => b.id);
+
+  // Resolve floor IDs from those buildings
+  const { data: floors } = buildingIds.length
+    ? await supabase.from("eckcm_floors").select("id").in("building_id", buildingIds)
+    : { data: [] };
+  const floorIds = (floors ?? []).map((f: { id: string }) => f.id);
+
+  // Resolve group IDs for this event
+  const { data: groups } = await supabase
+    .from("eckcm_groups")
+    .select("id")
+    .eq("event_id", eventId);
+  const groupIds = (groups ?? []).map((g: { id: string }) => g.id);
+
   const [roomsResult, assignedResult, pendingResult] = await Promise.all([
-    supabase
-      .from("eckcm_rooms")
-      .select("id", { count: "exact", head: true })
-      .eq("is_available", true)
-      .in(
-        "floor_id",
-        supabase
-          .from("eckcm_floors")
-          .select("id")
-          .in(
-            "building_id",
-            supabase
-              .from("eckcm_buildings")
-              .select("id")
-              .eq("event_id", eventId)
-          )
-      ),
-    supabase
-      .from("eckcm_room_assignments")
-      .select("id", { count: "exact", head: true })
-      .in(
-        "group_id",
-        supabase.from("eckcm_groups").select("id").eq("event_id", eventId)
-      ),
+    floorIds.length
+      ? supabase
+          .from("eckcm_rooms")
+          .select("id", { count: "exact", head: true })
+          .eq("is_available", true)
+          .in("floor_id", floorIds)
+      : { count: 0 },
+    groupIds.length
+      ? supabase
+          .from("eckcm_room_assignments")
+          .select("id", { count: "exact", head: true })
+          .in("group_id", groupIds)
+      : { count: 0 },
     supabase
       .from("eckcm_groups")
       .select("id", { count: "exact", head: true })
