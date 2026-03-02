@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-01T06:36:45.163Z",
+  "lastUpdated": "2026-03-01T13:03:33.615Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -68,7 +68,8 @@
     "announcement",
     "config",
     "logs",
-    "invoices"
+    "invoices",
+    "lodging.service.ts"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -93,9 +94,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:03:38.722Z",
-        "lastUpdated": "2026-02-27T09:46:04.253Z"
+        "lastUpdated": "2026-03-01T13:03:17.112Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/sanitized-html.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/hooks/use-auth.ts"
     },
     "stripe-config": {
       "phase": "do",
@@ -587,7 +588,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:44:04.180Z",
-        "lastUpdated": "2026-02-27T04:44:04.180Z"
+        "lastUpdated": "2026-03-01T13:03:33.615Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/form-fields/page.tsx"
     },
@@ -941,6 +942,19 @@
         "lastUpdated": "2026-02-28T20:51:49.015Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/invoices/invoices-table.tsx"
+    },
+    "lodging.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-01T13:03:10.829Z",
+        "lastUpdated": "2026-03-01T13:03:10.829Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/lodging.service.ts"
     }
   },
   "history": [
@@ -3248,6 +3262,24 @@
     {
       "timestamp": "2026-03-01T06:36:45.163Z",
       "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-01T13:03:10.829Z",
+      "feature": "lodging.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-01T13:03:17.112Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-01T13:03:33.615Z",
+      "feature": "form-fields",
       "phase": "do",
       "action": "updated"
     }

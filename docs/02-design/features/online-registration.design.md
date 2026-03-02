@@ -3,7 +3,7 @@
 > Feature: `online-registration`
 > Created: 2026-02-11
 > Plan Reference: [online-registration.plan.md](../../01-plan/features/online-registration.plan.md)
-> Status: Draft (v3 - Synced with implementation)
+> Status: Draft (v4 - Synced with implementation, Act-5)
 > Level: Dynamic (Next.js + Supabase + Stripe)
 
 ---
@@ -1004,7 +1004,7 @@ CREATE POLICY "Staff can read all people"
 
 ---
 
-## 4. API Route Design (v3 - Synced with implementation)
+## 4. API Route Design (v4 - Synced with implementation)
 
 ### 4.0 Data Access Strategy
 
@@ -1053,13 +1053,15 @@ CREATE POLICY "Staff can read all people"
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | POST | `/api/payment/create-intent` | Create Stripe PaymentIntent | User |
-| POST | `/api/payment/confirm` | Confirm payment | User |
+| POST | `/api/payment/confirm` | Confirm payment synchronously (server-side) | User |
 | GET | `/api/payment/retrieve-intent` | Retrieve PaymentIntent status | User |
 | POST | `/api/payment/zelle-submit` | Submit Zelle payment | User |
 | GET | `/api/payment/methods` | Get available payment methods | User |
+| POST | `/api/payment/update-cover-fees` | Update cover-processing-fees flag on payment | User |
 | POST | `/api/payment/donate` | Create donation PaymentIntent | Public |
-| POST | `/api/webhooks/stripe` | Stripe webhook (payment succeeded/failed) | Stripe sig |
 | GET | `/api/stripe/publishable-key` | Get Stripe publishable key | Public |
+
+> **v4 Note**: `POST /api/webhooks/stripe` was intentionally removed in commit `27e23d8` ("webhook cleanup"). Payment confirmation is now handled **synchronously** via `POST /api/payment/confirm` which updates registration status, invoice, and triggers confirmation email all in a single server-side call after Stripe's `confirmPayment()` succeeds on the client. The webhook approach has been replaced by this synchronous flow. Stripe webhook secrets remain configurable in admin settings for potential future use.
 
 ### 4.4 Check-in Routes
 
@@ -1078,6 +1080,10 @@ CREATE POLICY "Staff can read all people"
 | POST | `/api/email/confirmation` | Send registration confirmation (to group representative) | Server |
 | POST | `/api/email/invoice` | Send invoice email | Server |
 | POST | `/api/email/test` | Test email delivery | Staff |
+| GET | `/api/admin/email/logs` | View email delivery log | Staff |
+| POST | `/api/admin/email/send` | Admin send confirmation/invoice for a registration | Staff |
+| GET+PUT | `/api/admin/email/config` | Read/update email configuration (Resend key, from address) | Super Admin |
+| POST | `/api/admin/email/announcement` | Send bulk announcement email to all registrants | Staff |
 
 ### 4.6 Admin Routes
 
@@ -1088,9 +1094,13 @@ CREATE POLICY "Staff can read all people"
 | POST | `/api/admin/invoices/custom` | Create custom invoice | Staff |
 | POST | `/api/admin/registration` | Manual registration (admin creates for participant) | Staff |
 | POST | `/api/admin/refund` | Process refund (full/partial) | Staff |
+| GET | `/api/admin/refund/info` | Get refund summary info for a payment | Staff |
 | POST | `/api/admin/payment/manual` | Process manual payment | Staff |
 | GET | `/api/admin/stripe-config` | Stripe configuration | Super Admin |
+| POST | `/api/admin/stripe-sync` | Sync Stripe payment intents with DB | Super Admin |
 | GET | `/api/admin/app-config` | App configuration | Staff |
+| GET | `/api/admin/events/[eventId]` | Event detail API (read single event) | Staff |
+| GET | `/api/admin/registration/status` | Registration open/closed status check | Public |
 | POST | `/api/export/csv` | Export data as CSV | Staff |
 | POST | `/api/export/pdf` | Export data as PDF | Staff |
 | POST | `/api/sheets/sync` | Trigger Google Sheets sync | Staff |
@@ -1122,7 +1132,7 @@ type ErrorCode =
 
 ---
 
-## 5. Key Service Designs (v3 - Synced with implementation)
+## 5. Key Service Designs (v4 - Synced with implementation)
 
 ### 5.1 PricingService (`pricing.service.ts`)
 
@@ -1280,7 +1290,8 @@ CREATE INDEX idx_epass_tokens_token_hash ON eckcm_epass_tokens(token_hash);
 
 ### 10.1 Stripe
 - **SDK**: `@stripe/stripe-js` + `@stripe/react-stripe-js` (client), `stripe` (server)
-- **Flow**: Create PaymentIntent (server) -> Confirm with Elements (client) -> Webhook confirmation (server)
+- **Flow**: Create PaymentIntent (server) -> Confirm with Elements (client) -> Synchronous server confirmation via `POST /api/payment/confirm`
+- **Confirmation Flow**: After client-side `stripe.confirmPayment()` succeeds, the client calls `POST /api/payment/confirm` which: updates registration status to PAID, updates invoice, inserts payment record, generates confirmation code, generates E-Pass tokens, sends confirmation and invoice emails, and inserts audit log. This replaces the previous async webhook approach.
 - **Config**: Test/Live mode toggle in admin settings (encrypted keys in DB)
 - **Methods**: Card, Apple Pay, Google Pay, ACH (us_bank_account), Link
 - **Note**: Must use lazy `getStripeServer()` function, not module-level instantiation
@@ -1464,18 +1475,21 @@ Transaction: POST /api/registration/submit
 └─ COMMIT or ROLLBACK on any error
 ```
 
-After payment confirmation (Stripe webhook):
+After payment confirmation (synchronous server call):
 ```
-Webhook: POST /api/webhooks/stripe
-├─ 1. UPDATE eckcm_registrations (status: PAID)
-├─ 2. UPDATE eckcm_invoices (status: SUCCEEDED, paid_at)
-├─ 3. INSERT eckcm_payments
-├─ 4. Generate confirmation_code (ConfirmationCodeService)
-├─ 5. Generate eckcm_epass_tokens (for each participant)
-├─ 6. Send confirmation email to group representative (all confirmation codes + E-Pass links)
-├─ 7. Send invoice email
-└─ 8. INSERT eckcm_audit_logs
+POST /api/payment/confirm (called by client after stripe.confirmPayment() succeeds)
+├─ 1. Verify payment intent status with Stripe server SDK
+├─ 2. UPDATE eckcm_registrations (status: PAID)
+├─ 3. UPDATE eckcm_invoices (status: SUCCEEDED, paid_at)
+├─ 4. INSERT eckcm_payments
+├─ 5. Generate confirmation_code (ConfirmationCodeService)
+├─ 6. Generate eckcm_epass_tokens (for each participant)
+├─ 7. Send confirmation email to group representative (all confirmation codes + E-Pass links)
+├─ 8. Send invoice email
+└─ 9. INSERT eckcm_audit_logs
 ```
+
+> **v4 Architecture Note**: The original design used `POST /api/webhooks/stripe` for async payment confirmation. This was intentionally replaced by the synchronous confirm flow above. The synchronous approach eliminates webhook signature verification complexity and ensures immediate confirmation delivery. The webhook endpoint has been removed from the codebase.
 
 ---
 
@@ -1563,6 +1577,75 @@ CREATE TRIGGER trg_app_config_updated_at
 
 ---
 
-*Generated by bkit PDCA v1.5.2 (v3 - Synced with implementation)*
+---
+
+## 19. Implementation-Only Items (v4 - Officially Recognized)
+
+These items exist in the implementation but were not in the original design specification. They are recognized as valid implementation decisions and documented here to keep design and implementation in sync.
+
+### 19.1 Additional Database Tables
+
+| Table | Purpose | Used In |
+|-------|---------|---------|
+| `eckcm_fee_category_inventory` | Inventory tracking per fee category | `src/app/(admin)/admin/inventory/inventory-manager.tsx` |
+| `eckcm_email_logs` | Email delivery logging and audit trail | `src/lib/email/email-log.service.ts`, `src/app/api/admin/email/logs/route.ts` |
+
+### 19.2 Additional Services
+
+| Service | Purpose | File |
+|---------|---------|------|
+| `refund.service.ts` | Stripe refund processing logic | `src/lib/services/refund.service.ts` |
+| `email-log.service.ts` | Email delivery logging to `eckcm_email_logs` | `src/lib/email/email-log.service.ts` |
+
+### 19.3 Additional Components
+
+| Component | Purpose | File |
+|-----------|---------|------|
+| `force-light-mode.tsx` | Forces light mode during registration wizard | `src/components/registration/force-light-mode.tsx` |
+| `payment-icons.tsx` | Brand icons for payment method display | `src/components/payment/payment-icons.tsx` |
+| `sanitized-html.tsx` | Safe HTML rendering (DOMPurify-based) | `src/components/shared/sanitized-html.tsx` |
+
+### 19.4 Additional Library Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/app-config.ts` | App configuration helper (reads `eckcm_app_config`) |
+| `src/lib/color-theme.ts` | Color theme constants and helpers |
+| `src/lib/checkin/offline-store.ts` | IndexedDB store for offline check-in data |
+| `src/lib/context/registration-context.tsx` | Registration wizard context (implements `use-registration.ts`) |
+| `src/lib/email/email-config.ts` | Email configuration reader |
+| `src/lib/logger.ts` | Structured application logger |
+| `src/lib/rate-limit.ts` | Request rate limiting middleware helper |
+| `src/lib/auth/admin.ts` | Admin auth verification helper |
+
+### 19.5 Additional Pages (Error/Loading Boundaries)
+
+| Page | Purpose |
+|------|---------|
+| `src/app/(public)/error.tsx` | Error boundary for public routes |
+| `src/app/(protected)/error.tsx` | Error boundary for protected routes |
+| `src/app/(protected)/loading.tsx` | Loading state for protected routes |
+
+### 19.6 Intentionally Deferred Items
+
+The following designed items are deferred to a future iteration:
+
+| Item | Reason |
+|------|--------|
+| `POST /api/payment/donate` | Donation flow not yet required |
+| `public/donate/page.tsx` | Donation page not yet required |
+| `public/pay/[code]/page.tsx` | Public payment link not yet required |
+| `POST /api/admin/lodging/magic-generator` | Complex bulk generation logic, deferred |
+| `POST /api/admin/invoices/custom` | Custom invoice UI not yet required |
+| `POST /api/sheets/sync` | Google Sheets integration deferred |
+| `sheets.service.ts` | Google Sheets integration deferred |
+| `public/sw.js` + PWA config | PWA service worker deferred |
+| `eckcm_meal_rules` table wiring | Meals admin uses `eckcm_registration_selections` |
+| `eckcm_meal_selections` table wiring | Meals admin uses `eckcm_registration_selections` |
+| `eckcm_sheets_cache_participants` | Google Sheets deferred |
+
+---
+
+*Generated by bkit PDCA v1.5.2 (v4 - Synced with implementation, Act-5)*
 *Plan Reference: docs/01-plan/features/online-registration.plan.md*
-*Last updated: 2026-02-24 (Iteration 1 - pdca-iterator)*
+*Last updated: 2026-03-01 (Iteration 5 - pdca-iterator)*
