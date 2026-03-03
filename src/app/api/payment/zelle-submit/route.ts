@@ -124,10 +124,12 @@ export async function POST(request: Request) {
   }
   logger.info("[payment/zelle-submit] Inactive E-Pass tokens generated", { tokensGenerated });
 
-  // Send email with Zelle payment instructions (non-blocking)
-  sendConfirmationEmail(registrationId, null, { paymentMethod: "ZELLE" }).catch((err) => {
+  // Send email with Zelle payment instructions
+  try {
+    await sendConfirmationEmail(registrationId, null, { paymentMethod: "ZELLE" });
+  } catch (err) {
     logger.error("[payment/zelle-submit] Failed to send Zelle instructions email", { error: String(err) });
-  });
+  }
 
   // Audit log
   await admin.from("eckcm_audit_logs").insert({

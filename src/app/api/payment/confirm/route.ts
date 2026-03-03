@@ -156,10 +156,12 @@ export async function POST(request: Request) {
   }
   logger.info("[payment/confirm] E-Pass tokens generated", { tokensGenerated, totalMembers: memberships?.length ?? 0 });
 
-  // 3. Send confirmation email (fire-and-forget — don't block response)
-  sendConfirmationEmail(registrationId).catch((err) => {
+  // 3. Send confirmation email
+  try {
+    await sendConfirmationEmail(registrationId);
+  } catch (err) {
     logger.error("[payment/confirm] Failed to send confirmation email", { error: String(err) });
-  });
+  }
 
   return NextResponse.json({ status: "confirmed" });
   } catch (err) {
