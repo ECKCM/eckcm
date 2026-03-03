@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-02T19:45:46.777Z",
+  "lastUpdated": "2026-03-03T05:01:27.660Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -1050,7 +1050,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-02T19:45:33.866Z",
-        "lastUpdated": "2026-03-02T19:45:33.866Z"
+        "lastUpdated": "2026-03-03T05:01:27.660Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/signup/check-email/page.tsx"
     }
@@ -3762,6 +3762,12 @@
     {
       "timestamp": "2026-03-02T19:45:46.777Z",
       "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T05:01:27.660Z",
+      "feature": "check-email",
       "phase": "do",
       "action": "updated"
     }
