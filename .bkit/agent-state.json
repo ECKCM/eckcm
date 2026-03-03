@@ -1,14 +1,25 @@
 {
   "version": "1.0",
-  "enabled": false,
+  "enabled": true,
   "teamName": "",
   "feature": "online-registration",
   "pdcaPhase": "check",
   "orchestrationPattern": "leader",
   "ctoAgent": "opus",
-  "startedAt": "2026-03-03T07:06:18.040Z",
-  "lastUpdated": "2026-03-03T07:21:01.146Z",
-  "teammates": [],
+  "startedAt": "2026-03-03T19:32:34.196Z",
+  "lastUpdated": "2026-03-03T19:33:01.730Z",
+  "teammates": [
+    {
+      "name": "afb7f636046a12de1",
+      "role": "Explore",
+      "model": "sonnet",
+      "status": "completed",
+      "currentTask": null,
+      "taskId": null,
+      "startedAt": "2026-03-03T19:32:34.197Z",
+      "lastActivityAt": "2026-03-03T19:33:01.728Z"
+    }
+  ],
   "progress": {
     "totalTasks": 0,
     "completedTasks": 0,
@@ -17,5 +28,5 @@
     "pendingTasks": 0
   },
   "recentMessages": [],
-  "sessionId": "37e7f119-743b-4979-99dd-74def7f2a2d7"
+  "sessionId": "7fa31e48-832b-443f-895f-ab163abbc1f6"
 }

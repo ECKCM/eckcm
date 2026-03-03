@@ -4,22 +4,32 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, FileText, Download } from "lucide-react";
+
+interface LineItem {
+  description: string;
+  quantity: number;
+  unit_price_cents: number;
+  amount_cents: number;
+}
 
 interface Invoice {
   id: string;
   invoice_number: string;
+  subtotal_cents: number;
   total_cents: number;
   status: string;
   issued_at: string;
   paid_at: string | null;
   registration_id: string;
+  eckcm_invoice_line_items: LineItem[];
   eckcm_registrations: {
     confirmation_code: string | null;
     eckcm_events: {
       name_en: string;
     };
   };
+  eckcm_payments: { payment_method: string; status: string }[];
 }
 
 const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -30,6 +40,12 @@ const statusVariant: Record<string, "default" | "secondary" | "destructive" | "o
   PARTIALLY_REFUNDED: "secondary",
 };
 
+function statusLabel(status: string) {
+  if (status === "SUCCEEDED") return "Paid";
+  if (status === "PENDING") return "Pending";
+  return status;
+}
+
 export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
@@ -39,7 +55,7 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold">Receipts</h1>
+        <h1 className="text-2xl font-bold">Receipts & Invoices</h1>
       </div>
 
       {invoices.length === 0 ? (
@@ -52,6 +68,12 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
         invoices.map((inv) => {
           const reg = inv.eckcm_registrations;
           const event = reg.eckcm_events;
+          const isPaid = inv.status === "SUCCEEDED";
+          const docType = isPaid ? "Receipt" : "Invoice";
+          const payment = inv.eckcm_payments?.find(
+            (p) => p.status === "SUCCEEDED" || p.status === "PARTIALLY_REFUNDED"
+          );
+          const lineItems = inv.eckcm_invoice_line_items ?? [];
 
           return (
             <Card key={inv.id}>
@@ -62,13 +84,17 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
                     <CardTitle className="text-base">
                       {inv.invoice_number}
                     </CardTitle>
+                    <span className="text-xs text-muted-foreground">
+                      {docType}
+                    </span>
                   </div>
                   <Badge variant={statusVariant[inv.status] ?? "secondary"}>
-                    {inv.status === "SUCCEEDED" ? "Paid" : inv.status}
+                    {statusLabel(inv.status)}
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {/* Summary */}
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <span className="text-muted-foreground">Event</span>
                   <span>{event.name_en}</span>
@@ -78,10 +104,6 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
                       <span className="font-mono">{reg.confirmation_code}</span>
                     </>
                   )}
-                  <span className="text-muted-foreground">Amount</span>
-                  <span className="font-medium">
-                    ${(inv.total_cents / 100).toFixed(2)}
-                  </span>
                   <span className="text-muted-foreground">Issued</span>
                   <span>
                     {new Date(inv.issued_at).toLocaleDateString("en-US")}
@@ -94,6 +116,56 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
                       </span>
                     </>
                   )}
+                  {payment && (
+                    <>
+                      <span className="text-muted-foreground">Method</span>
+                      <span>{payment.payment_method}</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Line items */}
+                {lineItems.length > 0 && (
+                  <div className="rounded-md border text-sm">
+                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-3 py-2 bg-muted/50 text-xs text-muted-foreground font-medium">
+                      <span>Description</span>
+                      <span className="text-center">Qty</span>
+                      <span className="text-right">Unit</span>
+                      <span className="text-right">Amount</span>
+                    </div>
+                    {lineItems.map((li, i) => (
+                      <div
+                        key={i}
+                        className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-3 py-2 border-t"
+                      >
+                        <span>{li.description}</span>
+                        <span className="text-center">{li.quantity}</span>
+                        <span className="text-right">
+                          ${(li.unit_price_cents / 100).toFixed(2)}
+                        </span>
+                        <span className="text-right">
+                          ${(li.amount_cents / 100).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex justify-end gap-8 px-3 py-2 border-t font-medium">
+                      <span>Total</span>
+                      <span>${(inv.total_cents / 100).toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Download */}
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" asChild>
+                    <a
+                      href={`/api/invoice/${inv.id}/pdf`}
+                      download={`eckcm-${isPaid ? "receipt" : "invoice"}-${inv.invoice_number}.pdf`}
+                    >
+                      <Download className="mr-1.5 h-3.5 w-3.5" />
+                      Download {docType} PDF
+                    </a>
+                  </Button>
                 </div>
               </CardContent>
             </Card>

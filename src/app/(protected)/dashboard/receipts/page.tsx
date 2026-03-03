@@ -29,11 +29,14 @@ export default async function ReceiptsPage() {
     .select(`
       id,
       invoice_number,
+      subtotal_cents,
       total_cents,
       status,
       issued_at,
       paid_at,
       registration_id,
+      eckcm_invoice_line_items(description, quantity, unit_price_cents, amount_cents),
+      eckcm_payments(payment_method, status),
       eckcm_registrations!inner(
         confirmation_code,
         eckcm_events!inner(name_en)

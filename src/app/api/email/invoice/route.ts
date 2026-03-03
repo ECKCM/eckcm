@@ -5,6 +5,7 @@ import { getResendClient } from "@/lib/email/resend";
 import { getEmailConfig } from "@/lib/email/email-config";
 import { logEmail } from "@/lib/email/email-log.service";
 import { buildInvoiceEmail } from "@/lib/email/templates/invoice";
+import { generateInvoicePdf } from "@/lib/pdf/generate";
 import { emailInvoiceSchema } from "@/lib/schemas/api";
 import { rateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -124,6 +125,29 @@ export async function POST(req: NextRequest) {
     ? `ECKCM Receipt - ${inv.invoice_number}`
     : `ECKCM Invoice - ${inv.invoice_number}`;
 
+  // Generate PDF attachment
+  let pdfAttachment: { filename: string; content: Buffer } | null = null;
+  try {
+    const pdfBuffer = await generateInvoicePdf({
+      invoiceNumber: inv.invoice_number,
+      confirmationCode: reg.confirmation_code ?? "",
+      eventName,
+      issuedDate: new Date(inv.issued_at).toLocaleDateString("en-US"),
+      isPaid,
+      paymentMethod: payment?.payment_method ?? "-",
+      paymentDate: inv.paid_at ? new Date(inv.paid_at).toLocaleDateString("en-US") : "-",
+      lineItems,
+      subtotal: `$${((inv.subtotal_cents ?? inv.total_cents) / 100).toFixed(2)}`,
+      total: `$${(inv.total_cents / 100).toFixed(2)}`,
+    });
+    pdfAttachment = {
+      filename: `eckcm-${isPaid ? "receipt" : "invoice"}-${inv.invoice_number}.pdf`,
+      content: pdfBuffer,
+    };
+  } catch (err) {
+    logger.error("[email/invoice] PDF generation failed", { error: String(err) });
+  }
+
   try {
     const resend = await getResendClient();
     const { data: sendResult, error } = await resend.emails.send({
@@ -132,6 +156,7 @@ export async function POST(req: NextRequest) {
       ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
       subject,
       html,
+      ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
     });
 
     if (error) {

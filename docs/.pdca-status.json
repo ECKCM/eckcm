@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-03T19:06:56.585Z",
+  "lastUpdated": "2026-03-03T19:36:45.755Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -209,7 +209,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:30.002Z",
-        "lastUpdated": "2026-02-28T21:29:29.838Z"
+        "lastUpdated": "2026-03-03T19:35:44.672Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/email/invoice/route.ts"
     },
@@ -274,7 +274,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:28:12.968Z",
-        "lastUpdated": "2026-02-28T21:53:29.313Z"
+        "lastUpdated": "2026-03-03T19:19:49.503Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/confirm/route.ts"
     },
@@ -339,7 +339,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:32:38.255Z",
-        "lastUpdated": "2026-03-02T06:38:46.948Z"
+        "lastUpdated": "2026-03-03T19:19:42.106Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/zelle-submit/route.ts"
     },
@@ -612,7 +612,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:44:12.622Z",
-        "lastUpdated": "2026-03-03T19:06:56.585Z"
+        "lastUpdated": "2026-03-03T19:36:45.755Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/email/send-confirmation.ts"
     },
@@ -768,9 +768,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:46:10.946Z",
-        "lastUpdated": "2026-02-27T05:01:38.929Z"
+        "lastUpdated": "2026-03-03T19:36:38.770Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/export/pdf/route.ts"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/invoice/[id]/pdf/route.ts"
     },
     "templates": {
       "phase": "do",
@@ -833,9 +833,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T06:51:08.256Z",
-        "lastUpdated": "2026-02-27T06:51:08.256Z"
+        "lastUpdated": "2026-03-03T19:36:13.860Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/receipts/receipt-list.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/receipts/page.tsx"
     },
     "ui": {
       "phase": "do",
@@ -4243,6 +4243,96 @@
     },
     {
       "timestamp": "2026-03-03T19:06:56.585Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:19:42.106Z",
+      "feature": "zelle-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:19:49.503Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:34:49.616Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:34:53.681Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:35:11.728Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:35:19.587Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:35:23.606Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:35:34.312Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:35:37.868Z",
+      "feature": "invoice",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:35:44.672Z",
+      "feature": "invoice",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:36:07.605Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:36:13.860Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:36:35.597Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:36:38.770Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:36:45.755Z",
       "feature": "email",
       "phase": "do",
       "action": "updated"

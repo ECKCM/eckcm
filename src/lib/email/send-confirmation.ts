@@ -3,6 +3,7 @@ import { getResendClient } from "@/lib/email/resend";
 import { getEmailConfig } from "@/lib/email/email-config";
 import { logEmail } from "@/lib/email/email-log.service";
 import { buildConfirmationEmail } from "@/lib/email/templates/confirmation";
+import { generateInvoicePdf } from "@/lib/pdf/generate";
 
 export async function sendConfirmationEmail(
   registrationId: string,
@@ -163,8 +164,8 @@ export async function sendConfirmationEmail(
         }
       : null;
 
-  // Only include invoice in email if it's paid (not for pending Zelle)
-  const includeInvoice = invoicePaid ? invoiceInfo : null;
+  // Always include invoice/receipt in email
+  const includeInvoice = invoiceInfo;
 
   const html = buildConfirmationEmail({
     confirmationCode: reg.confirmation_code,
@@ -181,12 +182,44 @@ export async function sendConfirmationEmail(
     ? `ECKCM Registration Submitted - ${reg.confirmation_code}`
     : `ECKCM Registration Confirmed - ${reg.confirmation_code}`;
 
+  // Generate PDF attachment
+  let pdfAttachment: { filename: string; content: Buffer } | null = null;
+  if (includeInvoice) {
+    try {
+      const pdfBuffer = await generateInvoicePdf({
+        invoiceNumber: includeInvoice.invoiceNumber,
+        confirmationCode: reg.confirmation_code,
+        eventName: reg.eckcm_events.name_en,
+        issuedDate: new Date().toLocaleDateString("en-US"),
+        isPaid: invoicePaid,
+        paymentMethod: paymentMethod ?? "-",
+        paymentDate: includeInvoice.paymentDate,
+        lineItems: includeInvoice.lineItems.map((li: { description: string; quantity: number; unitPrice: string; amount: string }) => ({
+          description: li.description,
+          quantity: li.quantity,
+          unitPrice: li.unitPrice,
+          amount: li.amount,
+        })),
+        subtotal: includeInvoice.subtotal,
+        total: includeInvoice.total,
+      });
+      const docType = invoicePaid ? "receipt" : "invoice";
+      pdfAttachment = {
+        filename: `eckcm-${docType}-${includeInvoice.invoiceNumber}.pdf`,
+        content: pdfBuffer,
+      };
+    } catch (err) {
+      console.error("[sendConfirmationEmail] PDF generation failed:", err);
+    }
+  }
+
   const { data: sendResult, error } = await resend.emails.send({
     from: emailConfig.from,
     to: user.email,
     ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
     subject,
     html,
+    ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
   });
 
   if (error) {
