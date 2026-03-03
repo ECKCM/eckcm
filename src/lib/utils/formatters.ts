@@ -23,6 +23,30 @@ export function formatDate(
 }
 
 /**
+ * K-12 cutoff date based on US school year Senior (12th grade) birthday rule.
+ *
+ * The US school year uses September 1 as the birthday cutoff:
+ *   - Senior (12th grade) for school year ending in `eventYear`:
+ *       born between Sep 1 (eventYear-18) and Aug 31 (eventYear-17)
+ *   - K-12 = born on or after Sep 1 (eventYear-18)
+ *   - Not K-12 = born on Aug 31 (eventYear-18) or earlier (graduated)
+ *
+ * Both boundary dates are computed dynamically so any future event year works:
+ *   septemberFirst = new Date(cutoffYear, 8, 1)   → Sep 1  (month index 8)
+ *   augustLast     = new Date(cutoffYear, 8, 0)   → Aug 31 (day 0 = last day of prev month)
+ */
+export function getK12CutoffDate(eventDate: Date): Date {
+  const eventYear = eventDate.getFullYear();
+  const cutoffYear = eventYear - 18;
+  // First day of September in cutoffYear — anyone born on/after this is K-12
+  return new Date(cutoffYear, 8, 1); // Sep 1 (month 8, 0-indexed)
+}
+
+export function isK12ByBirthDate(birthDate: Date, eventDate: Date): boolean {
+  return birthDate >= getK12CutoffDate(eventDate);
+}
+
+/**
  * Format phone number for display (handles stored values with country codes)
  */
 export function formatPhone(phone: string): string {

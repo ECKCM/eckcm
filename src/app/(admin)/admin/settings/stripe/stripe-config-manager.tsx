@@ -20,22 +20,25 @@ import {
   Loader2,
   Save,
   CreditCard,
-  Landmark,
   Building2,
+  Landmark,
   Banknote,
   Smartphone,
-  MoreHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 
-interface KeyStatus {
-  is_set: boolean;
-  last4: string;
-}
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
 
-type PaymentMethodId = "card" | "ach" | "zelle" | "check" | "wallet" | "more";
+export type PaymentMethodId =
+  | "card"
+  | "ach"
+  | "zelle"
+  | "check"
+  | "wallet";
 
-const PAYMENT_METHOD_OPTIONS: {
+export const ALL_PAYMENT_METHODS: {
   id: PaymentMethodId;
   label: string;
   description: string;
@@ -71,13 +74,23 @@ const PAYMENT_METHOD_OPTIONS: {
     description: "Mobile wallet payments",
     icon: <Smartphone className="h-4 w-4" />,
   },
-  {
-    id: "more",
-    label: "More Payment Options",
-    description: "Amazon Pay, Klarna, etc. via Stripe",
-    icon: <MoreHorizontal className="h-4 w-4" />,
-  },
 ];
+
+export const DEFAULT_PAYMENT_METHODS: PaymentMethodId[] = [
+  "card",
+  "ach",
+  "zelle",
+  "wallet",
+];
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+interface KeyStatus {
+  is_set: boolean;
+  last4: string;
+}
 
 interface StripeConfig {
   stripe_test_publishable_key: KeyStatus;
@@ -92,19 +105,30 @@ interface StripeConfig {
   donor_covers_fees_donation: boolean;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Main component                                                     */
+/* ------------------------------------------------------------------ */
+
 export function StripeConfigManager() {
   const [config, setConfig] = useState<StripeConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingMethods, setSavingMethods] = useState(false);
-  const [enabledMethods, setEnabledMethods] = useState<PaymentMethodId[]>([
-    "card", "ach", "zelle", "check", "wallet", "more",
-  ]);
+  const [enabledMethods, setEnabledMethods] =
+    useState<PaymentMethodId[]>(DEFAULT_PAYMENT_METHODS);
   const [deductFees, setDeductFees] = useState(false);
   const [donorCoversRegistration, setDonorCoversRegistration] = useState(false);
   const [donorCoversDonation, setDonorCoversDonation] = useState(false);
-  const [testKeys, setTestKeys] = useState({ publishable: "", secret: "", webhook: "" });
-  const [liveKeys, setLiveKeys] = useState({ publishable: "", secret: "", webhook: "" });
+  const [testKeys, setTestKeys] = useState({
+    publishable: "",
+    secret: "",
+    webhook: "",
+  });
+  const [liveKeys, setLiveKeys] = useState({
+    publishable: "",
+    secret: "",
+    webhook: "",
+  });
   const [showSecret, setShowSecret] = useState({
     test: false,
     live: false,
@@ -125,9 +149,7 @@ export function StripeConfigManager() {
       }
       const data: StripeConfig = await res.json();
       setConfig(data);
-      if (data.enabled_payment_methods) {
-        setEnabledMethods(data.enabled_payment_methods);
-      }
+      setEnabledMethods(data.enabled_payment_methods ?? DEFAULT_PAYMENT_METHODS);
       setDeductFees(data.deduct_stripe_fees_on_refund ?? false);
       setDonorCoversRegistration(data.donor_covers_fees_registration ?? false);
       setDonorCoversDonation(data.donor_covers_fees_donation ?? false);
@@ -142,15 +164,12 @@ export function StripeConfigManager() {
     const keys = mode === "test" ? testKeys : liveKeys;
     const updates: Record<string, string> = {};
 
-    if (keys.publishable.trim()) {
+    if (keys.publishable.trim())
       updates[`stripe_${mode}_publishable_key`] = keys.publishable.trim();
-    }
-    if (keys.secret.trim()) {
+    if (keys.secret.trim())
       updates[`stripe_${mode}_secret_key`] = keys.secret.trim();
-    }
-    if (keys.webhook.trim()) {
+    if (keys.webhook.trim())
       updates[`stripe_${mode}_webhook_secret`] = keys.webhook.trim();
-    }
 
     if (Object.keys(updates).length === 0) {
       toast.error("Enter at least one key to save");
@@ -164,21 +183,16 @@ export function StripeConfigManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
-
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         toast.error(data.error || `Failed to save (${res.status})`);
         return;
       }
-
       toast.success(
         `${mode === "test" ? "Test" : "Live"} mode keys saved successfully`
       );
-
-      // Clear inputs and refresh
       if (mode === "test") setTestKeys({ publishable: "", secret: "", webhook: "" });
       else setLiveKeys({ publishable: "", secret: "", webhook: "" });
-
       await fetchConfig();
     } catch {
       toast.error("Network error. Please try again.");
@@ -187,10 +201,14 @@ export function StripeConfigManager() {
     }
   }
 
-  async function handleToggleMethod(methodId: PaymentMethodId, enabled: boolean) {
+  async function handleToggleMethod(
+    methodId: PaymentMethodId,
+    enabled: boolean
+  ) {
+    const prev = enabledMethods;
     const updated = enabled
-      ? [...enabledMethods, methodId]
-      : enabledMethods.filter((m) => m !== methodId);
+      ? [...prev, methodId]
+      : prev.filter((m) => m !== methodId);
 
     if (updated.length === 0) {
       toast.error("At least one payment method must be enabled");
@@ -199,24 +217,23 @@ export function StripeConfigManager() {
 
     setEnabledMethods(updated);
     setSavingMethods(true);
-
     try {
       const res = await fetch("/api/admin/stripe-config", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled_payment_methods: updated }),
       });
-
       if (!res.ok) {
-        // Revert on error
-        setEnabledMethods(enabledMethods);
+        setEnabledMethods(prev);
         toast.error("Failed to update payment methods");
         return;
       }
-
-      toast.success(`${enabled ? "Enabled" : "Disabled"} ${PAYMENT_METHOD_OPTIONS.find((m) => m.id === methodId)?.label}`);
+      const method = ALL_PAYMENT_METHODS.find((m) => m.id === methodId);
+      toast.success(
+        `${enabled ? "Enabled" : "Disabled"} ${method?.label ?? methodId}`
+      );
     } catch {
-      setEnabledMethods(enabledMethods);
+      setEnabledMethods(prev);
       toast.error("Network error. Please try again.");
     } finally {
       setSavingMethods(false);
@@ -224,6 +241,7 @@ export function StripeConfigManager() {
   }
 
   async function handleToggleDeductFees(checked: boolean) {
+    const prev = deductFees;
     setDeductFees(checked);
     try {
       const res = await fetch("/api/admin/stripe-config", {
@@ -232,19 +250,34 @@ export function StripeConfigManager() {
         body: JSON.stringify({ deduct_stripe_fees_on_refund: checked }),
       });
       if (!res.ok) {
-        setDeductFees(!checked);
+        setDeductFees(prev);
         toast.error("Failed to update setting");
         return;
       }
-      toast.success(checked ? "Stripe fees will be deducted from refunds" : "Full refund amount will be issued");
+      toast.success(
+        checked
+          ? "Stripe fees will be deducted from refunds"
+          : "Full refund amount will be issued"
+      );
     } catch {
-      setDeductFees(!checked);
+      setDeductFees(prev);
       toast.error("Network error");
     }
   }
 
-  async function handleToggleDonorCoversFees(field: "donor_covers_fees_registration" | "donor_covers_fees_donation", checked: boolean) {
-    const setter = field === "donor_covers_fees_registration" ? setDonorCoversRegistration : setDonorCoversDonation;
+  async function handleToggleDonorCoversFees(
+    field: "donor_covers_fees_registration" | "donor_covers_fees_donation",
+    checked: boolean
+  ) {
+    const setter =
+      field === "donor_covers_fees_registration"
+        ? setDonorCoversRegistration
+        : setDonorCoversDonation;
+    const prev =
+      field === "donor_covers_fees_registration"
+        ? donorCoversRegistration
+        : donorCoversDonation;
+
     setter(checked);
     try {
       const res = await fetch("/api/admin/stripe-config", {
@@ -253,14 +286,19 @@ export function StripeConfigManager() {
         body: JSON.stringify({ [field]: checked }),
       });
       if (!res.ok) {
-        setter(!checked);
+        setter(prev);
         toast.error("Failed to update setting");
         return;
       }
-      const label = field === "donor_covers_fees_registration" ? "Registration" : "Donation";
-      toast.success(checked ? `Donor fee coverage enabled for ${label}` : `Donor fee coverage disabled for ${label}`);
+      const label =
+        field === "donor_covers_fees_registration" ? "Registration" : "Donation";
+      toast.success(
+        checked
+          ? `Donor fee coverage enabled for ${label}`
+          : `Donor fee coverage disabled for ${label}`
+      );
     } catch {
-      setter(!checked);
+      setter(prev);
       toast.error("Network error");
     }
   }
@@ -290,7 +328,7 @@ export function StripeConfigManager() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {PAYMENT_METHOD_OPTIONS.map((method) => (
+          {ALL_PAYMENT_METHODS.map((method) => (
             <div
               key={method.id}
               className="flex items-center justify-between rounded-lg border p-3"
@@ -327,10 +365,13 @@ export function StripeConfigManager() {
         <CardContent>
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div>
-              <p className="text-sm font-medium">Deduct Stripe Processing Fees</p>
+              <p className="text-sm font-medium">
+                Deduct Stripe Processing Fees
+              </p>
               <p className="text-xs text-muted-foreground">
-                When enabled, refunds will exclude Stripe processing fees (2.9% + $0.30 for cards, 0.8% capped at $5 for ACH).
-                Stripe does not refund their processing fees.
+                When enabled, refunds will exclude Stripe processing fees (2.9%
+                + $0.30 for cards, 0.8% capped at $5 for ACH). Stripe does not
+                refund their processing fees.
               </p>
             </div>
             <Switch
@@ -346,8 +387,8 @@ export function StripeConfigManager() {
         <CardHeader>
           <CardTitle className="text-base">Donor Covers Fees</CardTitle>
           <CardDescription>
-            Allow payers to optionally cover Stripe processing fees (2.9% + $0.30).
-            When enabled, a checkbox will appear at checkout.
+            Allow payers to optionally cover Stripe processing fees (2.9% +
+            $0.30). When enabled, a checkbox will appear at checkout.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -355,24 +396,33 @@ export function StripeConfigManager() {
             <div>
               <p className="text-sm font-medium">Registration Payment</p>
               <p className="text-xs text-muted-foreground">
-                Show &ldquo;I&rsquo;d like to cover the payment processing fee&rdquo; checkbox on the registration checkout page.
+                Show &ldquo;I&rsquo;d like to cover the payment processing
+                fee&rdquo; checkbox on the registration checkout page.
               </p>
             </div>
             <Switch
               checked={donorCoversRegistration}
-              onCheckedChange={(checked) => handleToggleDonorCoversFees("donor_covers_fees_registration", checked)}
+              onCheckedChange={(checked) =>
+                handleToggleDonorCoversFees(
+                  "donor_covers_fees_registration",
+                  checked
+                )
+              }
             />
           </div>
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div>
               <p className="text-sm font-medium">Donation Payment Portal</p>
               <p className="text-xs text-muted-foreground">
-                Show &ldquo;I&rsquo;d like to cover the payment processing fee&rdquo; checkbox on the donation payment page.
+                Show &ldquo;I&rsquo;d like to cover the payment processing
+                fee&rdquo; checkbox on the donation payment page.
               </p>
             </div>
             <Switch
               checked={donorCoversDonation}
-              onCheckedChange={(checked) => handleToggleDonorCoversFees("donor_covers_fees_donation", checked)}
+              onCheckedChange={(checked) =>
+                handleToggleDonorCoversFees("donor_covers_fees_donation", checked)
+              }
             />
           </div>
         </CardContent>
@@ -385,9 +435,7 @@ export function StripeConfigManager() {
         keys={testKeys}
         onKeysChange={setTestKeys}
         showSecret={showSecret.test}
-        onToggleSecret={() =>
-          setShowSecret((s) => ({ ...s, test: !s.test }))
-        }
+        onToggleSecret={() => setShowSecret((s) => ({ ...s, test: !s.test }))}
         showWebhook={showSecret.testWebhook}
         onToggleWebhook={() =>
           setShowSecret((s) => ({ ...s, testWebhook: !s.testWebhook }))
@@ -403,9 +451,7 @@ export function StripeConfigManager() {
         keys={liveKeys}
         onKeysChange={setLiveKeys}
         showSecret={showSecret.live}
-        onToggleSecret={() =>
-          setShowSecret((s) => ({ ...s, live: !s.live }))
-        }
+        onToggleSecret={() => setShowSecret((s) => ({ ...s, live: !s.live }))}
         showWebhook={showSecret.liveWebhook}
         onToggleWebhook={() =>
           setShowSecret((s) => ({ ...s, liveWebhook: !s.liveWebhook }))
@@ -417,14 +463,16 @@ export function StripeConfigManager() {
   );
 }
 
-/** Anti-autofill props for text inputs */
+/* ------------------------------------------------------------------ */
+/*  KeyCard                                                            */
+/* ------------------------------------------------------------------ */
+
 const noAutoFillText = {
   autoComplete: "one-time-code",
   "data-1p-ignore": true,
   "data-lpignore": "true",
 } as const;
 
-/** Anti-autofill props for password inputs */
 const noAutoFillPassword = {
   autoComplete: "new-password",
   "data-1p-ignore": true,
@@ -446,7 +494,11 @@ function KeyCard({
   mode: "test" | "live";
   config: StripeConfig | null;
   keys: { publishable: string; secret: string; webhook: string };
-  onKeysChange: (keys: { publishable: string; secret: string; webhook: string }) => void;
+  onKeysChange: (keys: {
+    publishable: string;
+    secret: string;
+    webhook: string;
+  }) => void;
   showSecret: boolean;
   onToggleSecret: () => void;
   showWebhook: boolean;
@@ -455,14 +507,18 @@ function KeyCard({
   saving: boolean;
 }) {
   const isLive = mode === "live";
-  const publishableStatus =
-    config?.[`stripe_${mode}_publishable_key` as keyof StripeConfig] as KeyStatus | undefined;
-  const secretStatus =
-    config?.[`stripe_${mode}_secret_key` as keyof StripeConfig] as KeyStatus | undefined;
-  const webhookStatus =
-    config?.[`stripe_${mode}_webhook_secret` as keyof StripeConfig] as KeyStatus | undefined;
+  const publishableStatus = config?.[
+    `stripe_${mode}_publishable_key` as keyof StripeConfig
+  ] as KeyStatus | undefined;
+  const secretStatus = config?.[
+    `stripe_${mode}_secret_key` as keyof StripeConfig
+  ] as KeyStatus | undefined;
+  const webhookStatus = config?.[
+    `stripe_${mode}_webhook_secret` as keyof StripeConfig
+  ] as KeyStatus | undefined;
 
-  const hasChanges = keys.publishable.trim() || keys.secret.trim() || keys.webhook.trim();
+  const hasChanges =
+    keys.publishable.trim() || keys.secret.trim() || keys.webhook.trim();
 
   return (
     <Card className={isLive ? "border-orange-500/30" : ""}>
@@ -527,9 +583,7 @@ function KeyCard({
             type={showSecret ? "text" : "password"}
             placeholder={`sk_${mode}_...`}
             value={keys.secret}
-            onChange={(e) =>
-              onKeysChange({ ...keys, secret: e.target.value })
-            }
+            onChange={(e) => onKeysChange({ ...keys, secret: e.target.value })}
             {...noAutoFillPassword}
           />
         </div>
@@ -569,16 +623,14 @@ function KeyCard({
             {...noAutoFillPassword}
           />
           <p className="text-xs text-muted-foreground">
-            Found in Stripe Dashboard &rarr; Developers &rarr; Webhooks &rarr; Signing secret
+            Found in Stripe Dashboard &rarr; Developers &rarr; Webhooks &rarr;
+            Signing secret
           </p>
         </div>
 
         {/* Save Button */}
         <div className="flex items-center gap-3 pt-2">
-          <Button
-            onClick={onSave}
-            disabled={saving || !hasChanges}
-          >
+          <Button onClick={onSave} disabled={saving || !hasChanges}>
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
@@ -589,7 +641,9 @@ function KeyCard({
           {hasChanges && (
             <Button
               variant="ghost"
-              onClick={() => onKeysChange({ publishable: "", secret: "", webhook: "" })}
+              onClick={() =>
+                onKeysChange({ publishable: "", secret: "", webhook: "" })
+              }
               disabled={saving}
             >
               Cancel

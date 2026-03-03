@@ -44,6 +44,7 @@ import type { ParticipantInput, RoomGroupInput, MealSelection } from "@/lib/type
 import type { Gender, Grade } from "@/lib/types/database";
 import { MAX_GROUPS, MAX_PARTICIPANTS_PER_GROUP, GRADE_LABELS } from "@/lib/utils/constants";
 import { calculateAge } from "@/lib/utils/validators";
+import { isK12ByBirthDate } from "@/lib/utils/formatters";
 import {
   filterName,
   buildDisplayName,
@@ -66,9 +67,9 @@ function createEmptyParticipant(isRepresentative: boolean): ParticipantInput {
     firstName: "",
     displayNameKo: "",
     gender: "MALE",
-    birthYear: 2000,
-    birthMonth: 1,
-    birthDay: 1,
+    birthYear: undefined,
+    birthMonth: undefined,
+    birthDay: undefined,
     isK12: false,
     phone: "",
     phoneCountry: "US",
@@ -260,9 +261,9 @@ export default function ParticipantsStep() {
                 firstName: person.first_name_en ?? "",
                 displayNameKo: person.display_name_ko ?? "",
                 gender: (person.gender as Gender) ?? "MALE",
-                birthYear: bd ? bd.getFullYear() : 2000,
-                birthMonth: bd ? bd.getMonth() + 1 : 1,
-                birthDay: bd ? bd.getDate() : 1,
+                birthYear: bd ? bd.getFullYear() : undefined,
+                birthMonth: bd ? bd.getMonth() + 1 : undefined,
+                birthDay: bd ? bd.getDate() : undefined,
                 isK12: person.is_k12 ?? false,
                 grade: (person.grade as Grade) ?? undefined,
                 email: person.email ?? "",
@@ -360,12 +361,13 @@ export default function ParticipantsStep() {
     groupIndex: number,
     pIndex: number,
     field: string,
-    value: string | number | boolean
+    value: string | number | boolean | undefined
   ) => {
     const participant = { ...state.roomGroups[groupIndex].participants[pIndex] };
     (participant as Record<string, unknown>)[field] = value;
 
     // Auto-detect K-12 based on birth date
+    // K-12 = born on or after Sep 1 of (eventYear - 18), matching US school year Senior cutoff
     if (field === "birthYear" || field === "birthMonth" || field === "birthDay") {
       const year = field === "birthYear" ? (value as number) : participant.birthYear;
       const month = field === "birthMonth" ? (value as number) : participant.birthMonth;
@@ -375,7 +377,7 @@ export default function ParticipantsStep() {
         const refDate = eventDates
           ? new Date(eventDates.eventStartDate)
           : new Date(state.startDate);
-        participant.isK12 = calculateAge(birthDate, refDate) < 18;
+        participant.isK12 = isK12ByBirthDate(birthDate, refDate);
       }
     }
 
@@ -501,8 +503,11 @@ export default function ParticipantsStep() {
     if (p.isK12 && !p.grade) errs.grade = "Required";
     if (!p.churchId) errs.churchId = "Required";
     if (isChurchOther(p.churchId) && !p.churchOther?.trim()) errs.churchOther = "Required";
-    // Room Group 1 Representative must be at least 13 by event start
-    if (gi === 0 && pi === 0) {
+    // Birth date required
+    if (!p.birthYear || !p.birthMonth || !p.birthDay) {
+      errs.birthYear = "Date of birth is required";
+    } else if (gi === 0 && pi === 0) {
+      // Room Group 1 Representative must be at least 11 by event start
       const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
       const refDate = eventDates
         ? new Date(eventDates.eventStartDate + "T00:00:00")
@@ -850,7 +855,7 @@ export default function ParticipantsStep() {
                           day={p.birthDay}
                           labelClassName="text-xs"
                           onYearChange={(v) =>
-                            updateParticipant(gi, pi, "birthYear", v ?? 2000)
+                            updateParticipant(gi, pi, "birthYear", v)
                           }
                           onMonthChange={(v) =>
                             updateParticipant(gi, pi, "birthMonth", v)
@@ -861,14 +866,14 @@ export default function ParticipantsStep() {
                         />
                         {errs.birthYear && <p className="text-xs text-destructive">{errs.birthYear}</p>}
 
-                        {/* K-12 + Grade — hidden if age > 21 at event start */}
+                        {/* K-12 + Grade — hidden until full birth date entered, then shown if K-12 by school year cutoff */}
                         {(() => {
+                          if (!p.birthYear || !p.birthMonth || !p.birthDay) return false;
                           const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
                           const refDate = eventDates
                             ? new Date(eventDates.eventStartDate + "T00:00:00")
                             : new Date(state.startDate + "T00:00:00");
-                          const age = calculateAge(birthDate, refDate);
-                          return age <= 21;
+                          return isK12ByBirthDate(birthDate, refDate);
                         })() && (
                           <div className="flex items-start gap-2">
                             <input
@@ -1034,6 +1039,7 @@ export default function ParticipantsStep() {
                             </>
                           )}
                           {(!p.isRepresentative || (() => {
+                            if (!p.birthYear || !p.birthMonth || !p.birthDay) return false;
                             const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
                             const refDate = eventDates
                               ? new Date(eventDates.eventStartDate + "T00:00:00")

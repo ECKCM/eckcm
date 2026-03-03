@@ -28,6 +28,7 @@ import {
   NAME_PATTERN,
 } from "@/lib/utils/field-helpers";
 import { calculateAge } from "@/lib/utils/validators";
+import { isK12ByBirthDate } from "@/lib/utils/formatters";
 
 interface EventOption {
   id: string;
@@ -88,9 +89,9 @@ function newParticipant(isRep: boolean): ParticipantForm {
     lastName: "",
     displayNameKo: "",
     gender: "MALE",
-    birthYear: "1990",
-    birthMonth: "1",
-    birthDay: "1",
+    birthYear: "",
+    birthMonth: "",
+    birthDay: "",
     isK12: false,
     grade: "",
     departmentId: "",
@@ -299,19 +300,19 @@ export function AdminRegistrationForm() {
     value: string
   ) => {
     const p = participants[index];
-    const year = parseInt(field === "birthYear" ? value : p.birthYear) || 2000;
-    const month = parseInt(field === "birthMonth" ? value : p.birthMonth) || 1;
-    const day = parseInt(field === "birthDay" ? value : p.birthDay) || 1;
+    const year = parseInt(field === "birthYear" ? value : p.birthYear);
+    const month = parseInt(field === "birthMonth" ? value : p.birthMonth);
+    const day = parseInt(field === "birthDay" ? value : p.birthDay);
 
     const updates: Partial<ParticipantForm> = { [field]: value };
 
-    // Auto-detect K-12
-    if (eventStartDate) {
+    // Auto-detect K-12 (only when all birth date parts are filled)
+    if (eventStartDate && year && month && day) {
       const birthDate = new Date(year, month - 1, day);
       const refDate = new Date(eventStartDate + "T00:00:00");
-      const age = calculateAge(birthDate, refDate);
-      updates.isK12 = age < 18;
-      if (age >= 18) updates.grade = "";
+      const k12 = isK12ByBirthDate(birthDate, refDate);
+      updates.isK12 = k12;
+      if (!k12) updates.grade = "";
     }
 
     updateParticipant(index, updates);
@@ -371,8 +372,11 @@ export function AdminRegistrationForm() {
 
     if (p.isK12 && !p.grade) errs.grade = "Required";
 
-    // Representative must be at least 11
-    if (idx === 0 && p.isRepresentative && eventStartDate) {
+    // Birth date required
+    if (!p.birthYear || !p.birthMonth || !p.birthDay) {
+      errs.birthYear = "Date of birth is required";
+    } else if (idx === 0 && p.isRepresentative && eventStartDate) {
+      // Representative must be at least 11
       const birthDate = new Date(
         parseInt(p.birthYear),
         parseInt(p.birthMonth) - 1,
@@ -854,7 +858,7 @@ export function AdminRegistrationForm() {
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Month" />
                       </SelectTrigger>
                       <SelectContent>
                         {Array.from({ length: 12 }, (_, i) => (
@@ -874,7 +878,7 @@ export function AdminRegistrationForm() {
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Day" />
                       </SelectTrigger>
                       <SelectContent>
                         {Array.from({ length: 31 }, (_, i) => (

@@ -54,7 +54,7 @@ export async function GET() {
     stripe_live_secret_key: maskKey(data.stripe_live_secret_key),
     stripe_test_webhook_secret: maskKey(data.stripe_test_webhook_secret),
     stripe_live_webhook_secret: maskKey(data.stripe_live_webhook_secret),
-    enabled_payment_methods: data.enabled_payment_methods ?? ["card", "ach", "zelle", "wallet", "more"],
+    enabled_payment_methods: data.enabled_payment_methods ?? ["card", "ach", "zelle", "wallet"],
     deduct_stripe_fees_on_refund: data.deduct_stripe_fees_on_refund ?? false,
     donor_covers_fees_registration: data.donor_covers_fees_registration ?? false,
     donor_covers_fees_donation: data.donor_covers_fees_donation ?? false,

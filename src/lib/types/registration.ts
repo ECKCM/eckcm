@@ -30,9 +30,9 @@ export interface ParticipantInput {
   firstName: string;
   displayNameKo?: string;
   gender: Gender;
-  birthYear: number;
-  birthMonth: number;
-  birthDay: number;
+  birthYear: number | undefined;
+  birthMonth: number | undefined;
+  birthDay: number | undefined;
   isK12: boolean;
   grade?: Grade;
   departmentId?: string;

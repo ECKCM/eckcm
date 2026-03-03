@@ -99,7 +99,7 @@ export function BirthDatePicker({
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Month</Label>
           <Select
-            value={month?.toString()}
+            value={month !== undefined ? month.toString() : ""}
             onValueChange={(v) => onMonthChange(parseInt(v))}
           >
             <SelectTrigger>
@@ -119,7 +119,7 @@ export function BirthDatePicker({
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Day</Label>
           <Select
-            value={day?.toString()}
+            value={day !== undefined ? day.toString() : ""}
             onValueChange={(v) => onDayChange(parseInt(v))}
           >
             <SelectTrigger>
@@ -143,6 +143,7 @@ export function BirthDatePicker({
             inputMode="numeric"
             placeholder="Year"
             maxLength={4}
+            autoComplete="off"
             value={yearInput}
             onChange={(e) => handleYearChange(e.target.value)}
           />

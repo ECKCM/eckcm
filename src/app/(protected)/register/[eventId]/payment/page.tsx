@@ -66,7 +66,7 @@ export default function PaymentStep() {
   );
   const createIntentCalled = useRef(false);
   const [enabledMethods, setEnabledMethods] = useState<string[]>([
-    "card", "ach", "zelle", "check", "wallet", "more",
+    "card", "ach", "zelle", "check", "wallet",
   ]);
   const [donorCoversFees, setDonorCoversFees] = useState(false);
   const [coversFees, setCoversFees] = useState(false);
@@ -260,7 +260,7 @@ export default function PaymentStep() {
 
   // Derive which modes are available from admin-enabled methods
   const stripeEnabled = enabledMethods.some((m) =>
-    ["card", "ach", "check", "more"].includes(m)
+    ["card", "ach", "check"].includes(m)
   );
   const zelleEnabled = enabledMethods.includes("zelle");
   const walletEnabled = enabledMethods.includes("wallet");

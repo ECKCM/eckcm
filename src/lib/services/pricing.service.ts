@@ -134,9 +134,9 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     for (const group of input.roomGroups) {
       for (const participant of group.participants) {
         const birthDate = new Date(
-          participant.birthYear,
-          participant.birthMonth - 1,
-          participant.birthDay
+          participant.birthYear ?? 2000,
+          (participant.birthMonth ?? 1) - 1,
+          participant.birthDay ?? 1
         );
         const age = calculateAge(birthDate, eventStart);
 
