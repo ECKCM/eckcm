@@ -11,8 +11,8 @@ export async function sendConfirmationEmail(
 ): Promise<void> {
   const admin = createAdminClient();
 
-  // 1. Load registration, memberships, tokens, and payment in parallel
-  const [regResult, membershipsResult, tokensResult, paymentResult] = await Promise.all([
+  // 1. Load registration, memberships, tokens, and invoice in parallel
+  const [regResult, membershipsResult, tokensResult, invoiceResult] = await Promise.all([
     admin
       .from("eckcm_registrations")
       .select(
@@ -47,8 +47,20 @@ export async function sendConfirmationEmail(
       .eq("is_active", true),
     admin
       .from("eckcm_invoices")
-      .select("eckcm_payments(payment_method)")
+      .select(
+        `
+        id,
+        invoice_number,
+        subtotal_cents,
+        total_cents,
+        status,
+        paid_at,
+        eckcm_invoice_line_items(description, quantity, unit_price_cents, amount_cents),
+        eckcm_payments(payment_method, status)
+      `
+      )
       .eq("registration_id", registrationId)
+      .order("issued_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
   ]);
@@ -108,26 +120,51 @@ export async function sendConfirmationEmail(
 
   // Detect payment method: prefer explicit option, then DB lookup
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const paymentData = paymentResult.data as any;
+  const invoiceData = invoiceResult.data as any;
   const paymentMethod =
     options?.paymentMethod ||
-    (paymentData?.eckcm_payments?.[0]?.payment_method as string | undefined) ||
+    (invoiceData?.eckcm_payments?.[0]?.payment_method as string | undefined) ||
     null;
 
   const isZelle = paymentMethod === "ZELLE";
+  const invoicePaid = invoiceData?.status === "SUCCEEDED";
+  const isZellePending = isZelle && !invoicePaid;
 
-  // Build Zelle info for manual payment emails
-  // Get the first member's phone for memo
+  // Build Zelle info only for pending Zelle (not yet confirmed by admin)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const firstMember = (membershipsResult.data ?? [])[0] as any;
   const registrantPhone = firstMember?.eckcm_people?.phone?.replace(/\D/g, "") || "";
-  const zelleInfo = isZelle
+  const zelleInfo = isZellePending
     ? {
         zelleEmail: "kimdani1@icloud.com",
         accountHolder: "EMPOWER MINISTRY GROUP, INC",
         memo: `${reg.confirmation_code} - ${participants[0]?.name || "N/A"} - ${registrantPhone} - ${user.email}`,
       }
     : null;
+
+  // Build invoice/receipt info for paid registrations
+  const invoiceInfo =
+    invoiceData && invoiceData.invoice_number
+      ? {
+          invoiceNumber: invoiceData.invoice_number,
+          lineItems: (invoiceData.eckcm_invoice_line_items ?? []).map(
+            (li: { description: string; quantity: number; unit_price_cents: number; amount_cents: number }) => ({
+              description: li.description,
+              quantity: li.quantity,
+              unitPrice: `$${(li.unit_price_cents / 100).toFixed(2)}`,
+              amount: `$${(li.amount_cents / 100).toFixed(2)}`,
+            })
+          ),
+          subtotal: `$${((invoiceData.subtotal_cents ?? invoiceData.total_cents) / 100).toFixed(2)}`,
+          total: `$${(invoiceData.total_cents / 100).toFixed(2)}`,
+          paymentDate: invoiceData.paid_at
+            ? new Date(invoiceData.paid_at).toLocaleDateString("en-US")
+            : "-",
+        }
+      : null;
+
+  // Only include invoice in email if it's paid (not for pending Zelle)
+  const includeInvoice = invoicePaid ? invoiceInfo : null;
 
   const html = buildConfirmationEmail({
     confirmationCode: reg.confirmation_code,
@@ -138,8 +175,9 @@ export async function sendConfirmationEmail(
     totalAmount,
     paymentMethod,
     zelleInfo,
+    invoiceInfo: includeInvoice,
   });
-  const subject = isZelle
+  const subject = isZellePending
     ? `ECKCM Registration Submitted - ${reg.confirmation_code}`
     : `ECKCM Registration Confirmed - ${reg.confirmation_code}`;
 

@@ -14,6 +14,18 @@ interface ConfirmationEmailProps {
     accountHolder: string;
     memo: string;
   } | null;
+  invoiceInfo?: {
+    invoiceNumber: string;
+    lineItems: Array<{
+      description: string;
+      quantity: number;
+      unitPrice: string;
+      amount: string;
+    }>;
+    subtotal: string;
+    total: string;
+    paymentDate: string;
+  } | null;
 }
 
 export function buildConfirmationEmail({
@@ -25,17 +37,20 @@ export function buildConfirmationEmail({
   totalAmount,
   paymentMethod,
   zelleInfo,
+  invoiceInfo,
 }: ConfirmationEmailProps): string {
-  const isZelle = paymentMethod === "ZELLE";
+  const isZellePending = paymentMethod === "ZELLE" && !!zelleInfo;
+  const isPaid = !!invoiceInfo;
+  const showEPass = !isZellePending;
   const participantRows = participants
     .map(
       (p, i) => `
         <tr>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${i + 1}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${p.name}</td>
-          ${isZelle ? "" : `<td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">
+          ${showEPass ? `<td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">
             <a href="${p.epassUrl}" style="color: #2563eb; text-decoration: underline;">View E-Pass</a>
-          </td>`}
+          </td>` : ""}
         </tr>`
     )
     .join("");
@@ -56,7 +71,7 @@ export function buildConfirmationEmail({
           <tr>
             <td>
               <h1 style="color: #ffffff; margin: 0; font-size: 24px;">ECKCM</h1>
-              <p style="color: #94a3b8; margin: 8px 0 0; font-size: 14px;">${isZelle ? "Registration Submitted" : "Registration Confirmation"}</p>
+              <p style="color: #94a3b8; margin: 8px 0 0; font-size: 14px;">${isZellePending ? "Registration Submitted" : "Registration Confirmation"}</p>
             </td>
           </tr>
         </table>
@@ -65,7 +80,7 @@ export function buildConfirmationEmail({
         <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb;">
           <tr>
             <td>
-              <p style="font-size: 16px; color: #111827; margin: 0 0 16px;">${isZelle ? "Your registration has been submitted!" : "Your registration has been confirmed!"}</p>
+              <p style="font-size: 16px; color: #111827; margin: 0 0 16px;">${isZellePending ? "Your registration has been submitted!" : "Your registration has been confirmed!"}</p>
 
               <!-- Confirmation Code -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 24px;">
@@ -93,12 +108,51 @@ export function buildConfirmationEmail({
                   <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${eventDates}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">${isZelle ? "Amount Due" : "Amount Paid"}</td>
+                  <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">${isZellePending ? "Amount Due" : "Amount Paid"}</td>
                   <td style="padding: 4px 0; color: #111827; font-size: 14px; font-weight: bold; text-align: right;">${totalAmount}</td>
                 </tr>
               </table>
 
-              ${isZelle && zelleInfo ? `
+              ${invoiceInfo ? `
+              <!-- Invoice / Receipt -->
+              <h3 style="font-size: 14px; color: #6b7280; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px;">${isPaid ? "Receipt" : "Invoice"}</h3>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 16px;">
+                <tr style="background-color: #f9fafb;">
+                  <td style="padding: 8px 12px; font-size: 13px; color: #6b7280;">Invoice #</td>
+                  <td style="padding: 8px 12px; font-size: 13px; color: #111827; text-align: right; font-family: monospace;">${invoiceInfo.invoiceNumber}</td>
+                </tr>
+                ${invoiceInfo.paymentDate !== "-" ? `
+                <tr>
+                  <td style="padding: 8px 12px; font-size: 13px; color: #6b7280;">Payment Date</td>
+                  <td style="padding: 8px 12px; font-size: 13px; color: #111827; text-align: right;">${invoiceInfo.paymentDate}</td>
+                </tr>` : ""}
+                <tr>
+                  <td style="padding: 8px 12px; font-size: 13px; color: #6b7280;">Payment Method</td>
+                  <td style="padding: 8px 12px; font-size: 13px; color: #111827; text-align: right;">${paymentMethod || "-"}</td>
+                </tr>
+              </table>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 24px;">
+                <tr style="background-color: #f9fafb;">
+                  <th style="padding: 8px 12px; text-align: left; font-size: 12px; color: #6b7280;">Description</th>
+                  <th style="padding: 8px 12px; text-align: center; font-size: 12px; color: #6b7280;">Qty</th>
+                  <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #6b7280;">Price</th>
+                  <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #6b7280;">Amount</th>
+                </tr>
+                ${invoiceInfo.lineItems.map(item => `
+                <tr>
+                  <td style="padding: 8px 12px; border-top: 1px solid #e5e7eb; font-size: 13px;">${item.description}</td>
+                  <td style="padding: 8px 12px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 13px;">${item.quantity}</td>
+                  <td style="padding: 8px 12px; border-top: 1px solid #e5e7eb; text-align: right; font-size: 13px;">${item.unitPrice}</td>
+                  <td style="padding: 8px 12px; border-top: 1px solid #e5e7eb; text-align: right; font-size: 13px;">${item.amount}</td>
+                </tr>`).join("")}
+                <tr style="border-top: 2px solid #111827;">
+                  <td colspan="3" style="padding: 8px 12px; font-size: 14px; font-weight: bold; color: #111827;">Total</td>
+                  <td style="padding: 8px 12px; text-align: right; font-size: 14px; font-weight: bold; color: #111827;">${invoiceInfo.total}</td>
+                </tr>
+              </table>
+              ` : ""}
+
+              ${isZellePending && zelleInfo ? `
               <!-- Zelle Payment Instructions -->
               <h3 style="font-size: 14px; color: #6b7280; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px;">Zelle Payment Instructions</h3>
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
@@ -136,18 +190,18 @@ export function buildConfirmationEmail({
               ` : ""}
 
               <!-- Participants -->
-              <h3 style="font-size: 14px; color: #6b7280; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px;">Participants${isZelle ? "" : " & E-Pass"}</h3>
+              <h3 style="font-size: 14px; color: #6b7280; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px;">Participants${showEPass ? " & E-Pass" : ""}</h3>
               <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 24px;">
                 <tr style="background-color: #f9fafb;">
                   <th style="padding: 8px 12px; text-align: left; font-size: 12px; color: #6b7280;">#</th>
                   <th style="padding: 8px 12px; text-align: left; font-size: 12px; color: #6b7280;">Name</th>
-                  ${isZelle ? "" : '<th style="padding: 8px 12px; text-align: left; font-size: 12px; color: #6b7280;">E-Pass</th>'}
+                  ${showEPass ? '<th style="padding: 8px 12px; text-align: left; font-size: 12px; color: #6b7280;">E-Pass</th>' : ""}
                 </tr>
                 ${participantRows}
               </table>
 
               <p style="font-size: 13px; color: #6b7280; margin: 0;">
-                ${isZelle
+                ${isZellePending
                   ? "E-Pass links will be sent in a separate email once your payment is confirmed."
                   : "Each participant can use their E-Pass link for check-in at the event. You can also view all E-Passes from your dashboard."}
               </p>

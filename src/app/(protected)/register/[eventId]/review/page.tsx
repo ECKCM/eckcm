@@ -206,7 +206,7 @@ export default function ReviewStep() {
                       {p.displayNameKo ? ` (${p.displayNameKo})` : ""}
                     </TableCell>
                     <TableCell>{p.isRepresentative ? "Representative" : "Member"}</TableCell>
-                    <TableCell>{calcAge(p.birthYear, p.birthMonth, p.birthDay)}</TableCell>
+                    <TableCell>{p.birthYear ? calcAge(p.birthYear, p.birthMonth ?? 1, p.birthDay ?? 1) : "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
