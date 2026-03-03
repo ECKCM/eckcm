@@ -5,6 +5,8 @@ interface EmailConfig {
   fromAddress: string;
   from: string;
   replyTo?: string;
+  zelleEmail: string;
+  zelleAccountHolder: string;
 }
 
 let cachedConfig: EmailConfig | null = null;
@@ -21,7 +23,7 @@ export async function getEmailConfig(): Promise<EmailConfig> {
     const admin = createAdminClient();
     const { data } = await admin
       .from("eckcm_app_config")
-      .select("email_from_name, email_from_address, email_reply_to")
+      .select("email_from_name, email_from_address, email_reply_to, zelle_email, zelle_account_holder")
       .eq("id", 1)
       .single();
 
@@ -33,6 +35,8 @@ export async function getEmailConfig(): Promise<EmailConfig> {
       fromAddress,
       from: `${fromName} <${fromAddress}>`,
       replyTo: data?.email_reply_to || undefined,
+      zelleEmail: data?.zelle_email || "",
+      zelleAccountHolder: data?.zelle_account_holder || "",
     };
     cacheTime = now;
     return cachedConfig;
@@ -43,6 +47,8 @@ export async function getEmailConfig(): Promise<EmailConfig> {
       fromName: "ECKCM",
       fromAddress: "noreply@my.eckcm.com",
       from: fallback,
+      zelleEmail: "",
+      zelleAccountHolder: "",
     };
   }
 }

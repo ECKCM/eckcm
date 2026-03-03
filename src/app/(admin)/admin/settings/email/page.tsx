@@ -62,6 +62,8 @@ function SettingsTab() {
     resend_api_key: { is_set: false, last4: "" },
     resend_env_configured: false,
     resend_configured: false,
+    zelle_email: "",
+    zelle_account_holder: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,6 +92,8 @@ function SettingsTab() {
           email_from_name: config.email_from_name,
           email_from_address: config.email_from_address,
           email_reply_to: config.email_reply_to,
+          zelle_email: config.zelle_email,
+          zelle_account_holder: config.zelle_account_holder,
         }),
       });
       if (res.ok) {
@@ -282,6 +286,27 @@ function SettingsTab() {
               placeholder="contact@eckcm.com"
             />
           </div>
+          <div className="space-y-1 pt-2 border-t">
+            <Label>Zelle Email</Label>
+            <Input
+              value={config.zelle_email}
+              onChange={(e) =>
+                setConfig({ ...config, zelle_email: e.target.value })
+              }
+              placeholder="zelle@example.com"
+              type="email"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Zelle Account Holder</Label>
+            <Input
+              value={config.zelle_account_holder}
+              onChange={(e) =>
+                setConfig({ ...config, zelle_account_holder: e.target.value })
+              }
+              placeholder="ORGANIZATION NAME"
+            />
+          </div>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save Settings"}
           </Button>
@@ -371,6 +396,11 @@ const TEMPLATES = [
     name: "Announcement",
     description: "Bulk announcement email with custom subject and body.",
   },
+  {
+    id: "zelle",
+    name: "Zelle Payment Instructions",
+    description: "Sent after Zelle registration with payment instructions and pending status.",
+  },
 ];
 
 function TemplatesTab() {
@@ -432,6 +462,7 @@ function TemplatePreview({ templateId }: { templateId: string | null }) {
     invoice: buildInvoicePreview(),
     epass: buildEpassPreview(),
     announcement: buildAnnouncementPreview(),
+    zelle: buildZellePreview(),
   };
 
   const html = previewData[templateId] || "<p>No preview available</p>";
@@ -530,6 +561,47 @@ function buildAnnouncementPreview(): string {
 <p>We are excited to announce that registration for ECKCM Summer Camp 2026 is now open! Please visit our website to complete your registration.</p>
 <p>We look forward to seeing you at Camp Berkshire!</p>
 </div>
+</td></tr></table>
+<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Campmeeting</p></td></tr></table>
+</td></tr></table></body></html>`;
+}
+
+function buildZellePreview(): string {
+  return `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:sans-serif;background:#f9fafb;">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;padding:20px;">
+<tr><td>
+<table width="100%" style="background:#0f172a;border-radius:8px 8px 0 0;padding:24px;text-align:center;">
+<tr><td><h1 style="color:#fff;margin:0;font-size:24px;">ECKCM</h1><p style="color:#94a3b8;margin:8px 0 0;font-size:14px;">Registration Submitted</p></td></tr>
+</table>
+<table width="100%" style="background:#fff;padding:32px;border:1px solid #e5e7eb;">
+<tr><td>
+<p style="font-size:16px;color:#111827;">Your registration has been submitted!</p>
+<table width="100%" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px;">
+<tr><td><p style="font-size:12px;color:#6b7280;margin:0;">Confirmation Code</p><p style="font-size:32px;font-family:monospace;font-weight:bold;color:#111827;margin:8px 0 0;letter-spacing:4px;">R26KIM0001</p></td></tr>
+</table>
+<table width="100%" style="margin-bottom:24px;">
+<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">Event</td><td style="padding:4px 0;color:#111827;font-size:14px;text-align:right;">ECKCM Summer Camp 2026</td></tr>
+<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">Location</td><td style="padding:4px 0;color:#111827;font-size:14px;text-align:right;">Camp Berkshire, NY</td></tr>
+<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">Amount Due</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:bold;text-align:right;">$450.00</td></tr>
+</table>
+<h3 style="font-size:14px;color:#6b7280;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">Zelle Payment Instructions</h3>
+<table width="100%" style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:20px;margin-bottom:24px;">
+<tr><td>
+<p style="font-size:14px;color:#6b21a8;margin:0 0 12px;">Please send your Zelle payment using the details below:</p>
+<table width="100%">
+<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">1. Send with Zelle to:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:bold;text-align:right;">kimdani1@icloud.com</td></tr>
+<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">2. Account Holder:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:bold;text-align:right;">EMPOWER MINISTRY GROUP, INC</td></tr>
+<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">3. Amount:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:bold;text-align:right;">$450.00</td></tr>
+</table>
+<p style="font-size:14px;color:#6b7280;margin:12px 0 4px;">4. Memo/Note <span style="color:#dc2626;font-weight:bold;">(Required)</span>:</p>
+<p style="font-size:14px;font-family:monospace;background:#ffffff;border:1px solid #e9d5ff;border-radius:4px;padding:8px 12px;color:#111827;margin:0 0 12px;">R26KIM0001 - John Kim - 2125550100 - john@example.com</p>
+<p style="font-size:12px;color:#7c3aed;margin:0 0 12px;">Please copy and paste the memo exactly as shown so we can match your payment.</p>
+<table width="100%" style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:12px;">
+<tr><td><p style="font-size:13px;font-weight:bold;color:#92400e;margin:0 0 4px;">Important</p>
+<p style="font-size:12px;color:#a16207;margin:0;">Your registration will remain in &ldquo;Pending Payment&rdquo; status until your Zelle payment is received and verified. This may take 1-3 business days. Room assignments will not be made until payment is confirmed.</p>
+</td></tr></table>
+</td></tr></table>
+<p style="font-size:13px;color:#6b7280;margin:0;">E-Pass links will be sent in a separate email once your payment is confirmed.</p>
 </td></tr></table>
 <table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Campmeeting</p></td></tr></table>
 </td></tr></table></body></html>`;

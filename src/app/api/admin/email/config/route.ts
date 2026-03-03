@@ -19,7 +19,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("eckcm_app_config")
-    .select("email_from_name, email_from_address, email_reply_to, resend_api_key")
+    .select("email_from_name, email_from_address, email_reply_to, resend_api_key, zelle_email, zelle_account_holder")
     .eq("id", 1)
     .single();
 
@@ -37,6 +37,8 @@ export async function GET() {
     resend_api_key: maskKey(data.resend_api_key),
     resend_env_configured: envKeySet,
     resend_configured: dbKeySet || envKeySet,
+    zelle_email: data.zelle_email ?? "",
+    zelle_account_holder: data.zelle_account_holder ?? "",
   });
 }
 
@@ -45,6 +47,8 @@ const patchSchema = z.object({
   email_from_address: z.string().email().max(255).optional(),
   email_reply_to: z.string().email().max(255).or(z.literal("")).optional(),
   resend_api_key: z.string().min(1).max(255).optional(),
+  zelle_email: z.string().email().max(255).or(z.literal("")).optional(),
+  zelle_account_holder: z.string().max(255).optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -66,6 +70,12 @@ export async function PATCH(req: NextRequest) {
   if (parsed.data.email_from_address !== undefined) updates.email_from_address = parsed.data.email_from_address;
   if (parsed.data.email_reply_to !== undefined) {
     updates.email_reply_to = parsed.data.email_reply_to || null;
+  }
+  if (parsed.data.zelle_email !== undefined) {
+    updates.zelle_email = parsed.data.zelle_email || null;
+  }
+  if (parsed.data.zelle_account_holder !== undefined) {
+    updates.zelle_account_holder = parsed.data.zelle_account_holder || null;
   }
   if (parsed.data.resend_api_key !== undefined) {
     // Validate Resend API key format

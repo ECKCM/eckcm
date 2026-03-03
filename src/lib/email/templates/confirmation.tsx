@@ -174,7 +174,7 @@ export function buildConfirmationEmail({
                       </tr>
                     </table>
                     <p style="font-size: 14px; color: #6b7280; margin: 12px 0 4px;">4. Memo/Note <span style="color: #dc2626; font-weight: bold;">(Required)</span>:</p>
-                    <p style="font-size: 14px; font-family: monospace; background: #ffffff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 8px 12px; color: #111827; margin: 0 0 12px; word-break: break-all;">${zelleInfo.memo}</p>
+                    <p style="font-size: 14px; font-family: monospace; background: #ffffff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 8px 12px; color: #111827; margin: 0 0 12px; word-break: break-all;">${zelleInfo.memo.replace(/@/g, "&#64;")}</p>
                     <p style="font-size: 12px; color: #7c3aed; margin: 0 0 12px;">Please copy and paste the memo exactly as shown so we can match your payment.</p>
                     <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 12px;">
                       <tr>

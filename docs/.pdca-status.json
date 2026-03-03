@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-03T07:15:45.932Z",
+  "lastUpdated": "2026-03-03T19:06:56.585Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -612,7 +612,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:44:12.622Z",
-        "lastUpdated": "2026-03-03T07:10:41.702Z"
+        "lastUpdated": "2026-03-03T19:06:56.585Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/email/send-confirmation.ts"
     },
@@ -781,7 +781,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:46:45.786Z",
-        "lastUpdated": "2026-03-03T07:10:59.452Z"
+        "lastUpdated": "2026-03-03T18:48:16.810Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/email/templates/confirmation.tsx"
     },
@@ -924,7 +924,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-28T20:51:02.818Z",
-        "lastUpdated": "2026-02-28T21:29:56.671Z"
+        "lastUpdated": "2026-03-03T18:40:02.004Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/email/config/route.ts"
     },
@@ -4142,6 +4142,108 @@
     {
       "timestamp": "2026-03-03T07:15:45.932Z",
       "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:19:36.700Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:23:06.876Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:23:31.297Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:39:29.057Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:39:34.854Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:39:37.948Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:39:43.816Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:39:47.747Z",
+      "feature": "config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:39:52.867Z",
+      "feature": "config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:39:58.348Z",
+      "feature": "config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:40:02.004Z",
+      "feature": "config",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:40:06.684Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:40:10.939Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:40:17.869Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:48:10.172Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T18:48:16.810Z",
+      "feature": "templates",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T19:06:56.585Z",
+      "feature": "email",
       "phase": "do",
       "action": "updated"
     }

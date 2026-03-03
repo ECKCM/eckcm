@@ -95,7 +95,7 @@ export async function sendConfirmationEmail(
     (tokensResult.data ?? []).map((t) => [t.person_id, t.token])
   );
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://my.eckcm.com";
+  const baseUrl = process.env.APP_URL || "https://my.eckcm.com";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const participants = (membershipsResult.data ?? []).map((m: any) => {
@@ -136,8 +136,8 @@ export async function sendConfirmationEmail(
   const registrantPhone = firstMember?.eckcm_people?.phone?.replace(/\D/g, "") || "";
   const zelleInfo = isZellePending
     ? {
-        zelleEmail: "kimdani1@icloud.com",
-        accountHolder: "EMPOWER MINISTRY GROUP, INC",
+        zelleEmail: emailConfig.zelleEmail ?? "",
+        accountHolder: emailConfig.zelleAccountHolder ?? "",
         memo: `${reg.confirmation_code} - ${participants[0]?.name || "N/A"} - ${registrantPhone} - ${user.email}`,
       }
     : null;
