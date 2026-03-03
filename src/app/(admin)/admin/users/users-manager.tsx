@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -32,6 +30,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Shield } from "lucide-react";
+import { assignStaffRole } from "./actions";
 
 interface User {
   id: string;
@@ -65,8 +64,8 @@ export function UsersManager({
   roles: Role[];
   events: Event[];
 }) {
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [users, setUsers] = useState<User[]>(initialUsers);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [assignOpen, setAssignOpen] = useState(false);
@@ -82,7 +81,7 @@ export function UsersManager({
   // Get unique roles for filter tabs
   const roleNames = Array.from(new Set(roles.map((r) => r.name)));
 
-  const filtered = initialUsers.filter((u) => {
+  const filtered = users.filter((u) => {
     const matchesSearch =
       !search ||
       u.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -98,24 +97,27 @@ export function UsersManager({
       toast.error("Please fill all fields");
       return;
     }
-    const supabase = createClient();
-    const { error } = await supabase.from("eckcm_staff_assignments").insert({
-      user_id: selectedUserId,
-      event_id: selectedEventId,
-      role_id: selectedRoleId,
-    });
 
-    if (error) {
-      if (error.code === "23505") {
-        toast.error("This user already has this role for this event");
-      } else {
-        toast.error(error.message);
-      }
+    const roleName = roles.find((r) => r.id === selectedRoleId)?.name ?? "";
+    const result = await assignStaffRole(
+      selectedUserId,
+      selectedEventId,
+      selectedRoleId,
+      roleName
+    );
+
+    if (result.error) {
+      toast.error(result.error);
       return;
     }
+
     toast.success("Staff role assigned");
     setAssignOpen(false);
-    router.refresh();
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === selectedUserId ? { ...u, role: roleName } : u
+      )
+    );
   };
 
   if (!mounted) {
@@ -164,13 +166,13 @@ export function UsersManager({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>Actions</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Providers</TableHead>
                 <TableHead>Profile</TableHead>
                 <TableHead>Joined</TableHead>
-                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -186,40 +188,6 @@ export function UsersManager({
               ) : (
                 filtered.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">
-                      {user.firstName && user.lastName
-                        ? `${user.firstName} ${user.lastName}`
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{user.role}</Badge>
-                    </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        {user.providers.map((p) => (
-                          <Badge
-                            key={p}
-                            variant="outline"
-                            className="capitalize text-xs"
-                          >
-                            {p}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          user.profile_completed ? "default" : "secondary"
-                        }
-                      >
-                        {user.profile_completed ? "Complete" : "Incomplete"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(user.created_at).toLocaleDateString("en-US")}
-                    </TableCell>
                     <TableCell>
                       <Dialog
                         open={assignOpen && selectedUserId === user.id}
@@ -289,6 +257,40 @@ export function UsersManager({
                           </div>
                         </DialogContent>
                       </Dialog>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{user.role}</Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {user.firstName && user.lastName
+                        ? `${user.firstName} ${user.lastName}`
+                        : "—"}
+                    </TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {user.providers.map((p) => (
+                          <Badge
+                            key={p}
+                            variant="outline"
+                            className="capitalize text-xs"
+                          >
+                            {p}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          user.profile_completed ? "default" : "secondary"
+                        }
+                      >
+                        {user.profile_completed ? "Complete" : "Incomplete"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(user.created_at).toLocaleDateString("en-US")}
                     </TableCell>
                   </TableRow>
                 ))

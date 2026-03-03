@@ -71,7 +71,7 @@ export function buildEPassEmail({
     <tr>
       <td style="padding: 16px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
         <p style="margin: 0; font-size: 12px; color: #9ca3af;">
-          ECKCM - Eastern Korean Churches Camp Meeting
+          ECKCM - East Coast Korean Campmeeting
         </p>
       </td>
     </tr>

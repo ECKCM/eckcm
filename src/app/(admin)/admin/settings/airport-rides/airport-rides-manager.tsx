@@ -112,10 +112,11 @@ export function AirportRidesManager() {
   const openEdit = (ride: AirportRide) => {
     setEditingId(ride.id);
     const dt = new Date(ride.scheduled_at);
+    const pad = (n: number) => n.toString().padStart(2, "0");
     setForm({
       direction: ride.direction,
-      date: dt.toISOString().slice(0, 10),
-      time: dt.toISOString().slice(11, 16),
+      date: `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`,
+      time: `${pad(dt.getHours())}:${pad(dt.getMinutes())}`,
       label: ride.label ?? "",
       origin: ride.origin ?? "",
       destination: ride.destination ?? "",

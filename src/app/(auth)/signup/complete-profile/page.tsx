@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ProfileForm, type ProfileFormData } from "@/components/auth/profile-form";
-import { checkEmailAvailability } from "../actions";
+import { checkEmailAvailability, createUserProfile } from "../actions";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -109,13 +109,8 @@ export default function CompleteProfilePage() {
       valid = false;
     }
 
-    // Consent (applies to all users but check here too)
-    if (!ageConfirmed) {
-      valid = false;
-    }
-    if (!termsAgreed) {
-      valid = false;
-    }
+    if (!ageConfirmed) valid = false;
+    if (!termsAgreed) valid = false;
 
     return valid;
   };
@@ -193,6 +188,8 @@ export default function CompleteProfilePage() {
       return;
     }
 
+    let signedUpUser = null;
+
     if (isEmailSignup) {
       // Check email availability (async — can't do in synchronous onValidate)
       const { available } = await checkEmailAvailability(email);
@@ -203,25 +200,37 @@ export default function CompleteProfilePage() {
       }
 
       // Create auth user
-      const { error: authError } = await supabase.auth.signUp({
+      const { data: signUpData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: { captchaToken },
+        options: {
+          captchaToken,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
 
       if (authError) {
-        toast.error(authError.message);
+        const isRateLimit =
+          authError.message.toLowerCase().includes("rate limit") ||
+          authError.status === 429;
+        toast.error(
+          isRateLimit
+            ? "Too many signup attempts. Please wait a few minutes and try again."
+            : authError.message
+        );
         setCaptchaToken(undefined);
         turnstileRef.current?.reset();
         setLoading(false);
         return;
       }
+
+      // Use user from signUp response directly — session may not exist yet if
+      // email confirmation is required, so getUser() would return null
+      signedUpUser = signUpData.user;
     }
 
-    // Get authenticated user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // Get authenticated user (OAuth flow reuses existing session; email signup uses signedUpUser)
+    const user = signedUpUser ?? (await supabase.auth.getUser()).data.user;
 
     if (!user) {
       toast.error("Not authenticated");
@@ -233,71 +242,50 @@ export default function CompleteProfilePage() {
     const provider = user.app_metadata.provider ?? "email";
     const now = new Date().toISOString();
 
-    // 1. Upsert eckcm_users
-    const { error: userError } = await supabase.from("eckcm_users").upsert({
-      id: user.id,
-      email: user.email!,
-      auth_provider: provider,
-      profile_completed: true,
-      age_confirmed_at: ageConfirmed ? now : null,
-      terms_agreed_at: termsAgreed ? now : null,
-    });
-
-    if (userError) {
-      toast.error("Failed to update user");
-      setLoading(false);
-      return;
-    }
-
-    // 2. Create person (birth_date is null for signup since hideBirthDate is true)
+    // Build birth date
     const birthDate =
       data.birthYear && data.birthMonth && data.birthDay
         ? `${data.birthYear}-${String(data.birthMonth).padStart(2, "0")}-${String(data.birthDay).padStart(2, "0")}`
         : null;
 
-    const { data: person, error: personError } = await supabase
-      .from("eckcm_people")
-      .insert({
-        last_name_en: data.lastName,
-        first_name_en: data.firstName,
-        display_name_ko: data.displayNameKo || null,
-        gender: data.gender,
-        birth_date: birthDate,
-        is_k12: data.isK12,
-        grade: data.grade || null,
-        email: user.email,
-        phone: data.phone,
-        phone_country: data.phoneCountry || "US",
-        department_id: data.departmentId || null,
-        church_id: data.churchId || null,
-        church_other: data.churchOther || null,
-      })
-      .select("id")
-      .single();
+    // Create profile via server action (uses admin client to bypass RLS)
+    const result = await createUserProfile({
+      userId: user.id,
+      email: user.email!,
+      authProvider: provider,
+      ageConfirmedAt: ageConfirmed ? now : null,
+      termsAgreedAt: termsAgreed ? now : null,
+      lastName: data.lastName,
+      firstName: data.firstName,
+      displayNameKo: data.displayNameKo,
+      gender: data.gender,
+      birthDate,
+      isK12: data.isK12,
+      grade: data.grade,
+      phone: data.phone,
+      phoneCountry: data.phoneCountry || "US",
+      departmentId: data.departmentId,
+      churchId: data.churchId,
+      churchOther: data.churchOther,
+    });
 
-    if (personError || !person) {
-      toast.error("Failed to create profile");
+    if (!result.success) {
+      toast.error(result.error ?? "Failed to create profile");
       setLoading(false);
       return;
     }
 
-    // 3. Link user to person
-    const { error: linkError } = await supabase
-      .from("eckcm_user_people")
-      .insert({
-        user_id: user.id,
-        person_id: person.id,
-      });
-
-    if (linkError) {
-      toast.error("Failed to link profile");
+    if (isEmailSignup) {
+      // Email confirmation required — redirect to check-email page
+      toast.success("Account created! Please check your email to confirm.");
       setLoading(false);
+      router.push(`/signup/check-email?email=${encodeURIComponent(email)}`);
       return;
     }
 
-    toast.success(isEmailSignup ? "Account created!" : "Profile completed!");
+    toast.success("Profile completed!");
+    setLoading(false);
     router.push("/dashboard");
-    router.refresh();
   };
 
   const handleCancel = async () => {
@@ -312,7 +300,7 @@ export default function CompleteProfilePage() {
   if (!initialized) return null;
 
   return (
-    <Card>
+    <Card className="bg-muted/50">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl font-bold">
           {isEmailSignup ? "Create Your Account" : "Complete Your Profile"}
@@ -337,7 +325,7 @@ export default function CompleteProfilePage() {
                 id="signup-email"
                 name="signup-email"
                 type="email"
-                autoComplete="off"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -380,7 +368,7 @@ export default function CompleteProfilePage() {
               <PasswordInput
                 id="signup-password"
                 name="signup-password"
-                autoComplete="off"
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);

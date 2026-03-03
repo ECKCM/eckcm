@@ -94,7 +94,7 @@ export function buildSessionAttendanceEmail({
           <tr>
             <td>
               <p style="font-size: 12px; color: #9ca3af; margin: 0;">
-                Eastern Korean Churches Camp Meeting
+                East Coast Korean Campmeeting
               </p>
             </td>
           </tr>

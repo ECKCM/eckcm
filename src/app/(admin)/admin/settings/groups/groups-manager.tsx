@@ -1,6 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+
+function toDatetimeLocal(value: string | null): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -169,7 +177,7 @@ export function RegistrationGroupsManager() {
         group.global_registration_fee_cents?.toString() ?? "",
       global_early_bird_fee_cents:
         group.global_early_bird_fee_cents?.toString() ?? "",
-      early_bird_deadline: group.early_bird_deadline ?? "",
+      early_bird_deadline: toDatetimeLocal(group.early_bird_deadline),
       department_id: group.department_id ?? "",
       show_special_preferences: group.show_special_preferences,
       show_key_deposit: group.show_key_deposit,

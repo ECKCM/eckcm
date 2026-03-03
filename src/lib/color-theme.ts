@@ -2,7 +2,7 @@ export const COLOR_THEMES = {
   eckcm: {
     id: "eckcm" as const,
     name: "ECKCM",
-    description: "Green — Eastern Korean Churches Camp Meeting",
+    description: "Green — East Coast Korean Campmeeting",
     colors: {
       primary: "#4a9e3f",
       secondary: "#81c784",

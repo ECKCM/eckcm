@@ -90,10 +90,18 @@ export async function POST(request: Request) {
   // Checkins
   await admin.from("eckcm_checkins").delete().eq("event_id", eventId);
 
-  // E-pass tokens
+  // E-pass tokens (QR)
   if (regIds.length > 0) {
     await admin
       .from("eckcm_epass_tokens")
+      .delete()
+      .in("registration_id", regIds);
+  }
+
+  // Email logs (NO ACTION FK — must delete before registrations)
+  if (regIds.length > 0) {
+    await admin
+      .from("eckcm_email_logs")
       .delete()
       .in("registration_id", regIds);
   }
