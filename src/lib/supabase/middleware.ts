@@ -41,7 +41,23 @@ export async function updateSession(request: NextRequest) {
   // issues with users being randomly logged out.
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
+
+  // Stale/invalid refresh token — clear cookies and redirect to login.
+  // This prevents the error from repeating on every subsequent request.
+  if (authError?.code === "refresh_token_not_found") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    const response = NextResponse.redirect(url);
+    // Clear all Supabase auth cookies
+    request.cookies.getAll().forEach((cookie) => {
+      if (cookie.name.startsWith("sb-")) {
+        response.cookies.delete(cookie.name);
+      }
+    });
+    return response;
+  }
 
   // Protected routes: redirect to login if not authenticated
   if (

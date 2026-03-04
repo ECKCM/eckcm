@@ -318,55 +318,170 @@ function SettingsTab() {
 
 // ─── Test Email Tab ─────────────────────────────────────────────────────────
 
-function TestEmailTab() {
-  const [testEmail, setTestEmail] = useState("");
-  const [sending, setSending] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
+const TEST_SCENARIOS = [
+  {
+    id: "connectivity",
+    label: "Connectivity Check",
+    description: "Simple ping — confirms Resend API key and from-address are working.",
+    badge: null,
+    hasPdf: false,
+  },
+  {
+    id: "confirmation_stripe",
+    label: "Stripe Confirmation",
+    description: "Paid confirmation email with receipt PDF attached and E-Pass links.",
+    badge: "PDF",
+    hasPdf: true,
+  },
+  {
+    id: "confirmation_zelle_pending",
+    label: "Zelle — Pending",
+    description: "Registration submitted, awaiting Zelle payment. Includes payment instructions. No E-Pass links.",
+    badge: null,
+    hasPdf: false,
+  },
+  {
+    id: "confirmation_zelle_paid",
+    label: "Zelle — Confirmed",
+    description: "Admin confirmed Zelle payment. Includes receipt PDF and E-Pass links.",
+    badge: "PDF",
+    hasPdf: true,
+  },
+  {
+    id: "invoice_pdf",
+    label: "Invoice PDF",
+    description: "Unpaid invoice with PDF attachment. Tests PDF generation speed.",
+    badge: "PDF",
+    hasPdf: true,
+  },
+] as const;
 
-  async function handleSendTest() {
-    if (!testEmail) return;
+type ScenarioId = (typeof TEST_SCENARIOS)[number]["id"];
+
+function TestEmailTab() {
+  const [to, setTo] = useState("");
+  const [scenario, setScenario] = useState<ScenarioId>("connectivity");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  async function handleSend() {
+    if (!to) return;
     setSending(true);
-    setStatus(null);
+    setResult(null);
     try {
       const res = await fetch("/api/email/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: testEmail }),
+        body: JSON.stringify({ to, scenario }),
       });
+      const data = await res.json();
       if (res.ok) {
-        setStatus("Test email sent successfully!");
+        const selected = TEST_SCENARIOS.find((s) => s.id === scenario);
+        const pdfNote = selected?.hasPdf ? " (with PDF)" : "";
+        setResult({ ok: true, message: `Sent${pdfNote} via ${data.from}` });
       } else {
-        setStatus("Failed to send test email. Check server logs.");
+        setResult({ ok: false, message: data.error || "Failed to send." });
       }
     } catch {
-      setStatus("Error sending test email.");
+      setResult({ ok: false, message: "Network error." });
     } finally {
       setSending(false);
     }
   }
+
+  const selected = TEST_SCENARIOS.find((s) => s.id === scenario)!;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Send Test Email</CardTitle>
         <CardDescription>
-          Verify your email configuration by sending a test email.
+          Send a realistic test email for each scenario to verify templates, PDF generation, and delivery.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex gap-2">
+      <CardContent className="space-y-5">
+        {/* Recipient */}
+        <div className="space-y-1.5">
+          <Label>Recipient</Label>
           <Input
             placeholder="recipient@example.com"
             type="email"
-            value={testEmail}
-            onChange={(e) => setTestEmail(e.target.value)}
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
           />
-          <Button onClick={handleSendTest} disabled={sending || !testEmail}>
-            {sending ? "Sending..." : "Send Test"}
-          </Button>
         </div>
-        {status && (
-          <p className="text-sm text-muted-foreground">{status}</p>
+
+        {/* Scenario picker */}
+        <div className="space-y-1.5">
+          <Label>Scenario</Label>
+          <div className="grid gap-2">
+            {TEST_SCENARIOS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setScenario(s.id)}
+                className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
+                  scenario === s.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:bg-muted/50"
+                }`}
+              >
+                <div
+                  className={`mt-0.5 size-4 shrink-0 rounded-full border-2 flex items-center justify-center ${
+                    scenario === s.id ? "border-primary" : "border-muted-foreground/40"
+                  }`}
+                >
+                  {scenario === s.id && (
+                    <div className="size-2 rounded-full bg-primary" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{s.label}</span>
+                    {s.badge && (
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                        {s.badge}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{s.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Send button */}
+        <Button onClick={handleSend} disabled={sending || !to} className="w-full">
+          {sending ? (
+            <>
+              <Loader2 className="mr-2 size-4 animate-spin" />
+              Sending {selected.label}…
+            </>
+          ) : (
+            <>
+              <Send className="mr-2 size-4" />
+              Send {selected.label}
+            </>
+          )}
+        </Button>
+
+        {/* Result */}
+        {result && (
+          <div
+            className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+              result.ok
+                ? "border-green-200 bg-green-50 text-green-800"
+                : "border-red-200 bg-red-50 text-red-800"
+            }`}
+          >
+            {result.ok ? (
+              <CheckCircle2 className="size-4 shrink-0" />
+            ) : (
+              <XCircle className="size-4 shrink-0" />
+            )}
+            {result.message}
+          </div>
         )}
       </CardContent>
     </Card>

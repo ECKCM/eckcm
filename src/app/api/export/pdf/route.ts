@@ -19,12 +19,11 @@ export async function POST(request: Request) {
 
   const { type } = await request.json();
 
-  // PDF generation requires a library like puppeteer or @react-pdf/renderer
-  // This is a placeholder that returns an error until a PDF library is configured
+  // Bulk PDF export not yet implemented (use /api/invoice/[id]/pdf for individual PDFs)
   return NextResponse.json(
     {
-      error: "PDF export is not yet configured",
-      message: `PDF export for '${type}' requires server-side PDF generation. Configure @react-pdf/renderer or puppeteer.`,
+      error: "Bulk PDF export is not yet configured",
+      message: `Bulk PDF export for '${type}' is not yet implemented.`,
     },
     { status: 501 }
   );

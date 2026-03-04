@@ -4,6 +4,8 @@ import { getEmailConfig } from "@/lib/email/email-config";
 import { logEmail } from "@/lib/email/email-log.service";
 import { buildConfirmationEmail } from "@/lib/email/templates/confirmation";
 import { generateInvoicePdf } from "@/lib/pdf/generate";
+import { generateEPassToken } from "@/lib/services/epass.service";
+import { withTimeout } from "@/lib/utils/with-timeout";
 
 export async function sendConfirmationEmail(
   registrationId: string,
@@ -92,9 +94,59 @@ export async function sendConfirmationEmail(
     return;
   }
 
+  if (tokensResult.error) {
+    console.error(
+      `[sendConfirmationEmail] Failed to query epass tokens for registration ${registrationId}:`,
+      tokensResult.error
+    );
+  }
+
   const tokenMap = new Map(
     (tokensResult.data ?? []).map((t) => [t.person_id, t.token])
   );
+
+  // Recovery: PAID registration with missing tokens — generate them now.
+  // This handles cases where token insertion failed during payment confirmation.
+  if (reg.status === "PAID" && (membershipsResult.data ?? []).length > 0) {
+    const missingPersonIds = (membershipsResult.data as { person_id: string }[])
+      .map((m) => m.person_id)
+      .filter((id) => !tokenMap.has(id));
+
+    if (missingPersonIds.length > 0) {
+      console.warn(
+        `[sendConfirmationEmail] PAID registration ${registrationId} missing ${missingPersonIds.length} epass token(s) — recovering`
+      );
+      try {
+        const newTokens = missingPersonIds.map((personId) => {
+          const { token, tokenHash } = generateEPassToken();
+          return {
+            person_id: personId,
+            registration_id: registrationId,
+            token,
+            token_hash: tokenHash,
+            is_active: true,
+          };
+        });
+        const { data: inserted, error: recoveryError } = await admin
+          .from("eckcm_epass_tokens")
+          .insert(newTokens)
+          .select("person_id, token");
+        if (recoveryError) {
+          console.error(
+            `[sendConfirmationEmail] Token recovery insert failed:`,
+            recoveryError
+          );
+        } else {
+          (inserted ?? []).forEach((t) => tokenMap.set(t.person_id, t.token));
+          console.log(
+            `[sendConfirmationEmail] Token recovery succeeded: generated ${inserted?.length ?? 0} token(s)`
+          );
+        }
+      } catch (err) {
+        console.error(`[sendConfirmationEmail] Token recovery error:`, err);
+      }
+    }
+  }
 
   const baseUrl = process.env.APP_URL || "https://my.eckcm.com";
 
@@ -182,31 +234,35 @@ export async function sendConfirmationEmail(
     ? `ECKCM Registration Submitted - ${reg.confirmation_code}`
     : `ECKCM Registration Confirmed - ${reg.confirmation_code}`;
 
-  // Generate PDF attachment
+  // Generate PDF attachment (with 15s timeout — don't let it block email delivery)
   let pdfAttachment: { filename: string; content: Buffer } | null = null;
   if (includeInvoice) {
     try {
-      const pdfBuffer = await generateInvoicePdf({
-        invoiceNumber: includeInvoice.invoiceNumber,
-        confirmationCode: reg.confirmation_code,
-        eventName: reg.eckcm_events.name_en,
-        issuedDate: new Date().toLocaleDateString("en-US"),
-        isPaid: invoicePaid,
-        paymentMethod: paymentMethod ?? "-",
-        paymentDate: includeInvoice.paymentDate,
-        lineItems: includeInvoice.lineItems.map((li: { description: string; quantity: number; unitPrice: string; amount: string }) => ({
-          description: li.description,
-          quantity: li.quantity,
-          unitPrice: li.unitPrice,
-          amount: li.amount,
-        })),
-        subtotal: includeInvoice.subtotal,
-        total: includeInvoice.total,
-      });
+      const pdfBuffer = await withTimeout(
+        generateInvoicePdf({
+          invoiceNumber: includeInvoice.invoiceNumber,
+          confirmationCode: reg.confirmation_code,
+          eventName: reg.eckcm_events.name_en,
+          issuedDate: new Date().toLocaleDateString("en-US"),
+          isPaid: invoicePaid,
+          paymentMethod: paymentMethod ?? "-",
+          paymentDate: includeInvoice.paymentDate,
+          lineItems: includeInvoice.lineItems.map((li: { description: string; quantity: number; unitPrice: string; amount: string }) => ({
+            description: li.description,
+            quantity: li.quantity,
+            unitPrice: li.unitPrice,
+            amount: li.amount,
+          })),
+          subtotal: includeInvoice.subtotal,
+          total: includeInvoice.total,
+        }),
+        15_000,
+        "PDF generation timeout"
+      );
       const docType = invoicePaid ? "receipt" : "invoice";
       pdfAttachment = {
         filename: `eckcm-${docType}-${includeInvoice.invoiceNumber}.pdf`,
-        content: pdfBuffer,
+        content: pdfBuffer.toString("base64"),
       };
     } catch (err) {
       console.error("[sendConfirmationEmail] PDF generation failed:", err);
