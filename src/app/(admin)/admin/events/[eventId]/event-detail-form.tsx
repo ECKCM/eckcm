@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { logActivity } from "@/lib/audit-client";
 
 interface EventDetailFormProps {
   event: {
@@ -107,6 +108,7 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
     }
 
     toast.success("Event updated");
+    logActivity({ action: "UPDATE", entity_type: "event", entity_id: event.id, event_id: event.id, new_data: { name_en: form.name_en, is_active: form.is_active, is_default: form.is_default } });
     router.refresh();
   };
 

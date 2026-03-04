@@ -1,6 +1,9 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { AdminPresence } from "@/components/admin/admin-presence";
+import { PermissionsProvider } from "@/contexts/permissions-context";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { UserMenu } from "@/components/shared/user-menu";
 
@@ -18,22 +21,15 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
-  // Check staff assignments with role info
-  const { data: assignments } = await supabase
-    .from("eckcm_staff_assignments")
-    .select("id, event_id, is_active, eckcm_roles(name)")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
+  // Middleware has already verified staff access and set these headers.
+  // Avoid a duplicate DB query by reading from the forwarded request headers.
+  const headersList = await headers();
+  const rawPermissions = headersList.get("x-user-permissions");
+  const rawRoles = headersList.get("x-user-roles");
 
-  if (!assignments || assignments.length === 0) {
-    redirect("/dashboard");
-  }
-
-  const isSuperAdmin = assignments.some(
-    (a) =>
-      a.eckcm_roles &&
-      (a.eckcm_roles as unknown as { name: string }).name === "SUPER_ADMIN"
-  );
+  const permissions: string[] = rawPermissions ? JSON.parse(rawPermissions) : [];
+  const roles: string[] = rawRoles ? JSON.parse(rawRoles) : [];
+  const isSuperAdmin = roles.includes("SUPER_ADMIN");
 
   // Get events for sidebar
   const { data: events } = await supabase
@@ -42,20 +38,34 @@ export default async function AdminLayout({
     .order("is_default", { ascending: false })
     .order("year", { ascending: false });
 
+  const displayName =
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    user.email?.split("@")[0] ||
+    "Admin";
+
   return (
-    <SidebarProvider>
-      <AdminSidebar
-        events={events ?? []}
-        isSuperAdmin={isSuperAdmin}
-      />
-      <SidebarInset className="overflow-x-auto">
-        <div className="relative min-w-0 w-full">
-          <div className="absolute right-4 top-3 z-20">
+    <PermissionsProvider permissions={permissions}>
+      <SidebarProvider>
+        <AdminSidebar
+          events={events ?? []}
+          permissions={permissions}
+        />
+        <SidebarInset className="admin-inset">
+          {children}
+        </SidebarInset>
+        {/* Fixed right-side header — always visible regardless of layout */}
+        <div className="fixed top-0 right-0 z-50 h-14 flex items-center gap-3 pr-4 pointer-events-none">
+          <div className="flex items-center gap-3 pointer-events-auto">
+            <AdminPresence
+              currentUserId={user.id}
+              currentUserEmail={user.email ?? ""}
+              currentUserName={displayName}
+            />
             <UserMenu isAdmin={isSuperAdmin} />
           </div>
-          {children}
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </SidebarProvider>
+    </PermissionsProvider>
   );
 }

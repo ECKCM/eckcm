@@ -251,6 +251,19 @@
 }
 
 
+/* ── Admin Layout: Sticky page headers ── */
+.admin-inset > div > header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: var(--background);
+}
+
+/* Horizontal scroll lives on content areas, not the inset itself */
+.admin-inset > div > div {
+  overflow-x: auto;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

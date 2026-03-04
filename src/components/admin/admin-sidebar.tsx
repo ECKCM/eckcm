@@ -51,8 +51,23 @@ interface AdminSidebarProps {
     is_active: boolean;
     is_default: boolean;
   }[];
-  isSuperAdmin: boolean;
+  permissions: string[];
 }
+
+const navLinks = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, permission: null },
+  { href: "/admin/registrations", label: "Registrations", icon: FileText, exact: true, permission: "participant.read" },
+  { href: "/admin/registrations/create", label: "Manual Registration", icon: ClipboardPlus, exact: true, permission: "participant.update" },
+  { href: "/admin/events", label: "Events", icon: Calendar, exact: false, permission: "event.manage" },
+  { href: "/admin/participants", label: "Participants", icon: UserCheck, exact: false, permission: "participant.read" },
+  { href: "/admin/room-groups", label: "Room Groups", icon: BedDouble, exact: false, permission: "group.read" },
+  { href: "/admin/invoices", label: "Invoices", icon: FileText, exact: false, permission: "invoice.read" },
+  { href: "/admin/inventory", label: "Inventory", icon: Package, exact: false, permission: "participant.read" },
+  { href: "/admin/airport", label: "Airport", icon: Plane, exact: false, permission: "participant.read" },
+  { href: "/admin/checkin", label: "Check-in", icon: ScanLine, exact: false, permission: "checkin.main" },
+  { href: "/admin/audit", label: "Audit Logs", icon: ScrollText, exact: false, permission: "audit.read" },
+  { href: "/admin/users", label: "Users", icon: Users, exact: false, permission: "user.manage" },
+];
 
 const settingsLinks = [
   { href: "/admin/settings/groups", label: "Registration Groups", icon: Layers },
@@ -95,8 +110,11 @@ function NavLink({
   );
 }
 
-export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
+export function AdminSidebar({ events, permissions }: AdminSidebarProps) {
   const pathname = usePathname();
+  const hasPermission = (code: string | null) =>
+    code === null || permissions.includes(code);
+  const showSettings = permissions.includes("settings.manage");
 
   return (
     <Sidebar>
@@ -112,56 +130,13 @@ export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <NavLink href="/admin" isActive={pathname === "/admin"} icon={LayoutDashboard}>Dashboard</NavLink>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavLink href="/admin/registrations" isActive={pathname === "/admin/registrations"} icon={FileText}>Registrations</NavLink>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavLink href="/admin/registrations/create" isActive={pathname === "/admin/registrations/create"} icon={ClipboardPlus}>Manual Registration</NavLink>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavLink href="/admin/events" isActive={pathname.startsWith("/admin/events")} icon={Calendar}>Events</NavLink>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavLink href="/admin/participants" isActive={pathname.startsWith("/admin/participants")} icon={UserCheck}>Participants</NavLink>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavLink href="/admin/room-groups" isActive={pathname.startsWith("/admin/room-groups")} icon={BedDouble}>Room Groups</NavLink>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavLink href="/admin/invoices" isActive={pathname.startsWith("/admin/invoices")} icon={FileText}>Invoices</NavLink>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavLink href="/admin/inventory" isActive={pathname.startsWith("/admin/inventory")} icon={Package}>Inventory</NavLink>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavLink href="/admin/airport" isActive={pathname.startsWith("/admin/airport")} icon={Plane}>Airport</NavLink>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavLink href="/admin/checkin" isActive={pathname.startsWith("/admin/checkin")} icon={ScanLine}>Check-in</NavLink>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavLink href="/admin/audit" isActive={pathname.startsWith("/admin/audit")} icon={ScrollText}>Audit Logs</NavLink>
-              </SidebarMenuItem>
-              {isSuperAdmin && (
-                <SidebarMenuItem>
-                  <NavLink href="/admin/users" isActive={pathname.startsWith("/admin/users")} icon={Users}>Users</NavLink>
-                </SidebarMenuItem>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Settings */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Settings</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {settingsLinks.map((link) => (
+              {navLinks.filter((link) => hasPermission(link.permission)).map((link) => (
                 <SidebarMenuItem key={link.href}>
-                  <NavLink href={link.href} isActive={pathname === link.href} icon={link.icon}>
+                  <NavLink
+                    href={link.href}
+                    isActive={link.exact ? pathname === link.href : pathname.startsWith(link.href)}
+                    icon={link.icon}
+                  >
                     {link.label}
                   </NavLink>
                 </SidebarMenuItem>
@@ -169,6 +144,24 @@ export function AdminSidebar({ events, isSuperAdmin }: AdminSidebarProps) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Settings — only shown to roles with settings.manage */}
+        {showSettings && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Settings</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {settingsLinks.map((link) => (
+                  <SidebarMenuItem key={link.href}>
+                    <NavLink href={link.href} isActive={pathname === link.href} icon={link.icon}>
+                      {link.label}
+                    </NavLink>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Events Quick Access */}
         {events.length > 0 && (

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { TurnstileInstance } from "@marsidev/react-turnstile";
 import { TurnstileWidget } from "@/components/shared/turnstile-widget";
 import { createClient } from "@/lib/supabase/client";
+import { logAuthEvent } from "@/lib/audit-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/shared/password-input";
@@ -62,6 +63,7 @@ export default function LoginPage() {
       return;
     }
 
+    logAuthEvent("USER_LOGIN", { method: "email" });
     router.push("/dashboard");
     router.refresh();
   };

@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
+import { logActivity } from "@/lib/audit-client";
 
 interface Church {
   id: string;
@@ -93,16 +94,20 @@ export function ChurchesManager({
         return;
       }
       toast.success("Church updated");
+      logActivity({ action: "UPDATE", entity_type: "church", entity_id: editingId, new_data: payload });
     } else {
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from("eckcm_churches")
-        .insert(payload);
+        .insert(payload)
+        .select("id")
+        .single();
       if (error) {
         toast.error(error.message);
         setSaving(false);
         return;
       }
       toast.success("Church added");
+      logActivity({ action: "CREATE", entity_type: "church", entity_id: created?.id, new_data: payload });
     }
 
     setSaving(false);
@@ -134,6 +139,7 @@ export function ChurchesManager({
     }
     setChurches(churches.filter((c) => c.id !== church.id));
     toast.success("Church deleted");
+    logActivity({ action: "DELETE", entity_type: "church", entity_id: church.id });
   };
 
   return (

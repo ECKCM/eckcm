@@ -21,8 +21,9 @@ interface AuditLogRow {
   entity_type: string;
   entity_id: string | null;
   actor_email: string | null;
+  actor_name: string | null;
   created_at: string;
-  metadata: Record<string, unknown> | null;
+  new_data: Record<string, unknown> | null;
 }
 
 export function AuditLogsTable() {
@@ -45,8 +46,9 @@ export function AuditLogsTable() {
         entity_type,
         entity_id,
         created_at,
-        metadata,
-        eckcm_users:actor_id(email)
+        new_data,
+        actor_name,
+        eckcm_users:user_id(email)
       `
       )
       .order("created_at", { ascending: false })
@@ -60,8 +62,9 @@ export function AuditLogsTable() {
         entity_type: log.entity_type,
         entity_id: log.entity_id,
         actor_email: log.eckcm_users?.email ?? null,
+        actor_name: log.actor_name ?? null,
         created_at: log.created_at,
-        metadata: log.metadata,
+        new_data: log.new_data,
       }));
       setLogs(rows);
     }
@@ -79,6 +82,7 @@ export function AuditLogsTable() {
       log.action.toLowerCase().includes(q) ||
       log.entity_type.toLowerCase().includes(q) ||
       (log.actor_email?.toLowerCase().includes(q) ?? false) ||
+      (log.actor_name?.toLowerCase().includes(q) ?? false) ||
       (log.entity_id?.toLowerCase().includes(q) ?? false)
     );
   });
@@ -119,6 +123,7 @@ export function AuditLogsTable() {
                     <TableHead>Entity</TableHead>
                     <TableHead>Entity ID</TableHead>
                     <TableHead>Actor</TableHead>
+                    <TableHead>Name</TableHead>
                     <TableHead>Details</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -140,15 +145,18 @@ export function AuditLogsTable() {
                       <TableCell className="text-xs">
                         {log.actor_email ?? "system"}
                       </TableCell>
+                      <TableCell className="text-xs">
+                        {log.actor_name ?? "—"}
+                      </TableCell>
                       <TableCell className="text-xs max-w-[200px] truncate">
-                        {log.metadata ? JSON.stringify(log.metadata) : "-"}
+                        {log.new_data ? JSON.stringify(log.new_data) : "-"}
                       </TableCell>
                     </TableRow>
                   ))}
                   {filtered.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center text-muted-foreground py-8"
                       >
                         No audit logs found.

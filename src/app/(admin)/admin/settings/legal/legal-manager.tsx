@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { logActivity } from "@/lib/audit-client";
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 
@@ -50,6 +51,7 @@ export function LegalManager({ initialPages }: { initialPages: LegalPage[] }) {
     }
 
     toast.success(`${page.title} saved`);
+    logActivity({ action: "UPDATE", entity_type: "legal_content", entity_id: page.id, new_data: { slug: page.slug, title: page.title } });
     setSaving(null);
     router.refresh();
 

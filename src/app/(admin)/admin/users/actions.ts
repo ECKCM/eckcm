@@ -36,5 +36,15 @@ export async function assignStaffRole(
     .update({ role: roleName })
     .eq("id", targetUserId);
 
+  // Audit log
+  await admin.from("eckcm_audit_logs").insert({
+    user_id: auth.user.id,
+    action: "ASSIGN_STAFF_ROLE",
+    entity_type: "user",
+    entity_id: targetUserId,
+    event_id: eventId,
+    new_data: { role: roleName, role_id: roleId },
+  });
+
   return {};
 }

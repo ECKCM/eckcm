@@ -39,6 +39,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
+import { logActivity } from "@/lib/audit-client";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -202,10 +203,12 @@ export function LodgingManager() {
       const { error } = await supabase.from("eckcm_buildings").update(payload).eq("id", editing.id);
       if (error) { toast.error(error.message); setSaving(false); return; }
       toast.success("Building updated");
+      logActivity({ action: "UPDATE", entity_type: "building", entity_id: editing.id, new_data: payload });
     } else {
-      const { error } = await supabase.from("eckcm_buildings").insert(payload);
+      const { data: created, error } = await supabase.from("eckcm_buildings").insert(payload).select("id").single();
       if (error) { toast.error(error.message); setSaving(false); return; }
       toast.success("Building created");
+      logActivity({ action: "CREATE", entity_type: "building", entity_id: created?.id, new_data: payload });
     }
     setSaving(false);
     setDialogMode(null);
@@ -252,10 +255,12 @@ export function LodgingManager() {
       const { error } = await supabase.from("eckcm_floors").update(payload).eq("id", editing.id);
       if (error) { toast.error(error.message); setSaving(false); return; }
       toast.success("Floor updated");
+      logActivity({ action: "UPDATE", entity_type: "floor", entity_id: editing.id, new_data: payload });
     } else {
-      const { error } = await supabase.from("eckcm_floors").insert(payload);
+      const { data: created, error } = await supabase.from("eckcm_floors").insert(payload).select("id").single();
       if (error) { toast.error(error.message); setSaving(false); return; }
       toast.success("Floor created");
+      logActivity({ action: "CREATE", entity_type: "floor", entity_id: created?.id, new_data: payload });
     }
     setSaving(false);
     setDialogMode(null);
@@ -311,10 +316,12 @@ export function LodgingManager() {
       const { error } = await supabase.from("eckcm_rooms").update(payload).eq("id", editing.id);
       if (error) { toast.error(error.message); setSaving(false); return; }
       toast.success("Room updated");
+      logActivity({ action: "UPDATE", entity_type: "room", entity_id: editing.id, new_data: payload });
     } else {
-      const { error } = await supabase.from("eckcm_rooms").insert(payload);
+      const { data: created, error } = await supabase.from("eckcm_rooms").insert(payload).select("id").single();
       if (error) { toast.error(error.message); setSaving(false); return; }
       toast.success("Room created");
+      logActivity({ action: "CREATE", entity_type: "room", entity_id: created?.id, new_data: payload });
     }
     setSaving(false);
     setDialogMode(null);
@@ -354,6 +361,7 @@ export function LodgingManager() {
       return;
     }
     toast.success(`${bulkForm.count} rooms created`);
+    logActivity({ action: "CREATE", entity_type: "room_bulk", new_data: { count: bulkForm.count, floor_id: floorId, prefix: bulkForm.prefix } });
     setSaving(false);
     setDialogMode(null);
     loadData();
@@ -376,6 +384,7 @@ export function LodgingManager() {
       toast.error(error.message);
     } else {
       toast.success(`${deleteTarget.type} deleted`);
+      logActivity({ action: "DELETE", entity_type: deleteTarget.type, entity_id: deleteTarget.id });
       loadData();
     }
     setDeleteTarget(null);

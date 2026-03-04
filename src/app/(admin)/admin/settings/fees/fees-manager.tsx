@@ -33,6 +33,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
+import { logActivity } from "@/lib/audit-client";
 
 type FeeTab = "all" | "GENERAL" | "LODGING" | "MEALS";
 
@@ -155,16 +156,20 @@ export function FeeCategoriesManager() {
         return;
       }
       toast.success("Fee category updated");
+      logActivity({ action: "UPDATE", entity_type: "fee_category", entity_id: editingId, new_data: payload });
     } else {
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from("eckcm_fee_categories")
-        .insert(payload);
+        .insert(payload)
+        .select("id")
+        .single();
       if (error) {
         toast.error(error.message);
         setSaving(false);
         return;
       }
       toast.success("Fee category created");
+      logActivity({ action: "CREATE", entity_type: "fee_category", entity_id: created?.id, new_data: payload });
     }
 
     setSaving(false);
@@ -183,6 +188,7 @@ export function FeeCategoriesManager() {
       return;
     }
     toast.success("Fee category deleted");
+    logActivity({ action: "DELETE", entity_type: "fee_category", entity_id: id });
     loadFees();
   };
 

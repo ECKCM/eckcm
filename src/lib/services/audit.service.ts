@@ -4,15 +4,13 @@ interface AuditLogEntry {
   event_id?: string | null;
   user_id: string;
   action: string;
-  target_type?: string | null;
-  target_id?: string | null;
-  details?: Record<string, unknown> | null;
+  entity_type: string;
+  entity_id?: string | null;
+  new_data?: Record<string, unknown> | null;
+  old_data?: Record<string, unknown> | null;
   ip_address?: string | null;
 }
 
-/**
- * Write an audit log entry.
- */
 export async function writeAuditLog(
   supabase: SupabaseClient,
   entry: AuditLogEntry
@@ -21,16 +19,14 @@ export async function writeAuditLog(
     event_id: entry.event_id ?? null,
     user_id: entry.user_id,
     action: entry.action,
-    target_type: entry.target_type ?? null,
-    target_id: entry.target_id ?? null,
-    details: entry.details ?? null,
+    entity_type: entry.entity_type,
+    entity_id: entry.entity_id ?? null,
+    new_data: entry.new_data ?? null,
+    old_data: entry.old_data ?? null,
     ip_address: entry.ip_address ?? null,
   });
 }
 
-/**
- * Write multiple audit log entries in a batch.
- */
 export async function writeAuditLogBatch(
   supabase: SupabaseClient,
   entries: AuditLogEntry[]
@@ -42,9 +38,10 @@ export async function writeAuditLogBatch(
       event_id: entry.event_id ?? null,
       user_id: entry.user_id,
       action: entry.action,
-      target_type: entry.target_type ?? null,
-      target_id: entry.target_id ?? null,
-      details: entry.details ?? null,
+      entity_type: entry.entity_type,
+      entity_id: entry.entity_id ?? null,
+      new_data: entry.new_data ?? null,
+      old_data: entry.old_data ?? null,
       ip_address: entry.ip_address ?? null,
     }))
   );

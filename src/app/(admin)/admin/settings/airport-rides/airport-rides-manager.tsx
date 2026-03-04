@@ -32,6 +32,7 @@ import {
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, PlaneLanding, PlaneTakeoff } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
+import { logActivity } from "@/lib/audit-client";
 
 interface AirportRide {
   id: string;
@@ -155,16 +156,20 @@ export function AirportRidesManager() {
         return;
       }
       toast.success("Ride updated");
+      logActivity({ action: "UPDATE", entity_type: "airport_ride", entity_id: editingId, event_id: selectedEventId, new_data: { ...payload, scheduled_at: scheduledAt } });
     } else {
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from("eckcm_airport_rides")
-        .insert(payload);
+        .insert(payload)
+        .select("id")
+        .single();
       if (error) {
         toast.error(error.message);
         setSaving(false);
         return;
       }
       toast.success("Ride created");
+      logActivity({ action: "CREATE", entity_type: "airport_ride", entity_id: created?.id, event_id: selectedEventId, new_data: { ...payload, scheduled_at: scheduledAt } });
     }
 
     setSaving(false);
@@ -183,6 +188,7 @@ export function AirportRidesManager() {
       return;
     }
     toast.success("Ride deleted");
+    logActivity({ action: "DELETE", entity_type: "airport_ride", entity_id: id, event_id: selectedEventId });
     loadRides();
   };
 

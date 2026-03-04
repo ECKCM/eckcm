@@ -41,6 +41,7 @@ import {
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
+import { logActivity } from "@/lib/audit-client";
 
 interface RegistrationGroup {
   id: string;
@@ -284,6 +285,12 @@ export function RegistrationGroupsManager() {
     }
 
     toast.success(editingId ? "Group updated" : "Group created");
+    logActivity({
+      action: editingId ? "UPDATE" : "CREATE",
+      entity_type: "registration_group",
+      entity_id: groupId,
+      new_data: { ...payload, fee_category_ids: Array.from(selectedFeeIds) },
+    });
     setSaving(false);
     setDialogOpen(false);
     loadGroups();
@@ -300,6 +307,7 @@ export function RegistrationGroupsManager() {
       return;
     }
     toast.success("Group deleted");
+    logActivity({ action: "DELETE", entity_type: "registration_group", entity_id: id });
     loadGroups();
   };
 

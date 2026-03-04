@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-03T19:36:45.755Z",
+  "lastUpdated": "2026-03-04T00:03:11.007Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -80,7 +80,19 @@
     "methods",
     "create",
     "pricing.service.ts",
-    "review"
+    "review",
+    "audit",
+    "login-log",
+    "audit.service.ts",
+    "login",
+    "departments",
+    "churches",
+    "fees",
+    "roles",
+    "sessions",
+    "legal",
+    "contexts",
+    "unauthorized"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -105,9 +117,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:03:38.722Z",
-        "lastUpdated": "2026-03-03T06:07:40.522Z"
+        "lastUpdated": "2026-03-03T23:57:09.301Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/lib/utils/formatters.ts"
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/permissions.ts"
     },
     "stripe-config": {
       "phase": "do",
@@ -222,7 +234,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:41.018Z",
-        "lastUpdated": "2026-02-26T20:04:41.018Z"
+        "lastUpdated": "2026-03-03T23:57:37.969Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/supabase/middleware.ts"
     },
@@ -469,7 +481,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T23:00:43.454Z",
-        "lastUpdated": "2026-02-27T07:16:19.444Z"
+        "lastUpdated": "2026-03-03T22:11:01.609Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/events/[eventId]/event-detail-form.tsx"
     },
@@ -638,9 +650,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:44:39.025Z",
-        "lastUpdated": "2026-02-27T04:44:39.025Z"
+        "lastUpdated": "2026-03-03T22:10:50.922Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/lodging/page.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/lodging/lodging-manager.tsx"
     },
     "pending": {
       "phase": "do",
@@ -885,9 +897,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-28T01:28:21.919Z",
-        "lastUpdated": "2026-02-28T20:52:00.743Z"
+        "lastUpdated": "2026-03-03T23:58:09.915Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/admin/admin-sidebar.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/layout.tsx"
     },
     "send": {
       "phase": "do",
@@ -1002,9 +1014,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-02T16:38:35.798Z",
-        "lastUpdated": "2026-03-02T19:07:03.913Z"
+        "lastUpdated": "2026-03-03T22:08:09.735Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/users/page.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/users/actions.ts"
     },
     "airport-rides": {
       "phase": "do",
@@ -1015,7 +1027,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-02T19:26:27.010Z",
-        "lastUpdated": "2026-03-02T19:26:27.010Z"
+        "lastUpdated": "2026-03-03T22:09:33.599Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/airport-rides/airport-rides-manager.tsx"
     },
@@ -1028,7 +1040,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-02T19:26:39.349Z",
-        "lastUpdated": "2026-03-02T19:26:42.250Z"
+        "lastUpdated": "2026-03-03T22:10:06.018Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/groups/groups-manager.tsx"
     },
@@ -1041,9 +1053,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-02T19:45:23.652Z",
-        "lastUpdated": "2026-03-02T19:45:23.652Z"
+        "lastUpdated": "2026-03-03T22:07:48.333Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/auth/callback/route.ts"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/callback/route.ts"
     },
     "check-email": {
       "phase": "do",
@@ -1109,6 +1121,162 @@
         "lastUpdated": "2026-03-03T07:15:45.932Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
+    },
+    "audit": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-03T22:07:07.027Z",
+        "lastUpdated": "2026-03-03T23:24:51.427Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/audit/audit-logs-table.tsx"
+    },
+    "login-log": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-03T22:07:11.495Z",
+        "lastUpdated": "2026-03-03T23:24:41.146Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/auth/login-log/route.ts"
+    },
+    "audit.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-03T22:07:37.644Z",
+        "lastUpdated": "2026-03-03T22:07:37.644Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/audit.service.ts"
+    },
+    "login": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-03T22:07:52.298Z",
+        "lastUpdated": "2026-03-03T22:07:57.059Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/login/page.tsx"
+    },
+    "departments": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-03T22:08:13.703Z",
+        "lastUpdated": "2026-03-03T22:08:24.615Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/departments/departments-manager.tsx"
+    },
+    "churches": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-03T22:08:27.501Z",
+        "lastUpdated": "2026-03-03T22:08:36.151Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/churches/churches-manager.tsx"
+    },
+    "fees": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-03T22:08:39.221Z",
+        "lastUpdated": "2026-03-03T22:08:48.496Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/fees/fees-manager.tsx"
+    },
+    "roles": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-03T22:08:51.362Z",
+        "lastUpdated": "2026-03-04T00:03:11.007Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/roles/roles-manager.tsx"
+    },
+    "sessions": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-03T22:09:12.225Z",
+        "lastUpdated": "2026-03-03T22:09:21.273Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/sessions/sessions-manager.tsx"
+    },
+    "legal": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-03T22:09:36.876Z",
+        "lastUpdated": "2026-03-03T22:09:44.093Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/legal/legal-manager.tsx"
+    },
+    "contexts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-03T23:57:11.901Z",
+        "lastUpdated": "2026-03-03T23:57:11.901Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/contexts/permissions-context.tsx"
+    },
+    "unauthorized": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-03T23:57:15.159Z",
+        "lastUpdated": "2026-03-03T23:57:15.159Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/unauthorized/page.tsx"
     }
   },
   "history": [
@@ -4334,6 +4502,450 @@
     {
       "timestamp": "2026-03-03T19:36:45.755Z",
       "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T20:25:14.842Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T20:25:19.798Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T20:25:32.014Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T20:30:34.398Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T20:32:53.601Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T20:32:57.988Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T20:35:56.564Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T20:36:01.759Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T20:36:06.508Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T20:37:49.721Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:07:02.413Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:07:07.027Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:07:11.495Z",
+      "feature": "login-log",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:07:17.523Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:07:22.412Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:07:27.130Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:07:31.209Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:07:37.644Z",
+      "feature": "audit.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:07:41.440Z",
+      "feature": "callback",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:07:48.333Z",
+      "feature": "callback",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:07:52.298Z",
+      "feature": "login",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:07:57.059Z",
+      "feature": "login",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:00.313Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:03.636Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:09.735Z",
+      "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:13.703Z",
+      "feature": "departments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:20.000Z",
+      "feature": "departments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:24.615Z",
+      "feature": "departments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:27.501Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:32.721Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:36.151Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:39.221Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:44.479Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:48.496Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:51.362Z",
+      "feature": "roles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:55.915Z",
+      "feature": "roles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:08:59.128Z",
+      "feature": "roles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:09:12.225Z",
+      "feature": "sessions",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:09:18.254Z",
+      "feature": "sessions",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:09:21.273Z",
+      "feature": "sessions",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:09:24.787Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:09:30.401Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:09:33.599Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:09:36.876Z",
+      "feature": "legal",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:09:44.093Z",
+      "feature": "legal",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:09:58.613Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:10:02.842Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:10:06.018Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:10:24.861Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:10:32.476Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:10:37.584Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:10:42.453Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:10:46.472Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:10:50.922Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:10:55.057Z",
+      "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:11:01.609Z",
+      "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:38:32.394Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:38:36.798Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:38:42.123Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:38:45.948Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:38:51.798Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:38:55.577Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:39:00.763Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T22:51:28.516Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T23:24:37.576Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T23:24:41.146Z",
+      "feature": "login-log",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T23:24:51.427Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T23:57:09.301Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T23:57:11.901Z",
+      "feature": "contexts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T23:57:15.159Z",
+      "feature": "unauthorized",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T23:57:37.969Z",
+      "feature": "supabase",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T23:57:58.295Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-03T23:58:09.915Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-04T00:03:11.007Z",
+      "feature": "roles",
       "phase": "do",
       "action": "updated"
     }

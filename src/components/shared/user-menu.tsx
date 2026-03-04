@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { logAuthEvent } from "@/lib/audit-client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,7 @@ export function UserMenu({ isAdmin }: UserMenuProps) {
   }, []);
 
   const handleLogout = async () => {
+    await logAuthEvent("USER_LOGOUT");
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/login");
