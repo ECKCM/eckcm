@@ -91,7 +91,7 @@ function CopyLinkButton({ slug }: { slug: string }) {
         </>
       ) : (
         <>
-          <Copy className="h-3.5 w-3.5" /> Copy Link
+          <Copy className="h-3.5 w-3.5" /> Copy
         </>
       )}
     </Button>
@@ -140,7 +140,7 @@ function ShareButtons({ slug, personName, phone, eventYear }: { slug: string; pe
       {phone && (
         <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" asChild>
           <a href={smsHref}>
-            <MessageSquare className="h-3.5 w-3.5" /> Send Message
+            <MessageSquare className="h-3.5 w-3.5" /> Send
           </a>
         </Button>
       )}
@@ -275,7 +275,7 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
                   </div>
                 </CardContent>
               </Link>
-              <div className="px-6 pb-3 flex items-center justify-end gap-2 border-t pt-2">
+              <div className="px-6 pb-3 flex items-center justify-end flex-wrap gap-2 border-t pt-2">
                 <CopyLinkButton slug={slug} />
                 <ShareButtons slug={slug} personName={`${person.first_name_en} ${person.last_name_en}`} phone={person.phone} eventYear={event.year} />
               </div>

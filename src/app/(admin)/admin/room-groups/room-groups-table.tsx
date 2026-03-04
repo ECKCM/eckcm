@@ -65,11 +65,14 @@ interface AvailableRoom {
   building_name: string;
 }
 
+const PAGE_SIZE = 7;
+
 export function RoomGroupsTable({ events }: { events: Event[] }) {
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
   const [groups, setGroups] = useState<GroupRow[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [departmentFilter, setDepartmentFilter] = useState("ALL");
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [assignDialog, setAssignDialog] = useState<GroupRow | null>(null);
   const [availableRooms, setAvailableRooms] = useState<AvailableRoom[]>([]);
@@ -300,7 +303,7 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
           </SelectContent>
         </Select>
 
-        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+        <Select value={departmentFilter} onValueChange={(v) => { setDepartmentFilter(v); setPage(0); }}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="All Departments" />
           </SelectTrigger>
@@ -331,6 +334,7 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
           {loading ? (
             <p className="text-center text-muted-foreground py-8">Loading...</p>
           ) : (
+            <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -346,7 +350,7 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((g) => (
+                {filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((g) => (
                   <TableRow key={g.id}>
                     <TableCell className="font-mono text-sm">
                       {g.display_group_code}
@@ -432,6 +436,16 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
                 )}
               </TableBody>
             </Table>
+            {filtered.length > PAGE_SIZE && (
+              <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+                <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+                  <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= filtered.length} onClick={() => setPage((p) => p + 1)}>Next</Button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>

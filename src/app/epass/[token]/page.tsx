@@ -37,7 +37,7 @@ export default async function EPassPage({
       created_at,
       person_id,
       registration_id,
-      eckcm_people!inner(first_name_en, last_name_en, gender, birth_date),
+      eckcm_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date, eckcm_churches(name_en)),
       eckcm_registrations!inner(
         confirmation_code,
         event_id,
@@ -85,13 +85,16 @@ export default async function EPassPage({
         id: data.id,
         isActive: data.is_active,
         createdAt: data.created_at,
+        confirmationCode: data.eckcm_registrations.confirmation_code ?? null,
         participantCode,
         qrValue,
         person: {
           firstName: data.eckcm_people.first_name_en,
           lastName: data.eckcm_people.last_name_en,
+          displayNameKo: data.eckcm_people.display_name_ko ?? null,
           gender: data.eckcm_people.gender,
           birthDate: data.eckcm_people.birth_date,
+          churchName: data.eckcm_people.eckcm_churches?.name_en ?? null,
         },
         registration: {
           event: {

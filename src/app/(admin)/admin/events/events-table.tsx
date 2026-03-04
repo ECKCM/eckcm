@@ -40,10 +40,13 @@ interface Event {
   is_default: boolean;
 }
 
+const PAGE_SIZE = 7;
+
 export function EventsTable({ events: initial }: { events: Event[] }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [events, setEvents] = useState(initial);
+  const [page, setPage] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -289,7 +292,7 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
               </TableCell>
             </TableRow>
           ) : (
-            events.map((event) => (
+            events.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((event) => (
               <TableRow key={event.id}>
                 <TableCell>
                   <div>
@@ -357,6 +360,16 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
           )}
         </TableBody>
       </Table>
+
+      {events.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+          <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, events.length)} of {events.length}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= events.length} onClick={() => setPage((p) => p + 1)}>Next</Button>
+          </div>
+        </div>
+      )}
 
       {mounted && (
         <ConfirmDeleteDialog

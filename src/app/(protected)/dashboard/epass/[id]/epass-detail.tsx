@@ -16,10 +16,13 @@ interface EPassDetailProps {
     eckcm_people: {
       first_name_en: string;
       last_name_en: string;
+      display_name_ko: string | null;
       gender: string;
       birth_date: string;
+      eckcm_churches: { name_en: string } | null;
     };
     eckcm_registrations: {
+      confirmation_code: string | null;
       start_date: string;
       eckcm_events: {
         year: number;
@@ -58,6 +61,11 @@ export function EPassDetail({ token }: EPassDetailProps) {
 
       <Card className="shadow-xl overflow-hidden">
         <CardHeader className="text-center pb-4 relative">
+          {reg.confirmation_code && (
+            <p className="absolute top-4 left-4 font-mono text-sm font-bold tracking-wider text-muted-foreground">
+              {reg.confirmation_code}
+            </p>
+          )}
           {token.participant_code && (
             <p className="absolute top-4 right-4 font-mono text-sm font-bold tracking-wider text-muted-foreground">
               {token.participant_code}
@@ -112,9 +120,14 @@ export function EPassDetail({ token }: EPassDetailProps) {
 
         <CardContent className="pt-6">
           <div className="flex flex-col items-center gap-3">
-            <h2 className="text-2xl font-bold tracking-tight">
-              {person.first_name_en} {person.last_name_en}
-            </h2>
+            <div className="text-center">
+              <h2 className="text-4xl font-bold tracking-tight">
+                {person.display_name_ko || `${person.first_name_en} ${person.last_name_en}`}
+              </h2>
+              {person.eckcm_churches?.name_en && (
+                <p className="text-xl text-muted-foreground mt-1">{person.eckcm_churches.name_en}</p>
+              )}
+            </div>
 
             {token.qr_value && (
               <div className="bg-white p-3 rounded-lg">

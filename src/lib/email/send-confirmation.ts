@@ -262,7 +262,7 @@ export async function sendConfirmationEmail(
       const docType = invoicePaid ? "receipt" : "invoice";
       pdfAttachment = {
         filename: `eckcm-${docType}-${includeInvoice.invoiceNumber}.pdf`,
-        content: pdfBuffer.toString("base64"),
+        content: pdfBuffer,
       };
     } catch (err) {
       console.error("[sendConfirmationEmail] PDF generation failed:", err);

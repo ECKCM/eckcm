@@ -252,6 +252,10 @@
 
 
 /* ── Admin Layout: Sticky page headers ── */
+.admin-inset {
+  min-width: 0;
+}
+
 .admin-inset > div > header {
   position: sticky;
   top: 0;

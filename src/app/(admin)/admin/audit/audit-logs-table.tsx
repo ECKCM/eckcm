@@ -31,7 +31,7 @@ export function AuditLogsTable() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
-  const pageSize = 50;
+  const pageSize = 7;
 
   const loadLogs = useCallback(async () => {
     setLoading(true);

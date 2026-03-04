@@ -27,7 +27,7 @@ export default async function EPassDetailPage({
       created_at,
       person_id,
       registration_id,
-      eckcm_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date),
+      eckcm_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date, eckcm_churches(name_en)),
       eckcm_registrations!inner(
         confirmation_code,
         status,

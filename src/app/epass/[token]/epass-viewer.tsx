@@ -10,13 +10,16 @@ interface EPassViewerProps {
     id: string;
     isActive: boolean;
     createdAt: string;
+    confirmationCode: string | null;
     participantCode: string | null;
     qrValue: string | null;
     person: {
       firstName: string;
       lastName: string;
+      displayNameKo: string | null;
       gender: string;
       birthDate: string;
+      churchName: string | null;
     };
     registration: {
       event: {
@@ -51,6 +54,11 @@ export function EPassViewer({ epass }: EPassViewerProps) {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-950 dark:to-gray-900 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl overflow-hidden">
         <CardHeader className="text-center pb-4 relative">
+          {epass.confirmationCode && (
+            <p className="absolute top-4 left-4 font-mono text-sm font-bold tracking-wider text-muted-foreground">
+              {epass.confirmationCode}
+            </p>
+          )}
           {epass.participantCode && (
             <p className="absolute top-4 right-4 font-mono text-sm font-bold tracking-wider text-muted-foreground">
               {epass.participantCode}
@@ -104,9 +112,14 @@ export function EPassViewer({ epass }: EPassViewerProps) {
         <CardContent className="pt-6">
           <div className="flex flex-col items-center gap-3">
             {/* Name */}
-            <h2 className="text-2xl font-bold tracking-tight">
-              {person.firstName} {person.lastName}
-            </h2>
+            <div className="text-center">
+              <h2 className="text-4xl font-bold tracking-tight">
+                {person.displayNameKo || `${person.firstName} ${person.lastName}`}
+              </h2>
+              {person.churchName && (
+                <p className="text-xl text-muted-foreground mt-1">{person.churchName}</p>
+              )}
+            </div>
 
             {/* QR Code */}
             {epass.qrValue && (

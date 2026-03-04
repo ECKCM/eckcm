@@ -82,7 +82,7 @@ interface PersonDetail {
   participant_code: string | null;
 }
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 7;
 const STATUS_OPTIONS = ["ALL", "PAID", "SUBMITTED", "DRAFT", "CANCELLED", "REFUNDED"];
 
 const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {

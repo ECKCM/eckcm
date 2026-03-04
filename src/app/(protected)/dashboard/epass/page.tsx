@@ -69,14 +69,27 @@ export default async function EPassPage() {
     birth_date: up.eckcm_people?.birth_date,
   }));
   const myPersonIds = (tokens as any[])
-    .filter((t: any) =>
-      myIdentities.some(
-        (me) =>
-          me.first_name_en === t.eckcm_people.first_name_en &&
-          me.last_name_en === t.eckcm_people.last_name_en &&
-          me.birth_date === t.eckcm_people.birth_date
-      )
-    )
+    .filter((t: any) => {
+      // Primary: check against eckcm_user_people identities
+      if (myIdentities.length > 0) {
+        return myIdentities.some((me) => {
+          if (me.first_name_en !== t.eckcm_people.first_name_en) return false;
+          if (me.last_name_en !== t.eckcm_people.last_name_en) return false;
+          // Only require birth_date match if both records have it
+          if (me.birth_date && t.eckcm_people.birth_date) {
+            return me.birth_date === t.eckcm_people.birth_date;
+          }
+          return true;
+        });
+      }
+      // Fallback: match by auth user metadata full_name (handles accounts without eckcm_user_people)
+      const fullName = (user.user_metadata?.full_name as string | undefined)?.toLowerCase().trim();
+      if (fullName) {
+        const personName = `${t.eckcm_people.first_name_en} ${t.eckcm_people.last_name_en}`.toLowerCase().trim();
+        return personName === fullName;
+      }
+      return false;
+    })
     .map((t: any) => t.person_id);
 
   // Fetch participant_codes from group_memberships

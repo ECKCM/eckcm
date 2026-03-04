@@ -51,7 +51,7 @@ export default async function AdminLayout({
           events={events ?? []}
           permissions={permissions}
         />
-        <SidebarInset className="admin-inset">
+        <SidebarInset className="admin-inset min-w-0 overflow-x-clip">
           {children}
         </SidebarInset>
         {/* Fixed right-side header — always visible regardless of layout */}
