@@ -38,7 +38,6 @@ export interface Invoice {
   id: string;
   registration_id: string;
   invoice_number: string;
-  subtotal_cents: number;
   total_cents: number;
   status: "DRAFT" | "SENT" | "PAID" | "VOID";
   created_at: string;

@@ -54,7 +54,6 @@ export async function sendConfirmationEmail(
         `
         id,
         invoice_number,
-        subtotal_cents,
         total_cents,
         status,
         paid_at,
@@ -208,7 +207,7 @@ export async function sendConfirmationEmail(
               amount: `$${(li.total_cents / 100).toFixed(2)}`,
             })
           ),
-          subtotal: `$${((invoiceData.subtotal_cents ?? invoiceData.total_cents) / 100).toFixed(2)}`,
+          subtotal: `$${(invoiceData.total_cents / 100).toFixed(2)}`,
           total: `$${(invoiceData.total_cents / 100).toFixed(2)}`,
           paymentDate: invoiceData.paid_at
             ? new Date(invoiceData.paid_at).toLocaleDateString("en-US")

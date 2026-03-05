@@ -29,7 +29,6 @@ export default async function ReceiptsPage() {
     .select(`
       id,
       invoice_number,
-      subtotal_cents,
       total_cents,
       status,
       issued_at,

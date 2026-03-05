@@ -16,7 +16,6 @@ interface LineItem {
 interface Invoice {
   id: string;
   invoice_number: string;
-  subtotal_cents: number;
   total_cents: number;
   status: string;
   issued_at: string;

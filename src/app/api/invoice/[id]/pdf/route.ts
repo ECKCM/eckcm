@@ -23,7 +23,6 @@ export async function GET(
     .select(`
       id,
       invoice_number,
-      subtotal_cents,
       total_cents,
       status,
       issued_at,
@@ -83,7 +82,7 @@ export async function GET(
     paymentMethod: payment?.payment_method ?? "-",
     paymentDate: inv.paid_at ? new Date(inv.paid_at).toLocaleDateString("en-US") : "-",
     lineItems,
-    subtotal: `$${((inv.subtotal_cents ?? inv.total_cents) / 100).toFixed(2)}`,
+    subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
     total: `$${(inv.total_cents / 100).toFixed(2)}`,
   });
 

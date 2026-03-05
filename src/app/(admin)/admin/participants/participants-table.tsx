@@ -60,7 +60,7 @@ interface ParticipantRow {
   lodging_type: string | null;
 }
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 7;
 
 export function ParticipantsTable({ events }: { events: Event[] }) {
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
