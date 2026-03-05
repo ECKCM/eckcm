@@ -32,8 +32,8 @@ export async function GET() {
 
   const defaultPdfSettings = {
     orgName: "ECKCM",
-    orgSubtitle: "East Coast Korean Campmeeting",
-    footerText: "East Coast Korean Campmeeting · eckcm.com",
+    orgSubtitle: "East Coast Korean Camp Meeting",
+    footerText: "East Coast Korean Camp Meeting · eckcm.com",
   };
 
   return NextResponse.json({

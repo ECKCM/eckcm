@@ -506,8 +506,8 @@ function PdfSettingsTab() {
         if (data.pdf_settings) {
           setSettings({
             orgName: data.pdf_settings.orgName ?? "ECKCM",
-            orgSubtitle: data.pdf_settings.orgSubtitle ?? "East Coast Korean Campmeeting",
-            footerText: data.pdf_settings.footerText ?? "East Coast Korean Campmeeting · eckcm.com",
+            orgSubtitle: data.pdf_settings.orgSubtitle ?? "East Coast Korean Camp Meeting",
+            footerText: data.pdf_settings.footerText ?? "East Coast Korean Camp Meeting · eckcm.com",
           });
         }
         setLoading(false);
@@ -573,7 +573,7 @@ function PdfSettingsTab() {
               onChange={(e) =>
                 setSettings({ ...settings, orgSubtitle: e.target.value })
               }
-              placeholder="East Coast Korean Campmeeting"
+              placeholder="East Coast Korean Camp Meeting"
             />
             <p className="text-xs text-muted-foreground">
               Displayed below the organization name in the header.
@@ -586,7 +586,7 @@ function PdfSettingsTab() {
               onChange={(e) =>
                 setSettings({ ...settings, footerText: e.target.value })
               }
-              placeholder="East Coast Korean Campmeeting · eckcm.com"
+              placeholder="East Coast Korean Camp Meeting · eckcm.com"
             />
             <p className="text-xs text-muted-foreground">
               Displayed at the bottom of every PDF.
@@ -722,7 +722,7 @@ function buildConfirmationPreview(): string {
 <p style="font-size:14px;color:#6b7280;">Location: Camp Berkshire, NY</p>
 <p style="font-size:14px;color:#6b7280;">Amount Paid: <b>$450.00</b></p>
 </td></tr></table>
-<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Campmeeting</p></td></tr></table>
+<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Camp Meeting</p></td></tr></table>
 </td></tr></table></body></html>`;
 }
 
@@ -750,7 +750,7 @@ function buildInvoicePreview(): string {
 <table width="100%"><tr><td style="color:#6b7280;font-size:14px;">Subtotal</td><td style="text-align:right;">$440.00</td></tr>
 <tr style="border-top:2px solid #111827;"><td style="padding:8px 0 0;font-size:16px;font-weight:bold;">Total</td><td style="padding:8px 0 0;text-align:right;font-size:16px;font-weight:bold;">$440.00</td></tr></table>
 </td></tr></table>
-<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Campmeeting</p></td></tr></table>
+<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Camp Meeting</p></td></tr></table>
 </td></tr></table></body></html>`;
 }
 
@@ -770,7 +770,7 @@ function buildEpassPreview(): string {
 </table>
 <div style="text-align:center;"><a href="#" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:bold;">View E-Pass</a></div>
 </td></tr></table>
-<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Campmeeting</p></td></tr></table>
+<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Camp Meeting</p></td></tr></table>
 </td></tr></table></body></html>`;
 }
 
@@ -790,7 +790,7 @@ function buildAnnouncementPreview(): string {
 <p>We look forward to seeing you at Camp Berkshire!</p>
 </div>
 </td></tr></table>
-<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Campmeeting</p></td></tr></table>
+<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Camp Meeting</p></td></tr></table>
 </td></tr></table></body></html>`;
 }
 
@@ -831,7 +831,7 @@ function buildZellePreview(): string {
 </td></tr></table>
 <p style="font-size:13px;color:#6b7280;margin:0;">E-Pass links will be sent in a separate email once your payment is confirmed.</p>
 </td></tr></table>
-<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Campmeeting</p></td></tr></table>
+<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Camp Meeting</p></td></tr></table>
 </td></tr></table></body></html>`;
 }
 

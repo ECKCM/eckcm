@@ -214,7 +214,7 @@ export function buildConfirmationEmail({
           <tr>
             <td>
               <p style="font-size: 12px; color: #9ca3af; margin: 0;">
-                East Coast Korean Campmeeting
+                East Coast Korean Camp Meeting
               </p>
             </td>
           </tr>

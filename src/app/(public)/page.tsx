@@ -48,7 +48,7 @@ export default async function HomePage() {
           중동부 연합 야영회
         </h3>
         <p className="mt-2 text-lg text-muted-foreground">
-          East Coast Korean Campmeeting
+          East Coast Korean Camp Meeting
         </p>
         <p className="mt-6 text-base leading-7 text-muted-foreground">
           Sign up to register for ECKCM

@@ -36,8 +36,8 @@ async function getPdfSettings(): Promise<PdfSettings> {
   }
   const defaults: PdfSettings = {
     orgName: "ECKCM",
-    orgSubtitle: "East Coast Korean Campmeeting",
-    footerText: "East Coast Korean Campmeeting · eckcm.com",
+    orgSubtitle: "East Coast Korean Camp Meeting",
+    footerText: "East Coast Korean Camp Meeting · eckcm.com",
   };
   try {
     const admin = createAdminClient();

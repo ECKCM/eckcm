@@ -72,7 +72,7 @@ async function buildScenario(
               <tr><td style="color:#6b7280;font-size:13px;padding:6px 0;">Sent At</td>
                   <td style="font-size:13px;padding:6px 0;text-align:right;">${new Date().toLocaleString("en-US")}</td></tr>
             </table>
-            <p style="color:#9ca3af;font-size:12px;border-top:1px solid #e5e7eb;padding-top:16px;">East Coast Korean Campmeeting · eckcm.com</p>
+            <p style="color:#9ca3af;font-size:12px;border-top:1px solid #e5e7eb;padding-top:16px;">East Coast Korean Camp Meeting · eckcm.com</p>
           </div>`,
       };
 
