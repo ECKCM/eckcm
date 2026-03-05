@@ -60,7 +60,7 @@ interface ParticipantRow {
   lodging_type: string | null;
 }
 
-const PAGE_SIZE = 7;
+const PAGE_SIZE = 100;
 
 export function ParticipantsTable({ events }: { events: Event[] }) {
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
@@ -75,10 +75,10 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
     setLoading(true);
     const supabase = createClient();
 
-    // Get total count for pagination
+    // Get total count for pagination (must include join for filter to work)
     const { count } = await supabase
       .from("eckcm_group_memberships")
-      .select("person_id", { count: "exact", head: true })
+      .select("person_id, eckcm_groups!inner(event_id)", { count: "exact", head: true })
       .eq("eckcm_groups.event_id", eventId);
     setTotalCount(count ?? 0);
 

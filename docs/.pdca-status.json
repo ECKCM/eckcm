@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-05T02:06:25.823Z",
+  "lastUpdated": "2026-03-05T02:10:45.909Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -330,7 +330,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:31:41.703Z",
-        "lastUpdated": "2026-03-04T22:05:47.363Z"
+        "lastUpdated": "2026-03-05T02:10:45.909Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/participants/participants-table.tsx"
     },
@@ -5748,6 +5748,18 @@
     {
       "timestamp": "2026-03-05T02:06:25.823Z",
       "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T02:10:41.327Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T02:10:45.909Z",
+      "feature": "participants",
       "phase": "do",
       "action": "updated"
     }
