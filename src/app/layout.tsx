@@ -7,11 +7,40 @@ import { getAppColorTheme } from "@/lib/app-config";
 import { DEFAULT_COLOR_THEME } from "@/lib/color-theme";
 import "./globals.css";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://eckcm.org";
+const ogImage = `${siteUrl}/images/og-image.jpg`;
+
 export const metadata: Metadata = {
   title: "My ECKCM - 중동부 연합 야영회 Portal",
   description:
-    "Online registration and management system for ECKCM",
+    "Online registration and management system for Eastern Korean Churches Camp Meeting (ECKCM)",
   manifest: "/manifest.json",
+  metadataBase: new URL(siteUrl),
+  openGraph: {
+    type: "website",
+    siteName: "My ECKCM",
+    title: "My ECKCM - 중동부 연합 야영회 Portal",
+    description:
+      "Online registration and management system for Eastern Korean Churches Camp Meeting (ECKCM)",
+    url: siteUrl,
+    locale: "en_US",
+    images: [
+      {
+        url: ogImage,
+        width: 1200,
+        height: 630,
+        alt: "ECKCM - Eastern Korean Churches Camp Meeting",
+        type: "image/jpeg",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "My ECKCM - 중동부 연합 야영회 Portal",
+    description:
+      "Online registration and management system for Eastern Korean Churches Camp Meeting (ECKCM)",
+    images: [ogImage],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

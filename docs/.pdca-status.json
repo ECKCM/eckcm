@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-05T03:34:14.774Z",
+  "lastUpdated": "2026-03-05T07:48:42.122Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -122,9 +122,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:03:38.722Z",
-        "lastUpdated": "2026-03-05T03:07:09.878Z"
+        "lastUpdated": "2026-03-05T07:48:42.122Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/lib/color-theme.ts"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/layout.tsx"
     },
     "stripe-config": {
       "phase": "do",
@@ -6042,6 +6042,12 @@
     {
       "timestamp": "2026-03-05T03:34:14.774Z",
       "feature": "hard-reset-event",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T07:48:42.122Z",
+      "feature": "eckcm",
       "phase": "do",
       "action": "updated"
     }
