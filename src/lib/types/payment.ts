@@ -50,11 +50,11 @@ export interface Invoice {
 export interface InvoiceLineItem {
   id: string;
   invoice_id: string;
-  description: string;
+  description_en: string;
   description_ko: string | null;
   quantity: number;
   unit_price_cents: number;
-  amount_cents: number;
+  total_cents: number;
   fee_category_id: string | null;
 }
 
