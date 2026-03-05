@@ -126,19 +126,19 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
                 {/* Line items */}
                 {lineItems.length > 0 && (
                   <div className="rounded-md border text-sm">
-                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-3 py-2 bg-muted/50 text-xs text-muted-foreground font-medium">
+                    <div className="grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 bg-muted/50 text-xs text-muted-foreground font-medium">
                       <span>Description</span>
-                      <span className="text-center">Qty</span>
+                      <span className="text-right">Qty</span>
                       <span className="text-right">Unit</span>
                       <span className="text-right">Amount</span>
                     </div>
                     {lineItems.map((li, i) => (
                       <div
                         key={i}
-                        className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-3 py-2 border-t"
+                        className="grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 border-t"
                       >
                         <span>{li.description_en}</span>
-                        <span className="text-center">{li.quantity}</span>
+                        <span className="text-right">{li.quantity}</span>
                         <span className="text-right">
                           ${(li.unit_price_cents / 100).toFixed(2)}
                         </span>
@@ -147,9 +147,11 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
                         </span>
                       </div>
                     ))}
-                    <div className="flex justify-end gap-8 px-3 py-2 border-t font-medium">
-                      <span>Total</span>
-                      <span>${(inv.total_cents / 100).toFixed(2)}</span>
+                    <div className="grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 border-t font-medium">
+                      <span />
+                      <span />
+                      <span className="text-right">Total</span>
+                      <span className="text-right">${(inv.total_cents / 100).toFixed(2)}</span>
                     </div>
                   </div>
                 )}

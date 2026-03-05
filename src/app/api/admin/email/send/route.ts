@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getResendClient } from "@/lib/email/resend";
-import { getEmailConfig } from "@/lib/email/email-config";
+import { getEmailConfig, getEmailHeaders } from "@/lib/email/email-config";
 import { logEmail } from "@/lib/email/email-log.service";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { buildInvoiceEmail } from "@/lib/email/templates/invoice";
@@ -133,6 +133,7 @@ export async function POST(req: NextRequest) {
       ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
       subject,
       html,
+      headers: getEmailHeaders(emailConfig.replyTo),
     });
 
     if (error) {

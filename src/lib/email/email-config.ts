@@ -58,3 +58,13 @@ export function clearEmailConfigCache(): void {
   cachedConfig = null;
   cacheTime = 0;
 }
+
+/** Standard email headers to improve deliverability and avoid spam filters */
+export function getEmailHeaders(replyTo?: string): Record<string, string> {
+  const unsubscribeEmail = replyTo || "contact@eckcm.com";
+  return {
+    "List-Unsubscribe": `<mailto:${unsubscribeEmail}?subject=Unsubscribe>`,
+    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    "X-Entity-Ref-ID": `eckcm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  };
+}

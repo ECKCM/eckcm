@@ -19,7 +19,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("eckcm_app_config")
-    .select("email_from_name, email_from_address, email_reply_to, resend_api_key, zelle_email, zelle_account_holder")
+    .select("email_from_name, email_from_address, email_reply_to, resend_api_key, zelle_email, zelle_account_holder, pdf_settings")
     .eq("id", 1)
     .single();
 
@@ -30,6 +30,12 @@ export async function GET() {
   const dbKeySet = !!data.resend_api_key;
   const envKeySet = !!process.env.RESEND_API_KEY;
 
+  const defaultPdfSettings = {
+    orgName: "ECKCM",
+    orgSubtitle: "East Coast Korean Campmeeting",
+    footerText: "East Coast Korean Campmeeting · eckcm.com",
+  };
+
   return NextResponse.json({
     email_from_name: data.email_from_name ?? "ECKCM",
     email_from_address: data.email_from_address ?? "noreply@eckcm.com",
@@ -39,8 +45,15 @@ export async function GET() {
     resend_configured: dbKeySet || envKeySet,
     zelle_email: data.zelle_email ?? "",
     zelle_account_holder: data.zelle_account_holder ?? "",
+    pdf_settings: { ...defaultPdfSettings, ...(data.pdf_settings as Record<string, string> ?? {}) },
   });
 }
+
+const pdfSettingsSchema = z.object({
+  orgName: z.string().max(100).optional(),
+  orgSubtitle: z.string().max(200).optional(),
+  footerText: z.string().max(200).optional(),
+});
 
 const patchSchema = z.object({
   email_from_name: z.string().min(1).max(100).optional(),
@@ -49,6 +62,7 @@ const patchSchema = z.object({
   resend_api_key: z.string().min(1).max(255).optional(),
   zelle_email: z.string().email().max(255).or(z.literal("")).optional(),
   zelle_account_holder: z.string().max(255).optional(),
+  pdf_settings: pdfSettingsSchema.optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -76,6 +90,9 @@ export async function PATCH(req: NextRequest) {
   }
   if (parsed.data.zelle_account_holder !== undefined) {
     updates.zelle_account_holder = parsed.data.zelle_account_holder || null;
+  }
+  if (parsed.data.pdf_settings !== undefined) {
+    updates.pdf_settings = parsed.data.pdf_settings;
   }
   if (parsed.data.resend_api_key !== undefined) {
     // Validate Resend API key format

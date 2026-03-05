@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface InvoicePdfData {
   invoiceNumber: string;
@@ -16,6 +17,42 @@ export interface InvoicePdfData {
   }>;
   subtotal: string;
   total: string;
+}
+
+interface PdfSettings {
+  orgName: string;
+  orgSubtitle: string;
+  footerText: string;
+}
+
+let cachedPdfSettings: PdfSettings | null = null;
+let pdfSettingsCacheTime = 0;
+const PDF_CACHE_TTL = 60_000;
+
+async function getPdfSettings(): Promise<PdfSettings> {
+  const now = Date.now();
+  if (cachedPdfSettings && now - pdfSettingsCacheTime < PDF_CACHE_TTL) {
+    return cachedPdfSettings;
+  }
+  const defaults: PdfSettings = {
+    orgName: "ECKCM",
+    orgSubtitle: "East Coast Korean Campmeeting",
+    footerText: "East Coast Korean Campmeeting · eckcm.com",
+  };
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("eckcm_app_config")
+      .select("pdf_settings")
+      .eq("id", 1)
+      .single();
+    const settings = data?.pdf_settings as Partial<PdfSettings> | null;
+    cachedPdfSettings = { ...defaults, ...settings };
+  } catch {
+    cachedPdfSettings = defaults;
+  }
+  pdfSettingsCacheTime = now;
+  return cachedPdfSettings;
 }
 
 const PAGE_W = 595;
@@ -47,6 +84,8 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
     subtotal,
     total,
   } = data;
+
+  const pdfSettings = await getPdfSettings();
 
   const doc = await PDFDocument.create();
   const [regular, bold] = await Promise.all([
@@ -84,8 +123,8 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
   page.drawRectangle({ x: MX, y: y - HEADER_H, width: CW, height: HEADER_H, color: C_DARK });
 
   // Left: org name + subtitle
-  txt("ECKCM", MX + 24, y - 23, bold, 20, C_WHITE);
-  txt("East Coast Korean Campmeeting", MX + 24, y - 39, regular, 9, C_GRAY_LIGHT);
+  txt(pdfSettings.orgName, MX + 24, y - 23, bold, 20, C_WHITE);
+  txt(pdfSettings.orgSubtitle, MX + 24, y - 39, regular, 9, C_GRAY_LIGHT);
 
   // Right: doc type label + number (right-aligned)
   const docLabel = `${docTitle} #`;
@@ -211,7 +250,7 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
   // ─── FOOTER ───────────────────────────────────────────────────────────────
   const FOOTER_Y = 40;
   page.drawLine({ start: { x: MX, y: FOOTER_Y + 20 }, end: { x: MX + CW, y: FOOTER_Y + 20 }, color: C_BORDER, thickness: 0.5 });
-  txt("East Coast Korean Campmeeting · eckcm.com", MX, FOOTER_Y + 8, regular, 9, C_FOOTER);
+  txt(pdfSettings.footerText, MX, FOOTER_Y + 8, regular, 9, C_FOOTER);
   const genText = `${invoiceNumber} · Generated ${new Date().toLocaleDateString("en-US")}`;
   txt(genText, MX + CW - regular.widthOfTextAtSize(genText, 9), FOOTER_Y + 8, regular, 9, C_FOOTER);
 

@@ -488,6 +488,119 @@ function TestEmailTab() {
   );
 }
 
+// ─── PDF Settings Tab ────────────────────────────────────────────────────────
+
+function PdfSettingsTab() {
+  const [settings, setSettings] = useState({
+    orgName: "",
+    orgSubtitle: "",
+    footerText: "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/email/config")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.pdf_settings) {
+          setSettings({
+            orgName: data.pdf_settings.orgName ?? "ECKCM",
+            orgSubtitle: data.pdf_settings.orgSubtitle ?? "East Coast Korean Campmeeting",
+            footerText: data.pdf_settings.footerText ?? "East Coast Korean Campmeeting · eckcm.com",
+          });
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/email/config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pdf_settings: settings }),
+      });
+      if (res.ok) {
+        toast.success("PDF settings saved");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to save");
+      }
+    } catch {
+      toast.error("Network error");
+    }
+    setSaving(false);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>PDF Receipt / Invoice Text</CardTitle>
+          <CardDescription>
+            Customize the text displayed on generated PDF receipts and invoices.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1">
+            <Label>Organization Name</Label>
+            <Input
+              value={settings.orgName}
+              onChange={(e) =>
+                setSettings({ ...settings, orgName: e.target.value })
+              }
+              placeholder="ECKCM"
+            />
+            <p className="text-xs text-muted-foreground">
+              Displayed in the PDF header (large text, top-left).
+            </p>
+          </div>
+          <div className="space-y-1">
+            <Label>Organization Subtitle</Label>
+            <Input
+              value={settings.orgSubtitle}
+              onChange={(e) =>
+                setSettings({ ...settings, orgSubtitle: e.target.value })
+              }
+              placeholder="East Coast Korean Campmeeting"
+            />
+            <p className="text-xs text-muted-foreground">
+              Displayed below the organization name in the header.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <Label>Footer Text</Label>
+            <Input
+              value={settings.footerText}
+              onChange={(e) =>
+                setSettings({ ...settings, footerText: e.target.value })
+              }
+              placeholder="East Coast Korean Campmeeting · eckcm.com"
+            />
+            <p className="text-xs text-muted-foreground">
+              Displayed at the bottom of every PDF.
+            </p>
+          </div>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : "Save PDF Settings"}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Templates Tab ──────────────────────────────────────────────────────────
 
 const TEMPLATES = [
@@ -1075,6 +1188,7 @@ export default function EmailSettingsPage() {
         <Tabs defaultValue="settings">
           <TabsList className="mb-6">
             <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="pdf">PDF</TabsTrigger>
             <TabsTrigger value="test">Test Email</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
             <TabsTrigger value="logs">Email Log</TabsTrigger>
@@ -1083,6 +1197,10 @@ export default function EmailSettingsPage() {
 
           <TabsContent value="settings">
             <SettingsTab />
+          </TabsContent>
+
+          <TabsContent value="pdf">
+            <PdfSettingsTab />
           </TabsContent>
 
           <TabsContent value="test">

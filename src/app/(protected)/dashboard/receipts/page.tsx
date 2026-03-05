@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ReceiptList } from "./receipt-list";
 
 export default async function ReceiptsPage() {
@@ -10,8 +11,10 @@ export default async function ReceiptsPage() {
 
   if (!user) redirect("/login");
 
-  // Get invoices for user's registrations
-  const { data: registrations } = await supabase
+  const admin = createAdminClient();
+
+  // Get invoices for user's registrations (use admin to bypass RLS on nested joins)
+  const { data: registrations } = await admin
     .from("eckcm_registrations")
     .select("id")
     .eq("created_by_user_id", user.id);
@@ -24,7 +27,7 @@ export default async function ReceiptsPage() {
     );
   }
 
-  const { data: invoices } = await supabase
+  const { data: invoices } = await admin
     .from("eckcm_invoices")
     .select(`
       id,
