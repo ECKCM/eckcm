@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, FileText, Download } from "lucide-react";
 
 interface LineItem {
-  description: string;
+  description_en: string;
   quantity: number;
   unit_price_cents: number;
-  amount_cents: number;
+  total_cents: number;
 }
 
 interface Invoice {
@@ -138,13 +138,13 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
                         key={i}
                         className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-3 py-2 border-t"
                       >
-                        <span>{li.description}</span>
+                        <span>{li.description_en}</span>
                         <span className="text-center">{li.quantity}</span>
                         <span className="text-right">
                           ${(li.unit_price_cents / 100).toFixed(2)}
                         </span>
                         <span className="text-right">
-                          ${(li.amount_cents / 100).toFixed(2)}
+                          ${(li.total_cents / 100).toFixed(2)}
                         </span>
                       </div>
                     ))}

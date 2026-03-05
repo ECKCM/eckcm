@@ -336,7 +336,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
   // --- Manual Payment ---
   const openManualPayDialog = (inv: InvoiceRow) => {
     setManualPayTarget(inv);
-    setManualPayMethod("MANUAL");
+    setManualPayMethod(inv.payment_method ?? "MANUAL");
     setManualPayNote("");
   };
 

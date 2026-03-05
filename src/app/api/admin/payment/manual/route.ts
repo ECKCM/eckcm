@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateEPassToken } from "@/lib/services/epass.service";
@@ -194,12 +195,14 @@ export async function POST(request: Request) {
     }
   }
 
-  // 11. Send confirmation email (non-blocking)
-  try {
-    await sendConfirmationEmail(registration.id);
-  } catch (err) {
-    logger.error("[admin/payment/manual] Failed to send confirmation email", { error: String(err) });
-  }
+  // 11. Send confirmation email (non-blocking — runs after response to avoid timeout)
+  after(async () => {
+    try {
+      await sendConfirmationEmail(registration.id);
+    } catch (err) {
+      logger.error("[admin/payment/manual] Failed to send confirmation email", { error: String(err) });
+    }
+  });
 
   // 12. Audit log
   await admin.from("eckcm_audit_logs").insert({

@@ -29,7 +29,7 @@ export async function GET(
       issued_at,
       paid_at,
       registration_id,
-      eckcm_invoice_line_items(description, quantity, unit_price_cents, amount_cents),
+      eckcm_invoice_line_items(description_en, quantity, unit_price_cents, total_cents),
       eckcm_payments(payment_method, status)
     `)
     .eq("id", invoiceId)
@@ -66,11 +66,11 @@ export async function GET(
   );
 
   const lineItems = (inv.eckcm_invoice_line_items ?? []).map(
-    (li: { description: string; quantity: number; unit_price_cents: number; amount_cents: number }) => ({
-      description: li.description,
+    (li: { description_en: string; quantity: number; unit_price_cents: number; total_cents: number }) => ({
+      description: li.description_en,
       quantity: li.quantity,
       unitPrice: `$${(li.unit_price_cents / 100).toFixed(2)}`,
-      amount: `$${(li.amount_cents / 100).toFixed(2)}`,
+      amount: `$${(li.total_cents / 100).toFixed(2)}`,
     })
   );
 

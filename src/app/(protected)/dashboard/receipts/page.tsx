@@ -35,7 +35,7 @@ export default async function ReceiptsPage() {
       issued_at,
       paid_at,
       registration_id,
-      eckcm_invoice_line_items(description, quantity, unit_price_cents, amount_cents),
+      eckcm_invoice_line_items(description_en, quantity, unit_price_cents, total_cents),
       eckcm_payments(payment_method, status),
       eckcm_registrations!inner(
         confirmation_code,

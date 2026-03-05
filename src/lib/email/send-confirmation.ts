@@ -58,7 +58,7 @@ export async function sendConfirmationEmail(
         total_cents,
         status,
         paid_at,
-        eckcm_invoice_line_items(description, quantity, unit_price_cents, amount_cents),
+        eckcm_invoice_line_items(description_en, quantity, unit_price_cents, total_cents),
         eckcm_payments(payment_method, status)
       `
       )
@@ -201,11 +201,11 @@ export async function sendConfirmationEmail(
       ? {
           invoiceNumber: invoiceData.invoice_number,
           lineItems: (invoiceData.eckcm_invoice_line_items ?? []).map(
-            (li: { description: string; quantity: number; unit_price_cents: number; amount_cents: number }) => ({
-              description: li.description,
+            (li: { description_en: string; quantity: number; unit_price_cents: number; total_cents: number }) => ({
+              description: li.description_en,
               quantity: li.quantity,
               unitPrice: `$${(li.unit_price_cents / 100).toFixed(2)}`,
-              amount: `$${(li.amount_cents / 100).toFixed(2)}`,
+              amount: `$${(li.total_cents / 100).toFixed(2)}`,
             })
           ),
           subtotal: `$${((invoiceData.subtotal_cents ?? invoiceData.total_cents) / 100).toFixed(2)}`,
