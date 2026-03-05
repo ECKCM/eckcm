@@ -8,7 +8,7 @@ import { DEFAULT_COLOR_THEME } from "@/lib/color-theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ECKCM Participant Portal - 중동부 연합 야영회 온라인 시스템",
+  title: "My ECKCM - 중동부 연합 야영회 Portal",
   description:
     "Online registration and management system for ECKCM",
   manifest: "/manifest.json",

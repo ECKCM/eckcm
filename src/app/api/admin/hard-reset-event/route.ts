@@ -182,6 +182,9 @@ export async function POST(request: Request) {
     .update({ next_registration_seq: 1 })
     .eq("id", eventId);
 
+  // 5b. Reset invoice sequence counter
+  await admin.rpc("reset_invoice_seq");
+
   // 6. Audit log
   await admin.from("eckcm_audit_logs").insert({
     event_id: eventId,
