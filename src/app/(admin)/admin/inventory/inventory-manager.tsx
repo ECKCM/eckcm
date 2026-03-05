@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtime } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -98,6 +99,13 @@ export function InventoryManager() {
     setMounted(true);
     loadInventory();
   }, [loadInventory]);
+
+  // Live updates
+  const _reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useRealtime({ table: "eckcm_fee_category_inventory", event: "*" }, () => {
+    if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
+    _reloadTimer.current = setTimeout(loadInventory, 500);
+  });
 
   const handleStartEdit = (row: InventoryRow) => {
     setEditingId(row.id);

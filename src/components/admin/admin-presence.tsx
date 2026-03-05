@@ -13,7 +13,7 @@ interface PresenceUser {
   user_id: string;
   email: string;
   display_name: string;
-  online_at: string;
+  last_seen_at: string;
 }
 
 interface AdminPresenceProps {
@@ -23,17 +23,13 @@ interface AdminPresenceProps {
 }
 
 const AVATAR_COLORS = [
-  "bg-red-500",
-  "bg-orange-500",
-  "bg-amber-500",
-  "bg-green-500",
-  "bg-teal-500",
-  "bg-blue-500",
-  "bg-indigo-500",
-  "bg-violet-500",
-  "bg-pink-500",
-  "bg-rose-500",
+  "bg-red-500", "bg-orange-500", "bg-amber-500", "bg-green-500",
+  "bg-teal-500", "bg-blue-500", "bg-indigo-500", "bg-violet-500",
+  "bg-pink-500", "bg-rose-500",
 ];
+
+const STALE_THRESHOLD_MS = 2 * 60 * 1000;   // 2 min
+const HEARTBEAT_INTERVAL_MS = 30 * 1000;     // 30 s
 
 function getAvatarColor(userId: string): string {
   let hash = 0;
@@ -55,69 +51,119 @@ export function AdminPresence({
   currentUserEmail,
   currentUserName,
 }: AdminPresenceProps) {
-  const selfRef = useRef<PresenceUser>({
+  // Start with current user immediately — never show empty
+  const [activeUsers, setActiveUsers] = useState<PresenceUser[]>([{
     user_id: currentUserId,
     email: currentUserEmail,
     display_name: currentUserName,
-    online_at: "",
-  });
+    last_seen_at: new Date().toISOString(),
+  }]);
 
-  // Always start with current user — never empty
-  const [activeUsers, setActiveUsers] = useState<PresenceUser[]>([selfRef.current]);
+  // Sequence counter to discard stale async results
+  const loadSeqRef = useRef(0);
+  // Debounce timer for rapid change events
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase.channel("admin-presence", {
-      config: { presence: { key: currentUserId } },
-    });
 
-    const syncUsers = () => {
-      const state = channel.presenceState<PresenceUser>();
-      const map = new Map<string, PresenceUser>();
-
-      // Always keep self in the list
-      map.set(currentUserId, selfRef.current);
-
-      for (const presences of Object.values(state)) {
-        if (presences.length > 0) {
-          const p = presences[0];
-          map.set(p.user_id, p);
-        }
-      }
-
-      const users = Array.from(map.values()).sort((a, b) => {
-        if (a.user_id === currentUserId) return -1;
-        if (b.user_id === currentUserId) return 1;
-        return a.online_at.localeCompare(b.online_at);
-      });
-
-      setActiveUsers(users);
+    const upsertPresence = async () => {
+      await supabase.from("eckcm_admin_presence").upsert(
+        {
+          user_id: currentUserId,
+          email: currentUserEmail,
+          display_name: currentUserName,
+          last_seen_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
     };
 
-    channel
-      .on("presence", { event: "sync" }, syncUsers)
-      .on("presence", { event: "join" }, syncUsers)
-      .on("presence", { event: "leave" }, syncUsers)
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          selfRef.current = {
-            ...selfRef.current,
-            online_at: new Date().toISOString(),
-          };
-          await channel.track(selfRef.current);
+    const loadPresence = async () => {
+      // Take a snapshot of the current sequence before the async call
+      const seq = ++loadSeqRef.current;
+
+      const { data } = await supabase
+        .from("eckcm_admin_presence")
+        .select("user_id, email, display_name, last_seen_at")
+        .order("last_seen_at", { ascending: true });
+
+      // Discard if a newer load has already started
+      if (seq !== loadSeqRef.current) return;
+
+      if (data) {
+        const online = data.filter(
+          (u) => Date.now() - new Date(u.last_seen_at).getTime() < STALE_THRESHOLD_MS
+        );
+        // Always ensure current user is in the list (optimistic)
+        const hasself = online.some((u) => u.user_id === currentUserId);
+        if (!hasself) {
+          online.unshift({
+            user_id: currentUserId,
+            email: currentUserEmail,
+            display_name: currentUserName,
+            last_seen_at: new Date().toISOString(),
+          });
         }
-      });
+        setActiveUsers(online);
+      }
+    };
+
+    // Debounced load — collapses rapid change events into a single fetch
+    const debouncedLoad = () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(loadPresence, 300);
+    };
+
+    // Register self immediately, then load full list
+    upsertPresence().then(() => loadPresence());
+
+    // Heartbeat — keep own record alive
+    const heartbeat = setInterval(upsertPresence, HEARTBEAT_INTERVAL_MS);
+
+    // Periodic stale sweep — catches crashed browsers that couldn't delete their record
+    const staleSweep = setInterval(loadPresence, HEARTBEAT_INTERVAL_MS);
+
+    // Subscribe to all changes on the presence table
+    const channel = supabase
+      .channel("eckcm_admin_presence_changes")
+      .on(
+        "postgres_changes" as never,
+        { event: "*", schema: "public", table: "eckcm_admin_presence" },
+        debouncedLoad
+      )
+      .subscribe();
+
+    // Remove own record on tab close
+    const handleUnload = () => {
+      supabase.from("eckcm_admin_presence").delete().eq("user_id", currentUserId).then(() => {});
+    };
+    window.addEventListener("beforeunload", handleUnload);
 
     return () => {
-      channel.untrack().then(() => supabase.removeChannel(channel));
+      clearInterval(heartbeat);
+      clearInterval(staleSweep);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      window.removeEventListener("beforeunload", handleUnload);
+      supabase
+        .from("eckcm_admin_presence")
+        .delete()
+        .eq("user_id", currentUserId)
+        .then(() => supabase.removeChannel(channel));
     };
-  }, [currentUserId, currentUserEmail, currentUserName]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
+
+  const sorted = [...activeUsers].sort((a, b) => {
+    if (a.user_id === currentUserId) return -1;
+    if (b.user_id === currentUserId) return 1;
+    return a.last_seen_at.localeCompare(b.last_seen_at);
+  });
 
   return (
     <TooltipProvider delayDuration={200}>
-      {/* No gap — use only ml on each avatar for clean stacking */}
       <div className="flex items-center">
-        {activeUsers.map((user, index) => {
+        {sorted.map((user, index) => {
           const isCurrentUser = user.user_id === currentUserId;
           const initials = getInitials(user.display_name);
           const colorClass = getAvatarColor(user.user_id);
@@ -134,12 +180,10 @@ export function AdminPresence({
                     colorClass,
                     index > 0 ? "-ml-2" : "",
                   ].join(" ")}
-                  style={{ zIndex: 10 + activeUsers.length - index }}
+                  style={{ zIndex: 10 + sorted.length - index }}
                 >
                   {initials}
-                  {isCurrentUser && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full ring-1 ring-background" />
-                  )}
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full ring-1 ring-background" />
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">
@@ -150,9 +194,9 @@ export function AdminPresence({
             </Tooltip>
           );
         })}
-        {activeUsers.length > 1 && (
+        {sorted.length > 1 && (
           <span className="ml-2 text-xs text-muted-foreground whitespace-nowrap">
-            {activeUsers.length} online
+            {sorted.length} online
           </span>
         )}
       </div>

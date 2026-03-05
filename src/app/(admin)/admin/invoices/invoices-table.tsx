@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtime } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -160,6 +161,15 @@ export function InvoicesTable({ events }: { events: Event[] }) {
   useEffect(() => {
     loadInvoices();
   }, [loadInvoices]);
+
+  // Live updates
+  const _reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const _reload = () => {
+    if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
+    _reloadTimer.current = setTimeout(loadInvoices, 500);
+  };
+  useRealtime({ table: "eckcm_invoices", event: "*" }, _reload);
+  useRealtime({ table: "eckcm_payments", event: "*" }, _reload);
 
   const filtered = invoices.filter((inv) => {
     if (!search) return true;

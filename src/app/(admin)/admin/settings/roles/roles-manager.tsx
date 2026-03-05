@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtime } from "@/lib/hooks/use-realtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -112,6 +113,17 @@ export function RolesManager() {
     loadRoles();
     loadAllPermissions();
   }, [loadRoles, loadAllPermissions]);
+
+  // Live updates
+  const _reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useRealtime({ table: "eckcm_roles", event: "*" }, () => {
+    if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
+    _reloadTimer.current = setTimeout(loadRoles, 500);
+  });
+  useRealtime({ table: "eckcm_role_permissions", event: "*" }, () => {
+    if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
+    _reloadTimer.current = setTimeout(loadRoles, 500);
+  });
 
   // ── Role create/edit ────────────────────────────────────────────────────────
 

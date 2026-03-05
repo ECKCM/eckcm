@@ -27,8 +27,14 @@ export function UserMenu({ isAdmin }: UserMenuProps) {
   }, []);
 
   const handleLogout = async () => {
-    await logAuthEvent("USER_LOGOUT");
     const supabase = createClient();
+    // Get user ID before signing out so we can clean up presence
+    const { data: { user } } = await supabase.auth.getUser();
+    await logAuthEvent("USER_LOGOUT");
+    // Delete presence record synchronously — other admins see the change live
+    if (user) {
+      await supabase.from("eckcm_admin_presence").delete().eq("user_id", user.id);
+    }
     await supabase.auth.signOut();
     router.push("/login");
   };

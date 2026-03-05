@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtime } from "@/lib/hooks/use-realtime";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +23,13 @@ interface LegalPage {
 export function LegalManager({ initialPages }: { initialPages: LegalPage[] }) {
   const router = useRouter();
   const [pages, setPages] = useState(initialPages);
+
+  // Live updates
+  const _reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useRealtime({ table: "eckcm_legal_content", event: "*" }, () => {
+    if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
+    _reloadTimer.current = setTimeout(() => router.refresh(), 500);
+  });
   const [saving, setSaving] = useState<string | null>(null);
   const [contents, setContents] = useState<Record<string, string>>(
     Object.fromEntries(initialPages.map((p) => [p.slug, p.content]))

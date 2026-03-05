@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRealtime } from "@/lib/hooks/use-realtime";
 
 function toDatetimeLocal(value: string | null): string {
   if (!value) return "";
@@ -158,6 +159,13 @@ export function RegistrationGroupsManager() {
     loadFees();
     loadDepartments();
   }, [loadGroups, loadFees, loadDepartments]);
+
+  // Live updates
+  const _reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useRealtime({ table: "eckcm_registration_groups", event: "*" }, () => {
+    if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
+    _reloadTimer.current = setTimeout(loadGroups, 500);
+  });
 
   const openCreate = () => {
     setEditingId(null);

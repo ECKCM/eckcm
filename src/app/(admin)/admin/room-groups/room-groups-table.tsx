@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtime } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -157,6 +158,17 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
   useEffect(() => {
     loadGroups();
   }, [loadGroups]);
+
+  // Live updates
+  const _reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useRealtime({ table: "eckcm_room_assignments", event: "*" }, () => {
+    if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
+    _reloadTimer.current = setTimeout(loadGroups, 500);
+  });
+  useRealtime({ table: "eckcm_rooms", event: "*" }, () => {
+    if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
+    _reloadTimer.current = setTimeout(loadGroups, 500);
+  });
 
   const openAssignDialog = async (group: GroupRow) => {
     setAssignDialog(group);
