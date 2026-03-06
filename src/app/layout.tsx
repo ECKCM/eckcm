@@ -7,7 +7,9 @@ import { getAppColorTheme } from "@/lib/app-config";
 import { DEFAULT_COLOR_THEME } from "@/lib/color-theme";
 import "./globals.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://eckcm.org";
+const siteUrl =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 const ogImage = `${siteUrl}/images/og-image.jpg`;
 
 export const metadata: Metadata = {

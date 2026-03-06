@@ -49,6 +49,9 @@ interface Passenger {
   confirmationCode: string | null;
   registrantName: string;
   registrantPhone: string | null;
+  gender: string | null;
+  ageAtEvent: number | null;
+  participantCode: string | null;
 }
 
 export function AirportChecklist() {
@@ -101,10 +104,11 @@ export function AirportChecklist() {
       .select(
         `id, ride_id, passenger_count, flight_info,
          eckcm_registrations!inner(
-           confirmation_code, status, created_by_user_id,
-           eckcm_users!eckcm_registrations_created_by_user_id_fkey(
-             eckcm_people:eckcm_user_people!inner(
-               eckcm_people!inner(first_name_en, last_name_en, phone)
+           confirmation_code, status,
+           eckcm_groups(
+             eckcm_group_memberships(
+               participant_code, role,
+               eckcm_people!inner(first_name_en, last_name_en, phone, gender, age_at_event)
              )
            )
          )`
@@ -121,15 +125,35 @@ export function AirportChecklist() {
           const reg = rr.eckcm_registrations as any;
           if (!reg || reg.status === "CANCELLED" || reg.status === "DRAFT") continue;
 
-          // Extract registrant name from nested join
+          // Extract registrant info from groups → memberships → people
+          // Use LEADER role member as primary contact (same pattern as participants-table)
           let name = "Unknown";
           let phone: string | null = null;
+          let gender: string | null = null;
+          let ageAtEvent: number | null = null;
+          let participantCode: string | null = null;
           try {
-            const userPeople = reg.eckcm_users?.eckcm_people;
-            if (Array.isArray(userPeople) && userPeople.length > 0) {
-              const person = userPeople[0].eckcm_people;
-              name = `${person.first_name_en} ${person.last_name_en}`;
-              phone = person.phone;
+            const groups = reg.eckcm_groups;
+            if (Array.isArray(groups)) {
+              // Find the LEADER member across all groups
+              let leader: any = null;
+              for (const g of groups) {
+                const members = g.eckcm_group_memberships;
+                if (Array.isArray(members)) {
+                  leader = members.find((m: any) => m.role === "LEADER") || members[0];
+                  if (leader) break;
+                }
+              }
+              if (leader) {
+                const person = leader.eckcm_people;
+                if (person) {
+                  name = `${person.first_name_en} ${person.last_name_en}`;
+                  phone = person.phone;
+                  gender = person.gender;
+                  ageAtEvent = person.age_at_event;
+                }
+                participantCode = leader.participant_code;
+              }
             }
           } catch {
             // fallback
@@ -142,6 +166,9 @@ export function AirportChecklist() {
             confirmationCode: reg.confirmation_code,
             registrantName: name,
             registrantPhone: phone,
+            gender,
+            ageAtEvent,
+            participantCode,
           });
         }
       }
@@ -190,6 +217,7 @@ export function AirportChecklist() {
             p.registrantName.toLowerCase().includes(q) ||
             p.registrantPhone?.toLowerCase().includes(q) ||
             p.confirmationCode?.toLowerCase().includes(q) ||
+            p.participantCode?.toLowerCase().includes(q) ||
             p.flightInfo?.toLowerCase().includes(q)
         ),
       }))
@@ -392,20 +420,29 @@ function RideCard({
                     >
                       {p.registrantName}
                     </span>
+                    {p.gender && (
+                      <Badge variant="outline" className={`text-xs ${p.gender === "MALE" ? "border-blue-300 bg-blue-50 text-blue-700" : p.gender === "FEMALE" ? "border-pink-300 bg-pink-50 text-pink-700" : ""}`}>
+                        {p.gender === "MALE" ? "M" : p.gender === "FEMALE" ? "F" : p.gender}
+                      </Badge>
+                    )}
+                    {p.ageAtEvent != null && (
+                      <span className="text-xs text-muted-foreground">
+                        Age {p.ageAtEvent}
+                      </span>
+                    )}
                     <Badge variant="outline" className="text-xs">
                       {p.passengerCount} person{p.passengerCount !== 1 ? "s" : ""}
                     </Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                    {p.registrantPhone && <a href={`tel:${p.registrantPhone}`} onClick={(e) => e.stopPropagation()} className="underline hover:text-foreground">{p.registrantPhone}</a>}
+                    {p.participantCode && (
+                      <span className="font-mono">{p.participantCode}</span>
+                    )}
                     {p.confirmationCode && (
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {p.confirmationCode}
-                      </span>
+                      <span className="font-mono">{p.confirmationCode}</span>
                     )}
                   </div>
-                  {p.registrantPhone && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {p.registrantPhone}
-                    </p>
-                  )}
                   {p.flightInfo && (
                     <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
                       {p.flightInfo}

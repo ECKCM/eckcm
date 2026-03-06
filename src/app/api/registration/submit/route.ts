@@ -110,6 +110,20 @@ export async function POST(request: Request) {
     (f: any) => f.code.startsWith("MEAL_")
   );
 
+  // VBS materials fee (per child in VBS department)
+  const vbsMaterialsCat = allLinkedFees.find((f: any) => f.code === "VBS_MATERIALS");
+  const vbsMaterialsFeeCents = vbsMaterialsCat?.amount_cents ?? 0;
+
+  let vbsDepartmentIds: string[] = [];
+  if (vbsMaterialsFeeCents > 0) {
+    const { data: vbsDepts } = await admin
+      .from("eckcm_departments")
+      .select("id")
+      .ilike("name_en", "%VBS%")
+      .eq("is_active", true);
+    vbsDepartmentIds = (vbsDepts ?? []).map((d: { id: string }) => d.id);
+  }
+
   // 4. Calculate pricing
   const isEarlyBird =
     regGroup.early_bird_deadline != null &&
@@ -137,6 +151,8 @@ export async function POST(request: Request) {
     lodgingRates,
     mealFeeCategories,
     eventStartDate: event?.event_start_date ?? startDate,
+    vbsMaterialsFeeCents,
+    vbsDepartmentIds,
   });
 
   // 4. Generate registration confirmation code: R{YY}{NAME3}{4-digit-seq}

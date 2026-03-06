@@ -77,6 +77,21 @@ export async function POST(request: Request) {
     (f: any) => f.code.startsWith("MEAL_")
   );
 
+  // Extract VBS materials fee (per child in VBS department)
+  const vbsMaterialsCat = allLinkedFees.find((f: any) => f.code === "VBS_MATERIALS");
+  const vbsMaterialsFeeCents = vbsMaterialsCat?.amount_cents ?? 0;
+
+  // Load VBS department IDs (only if fee applies)
+  let vbsDepartmentIds: string[] = [];
+  if (vbsMaterialsFeeCents > 0) {
+    const { data: vbsDepts } = await supabase
+      .from("eckcm_departments")
+      .select("id")
+      .ilike("name_en", "%VBS%")
+      .eq("is_active", true);
+    vbsDepartmentIds = (vbsDepts ?? []).map((d: { id: string }) => d.id);
+  }
+
   // Load event dates for age calculation and meal day filtering
   const { data: event } = await supabase
     .from("eckcm_events")
@@ -107,6 +122,8 @@ export async function POST(request: Request) {
     lodgingRates,
     mealFeeCategories,
     eventStartDate: event?.event_start_date ?? startDate,
+    vbsMaterialsFeeCents,
+    vbsDepartmentIds,
   });
 
   return NextResponse.json(estimate);

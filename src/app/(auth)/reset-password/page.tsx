@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
               required
             />
             <p className="text-xs text-muted-foreground">
-              At least 8 characters with uppercase, lowercase, and a number
+              At least 8 characters
             </p>
           </div>
           <div className="space-y-1">

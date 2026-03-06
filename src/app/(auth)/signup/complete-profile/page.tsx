@@ -35,8 +35,6 @@ interface Department {
   name_ko: string;
 }
 
-const hasNumber = (v: string) => /\d/.test(v);
-const hasSymbol = (v: string) => /[^A-Za-z0-9]/.test(v);
 
 export default function CompleteProfilePage() {
   const router = useRouter();
@@ -94,11 +92,8 @@ export default function CompleteProfilePage() {
     if (!password) {
       setPasswordError("Password is required");
       valid = false;
-    } else if (password.length < 10) {
-      setPasswordError("Password must be at least 10 characters");
-      valid = false;
-    } else if (!hasNumber(password) || !hasSymbol(password)) {
-      setPasswordError("Must include a number and a symbol");
+    } else if (password.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
       valid = false;
     }
     if (!confirmPassword) {
@@ -374,18 +369,15 @@ export default function CompleteProfilePage() {
                   setPassword(e.target.value);
                   setPasswordError("");
                 }}
-                placeholder="Min 10 characters"
-                minLength={10}
-                className={passwordError || (password && (password.length < 10 || !hasNumber(password) || !hasSymbol(password))) ? "border-destructive" : ""}
+                placeholder="Min 8 characters"
+                minLength={8}
+                className={passwordError || (password && password.length < 8) ? "border-destructive" : ""}
               />
               {passwordError && (
                 <p className="text-xs text-destructive">{passwordError}</p>
               )}
-              {!passwordError && password && password.length < 10 && (
-                <p className="text-xs text-destructive">Password must be at least 10 characters</p>
-              )}
-              {!passwordError && password && password.length >= 10 && (!hasNumber(password) || !hasSymbol(password)) && (
-                <p className="text-xs text-destructive">Must include a number and a symbol</p>
+              {!passwordError && password && password.length < 8 && (
+                <p className="text-xs text-destructive">Password must be at least 8 characters</p>
               )}
             </div>
             <div className="space-y-1">

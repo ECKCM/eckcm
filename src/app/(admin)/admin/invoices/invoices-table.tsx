@@ -284,10 +284,10 @@ export function InvoicesTable({ events }: { events: Event[] }) {
       ? (refundInfo.deductStripeFees
           ? (refundInfo.remainingAfterFeesCents ?? refundInfo.remainingCents)
           : refundInfo.remainingCents)
-      : Infinity;
+      : null;
 
     const amountCents = refundType === "full"
-      ? undefined
+      ? (maxRefundable ?? undefined)
       : Math.round(parseFloat(refundAmount) * 100);
 
     if (refundType === "partial") {
@@ -296,7 +296,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
         setRefunding(false);
         return;
       }
-      if (amountCents > maxRefundable) {
+      if (maxRefundable != null && amountCents > maxRefundable) {
         toast.error(
           `Amount exceeds maximum refundable: $${(maxRefundable / 100).toFixed(2)}`
         );

@@ -29,6 +29,8 @@ interface PricingInput {
   lodgingRates: LodgingRate[]; // available lodging fee categories
   mealFeeCategories: MealFeeCategory[]; // MEAL_* fee categories with age ranges
   eventStartDate: string; // YYYY-MM-DD for age calculation
+  vbsMaterialsFeeCents: number; // per-child VBS materials fee (0 if not applicable)
+  vbsDepartmentIds: string[]; // IDs of VBS departments
 }
 
 export function calculateEstimate(input: PricingInput): PriceEstimate {
@@ -200,7 +202,30 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     }
   }
 
-  const subtotal = registrationFee + lodgingFee + additionalLodgingFee + mealFee;
+  // 6. VBS Materials fee per child registered for VBS department
+  let vbsFee = 0;
+  if (input.vbsMaterialsFeeCents > 0 && input.vbsDepartmentIds.length > 0) {
+    const vbsCount = input.roomGroups.reduce(
+      (sum, g) =>
+        sum +
+        g.participants.filter(
+          (p) => p.departmentId && input.vbsDepartmentIds.includes(p.departmentId)
+        ).length,
+      0
+    );
+    if (vbsCount > 0) {
+      vbsFee = vbsCount * input.vbsMaterialsFeeCents;
+      breakdown.push({
+        description: `VBS Materials (${vbsCount} child${vbsCount > 1 ? "ren" : ""})`,
+        descriptionKo: `VBS 교재비 (${vbsCount}명)`,
+        quantity: vbsCount,
+        unitPrice: input.vbsMaterialsFeeCents,
+        amount: vbsFee,
+      });
+    }
+  }
+
+  const subtotal = registrationFee + lodgingFee + additionalLodgingFee + mealFee + vbsFee;
   const total = subtotal + keyDeposit;
 
   return {
@@ -208,7 +233,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     lodgingFee,
     additionalLodgingFee,
     mealFee,
-    vbsFee: 0,
+    vbsFee,
     keyDeposit,
     subtotal,
     total,

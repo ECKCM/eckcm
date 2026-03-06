@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-05T07:48:42.122Z",
+  "lastUpdated": "2026-03-06T01:38:53.658Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -97,7 +97,9 @@
     "[token]",
     "room-groups",
     "events",
-    "inventory"
+    "inventory",
+    "airport-pickup",
+    "reset-password"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -122,7 +124,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:03:38.722Z",
-        "lastUpdated": "2026-03-05T07:48:42.122Z"
+        "lastUpdated": "2026-03-06T01:38:53.658Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/layout.tsx"
     },
@@ -187,7 +189,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:13.807Z",
-        "lastUpdated": "2026-03-01T00:24:59.905Z"
+        "lastUpdated": "2026-03-05T22:41:22.512Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/submit/route.ts"
     },
@@ -317,7 +319,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:29:03.785Z",
-        "lastUpdated": "2026-03-04T22:05:36.401Z"
+        "lastUpdated": "2026-03-05T14:31:33.102Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/registrations/registrations-table.tsx"
     },
@@ -343,7 +345,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:32:20.959Z",
-        "lastUpdated": "2026-02-26T22:59:06.445Z"
+        "lastUpdated": "2026-03-05T22:41:11.080Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/estimate/route.ts"
     },
@@ -369,7 +371,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:33:55.200Z",
-        "lastUpdated": "2026-03-05T02:06:25.823Z"
+        "lastUpdated": "2026-03-05T22:41:48.125Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/registration/route.ts"
     },
@@ -525,7 +527,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T23:03:24.266Z",
-        "lastUpdated": "2026-03-03T05:32:08.931Z"
+        "lastUpdated": "2026-03-05T23:16:51.076Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
     },
@@ -876,7 +878,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T07:17:29.506Z",
-        "lastUpdated": "2026-02-27T22:50:02.665Z"
+        "lastUpdated": "2026-03-05T13:55:56.776Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/airport/airport-checklist.tsx"
     },
@@ -967,7 +969,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-28T20:51:28.710Z",
-        "lastUpdated": "2026-03-05T02:05:50.051Z"
+        "lastUpdated": "2026-03-05T08:01:17.910Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/invoices/invoices-table.tsx"
     },
@@ -993,7 +995,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-02T13:55:00.301Z",
-        "lastUpdated": "2026-03-02T19:45:46.777Z"
+        "lastUpdated": "2026-03-06T01:25:25.103Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/signup/complete-profile/page.tsx"
     },
@@ -1110,7 +1112,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-03T05:42:10.477Z",
-        "lastUpdated": "2026-03-03T05:42:10.477Z"
+        "lastUpdated": "2026-03-05T22:40:40.858Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/pricing.service.ts"
     },
@@ -1347,6 +1349,32 @@
         "lastUpdated": "2026-03-04T22:07:08.882Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/inventory/inventory-manager.tsx"
+    },
+    "airport-pickup": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-06T00:49:50.415Z",
+        "lastUpdated": "2026-03-06T00:50:03.251Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/airport-pickup/page.tsx"
+    },
+    "reset-password": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-06T01:02:10.893Z",
+        "lastUpdated": "2026-03-06T01:02:10.893Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/reset-password/page.tsx"
     }
   },
   "history": [
@@ -6047,6 +6075,270 @@
     },
     {
       "timestamp": "2026-03-05T07:48:42.122Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T08:00:11.359Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T08:00:16.211Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T08:00:21.635Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T08:00:27.840Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T08:00:38.448Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T08:00:43.623Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T08:01:00.572Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T08:01:11.854Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T08:01:17.910Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T13:30:54.851Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T13:31:01.840Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T13:31:08.785Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T13:40:55.386Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T13:41:06.270Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T13:52:17.883Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T13:52:21.861Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T13:53:42.009Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T13:53:45.650Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T13:55:51.727Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T13:55:56.776Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T14:28:44.256Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T14:30:20.944Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T14:31:19.273Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T14:31:33.102Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T21:09:24.040Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T22:40:40.858Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T22:40:54.567Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T22:41:11.080Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T22:41:17.605Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T22:41:22.512Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T22:41:41.986Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T22:41:48.125Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T23:16:47.322Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-05T23:16:51.076Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T00:49:50.415Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T00:49:55.384Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T00:50:03.251Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T01:01:29.527Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T01:02:10.893Z",
+      "feature": "reset-password",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T01:25:14.294Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T01:25:18.238Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T01:25:25.103Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T01:30:07.914Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T01:38:53.658Z",
       "feature": "eckcm",
       "phase": "do",
       "action": "updated"

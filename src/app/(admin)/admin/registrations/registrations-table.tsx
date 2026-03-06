@@ -682,15 +682,15 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         open={!!detailReg}
         onOpenChange={(open) => !open && setDetailReg(null)}
       >
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle>
               Registration {detailReg?.confirmation_code}
             </DialogTitle>
           </DialogHeader>
 
           {detailReg && (
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-y-auto flex-1 pr-1">
               {/* Registration info */}
               <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
                 <div>
@@ -812,22 +812,29 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
               </div>
 
               {/* Status change */}
-              <div className="flex items-center gap-2 border-t pt-3">
-                <span className="text-sm text-muted-foreground">Change status:</span>
-                {["DRAFT", "SUBMITTED", "PAID", "CANCELLED", "REFUNDED"]
-                  .filter((s) => s !== detailReg.status)
-                  .map((s) => (
-                    <Button
-                      key={s}
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs"
-                      disabled={updatingId === detailReg.id}
-                      onClick={() => updateStatus(detailReg.id, s)}
-                    >
-                      {s}
-                    </Button>
-                  ))}
+              <div className="flex items-center gap-3 border-t pt-3">
+                <span className="text-sm text-muted-foreground shrink-0">Change status:</span>
+                <Select
+                  value=""
+                  onValueChange={(s) => updateStatus(detailReg.id, s)}
+                  disabled={updatingId === detailReg.id}
+                >
+                  <SelectTrigger className="h-8 w-[180px]">
+                    <SelectValue placeholder="Select new status…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["DRAFT", "SUBMITTED", "PAID", "CANCELLED", "REFUNDED"]
+                      .filter((s) => s !== detailReg.status)
+                      .map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {updatingId === detailReg.id && (
+                  <span className="text-xs text-muted-foreground">Updating…</span>
+                )}
               </div>
 
               {/* People list */}
@@ -838,6 +845,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                     Loading...
                   </p>
                 ) : (
+                  <div className="overflow-auto max-h-[280px] rounded border">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -896,6 +904,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                       )}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
               </div>
             </div>

@@ -73,6 +73,7 @@ export default function PaymentStep() {
   const [feeCents, setFeeCents] = useState(0);
   const [baseAmount, setBaseAmount] = useState(0);
   const [updatingFees, setUpdatingFees] = useState(false);
+  const [paymentTestMode, setPaymentTestMode] = useState(false);
 
   // Fetch enabled payment methods
   useEffect(() => {
@@ -147,6 +148,7 @@ export default function PaymentStep() {
         if (data.registrantName) setRegistrantName(data.registrantName as string);
         if (data.registrantPhone) setRegistrantPhone(data.registrantPhone as string);
         if (data.registrantEmail) setRegistrantEmail(data.registrantEmail as string);
+        if (data.paymentTestMode) setPaymentTestMode(true);
       } catch {
         setError("Network error. Please try again.");
       }
@@ -263,7 +265,7 @@ export default function PaymentStep() {
     ["card", "ach", "check"].includes(m)
   );
   const zelleEnabled = enabledMethods.includes("zelle");
-  const walletEnabled = enabledMethods.includes("wallet");
+  const walletEnabled = enabledMethods.includes("wallet") && !paymentTestMode;
 
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
@@ -524,6 +526,7 @@ function PaymentForm({
 
       if (error) {
         toast.error(error.message || "Payment failed. Please try again.");
+        setProcessing(false);
       } else if (
         paymentIntent?.status === "succeeded" ||
         paymentIntent?.status === "processing"
@@ -534,13 +537,15 @@ function PaymentForm({
             : "Payment successful!"
         );
         onSuccess(paymentIntent.id);
+        // Don't setProcessing(false) — page will navigate away via onSuccess
+      } else {
+        setProcessing(false);
       }
     } catch (err) {
       console.error("[Payment] Unexpected error:", err);
       toast.error("An unexpected error occurred. Please try again.");
+      setProcessing(false);
     }
-
-    setProcessing(false);
   };
 
   const handleZelleSubmit = async () => {
@@ -570,6 +575,16 @@ function PaymentForm({
   /* ---- render ---- */
 
   return (
+    <>
+      {/* Full-screen processing overlay */}
+      {processing && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm font-medium text-muted-foreground">
+            Processing payment… please wait
+          </p>
+        </div>
+      )}
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* ===== Apple Pay / Google Pay express buttons ===== */}
       {walletEnabled && walletAvailable && paymentRequest && (
@@ -791,5 +806,6 @@ function PaymentForm({
         Cancel
       </Button>
     </form>
+    </>
   );
 }

@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PlaneLanding, PlaneTakeoff } from "lucide-react";
+import type { ReactNode } from "react";
 import type { AirportRideSelection, ParticipantInput } from "@/lib/types/registration";
 
 interface RideOption {
@@ -37,6 +38,9 @@ export default function AirportPickupStep() {
   const [showKeyDeposit, setShowKeyDeposit] = useState(true);
   const [rideOptions, setRideOptions] = useState<RideOption[]>([]);
   const [loadingRides, setLoadingRides] = useState(true);
+  // null = not answered, true = yes, false = no
+  const [needsPickup, setNeedsPickup] = useState<boolean | null>(null);
+  const [needsDropoff, setNeedsDropoff] = useState<boolean | null>(null);
 
   // Collect all participants from all room groups
   const allParticipants = useMemo(() => {
@@ -81,10 +85,23 @@ export default function AirportPickupStep() {
         .eq("is_active", true)
         .order("scheduled_at");
 
-      setRideOptions(rides ?? []);
+      const loaded = rides ?? [];
+      setRideOptions(loaded);
       setLoadingRides(false);
+
+      // Pre-populate intent from existing wizard state
+      const savedRides = state.airportPickup.selectedRides ?? [];
+      const pickupIds = new Set(
+        loaded.filter((r) => r.direction === "PICKUP").map((r) => r.id)
+      );
+      const dropoffIds = new Set(
+        loaded.filter((r) => r.direction === "DROPOFF").map((r) => r.id)
+      );
+      if (savedRides.some((r) => pickupIds.has(r.rideId))) setNeedsPickup(true);
+      if (savedRides.some((r) => dropoffIds.has(r.rideId))) setNeedsDropoff(true);
     };
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.startDate, state.registrationGroupId, router, eventId]);
 
   if (!state.startDate) {
@@ -104,7 +121,6 @@ export default function AirportPickupStep() {
     if (isRideSelected(rideId)) {
       updated = selectedRides.filter((r) => r.rideId !== rideId);
     } else {
-      // Default: all participants selected
       updated = [
         ...selectedRides,
         { rideId, selectedParticipantIds: [...allParticipantIds], flightInfo: "" },
@@ -112,10 +128,7 @@ export default function AirportPickupStep() {
     }
     dispatch({
       type: "SET_AIRPORT_PICKUP",
-      pickup: {
-        needed: updated.length > 0,
-        selectedRides: updated,
-      },
+      pickup: { needed: updated.length > 0, selectedRides: updated },
     });
   };
 
@@ -130,10 +143,7 @@ export default function AirportPickupStep() {
     });
     dispatch({
       type: "SET_AIRPORT_PICKUP",
-      pickup: {
-        needed: updated.length > 0,
-        selectedRides: updated,
-      },
+      pickup: { needed: updated.length > 0, selectedRides: updated },
     });
   };
 
@@ -143,10 +153,7 @@ export default function AirportPickupStep() {
     );
     dispatch({
       type: "SET_AIRPORT_PICKUP",
-      pickup: {
-        needed: updated.length > 0,
-        selectedRides: updated,
-      },
+      pickup: { needed: updated.length > 0, selectedRides: updated },
     });
   };
 
@@ -165,6 +172,32 @@ export default function AirportPickupStep() {
   const pickups = rideOptions.filter((r) => r.direction === "PICKUP");
   const dropoffs = rideOptions.filter((r) => r.direction === "DROPOFF");
 
+  const handleSetPickupIntent = (yes: boolean) => {
+    setNeedsPickup(yes);
+    if (!yes) {
+      // Clear any selected pickup rides
+      const pickupIds = new Set(pickups.map((r) => r.id));
+      const updated = selectedRides.filter((r) => !pickupIds.has(r.rideId));
+      dispatch({
+        type: "SET_AIRPORT_PICKUP",
+        pickup: { needed: updated.length > 0, selectedRides: updated },
+      });
+    }
+  };
+
+  const handleSetDropoffIntent = (yes: boolean) => {
+    setNeedsDropoff(yes);
+    if (!yes) {
+      // Clear any selected dropoff rides
+      const dropoffIds = new Set(dropoffs.map((r) => r.id));
+      const updated = selectedRides.filter((r) => !dropoffIds.has(r.rideId));
+      dispatch({
+        type: "SET_AIRPORT_PICKUP",
+        pickup: { needed: updated.length > 0, selectedRides: updated },
+      });
+    }
+  };
+
   const handleNext = () => {
     router.push(`/register/${eventId}/review`);
   };
@@ -177,8 +210,7 @@ export default function AirportPickupStep() {
         <CardHeader>
           <CardTitle>Step 6: Airport Rides</CardTitle>
           <CardDescription>
-            Select the airport rides you need and choose which participants will
-            be on each ride.
+            Let us know if you need transportation to or from the airport.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -192,63 +224,71 @@ export default function AirportPickupStep() {
             </p>
           ) : (
             <>
-              {/* Pickups */}
+              {/* ── Pickup intent ── */}
               {pickups.length > 0 && (
                 <div className="space-y-3">
-                  <h3 className="text-sm font-medium flex items-center gap-2">
-                    <PlaneLanding className="size-4" />
-                    Pickup
-                    {pickups[0]?.origin || pickups[0]?.destination
-                      ? ` (${pickups[0].origin ?? ""} → ${pickups[0].destination ?? ""})`
-                      : ""}
-                  </h3>
-                  {pickups.map((ride) => (
-                    <RideCard
-                      key={ride.id}
-                      ride={ride}
-                      selected={isRideSelected(ride.id)}
-                      selection={getRideSelection(ride.id)}
-                      participants={allParticipants}
-                      onToggleRide={() => toggleRide(ride.id)}
-                      onToggleParticipant={(pid) =>
-                        toggleParticipant(ride.id, pid)
-                      }
-                      onUpdateFlightInfo={(value) =>
-                        updateFlightInfo(ride.id, value)
-                      }
-                      formatDateTime={formatDateTime}
-                    />
-                  ))}
+                  <IntentQuestion
+                    icon={<PlaneLanding className="size-4" />}
+                    label="Do you need an airport pickup?"
+                    sublabel={
+                      pickups[0]?.origin || pickups[0]?.destination
+                        ? `${pickups[0].origin ?? ""} → ${pickups[0].destination ?? ""}`
+                        : undefined
+                    }
+                    value={needsPickup}
+                    onChange={handleSetPickupIntent}
+                  />
+                  {needsPickup && (
+                    <div className="space-y-3 pl-1">
+                      {pickups.map((ride) => (
+                        <RideCard
+                          key={ride.id}
+                          ride={ride}
+                          selected={isRideSelected(ride.id)}
+                          selection={getRideSelection(ride.id)}
+                          participants={allParticipants}
+                          onToggleRide={() => toggleRide(ride.id)}
+                          onToggleParticipant={(pid) => toggleParticipant(ride.id, pid)}
+                          onUpdateFlightInfo={(value) => updateFlightInfo(ride.id, value)}
+                          formatDateTime={formatDateTime}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Dropoffs */}
+              {/* ── Dropoff intent ── */}
               {dropoffs.length > 0 && (
                 <div className="space-y-3">
-                  <h3 className="text-sm font-medium flex items-center gap-2">
-                    <PlaneTakeoff className="size-4" />
-                    Drop-off
-                    {dropoffs[0]?.origin || dropoffs[0]?.destination
-                      ? ` (${dropoffs[0].origin ?? ""} → ${dropoffs[0].destination ?? ""})`
-                      : ""}
-                  </h3>
-                  {dropoffs.map((ride) => (
-                    <RideCard
-                      key={ride.id}
-                      ride={ride}
-                      selected={isRideSelected(ride.id)}
-                      selection={getRideSelection(ride.id)}
-                      participants={allParticipants}
-                      onToggleRide={() => toggleRide(ride.id)}
-                      onToggleParticipant={(pid) =>
-                        toggleParticipant(ride.id, pid)
-                      }
-                      onUpdateFlightInfo={(value) =>
-                        updateFlightInfo(ride.id, value)
-                      }
-                      formatDateTime={formatDateTime}
-                    />
-                  ))}
+                  <IntentQuestion
+                    icon={<PlaneTakeoff className="size-4" />}
+                    label="Do you need an airport drop-off?"
+                    sublabel={
+                      dropoffs[0]?.origin || dropoffs[0]?.destination
+                        ? `${dropoffs[0].origin ?? ""} → ${dropoffs[0].destination ?? ""}`
+                        : undefined
+                    }
+                    value={needsDropoff}
+                    onChange={handleSetDropoffIntent}
+                  />
+                  {needsDropoff && (
+                    <div className="space-y-3 pl-1">
+                      {dropoffs.map((ride) => (
+                        <RideCard
+                          key={ride.id}
+                          ride={ride}
+                          selected={isRideSelected(ride.id)}
+                          selection={getRideSelection(ride.id)}
+                          participants={allParticipants}
+                          onToggleRide={() => toggleRide(ride.id)}
+                          onToggleParticipant={(pid) => toggleParticipant(ride.id, pid)}
+                          onUpdateFlightInfo={(value) => updateFlightInfo(ride.id, value)}
+                          formatDateTime={formatDateTime}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -270,6 +310,58 @@ export default function AirportPickupStep() {
           Back
         </Button>
         <Button onClick={handleNext}>Review Registration</Button>
+      </div>
+    </div>
+  );
+}
+
+function IntentQuestion({
+  icon,
+  label,
+  sublabel,
+  value,
+  onChange,
+}: {
+  icon: ReactNode;
+  label: string;
+  sublabel?: string;
+  value: boolean | null;
+  onChange: (yes: boolean) => void;
+}) {
+  return (
+    <div className="rounded-lg border p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        {icon}
+        <div>
+          <p className="text-sm font-medium">{label}</p>
+          {sublabel && (
+            <p className="text-xs text-muted-foreground">{sublabel}</p>
+          )}
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onChange(true)}
+          className={`flex-1 rounded-md border py-2 text-sm font-medium transition-colors ${
+            value === true
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-input bg-background hover:bg-muted/50"
+          }`}
+        >
+          Yes
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(false)}
+          className={`flex-1 rounded-md border py-2 text-sm font-medium transition-colors ${
+            value === false
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-input bg-background hover:bg-muted/50"
+          }`}
+        >
+          No
+        </button>
       </div>
     </div>
   );
