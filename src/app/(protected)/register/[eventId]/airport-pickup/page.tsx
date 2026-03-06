@@ -18,7 +18,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PlaneLanding, PlaneTakeoff } from "lucide-react";
-import type { ReactNode } from "react";
 import type { AirportRideSelection, ParticipantInput } from "@/lib/types/registration";
 
 interface RideOption {
@@ -38,9 +37,9 @@ export default function AirportPickupStep() {
   const [showKeyDeposit, setShowKeyDeposit] = useState(true);
   const [rideOptions, setRideOptions] = useState<RideOption[]>([]);
   const [loadingRides, setLoadingRides] = useState(true);
-  // null = not answered, true = yes, false = no
-  const [needsPickup, setNeedsPickup] = useState<boolean | null>(null);
-  const [needsDropoff, setNeedsDropoff] = useState<boolean | null>(null);
+  const [needsAirport, setNeedsAirport] = useState(false);
+  const [needsPickup, setNeedsPickup] = useState(true);
+  const [needsDropoff, setNeedsDropoff] = useState(true);
 
   // Collect all participants from all room groups
   const allParticipants = useMemo(() => {
@@ -97,8 +96,13 @@ export default function AirportPickupStep() {
       const dropoffIds = new Set(
         loaded.filter((r) => r.direction === "DROPOFF").map((r) => r.id)
       );
-      if (savedRides.some((r) => pickupIds.has(r.rideId))) setNeedsPickup(true);
-      if (savedRides.some((r) => dropoffIds.has(r.rideId))) setNeedsDropoff(true);
+      const hasPickup = savedRides.some((r) => pickupIds.has(r.rideId));
+      const hasDropoff = savedRides.some((r) => dropoffIds.has(r.rideId));
+      if (hasPickup || hasDropoff) {
+        setNeedsAirport(true);
+        setNeedsPickup(hasPickup);
+        setNeedsDropoff(hasDropoff);
+      }
     };
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,22 +119,6 @@ export default function AirportPickupStep() {
 
   const getRideSelection = (rideId: string): AirportRideSelection | undefined =>
     selectedRides.find((r) => r.rideId === rideId);
-
-  const toggleRide = (rideId: string) => {
-    let updated: AirportRideSelection[];
-    if (isRideSelected(rideId)) {
-      updated = selectedRides.filter((r) => r.rideId !== rideId);
-    } else {
-      updated = [
-        ...selectedRides,
-        { rideId, selectedParticipantIds: [...allParticipantIds], flightInfo: "" },
-      ];
-    }
-    dispatch({
-      type: "SET_AIRPORT_PICKUP",
-      pickup: { needed: updated.length > 0, selectedRides: updated },
-    });
-  };
 
   const toggleParticipant = (rideId: string, participantId: string) => {
     const updated = selectedRides.map((r) => {
@@ -172,10 +160,42 @@ export default function AirportPickupStep() {
   const pickups = rideOptions.filter((r) => r.direction === "PICKUP");
   const dropoffs = rideOptions.filter((r) => r.direction === "DROPOFF");
 
+  const handleSetAirportIntent = (yes: boolean) => {
+    setNeedsAirport(yes);
+    if (yes) {
+      setNeedsPickup(true);
+      setNeedsDropoff(true);
+      // Auto-select all rides with all participants
+      const allRides = rideOptions.map((r) => ({
+        rideId: r.id,
+        selectedParticipantIds: [...allParticipantIds],
+        flightInfo: "",
+      }));
+      dispatch({
+        type: "SET_AIRPORT_PICKUP",
+        pickup: { needed: true, selectedRides: allRides },
+      });
+    } else {
+      dispatch({
+        type: "SET_AIRPORT_PICKUP",
+        pickup: { needed: false, selectedRides: [] },
+      });
+    }
+  };
+
   const handleSetPickupIntent = (yes: boolean) => {
     setNeedsPickup(yes);
-    if (!yes) {
-      // Clear any selected pickup rides
+    if (yes) {
+      // Auto-select all pickup rides
+      const newRides = pickups
+        .filter((r) => !isRideSelected(r.id))
+        .map((r) => ({ rideId: r.id, selectedParticipantIds: [...allParticipantIds], flightInfo: "" }));
+      const updated = [...selectedRides, ...newRides];
+      dispatch({
+        type: "SET_AIRPORT_PICKUP",
+        pickup: { needed: true, selectedRides: updated },
+      });
+    } else {
       const pickupIds = new Set(pickups.map((r) => r.id));
       const updated = selectedRides.filter((r) => !pickupIds.has(r.rideId));
       dispatch({
@@ -187,8 +207,17 @@ export default function AirportPickupStep() {
 
   const handleSetDropoffIntent = (yes: boolean) => {
     setNeedsDropoff(yes);
-    if (!yes) {
-      // Clear any selected dropoff rides
+    if (yes) {
+      // Auto-select all dropoff rides
+      const newRides = dropoffs
+        .filter((r) => !isRideSelected(r.id))
+        .map((r) => ({ rideId: r.id, selectedParticipantIds: [...allParticipantIds], flightInfo: "" }));
+      const updated = [...selectedRides, ...newRides];
+      dispatch({
+        type: "SET_AIRPORT_PICKUP",
+        pickup: { needed: true, selectedRides: updated },
+      });
+    } else {
       const dropoffIds = new Set(dropoffs.map((r) => r.id));
       const updated = selectedRides.filter((r) => !dropoffIds.has(r.rideId));
       dispatch({
@@ -223,75 +252,90 @@ export default function AirportPickupStep() {
               No airport rides are available for this event.
             </p>
           ) : (
-            <>
-              {/* ── Pickup intent ── */}
-              {pickups.length > 0 && (
-                <div className="space-y-3">
-                  <IntentQuestion
-                    icon={<PlaneLanding className="size-4" />}
-                    label="Do you need an airport pickup?"
-                    sublabel={
-                      pickups[0]?.origin || pickups[0]?.destination
-                        ? `${pickups[0].origin ?? ""} → ${pickups[0].destination ?? ""}`
-                        : undefined
-                    }
-                    value={needsPickup}
-                    onChange={handleSetPickupIntent}
-                  />
-                  {needsPickup && (
-                    <div className="space-y-3 pl-1">
-                      {pickups.map((ride) => (
-                        <RideCard
-                          key={ride.id}
-                          ride={ride}
-                          selected={isRideSelected(ride.id)}
-                          selection={getRideSelection(ride.id)}
-                          participants={allParticipants}
-                          onToggleRide={() => toggleRide(ride.id)}
-                          onToggleParticipant={(pid) => toggleParticipant(ride.id, pid)}
-                          onUpdateFlightInfo={(value) => updateFlightInfo(ride.id, value)}
-                          formatDateTime={formatDateTime}
-                        />
-                      ))}
-                    </div>
-                  )}
+            <div className="space-y-4">
+              {/* ── Main airport toggle ── */}
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="flex items-center gap-2">
+                  <PlaneLanding className="size-4" />
+                  <p className="text-sm font-medium">Do you need an airport pickup/drop-off?</p>
                 </div>
-              )}
+                <Switch checked={needsAirport} onCheckedChange={handleSetAirportIntent} />
+              </div>
 
-              {/* ── Dropoff intent ── */}
-              {dropoffs.length > 0 && (
-                <div className="space-y-3">
-                  <IntentQuestion
-                    icon={<PlaneTakeoff className="size-4" />}
-                    label="Do you need an airport drop-off?"
-                    sublabel={
-                      dropoffs[0]?.origin || dropoffs[0]?.destination
-                        ? `${dropoffs[0].origin ?? ""} → ${dropoffs[0].destination ?? ""}`
-                        : undefined
-                    }
-                    value={needsDropoff}
-                    onChange={handleSetDropoffIntent}
-                  />
-                  {needsDropoff && (
-                    <div className="space-y-3 pl-1">
-                      {dropoffs.map((ride) => (
-                        <RideCard
-                          key={ride.id}
-                          ride={ride}
-                          selected={isRideSelected(ride.id)}
-                          selection={getRideSelection(ride.id)}
-                          participants={allParticipants}
-                          onToggleRide={() => toggleRide(ride.id)}
-                          onToggleParticipant={(pid) => toggleParticipant(ride.id, pid)}
-                          onUpdateFlightInfo={(value) => updateFlightInfo(ride.id, value)}
-                          formatDateTime={formatDateTime}
-                        />
-                      ))}
+              {needsAirport && (
+                <div className="space-y-4 pl-1">
+                  {/* ── Pickup sub-toggle ── */}
+                  {pickups.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div className="flex items-center gap-2">
+                          <PlaneLanding className="size-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">Airport Pickup</p>
+                            {(pickups[0]?.origin || pickups[0]?.destination) && (
+                              <p className="text-xs text-muted-foreground">
+                                {pickups[0].origin ?? ""} → {pickups[0].destination ?? ""}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Switch checked={needsPickup} onCheckedChange={handleSetPickupIntent} />
+                      </div>
+                      {needsPickup && (
+                        <div className="space-y-3 pl-1">
+                          {pickups.map((ride) => (
+                            <RideCard
+                              key={ride.id}
+                              ride={ride}
+                              selection={getRideSelection(ride.id)}
+                              participants={allParticipants}
+                              onToggleParticipant={(pid) => toggleParticipant(ride.id, pid)}
+                              onUpdateFlightInfo={(value) => updateFlightInfo(ride.id, value)}
+                              formatDateTime={formatDateTime}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── Drop-off sub-toggle ── */}
+                  {dropoffs.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div className="flex items-center gap-2">
+                          <PlaneTakeoff className="size-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">Airport Drop-off</p>
+                            {(dropoffs[0]?.origin || dropoffs[0]?.destination) && (
+                              <p className="text-xs text-muted-foreground">
+                                {dropoffs[0].origin ?? ""} → {dropoffs[0].destination ?? ""}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Switch checked={needsDropoff} onCheckedChange={handleSetDropoffIntent} />
+                      </div>
+                      {needsDropoff && (
+                        <div className="space-y-3 pl-1">
+                          {dropoffs.map((ride) => (
+                            <RideCard
+                              key={ride.id}
+                              ride={ride}
+                              selection={getRideSelection(ride.id)}
+                              participants={allParticipants}
+                              onToggleParticipant={(pid) => toggleParticipant(ride.id, pid)}
+                              onUpdateFlightInfo={(value) => updateFlightInfo(ride.id, value)}
+                              formatDateTime={formatDateTime}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               )}
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -315,73 +359,18 @@ export default function AirportPickupStep() {
   );
 }
 
-function IntentQuestion({
-  icon,
-  label,
-  sublabel,
-  value,
-  onChange,
-}: {
-  icon: ReactNode;
-  label: string;
-  sublabel?: string;
-  value: boolean | null;
-  onChange: (yes: boolean) => void;
-}) {
-  return (
-    <div className="rounded-lg border p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        {icon}
-        <div>
-          <p className="text-sm font-medium">{label}</p>
-          {sublabel && (
-            <p className="text-xs text-muted-foreground">{sublabel}</p>
-          )}
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => onChange(true)}
-          className={`flex-1 rounded-md border py-2 text-sm font-medium transition-colors ${
-            value === true
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-input bg-background hover:bg-muted/50"
-          }`}
-        >
-          Yes
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange(false)}
-          className={`flex-1 rounded-md border py-2 text-sm font-medium transition-colors ${
-            value === false
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-input bg-background hover:bg-muted/50"
-          }`}
-        >
-          No
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function RideCard({
   ride,
-  selected,
   selection,
   participants,
-  onToggleRide,
   onToggleParticipant,
   onUpdateFlightInfo,
   formatDateTime,
 }: {
   ride: RideOption;
-  selected: boolean;
   selection?: AirportRideSelection;
   participants: (ParticipantInput & { groupIndex: number })[];
-  onToggleRide: () => void;
   onToggleParticipant: (participantId: string) => void;
   onUpdateFlightInfo: (value: string) => void;
   formatDateTime: (iso: string) => string;
@@ -389,67 +378,56 @@ function RideCard({
   const selectedCount = selection?.selectedParticipantIds?.length ?? 0;
 
   return (
-    <div
-      className={`rounded-lg border p-4 transition-colors ${
-        selected ? "border-primary bg-primary/5" : ""
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium">
-          {formatDateTime(ride.scheduled_at)}
-        </p>
-        <Switch checked={selected} onCheckedChange={onToggleRide} />
+    <div className="rounded-lg border border-primary bg-primary/5 p-4 space-y-3">
+      <p className="text-sm font-medium">
+        {formatDateTime(ride.scheduled_at)}
+      </p>
+
+      {/* Participant toggles */}
+      <div className="space-y-1">
+        <Label className="text-xs">
+          Passengers ({selectedCount} of {participants.length})
+        </Label>
+        <div className="space-y-1 mt-1">
+          {participants.map((p) => {
+            const isChecked =
+              selection?.selectedParticipantIds?.includes(p.id) ?? false;
+            return (
+              <label
+                key={p.id}
+                className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
+              >
+                <Checkbox
+                  checked={isChecked}
+                  onCheckedChange={() => onToggleParticipant(p.id)}
+                />
+                <span className="text-sm">
+                  {p.firstName} {p.lastName}
+                  {p.displayNameKo ? ` (${p.displayNameKo})` : ""}
+                </span>
+                {participants.length > 1 && (
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Group {p.groupIndex + 1}
+                  </span>
+                )}
+              </label>
+            );
+          })}
+        </div>
       </div>
 
-      {selected && (
-        <div className="mt-4 space-y-3 border-t pt-3">
-          {/* Participant toggles */}
-          <div className="space-y-1">
-            <Label className="text-xs">
-              Passengers ({selectedCount} of {participants.length})
-            </Label>
-            <div className="space-y-1 mt-1">
-              {participants.map((p) => {
-                const isChecked =
-                  selection?.selectedParticipantIds?.includes(p.id) ?? false;
-                return (
-                  <label
-                    key={p.id}
-                    className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
-                  >
-                    <Checkbox
-                      checked={isChecked}
-                      onCheckedChange={() => onToggleParticipant(p.id)}
-                    />
-                    <span className="text-sm">
-                      {p.firstName} {p.lastName}
-                      {p.displayNameKo ? ` (${p.displayNameKo})` : ""}
-                    </span>
-                    {participants.length > 1 && (
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        Group {p.groupIndex + 1}
-                      </span>
-                    )}
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Flight info */}
-          <div className="space-y-1">
-            <Label className="text-xs">
-              Flight Info (airline, flight #, airport, etc.)
-            </Label>
-            <Textarea
-              value={selection?.flightInfo ?? ""}
-              onChange={(e) => onUpdateFlightInfo(e.target.value)}
-              rows={2}
-              placeholder="e.g., Delta DL1234, PIT, arriving 1:00 PM"
-            />
-          </div>
-        </div>
-      )}
+      {/* Flight info */}
+      <div className="space-y-1">
+        <Label className="text-xs">
+          Flight Info (airline, flight #, airport, etc.)
+        </Label>
+        <Textarea
+          value={selection?.flightInfo ?? ""}
+          onChange={(e) => onUpdateFlightInfo(e.target.value)}
+          rows={2}
+          placeholder="e.g., Delta DL1234, PIT, arriving 1:00 PM"
+        />
+      </div>
     </div>
   );
 }

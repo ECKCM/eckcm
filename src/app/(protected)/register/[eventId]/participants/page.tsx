@@ -38,7 +38,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, CheckCircle2, Info, CircleHelp, User } from "lucide-react";
+import { Plus, Trash2, ChevronDown, CheckCircle2, Info, CircleHelp, User, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ParticipantInput, RoomGroupInput, MealSelection } from "@/lib/types/registration";
 import type { Gender, Grade } from "@/lib/types/database";
@@ -56,6 +57,7 @@ import {
 import { PhoneInput } from "@/components/shared/phone-input";
 import { ChurchCombobox } from "@/components/shared/church-combobox";
 import { MealSelectionGrid } from "@/components/registration/meal-selection-grid";
+import { DateRangePicker } from "@/components/registration/date-range-picker";
 import { BirthDatePicker } from "@/components/shared/birth-date-picker";
 
 function createEmptyParticipant(isRepresentative: boolean): ParticipantInput {
@@ -131,6 +133,15 @@ export default function ParticipantsStep() {
 
   // Confirmation dialog for removing an entire group
   const [removeGroupTarget, setRemoveGroupTarget] = useState<number | null>(null);
+
+  // Confirmation dialog for individual date override
+  const [dateOverrideTarget, setDateOverrideTarget] = useState<{
+    gi: number;
+    pi: number;
+  } | null>(null);
+  // Track which participants have confirmed their date override
+  const [dateOverrideConfirmed, setDateOverrideConfirmed] = useState<Record<string, boolean>>({});
+  const [dateOverrideAgreed, setDateOverrideAgreed] = useState(false);
 
   // App config: allow duplicate email for testing
   const [allowDuplicateEmail, setAllowDuplicateEmail] = useState(false);
@@ -317,6 +328,11 @@ export default function ParticipantsStep() {
         delete next[key];
         return next;
       });
+      setDateOverrideConfirmed((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
     });
   };
 
@@ -348,9 +364,14 @@ export default function ParticipantsStep() {
       participants: group.participants.filter((_, i) => i !== pIndex),
     };
     dispatch({ type: "UPDATE_ROOM_GROUP", index: groupIndex, group: updated });
-    // Remove saved state
+    // Remove saved/confirmed state
     const key = `${groupIndex}-${pIndex}`;
     setSavedPanels((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setDateOverrideConfirmed((prev) => {
       const next = { ...prev };
       delete next[key];
       return next;
@@ -477,11 +498,46 @@ export default function ParticipantsStep() {
     });
   };
 
-  // Check if dates match event period (no meals needed to display)
-  const datesMatchEvent =
-    eventDates &&
-    state.startDate === eventDates.eventStartDate &&
-    state.endDate === eventDates.eventEndDate;
+  const updateParticipantDates = (
+    groupIndex: number,
+    pIndex: number,
+    startDate: string,
+    endDate: string,
+  ) => {
+    const participant = { ...state.roomGroups[groupIndex].participants[pIndex] };
+    participant.checkInDate = startDate;
+    participant.checkOutDate = endDate;
+    participant.isDateOverridden = true;
+    participant.mealSelections = []; // clear meals when dates change
+    const key = `${groupIndex}-${pIndex}`;
+    setSavedPanels((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    dispatch({
+      type: "UPDATE_PARTICIPANT",
+      groupIndex,
+      participantIndex: pIndex,
+      participant,
+    });
+  };
+
+  // Get effective dates for a participant (individual override or group-level)
+  const getParticipantDates = (p: ParticipantInput) => ({
+    startDate: p.checkInDate ?? state.startDate,
+    endDate: p.checkOutDate ?? state.endDate,
+  });
+
+  // Check if participant dates match event period (no meals needed to display)
+  const participantDatesMatchEvent = (p: ParticipantInput) => {
+    if (!eventDates) return false;
+    const dates = getParticipantDates(p);
+    return (
+      dates.startDate === eventDates.eventStartDate &&
+      dates.endDate === eventDates.eventEndDate
+    );
+  };
 
   // Validate a single participant — returns all field errors
   const validateParticipant = (p: ParticipantInput, gi: number, pi: number): Record<string, string> => {
@@ -1117,17 +1173,57 @@ export default function ParticipantsStep() {
                           </div>
                         )}
 
-                        {/* Meal Selection - hidden when dates match full event period */}
-                        {state.startDate && state.endDate && eventDates && !datesMatchEvent && (
-                          <MealSelectionGrid
-                            startDate={state.startDate}
-                            endDate={state.endDate}
-                            eventStartDate={eventDates.eventStartDate}
-                            eventEndDate={eventDates.eventEndDate}
-                            selections={p.mealSelections}
-                            onChange={(meals) => updateMealSelections(gi, pi, meals)}
-                          />
+                        {/* Individual Stay Dates (hidden for HANSAMO participants) */}
+                        {eventDates && !isHansamoDept(p.departmentId) && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">
+                              Stay Dates
+                              {p.isDateOverridden && (
+                                <span className="ml-1 text-muted-foreground font-normal">(customized)</span>
+                              )}
+                            </Label>
+                            {p.isDateOverridden || dateOverrideConfirmed[panelKey] ? (
+                              <DateRangePicker
+                                startDate={p.checkInDate ?? state.startDate}
+                                endDate={p.checkOutDate ?? state.endDate}
+                                eventStartDate={state.startDate}
+                                eventEndDate={state.endDate}
+                                nightsCount={Math.max(0, Math.round((new Date(p.checkOutDate ?? state.endDate).getTime() - new Date(p.checkInDate ?? state.startDate).getTime()) / 86400000))}
+                                onDatesChange={(start, end) => updateParticipantDates(gi, pi, start, end)}
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                className="flex w-full items-center rounded-lg border bg-card px-3 py-2.5 text-sm shadow-sm transition-colors hover:bg-accent/50"
+                                onClick={() => setDateOverrideTarget({ gi, pi })}
+                              >
+                                <CalendarIcon className="mr-2 size-4 shrink-0 text-muted-foreground" />
+                                <span className="font-medium">
+                                  {format(new Date(state.startDate + "T00:00:00"), "EEE, MMM d")}
+                                </span>
+                                <span className="flex-1 text-center text-muted-foreground">—</span>
+                                <span className="font-medium">
+                                  {format(new Date(state.endDate + "T00:00:00"), "EEE, MMM d")}
+                                </span>
+                              </button>
+                            )}
+                          </div>
                         )}
+
+                        {/* Meal Selection - hidden when dates match full event period */}
+                        {(() => {
+                          const pDates = getParticipantDates(p);
+                          return pDates.startDate && pDates.endDate && eventDates && !participantDatesMatchEvent(p) ? (
+                            <MealSelectionGrid
+                              startDate={pDates.startDate}
+                              endDate={pDates.endDate}
+                              eventStartDate={eventDates.eventStartDate}
+                              eventEndDate={eventDates.eventEndDate}
+                              selections={p.mealSelections}
+                              onChange={(meals) => updateMealSelections(gi, pi, meals)}
+                            />
+                          ) : null;
+                        })()}
 
                         {/* Save & Continue */}
                         <Button
@@ -1225,6 +1321,68 @@ export default function ParticipantsStep() {
               }}
             >
               Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Date override confirmation dialog */}
+      <AlertDialog
+        open={!!dateOverrideTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDateOverrideTarget(null);
+            setDateOverrideAgreed(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Individual Date Change Policy</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Your group is registered for{" "}
+                  <strong>
+                    {state.startDate && format(new Date(state.startDate + "T00:00:00"), "EEE, MMM d")}
+                    {" — "}
+                    {state.endDate && format(new Date(state.endDate + "T00:00:00"), "EEE, MMM d")}
+                  </strong>.
+                </p>
+                <p>
+                  You are about to change this person&apos;s stay dates to differ from the group.
+                </p>
+                <p className="font-medium text-foreground">
+                  The dates you select must accurately reflect this person&apos;s actual attendance. Any discrepancy between the registered dates and actual attendance is a violation of camp policy.
+                </p>
+                <label className="flex items-start gap-2 rounded-md border p-3 cursor-pointer hover:bg-accent/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={dateOverrideAgreed}
+                    onChange={(e) => setDateOverrideAgreed(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span className="text-sm">
+                    I confirm that the dates I am selecting accurately reflect this person&apos;s actual attendance.
+                  </span>
+                </label>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!dateOverrideAgreed}
+              onClick={() => {
+                if (dateOverrideTarget) {
+                  const key = `${dateOverrideTarget.gi}-${dateOverrideTarget.pi}`;
+                  setDateOverrideConfirmed((prev) => ({ ...prev, [key]: true }));
+                  setDateOverrideTarget(null);
+                  setDateOverrideAgreed(false);
+                }
+              }}
+            >
+              Confirm Change
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

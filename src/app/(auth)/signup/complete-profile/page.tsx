@@ -295,7 +295,7 @@ export default function CompleteProfilePage() {
   if (!initialized) return null;
 
   return (
-    <Card className="bg-muted/50">
+    <Card className="bg-white dark:bg-card">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl font-bold">
           {isEmailSignup ? "Create Your Account" : "Complete Your Profile"}

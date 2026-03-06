@@ -202,8 +202,15 @@ export default function ReviewStep() {
                 {group.participants.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>
-                      {p.firstName} {p.lastName}
-                      {p.displayNameKo ? ` (${p.displayNameKo})` : ""}
+                      <div>
+                        {p.firstName} {p.lastName}
+                        {p.displayNameKo ? ` (${p.displayNameKo})` : ""}
+                      </div>
+                      {p.isDateOverridden && p.checkInDate && p.checkOutDate && (
+                        <div className="text-xs text-muted-foreground">
+                          {formatDate(p.checkInDate)} ~ {formatDate(p.checkOutDate)}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>{p.isRepresentative ? "Representative" : "Member"}</TableCell>
                     <TableCell>{p.birthYear ? calcAge(p.birthYear, p.birthMonth ?? 1, p.birthDay ?? 1) : "-"}</TableCell>

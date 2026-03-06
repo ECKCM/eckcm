@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-06T01:38:53.658Z",
+  "lastUpdated": "2026-03-06T07:02:22.382Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -99,7 +99,9 @@
     "events",
     "inventory",
     "airport-pickup",
-    "reset-password"
+    "reset-password",
+    "schemas",
+    "(auth)"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -124,9 +126,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:03:38.722Z",
-        "lastUpdated": "2026-03-06T01:38:53.658Z"
+        "lastUpdated": "2026-03-06T06:53:24.229Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/layout.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/top-header.tsx"
     },
     "stripe-config": {
       "phase": "do",
@@ -280,7 +282,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:27:25.775Z",
-        "lastUpdated": "2026-03-05T03:07:14.340Z"
+        "lastUpdated": "2026-03-06T07:02:22.382Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(public)/page.tsx"
     },
@@ -332,9 +334,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:31:41.703Z",
-        "lastUpdated": "2026-03-05T02:24:58.734Z"
+        "lastUpdated": "2026-03-06T06:29:52.904Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/participants/participants-table.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
     "estimate": {
       "phase": "do",
@@ -423,7 +425,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T22:52:09.148Z",
-        "lastUpdated": "2026-02-26T22:58:43.896Z"
+        "lastUpdated": "2026-03-06T05:31:47.598Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/meal.service.ts"
     },
@@ -891,7 +893,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T07:59:00.220Z",
-        "lastUpdated": "2026-02-27T08:08:52.650Z"
+        "lastUpdated": "2026-03-06T05:30:24.453Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/context/registration-context.tsx"
     },
@@ -995,7 +997,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-02T13:55:00.301Z",
-        "lastUpdated": "2026-03-06T01:25:25.103Z"
+        "lastUpdated": "2026-03-06T06:52:15.059Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/signup/complete-profile/page.tsx"
     },
@@ -1125,7 +1127,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-03T07:15:45.932Z",
-        "lastUpdated": "2026-03-03T07:15:45.932Z"
+        "lastUpdated": "2026-03-06T05:32:16.419Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
     },
@@ -1177,7 +1179,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-03T22:07:52.298Z",
-        "lastUpdated": "2026-03-03T22:07:57.059Z"
+        "lastUpdated": "2026-03-06T06:58:03.400Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/login/page.tsx"
     },
@@ -1359,7 +1361,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-06T00:49:50.415Z",
-        "lastUpdated": "2026-03-06T00:50:03.251Z"
+        "lastUpdated": "2026-03-06T02:57:35.076Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/airport-pickup/page.tsx"
     },
@@ -1375,6 +1377,32 @@
         "lastUpdated": "2026-03-06T01:02:10.893Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/reset-password/page.tsx"
+    },
+    "schemas": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-06T05:30:10.790Z",
+        "lastUpdated": "2026-03-06T05:30:10.790Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/schemas/api.ts"
+    },
+    "(auth)": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-06T06:51:16.167Z",
+        "lastUpdated": "2026-03-06T06:51:16.167Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/layout.tsx"
     }
   },
   "history": [
@@ -6340,6 +6368,294 @@
     {
       "timestamp": "2026-03-06T01:38:53.658Z",
       "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T02:53:44.245Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T02:53:50.586Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T02:54:00.088Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T02:54:21.691Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T02:54:28.685Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T02:54:32.772Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T02:56:15.945Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T02:56:30.377Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T02:56:35.732Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T02:56:44.545Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T02:57:35.076Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T03:53:37.789Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:28:40.031Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:30:10.790Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:30:24.453Z",
+      "feature": "context",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:30:51.136Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:31:05.029Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:31:21.735Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:31:47.598Z",
+      "feature": "meal.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:32:16.419Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:40:49.321Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:41:08.305Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:41:17.273Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:41:36.075Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:42:07.804Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:42:16.237Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:53:23.070Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T05:53:37.723Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:10:08.009Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:13:16.990Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:29:52.904Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:40:24.231Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:40:30.070Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:44:00.279Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:45:08.402Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:46:20.483Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:47:42.765Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:48:03.281Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:49:23.070Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:51:16.167Z",
+      "feature": "(auth)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:52:15.059Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:53:23.140Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:53:24.229Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:58:03.400Z",
+      "feature": "login",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:58:52.973Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T06:59:48.100Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T07:01:03.777Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-06T07:02:22.382Z",
+      "feature": "(public)",
       "phase": "do",
       "action": "updated"
     }

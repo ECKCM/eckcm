@@ -44,6 +44,9 @@ export interface ParticipantInput {
   churchId?: string;
   churchRole?: ChurchRole;
   churchOther?: string;
+  checkInDate?: string; // YYYY-MM-DD, participant-specific override
+  checkOutDate?: string; // YYYY-MM-DD, participant-specific override
+  isDateOverridden?: boolean; // true if participant manually changed their dates
   mealSelections: MealSelection[];
 }
 

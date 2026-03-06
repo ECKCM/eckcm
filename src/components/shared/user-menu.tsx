@@ -36,7 +36,7 @@ export function UserMenu({ isAdmin }: UserMenuProps) {
       await supabase.from("eckcm_admin_presence").delete().eq("user_id", user.id);
     }
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push("/");
   };
 
   if (!mounted) return null;

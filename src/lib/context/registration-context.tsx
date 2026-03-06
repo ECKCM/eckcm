@@ -59,10 +59,19 @@ function reducer(state: RegistrationState, action: Action): RegistrationState {
         datesChanged && state.roomGroups.length > 0
           ? state.roomGroups.map((g) => ({
               ...g,
-              participants: g.participants.map((p) => ({
-                ...p,
-                mealSelections: [],
-              })),
+              participants: g.participants.map((p) => {
+                if (p.isDateOverridden) {
+                  // Keep overridden participant dates, but clear meals if group dates changed
+                  return { ...p, mealSelections: [] };
+                }
+                // Sync non-overridden participants to new group dates
+                return {
+                  ...p,
+                  checkInDate: action.startDate,
+                  checkOutDate: action.endDate,
+                  mealSelections: [],
+                };
+              }),
             }))
           : state.roomGroups;
       return {

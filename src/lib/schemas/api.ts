@@ -43,6 +43,9 @@ const participantSchema = z.object({
   churchId: uuid.optional(),
   churchRole: z.enum(["MEMBER", "DEACON", "ELDER", "MINISTER", "PASTOR"]).optional(),
   churchOther: z.string().max(255).optional(),
+  checkInDate: dateStr.optional(),
+  checkOutDate: dateStr.optional(),
+  isDateOverridden: z.boolean().optional(),
   mealSelections: z.array(mealSelectionSchema).max(100).default([]),
 });
 
