@@ -106,15 +106,16 @@
   "primaryFeature": "online-registration",
   "features": {
     "online-registration": {
-      "phase": "check",
+      "phase": "completed",
       "startedAt": "2026-02-11T07:00:00.000Z",
-      "lastUpdated": "2026-02-27T04:50:00.000Z",
+      "lastUpdated": "2026-03-07T06:00:00.000Z",
       "matchRate": 93,
       "iterationCount": 4,
       "documents": {
         "plan": "docs/01-plan/features/online-registration.plan.md",
         "design": "docs/02-design/features/online-registration.design.md",
-        "analysis": "docs/03-analysis/features/online-registration.analysis.md"
+        "analysis": "docs/03-analysis/features/online-registration.analysis.md",
+        "report": "docs/04-report/features/online-registration.report.md"
       }
     },
     "eckcm": {

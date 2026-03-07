@@ -47,11 +47,9 @@ export function BirthDatePicker({
   // Sync internal yearInput when year prop changes externally (e.g. auto-fill from profile)
   useEffect(() => {
     const propStr = year?.toString() ?? "";
-    if (propStr !== yearInput) {
-      setYearInput(propStr);
-      setYearError("");
-    }
-  }, [year, yearInput]);
+    setYearInput(propStr);
+    setYearError("");
+  }, [year]);
 
   const maxDays = year && month ? getDaysInMonth(year, month) : 31;
 
@@ -76,10 +74,11 @@ export function BirthDatePicker({
     if (cleaned.length === 4) {
       if (v < minYear || v > currentYear) {
         setYearError(`${minYear}–${currentYear}`);
+        onYearChange(undefined);
       } else {
         setYearError("");
+        onYearChange(v);
       }
-      onYearChange(v);
     } else {
       // Still typing, clear error but don't validate yet
       setYearError("");
