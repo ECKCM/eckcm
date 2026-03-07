@@ -1,10 +1,13 @@
 import type { Gender, Grade, MealType, ChurchRole } from "./database";
 
+export type RegistrationType = "self" | "others";
+
 /**
  * Registration wizard state (persisted to sessionStorage)
  */
 export interface RegistrationWizardState {
   eventId: string;
+  registrationType: RegistrationType;
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   nightsCount: number;
@@ -29,7 +32,7 @@ export interface ParticipantInput {
   lastName: string;
   firstName: string;
   displayNameKo?: string;
-  gender: Gender;
+  gender: Gender | "";
   birthYear: number | undefined;
   birthMonth: number | undefined;
   birthDay: number | undefined;

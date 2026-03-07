@@ -78,6 +78,7 @@ export default function ReviewStep() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           eventId: state.eventId,
+          registrationType: state.registrationType,
           startDate: state.startDate,
           endDate: state.endDate,
           nightsCount: state.nightsCount,

@@ -1,0 +1,9 @@
+{
+  "pid": 27602,
+  "started_at": "2026-03-07T07:18:51.521Z",
+  "cwd": "/Users/scottkim/development/eckcm",
+  "notify_script": "/Users/scottkim/.npm-global/lib/node_modules/oh-my-codex/scripts/notify-hook.js",
+  "poll_ms": 700,
+  "tracked_files": 2,
+  "seen_turns": 2
+}

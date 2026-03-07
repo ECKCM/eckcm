@@ -10,6 +10,7 @@ import {
 } from "react";
 import type {
   RegistrationWizardState,
+  RegistrationType,
   RoomGroupInput,
   ParticipantInput,
   AirportPickupInput,
@@ -25,6 +26,7 @@ interface RegistrationState extends RegistrationWizardState {
 
 type Action =
   | { type: "SET_STEP"; step: number }
+  | { type: "SET_REGISTRATION_TYPE"; registrationType: RegistrationType }
   | { type: "SET_DATES"; startDate: string; endDate: string; nightsCount: number }
   | { type: "SET_ACCESS_CODE"; code: string }
   | { type: "SET_REGISTRATION_GROUP"; groupId: string }
@@ -39,6 +41,7 @@ type Action =
 
 const initialState: RegistrationState = {
   eventId: "",
+  registrationType: "self",
   startDate: "",
   endDate: "",
   nightsCount: 0,
@@ -52,6 +55,8 @@ function reducer(state: RegistrationState, action: Action): RegistrationState {
   switch (action.type) {
     case "SET_STEP":
       return { ...state, step: action.step };
+    case "SET_REGISTRATION_TYPE":
+      return { ...state, registrationType: action.registrationType };
     case "SET_DATES": {
       const datesChanged =
         state.startDate !== action.startDate || state.endDate !== action.endDate;
@@ -149,6 +154,9 @@ export function RegistrationProvider({
         const parsed = JSON.parse(saved);
         if (parsed.eventId === eventId) {
           dispatch({ type: "SET_DATES", startDate: parsed.startDate, endDate: parsed.endDate, nightsCount: parsed.nightsCount });
+          if (parsed.registrationType) {
+            dispatch({ type: "SET_REGISTRATION_TYPE", registrationType: parsed.registrationType });
+          }
           if (parsed.registrationGroupId) {
             dispatch({ type: "SET_REGISTRATION_GROUP", groupId: parsed.registrationGroupId });
           }
