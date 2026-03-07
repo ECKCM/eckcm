@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { generateInvoicePdf } from "@/lib/pdf/generate";
 
 export async function GET(
@@ -14,6 +15,8 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const adminAuth = await requireAdmin();
+  const currentUserIsAdmin = !!adminAuth;
 
   const admin = createAdminClient();
 
@@ -44,7 +47,7 @@ export async function GET(
   // Verify ownership
   const { data: reg } = await admin
     .from("eckcm_registrations")
-    .select("created_by_user_id, confirmation_code, eckcm_events!inner(name_en), eckcm_users!inner(role)")
+    .select("created_by_user_id, confirmation_code, eckcm_events!inner(name_en)")
     .eq("id", inv.registration_id)
     .single();
 
@@ -54,8 +57,7 @@ export async function GET(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = reg as any;
-  const isAdmin = r.eckcm_users?.role === "ADMIN" || r.eckcm_users?.role === "SUPER_ADMIN";
-  if (r.created_by_user_id !== user.id && !isAdmin) {
+  if (r.created_by_user_id !== user.id && !currentUserIsAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

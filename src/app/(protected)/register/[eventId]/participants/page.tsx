@@ -44,7 +44,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { ParticipantInput, RoomGroupInput, MealSelection } from "@/lib/types/registration";
 import type { Gender, Grade } from "@/lib/types/database";
 import { MAX_GROUPS, MAX_PARTICIPANTS_PER_GROUP, GRADE_LABELS } from "@/lib/utils/constants";
-import { calculateAge } from "@/lib/utils/validators";
+import { calculateAge, isValidCalendarDate } from "@/lib/utils/validators";
 import { isK12ByBirthDate } from "@/lib/utils/formatters";
 import {
   filterName,
@@ -68,7 +68,7 @@ function createEmptyParticipant(isRepresentative: boolean): ParticipantInput {
     lastName: "",
     firstName: "",
     displayNameKo: "",
-    gender: "MALE",
+    gender: "",
     birthYear: undefined,
     birthMonth: undefined,
     birthDay: undefined,
@@ -87,6 +87,66 @@ function createEmptyGroup(): RoomGroupInput {
     preferences: { elderly: false, handicapped: false, firstFloor: false },
     keyCount: 1,
   };
+}
+
+function remapPanelStateAfterGroupRemoval<T>(
+  state: Record<string, T>,
+  removedGroupIndex: number
+): Record<string, T> {
+  const next: Record<string, T> = {};
+
+  for (const [key, value] of Object.entries(state)) {
+    const [groupStr, participantStr] = key.split("-");
+    const groupIndex = Number(groupStr);
+    const participantIndex = Number(participantStr);
+
+    if (Number.isNaN(groupIndex) || Number.isNaN(participantIndex)) {
+      next[key] = value;
+      continue;
+    }
+
+    if (groupIndex === removedGroupIndex) continue;
+
+    const mappedGroupIndex =
+      groupIndex > removedGroupIndex ? groupIndex - 1 : groupIndex;
+    next[`${mappedGroupIndex}-${participantIndex}`] = value;
+  }
+
+  return next;
+}
+
+function remapPanelStateAfterParticipantRemoval<T>(
+  state: Record<string, T>,
+  groupIndex: number,
+  removedParticipantIndex: number
+): Record<string, T> {
+  const next: Record<string, T> = {};
+
+  for (const [key, value] of Object.entries(state)) {
+    const [groupStr, participantStr] = key.split("-");
+    const parsedGroupIndex = Number(groupStr);
+    const participantIndex = Number(participantStr);
+
+    if (Number.isNaN(parsedGroupIndex) || Number.isNaN(participantIndex)) {
+      next[key] = value;
+      continue;
+    }
+
+    if (parsedGroupIndex !== groupIndex) {
+      next[key] = value;
+      continue;
+    }
+
+    if (participantIndex === removedParticipantIndex) continue;
+
+    const mappedParticipantIndex =
+      participantIndex > removedParticipantIndex
+        ? participantIndex - 1
+        : participantIndex;
+    next[`${groupIndex}-${mappedParticipantIndex}`] = value;
+  }
+
+  return next;
 }
 
 export default function ParticipantsStep() {
@@ -218,7 +278,7 @@ export default function ParticipantsStep() {
 
       // Fetch app config for duplicate email setting
       try {
-        const configRes = await fetch("/api/admin/app-config");
+        const configRes = await fetch("/api/app-config");
         if (configRes.ok) {
           const configData = await configRes.json();
           setAllowDuplicateEmail(configData.allow_duplicate_email ?? false);
@@ -228,6 +288,24 @@ export default function ParticipantsStep() {
 
       // Auto-fill representative from user's profile (only once)
       if (user && !representativeFilledRef.current) {
+        // "others" mode: clear all fields, only pre-fill user's email (editable)
+        if (state.registrationType === "others") {
+          if (state.roomGroups.length > 0) {
+            const representative = state.roomGroups[0].participants[0];
+            dispatch({
+              type: "UPDATE_PARTICIPANT",
+              groupIndex: 0,
+              participantIndex: 0,
+              participant: {
+                ...createEmptyParticipant(true),
+                id: representative.id,
+                email: user.email ?? "",
+              },
+            });
+            representativeFilledRef.current = true;
+          }
+        } else {
+        // "self" mode: auto-fill from user's profile
         // Check for existing drafts
         const { data: drafts } = await supabase
           .from("eckcm_registration_drafts")
@@ -295,6 +373,7 @@ export default function ParticipantsStep() {
             }
           }
         }
+        } // end else (self mode)
       }
     };
     load();
@@ -314,26 +393,12 @@ export default function ParticipantsStep() {
 
   const removeGroup = (index: number) => {
     dispatch({ type: "REMOVE_ROOM_GROUP", index });
-    // Clean up saved/error state for removed group's participants
-    const group = state.roomGroups[index];
-    group.participants.forEach((_, pi) => {
-      const key = `${index}-${pi}`;
-      setSavedPanels((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-      setFieldErrors((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-      setDateOverrideConfirmed((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-    });
+    setOpenPanels((prev) => remapPanelStateAfterGroupRemoval(prev, index));
+    setSavedPanels((prev) => remapPanelStateAfterGroupRemoval(prev, index));
+    setFieldErrors((prev) => remapPanelStateAfterGroupRemoval(prev, index));
+    setDateOverrideConfirmed((prev) =>
+      remapPanelStateAfterGroupRemoval(prev, index)
+    );
   };
 
   const addParticipant = (groupIndex: number) => {
@@ -365,17 +430,18 @@ export default function ParticipantsStep() {
     };
     dispatch({ type: "UPDATE_ROOM_GROUP", index: groupIndex, group: updated });
     // Remove saved/confirmed state
-    const key = `${groupIndex}-${pIndex}`;
-    setSavedPanels((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-    setDateOverrideConfirmed((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
+    setOpenPanels((prev) =>
+      remapPanelStateAfterParticipantRemoval(prev, groupIndex, pIndex)
+    );
+    setSavedPanels((prev) =>
+      remapPanelStateAfterParticipantRemoval(prev, groupIndex, pIndex)
+    );
+    setFieldErrors((prev) =>
+      remapPanelStateAfterParticipantRemoval(prev, groupIndex, pIndex)
+    );
+    setDateOverrideConfirmed((prev) =>
+      remapPanelStateAfterParticipantRemoval(prev, groupIndex, pIndex)
+    );
   };
 
   const updateParticipant = (
@@ -546,6 +612,7 @@ export default function ParticipantsStep() {
     else if (!NAME_PATTERN.test(p.firstName.trim())) errs.firstName = "Uppercase letters only";
     if (!p.lastName.trim()) errs.lastName = "Required";
     else if (!NAME_PATTERN.test(p.lastName.trim())) errs.lastName = "Uppercase letters only";
+    if (!p.gender) errs.gender = "Required";
     if (!p.displayNameKo?.trim()) errs.displayNameKo = "Required";
     if (!p.departmentId) errs.departmentId = "Required";
     if (!p.noEmail) {
@@ -562,6 +629,8 @@ export default function ParticipantsStep() {
     // Birth date required
     if (!p.birthYear || !p.birthMonth || !p.birthDay) {
       errs.birthYear = "Date of birth is required";
+    } else if (!isValidCalendarDate(p.birthYear, p.birthMonth, p.birthDay)) {
+      errs.birthYear = "Enter a valid date of birth";
     } else if (gi === 0 && pi === 0) {
       // Room Group 1 Representative must be at least 11 by event start
       const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
@@ -601,8 +670,9 @@ export default function ParticipantsStep() {
         if (gIdx === gi && pIdx === pi) continue;
         const other = state.roomGroups[gIdx].participants[pIdx];
 
-        // Email duplicate within form
-        if (!allowDuplicateEmail && p.email && !p.noEmail && !other.noEmail && other.email &&
+        // Email duplicate within form (skip for representative in "others" mode)
+        const skipEmailDup = allowDuplicateEmail || (state.registrationType === "others" && p.isRepresentative);
+        if (!skipEmailDup && p.email && !p.noEmail && !other.noEmail && other.email &&
             other.email.toLowerCase() === p.email.toLowerCase()) {
           setFieldErrors((prev) => ({ ...prev, [key]: { email: "Unable to use this email" } }));
           return;
@@ -648,7 +718,8 @@ export default function ParticipantsStep() {
 
     if (!dupError && dupCheck) {
       const dupErrs: Record<string, string> = {};
-      if (dupCheck.emailDuplicate && !allowDuplicateEmail) dupErrs.email = "Unable to use this email";
+      const skipRepEmailDup = allowDuplicateEmail || (state.registrationType === "others" && p.isRepresentative);
+      if (dupCheck.emailDuplicate && !skipRepEmailDup) dupErrs.email = "Unable to use this email";
       if (dupCheck.personDuplicate) dupErrs.firstName = "이미 등록된 사람입니다";
       if (Object.keys(dupErrs).length > 0) {
         setFieldErrors((prev) => ({ ...prev, [key]: dupErrs }));
@@ -886,13 +957,13 @@ export default function ParticipantsStep() {
                               </Popover>
                             </div>
                             <Select
-                              value={p.gender}
+                              value={p.gender || undefined}
                               onValueChange={(v) =>
                                 updateParticipant(gi, pi, "gender", v)
                               }
                             >
-                              <SelectTrigger>
-                                <SelectValue />
+                              <SelectTrigger className={errs.gender ? "border-destructive" : ""}>
+                                <SelectValue placeholder="Select gender" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="MALE">Male</SelectItem>
@@ -901,6 +972,9 @@ export default function ParticipantsStep() {
                                 <SelectItem value="PREFER_NOT_TO_SAY">Prefer not to say</SelectItem>
                               </SelectContent>
                             </Select>
+                            {fieldErrors[`${gi}-${pi}`]?.gender && (
+                              <p className="text-xs text-destructive">{fieldErrors[`${gi}-${pi}`].gender}</p>
+                            )}
                           </div>
                         </div>
 
@@ -910,6 +984,7 @@ export default function ParticipantsStep() {
                           month={p.birthMonth}
                           day={p.birthDay}
                           labelClassName="text-xs"
+                          error={!!errs.birthYear}
                           onYearChange={(v) =>
                             updateParticipant(gi, pi, "birthYear", v)
                           }
@@ -1035,7 +1110,7 @@ export default function ParticipantsStep() {
                                   updateParticipant(gi, pi, "email", e.target.value)
                                 }
                                 placeholder="email@example.com"
-                                disabled={gi === 0 && pi === 0}
+                                disabled={gi === 0 && pi === 0 && state.registrationType !== "others"}
                                 className={errs.email || (p.email && !isValidEmail(p.email)) ? "border-destructive" : ""}
                               />
                               {(errs.email || (p.email && !isValidEmail(p.email))) && (

@@ -15,7 +15,7 @@ export const TurnstileWidget = forwardRef<TurnstileInstance, TurnstileWidgetProp
     const [enabled, setEnabled] = useState<boolean | null>(null);
 
     useEffect(() => {
-      fetch("/api/admin/app-config")
+      fetch("/api/app-config")
         .then((res) => res.json())
         .then((data) => setEnabled(data.turnstile_enabled ?? true))
         .catch(() => setEnabled(true));

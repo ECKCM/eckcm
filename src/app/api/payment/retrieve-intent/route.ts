@@ -23,14 +23,46 @@ export async function POST(request: Request) {
 
   // Resolve stripe mode from event
   let stripeMode: "test" | "live" = "test";
+  const admin = createAdminClient();
   if (eventId) {
-    const admin = createAdminClient();
     const { data: event } = await admin
       .from("eckcm_events")
       .select("stripe_mode")
       .eq("id", eventId)
       .single();
     if (event?.stripe_mode === "live") stripeMode = "live";
+  } else {
+    const { data: payment } = await admin
+      .from("eckcm_payments")
+      .select(
+        "invoice_id, eckcm_invoices!inner(registration_id, eckcm_registrations!inner(event_id, created_by_user_id, eckcm_events!inner(stripe_mode)))"
+      )
+      .eq("stripe_payment_intent_id", paymentIntentId)
+      .maybeSingle();
+
+    const paymentData = payment as unknown as {
+      eckcm_invoices?: {
+        registration_id: string;
+        eckcm_registrations?: {
+          event_id: string;
+          created_by_user_id: string;
+          eckcm_events?: { stripe_mode: "test" | "live" | null };
+        };
+      };
+    } | null;
+
+    const createdByUserId =
+      paymentData?.eckcm_invoices?.eckcm_registrations?.created_by_user_id;
+    if (createdByUserId && createdByUserId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (
+      paymentData?.eckcm_invoices?.eckcm_registrations?.eckcm_events?.stripe_mode ===
+      "live"
+    ) {
+      stripeMode = "live";
+    }
   }
 
   const stripe = await getStripeForMode(stripeMode);

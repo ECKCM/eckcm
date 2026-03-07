@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { AlertCircle } from "lucide-react";
 import { DateRangePicker } from "@/components/registration/date-range-picker";
+import type { RegistrationType } from "@/lib/types/registration";
 
 interface EventData {
   id: string;
@@ -48,6 +49,10 @@ export default function RegistrationStep1() {
     confirmationCode: string;
     status: string;
   } | null>(null);
+  const [userProfile, setUserProfile] = useState<{
+    name: string;
+    email: string;
+  } | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -69,29 +74,36 @@ export default function RegistrationStep1() {
       setEvent(ev);
       setGroups(grps ?? []);
 
-      // Check if user already has an active registration for this event
+      // Fetch user profile for "For Someone Else" confirmation
       if (user) {
-        // Check if duplicate registration is allowed
-        const configRes = await fetch("/api/admin/app-config");
-        const configData = configRes.ok ? await configRes.json() : {};
-        const allowDupReg = configData.allow_duplicate_registration ?? false;
+        setUserProfile({
+          name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "",
+          email: user.email || "",
+        });
 
-        if (!allowDupReg) {
-          const { data: existing } = await supabase
-            .from("eckcm_registrations")
-            .select("id, confirmation_code, status")
-            .eq("event_id", eventId)
-            .eq("created_by_user_id", user.id)
-            .in("status", ["DRAFT", "SUBMITTED", "PAID"])
-            .limit(1)
-            .maybeSingle();
+        // Check if user already has an active registration (skip for "others" mode)
+        if (state.registrationType === "self") {
+          const configRes = await fetch("/api/app-config");
+          const configData = configRes.ok ? await configRes.json() : {};
+          const allowDupReg = configData.allow_duplicate_registration ?? false;
 
-          if (existing) {
-            setExistingRegistration({
-              id: existing.id,
-              confirmationCode: existing.confirmation_code,
-              status: existing.status,
-            });
+          if (!allowDupReg) {
+            const { data: existing } = await supabase
+              .from("eckcm_registrations")
+              .select("id, confirmation_code, status")
+              .eq("event_id", eventId)
+              .eq("created_by_user_id", user.id)
+              .in("status", ["DRAFT", "SUBMITTED", "PAID"])
+              .limit(1)
+              .maybeSingle();
+
+            if (existing) {
+              setExistingRegistration({
+                id: existing.id,
+                confirmationCode: existing.confirmation_code,
+                status: existing.status,
+              });
+            }
           }
         }
       }
@@ -120,7 +132,14 @@ export default function RegistrationStep1() {
       setLoading(false);
     };
     load();
-  }, [eventId, state.startDate, state.registrationGroupId, dispatch]);
+  }, [eventId, state.startDate, state.registrationGroupId, state.registrationType, dispatch]);
+
+  const handleRegistrationTypeChange = (type: RegistrationType) => {
+    dispatch({ type: "SET_REGISTRATION_TYPE", registrationType: type });
+    if (type === "others") {
+      setExistingRegistration(null);
+    }
+  };
 
   const calcNights = (start: string, end: string) => {
     const d1 = new Date(start);
@@ -256,6 +275,40 @@ export default function RegistrationStep1() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Registration Type Toggle */}
+          <div className="space-y-2">
+            <Label>Who is this registration for?</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={state.registrationType === "self" ? "default" : "outline"}
+                onClick={() => handleRegistrationTypeChange("self")}
+              >
+                For Myself
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={state.registrationType === "others" ? "default" : "outline"}
+                onClick={() => handleRegistrationTypeChange("others")}
+              >
+                For Someone Else
+              </Button>
+            </div>
+            {state.registrationType === "others" && userProfile && (
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
+                <p className="font-medium text-blue-900">
+                  Registering on behalf of someone else
+                </p>
+                <p className="text-blue-700 mt-1">
+                  Signed in as <span className="font-semibold">{userProfile.name}</span> ({userProfile.email}).
+                  The registration will be linked to your account.
+                </p>
+              </div>
+            )}
+          </div>
+
           <DateRangePicker
             startDate={state.startDate}
             endDate={state.endDate}

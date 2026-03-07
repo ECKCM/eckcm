@@ -55,6 +55,12 @@ export async function POST(request: Request) {
       { status: 409 }
     );
   }
+  if (registration.status !== "DRAFT") {
+    return NextResponse.json(
+      { error: `Registration is not payable in status ${registration.status}` },
+      { status: 409 }
+    );
+  }
 
   // Load invoice, rep info, and event in parallel (all independent queries)
   const admin = createAdminClient();

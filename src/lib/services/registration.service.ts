@@ -46,7 +46,7 @@ export async function cancelRegistration(
   // Verify registration exists and belongs to user
   const { data: reg, error: regError } = await supabase
     .from("eckcm_registrations")
-    .select("id, user_id, status, event_id")
+    .select("id, created_by_user_id, status, event_id")
     .eq("id", registrationId)
     .single();
 
@@ -54,7 +54,7 @@ export async function cancelRegistration(
     return { success: false, error: "Registration not found" };
   }
 
-  if (reg.user_id !== userId) {
+  if (reg.created_by_user_id !== userId) {
     return { success: false, error: "Not authorized to cancel this registration" };
   }
 

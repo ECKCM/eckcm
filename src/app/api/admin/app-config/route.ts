@@ -2,9 +2,14 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { COLOR_THEME_IDS } from "@/lib/color-theme";
 import type { ColorThemeId } from "@/lib/color-theme";
-import { requireSuperAdmin } from "@/lib/auth/admin";
+import { requireAdmin, requireSuperAdmin } from "@/lib/auth/admin";
 
 export async function GET() {
+  const auth = await requireAdmin();
+  if (!auth) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("eckcm_app_config")
@@ -20,15 +25,20 @@ export async function GET() {
   }
 
   const hmacSecret = data.epass_hmac_secret as string | null;
+  const isSuperAdmin = auth.roles.includes("SUPER_ADMIN");
 
   return NextResponse.json({
     color_theme: data.color_theme,
     turnstile_enabled: data.turnstile_enabled ?? true,
     allow_duplicate_email: data.allow_duplicate_email ?? false,
     allow_duplicate_registration: data.allow_duplicate_registration ?? false,
-    epass_hmac_secret: hmacSecret
-      ? { is_set: true, last4: hmacSecret.slice(-4) }
-      : { is_set: false, last4: "" },
+    ...(isSuperAdmin
+      ? {
+          epass_hmac_secret: hmacSecret
+            ? { is_set: true, last4: hmacSecret.slice(-4) }
+            : { is_set: false, last4: "" },
+        }
+      : {}),
   });
 }
 

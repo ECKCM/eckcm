@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidCalendarDate } from "@/lib/utils/validators";
 
 // -- Reusable primitives --
 
@@ -13,41 +14,57 @@ const mealSelectionSchema = z.object({
   selected: z.boolean(),
 });
 
-const participantSchema = z.object({
-  id: z.string(),
-  isRepresentative: z.boolean(),
-  isExistingPerson: z.boolean(),
-  personId: uuid.optional(),
-  lastName: z.string().min(1).max(100),
-  firstName: z.string().min(1).max(100),
-  displayNameKo: z.string().max(100).optional(),
-  gender: z.enum(["MALE", "FEMALE", "NON_BINARY", "PREFER_NOT_TO_SAY"]),
-  birthYear: z.number().int().min(1900).max(2100),
-  birthMonth: z.number().int().min(1).max(12),
-  birthDay: z.number().int().min(1).max(31),
-  isK12: z.boolean(),
-  grade: z
-    .enum([
-      "PRE_K", "KINDERGARTEN",
-      "GRADE_1", "GRADE_2", "GRADE_3", "GRADE_4",
-      "GRADE_5", "GRADE_6", "GRADE_7", "GRADE_8",
-      "GRADE_9", "GRADE_10", "GRADE_11", "GRADE_12",
-    ])
-    .optional(),
-  departmentId: uuid.optional(),
-  phone: z.string().max(30).default(""),
-  phoneCountry: z.string().max(5).default("US"),
-  noPhone: z.boolean().optional(),
-  email: z.string().max(255).default(""),
-  noEmail: z.boolean().optional(),
-  churchId: uuid.optional(),
-  churchRole: z.enum(["MEMBER", "DEACON", "ELDER", "MINISTER", "PASTOR"]).optional(),
-  churchOther: z.string().max(255).optional(),
-  checkInDate: dateStr.optional(),
-  checkOutDate: dateStr.optional(),
-  isDateOverridden: z.boolean().optional(),
-  mealSelections: z.array(mealSelectionSchema).max(100).default([]),
-});
+const participantSchema = z
+  .object({
+    id: z.string(),
+    isRepresentative: z.boolean(),
+    isExistingPerson: z.boolean(),
+    personId: uuid.optional(),
+    lastName: z.string().min(1).max(100),
+    firstName: z.string().min(1).max(100),
+    displayNameKo: z.string().max(100).optional(),
+    gender: z.enum(["MALE", "FEMALE", "NON_BINARY", "PREFER_NOT_TO_SAY"]),
+    birthYear: z.number().int().min(1900).max(2100),
+    birthMonth: z.number().int().min(1).max(12),
+    birthDay: z.number().int().min(1).max(31),
+    isK12: z.boolean(),
+    grade: z
+      .enum([
+        "PRE_K", "KINDERGARTEN",
+        "GRADE_1", "GRADE_2", "GRADE_3", "GRADE_4",
+        "GRADE_5", "GRADE_6", "GRADE_7", "GRADE_8",
+        "GRADE_9", "GRADE_10", "GRADE_11", "GRADE_12",
+      ])
+      .optional(),
+    departmentId: uuid.optional(),
+    phone: z.string().max(30).default(""),
+    phoneCountry: z.string().max(5).default("US"),
+    noPhone: z.boolean().optional(),
+    email: z.string().max(255).default(""),
+    noEmail: z.boolean().optional(),
+    churchId: uuid.optional(),
+    churchRole: z.enum(["MEMBER", "DEACON", "ELDER", "MINISTER", "PASTOR"]).optional(),
+    churchOther: z.string().max(255).optional(),
+    checkInDate: dateStr.optional(),
+    checkOutDate: dateStr.optional(),
+    isDateOverridden: z.boolean().optional(),
+    mealSelections: z.array(mealSelectionSchema).max(100).default([]),
+  })
+  .superRefine((participant, ctx) => {
+    if (
+      !isValidCalendarDate(
+        participant.birthYear,
+        participant.birthMonth,
+        participant.birthDay
+      )
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["birthDay"],
+        message: "Invalid birth date",
+      });
+    }
+  });
 
 const lodgingPreferencesSchema = z.object({
   elderly: z.boolean(),
@@ -88,6 +105,7 @@ export const estimateSchema = z.object({
 
 export const submitRegistrationSchema = z.object({
   eventId: uuid,
+  registrationType: z.enum(["self", "others"]).default("self"),
   startDate: dateStr,
   endDate: dateStr,
   nightsCount: z.number().int().min(0).max(30),

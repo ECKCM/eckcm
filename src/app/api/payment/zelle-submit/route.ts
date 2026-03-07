@@ -53,6 +53,12 @@ export async function POST(request: Request) {
       { status: 409 }
     );
   }
+  if (registration.status !== "DRAFT") {
+    return NextResponse.json(
+      { error: `Registration is not payable in status ${registration.status}` },
+      { status: 409 }
+    );
+  }
 
   // Load invoice
   const { data: invoice } = await admin
@@ -69,18 +75,36 @@ export async function POST(request: Request) {
   }
 
   // Create ZELLE payment record
-  await admin.from("eckcm_payments").insert({
+  const { error: paymentInsertError } = await admin.from("eckcm_payments").insert({
     invoice_id: invoice.id,
     payment_method: "ZELLE",
     amount_cents: invoice.total_cents,
     status: "PENDING",
   });
+  if (paymentInsertError) {
+    logger.error("[payment/zelle-submit] Failed to create payment record", {
+      error: String(paymentInsertError),
+    });
+    return NextResponse.json(
+      { error: "Failed to create payment record" },
+      { status: 500 }
+    );
+  }
 
   // Update registration status to SUBMITTED
-  await admin
+  const { error: registrationUpdateError } = await admin
     .from("eckcm_registrations")
     .update({ status: "SUBMITTED" })
     .eq("id", registrationId);
+  if (registrationUpdateError) {
+    logger.error("[payment/zelle-submit] Failed to update registration", {
+      error: String(registrationUpdateError),
+    });
+    return NextResponse.json(
+      { error: "Failed to update registration" },
+      { status: 500 }
+    );
+  }
 
   // Generate E-Pass tokens with is_active = false (activated when admin confirms payment)
   const { data: memberships } = await admin

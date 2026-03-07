@@ -52,6 +52,12 @@ export async function POST(request: Request) {
   if (registration.status === "PAID") {
     return NextResponse.json({ status: "already_confirmed" });
   }
+  if (registration.status !== "DRAFT") {
+    return NextResponse.json(
+      { error: `Registration is not confirmable in status ${registration.status}` },
+      { status: 409 }
+    );
+  }
 
   // Resolve stripe mode and verify payment with Stripe
   const { data: event } = await admin
@@ -79,11 +85,14 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+  if (paymentIntent.metadata.userId !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const invoiceId = paymentIntent.metadata.invoiceId;
 
   // 1. Update payment, invoice, registration in parallel (independent writes)
-  await Promise.all([
+  const [paymentUpdate, invoiceUpdate, registrationUpdate] = await Promise.all([
     admin
       .from("eckcm_payments")
       .update({
@@ -97,18 +106,54 @@ export async function POST(request: Request) {
           confirmed_by: "client",
         },
       })
+      .select("id")
       .eq("stripe_payment_intent_id", paymentIntentId),
     invoiceId
       ? admin
           .from("eckcm_invoices")
           .update({ status: "SUCCEEDED", paid_at: new Date().toISOString() })
+          .select("id")
           .eq("id", invoiceId)
-      : Promise.resolve(),
+      : Promise.resolve(null),
     admin
       .from("eckcm_registrations")
       .update({ status: "PAID" })
+      .select("id")
       .eq("id", registrationId),
   ]);
+
+  const writeErrors = [
+    paymentUpdate.error,
+    invoiceUpdate?.error ?? null,
+    registrationUpdate.error,
+  ].filter(Boolean);
+
+  if (writeErrors.length > 0) {
+    logger.error("[payment/confirm] Failed to persist payment confirmation", {
+      registrationId,
+      paymentIntentId,
+      errors: writeErrors.map(String),
+    });
+    return NextResponse.json(
+      { error: "Failed to finalize payment" },
+      { status: 500 }
+    );
+  }
+  if (
+    !paymentUpdate.data?.length ||
+    !registrationUpdate.data?.length ||
+    (invoiceId && !invoiceUpdate?.data?.length)
+  ) {
+    logger.error("[payment/confirm] Missing rows while persisting payment confirmation", {
+      registrationId,
+      paymentIntentId,
+      invoiceId,
+    });
+    return NextResponse.json(
+      { error: "Failed to finalize payment" },
+      { status: 500 }
+    );
+  }
 
   // 2. Generate E-Pass tokens
   const { data: memberships, error: membershipError } = await admin

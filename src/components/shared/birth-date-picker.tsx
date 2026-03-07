@@ -21,6 +21,7 @@ interface BirthDatePickerProps {
   onMonthChange: (month: number) => void;
   onDayChange: (day: number) => void;
   labelClassName?: string;
+  error?: boolean;
 }
 
 function getDaysInMonth(year: number, month: number): number {
@@ -38,6 +39,7 @@ export function BirthDatePicker({
   onMonthChange,
   onDayChange,
   labelClassName,
+  error,
 }: BirthDatePickerProps) {
   const [yearInput, setYearInput] = useState(year?.toString() ?? "");
   const [yearError, setYearError] = useState("");
@@ -45,13 +47,19 @@ export function BirthDatePicker({
   // Sync internal yearInput when year prop changes externally (e.g. auto-fill from profile)
   useEffect(() => {
     const propStr = year?.toString() ?? "";
-    if (propStr && propStr !== yearInput) {
+    if (propStr !== yearInput) {
       setYearInput(propStr);
       setYearError("");
     }
-  }, [year]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [year, yearInput]);
 
   const maxDays = year && month ? getDaysInMonth(year, month) : 31;
+
+  useEffect(() => {
+    if (year && month && day && day > maxDays) {
+      onDayChange(maxDays);
+    }
+  }, [day, maxDays, month, onDayChange, year]);
 
   const handleYearChange = (raw: string) => {
     // Only allow digits, max 4 characters
@@ -102,7 +110,7 @@ export function BirthDatePicker({
             value={month !== undefined ? month.toString() : ""}
             onValueChange={(v) => onMonthChange(parseInt(v))}
           >
-            <SelectTrigger>
+            <SelectTrigger className={error ? "border-destructive" : ""}>
               <SelectValue placeholder="Month" />
             </SelectTrigger>
             <SelectContent className="max-h-60">
@@ -122,7 +130,7 @@ export function BirthDatePicker({
             value={day !== undefined ? day.toString() : ""}
             onValueChange={(v) => onDayChange(parseInt(v))}
           >
-            <SelectTrigger>
+            <SelectTrigger className={error ? "border-destructive" : ""}>
               <SelectValue placeholder="Day" />
             </SelectTrigger>
             <SelectContent className="max-h-60">
@@ -146,6 +154,7 @@ export function BirthDatePicker({
             autoComplete="off"
             value={yearInput}
             onChange={(e) => handleYearChange(e.target.value)}
+            className={error ? "border-destructive" : ""}
           />
           {yearError && (
             <p className="text-xs text-destructive">{yearError}</p>

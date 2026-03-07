@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateSafeConfirmationCode } from "@/lib/services/confirmation-code.service";
@@ -11,6 +12,60 @@ import { submitRegistrationSchema } from "@/lib/schemas/api";
 import { rateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { populateDefaultMeals } from "@/lib/services/meal.service";
+
+async function cleanupFailedRegistration(
+  admin: SupabaseClient,
+  registrationId: string,
+  peopleIds: string[] = []
+) {
+  try {
+    const { data: invoices } = await admin
+      .from("eckcm_invoices")
+      .select("id")
+      .eq("registration_id", registrationId);
+    const invoiceIds = (invoices ?? []).map((invoice) => invoice.id);
+
+    if (invoiceIds.length > 0) {
+      await admin
+        .from("eckcm_invoice_line_items")
+        .delete()
+        .in("invoice_id", invoiceIds);
+      await admin.from("eckcm_payments").delete().in("invoice_id", invoiceIds);
+      await admin.from("eckcm_invoices").delete().in("id", invoiceIds);
+    }
+
+    const { data: groups } = await admin
+      .from("eckcm_groups")
+      .select("id")
+      .eq("registration_id", registrationId);
+    const groupIds = (groups ?? []).map((group) => group.id);
+
+    if (groupIds.length > 0) {
+      await admin
+        .from("eckcm_group_memberships")
+        .delete()
+        .in("group_id", groupIds);
+    }
+
+    await admin
+      .from("eckcm_registration_rides")
+      .delete()
+      .eq("registration_id", registrationId);
+    await admin.from("eckcm_epass_tokens").delete().eq("registration_id", registrationId);
+    await admin.from("eckcm_groups").delete().eq("registration_id", registrationId);
+
+    if (peopleIds.length > 0) {
+      await admin.from("eckcm_people").delete().in("id", peopleIds);
+    }
+
+    await admin.from("eckcm_registrations").delete().eq("id", registrationId);
+  } catch (cleanupErr) {
+    logger.error("[registration/submit] Cleanup failed", {
+      registrationId,
+      error: String(cleanupErr),
+    });
+  }
+}
 
 
 export async function POST(request: Request) {
@@ -38,6 +93,7 @@ export async function POST(request: Request) {
   }
   const {
     eventId,
+    registrationType,
     startDate,
     endDate,
     nightsCount,
@@ -73,8 +129,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // 1. Check for duplicate registration
-  if (!appConfig?.allow_duplicate_registration) {
+  // 1. Check for duplicate registration (skip for "others" mode)
+  if (registrationType !== "others" && !appConfig?.allow_duplicate_registration) {
     const { data: existingReg } = await admin
       .from("eckcm_registrations")
       .select("id, confirmation_code")
@@ -230,7 +286,7 @@ export async function POST(request: Request) {
 
   if (groupError || !groups) {
     logger.error("[registration/submit] Group batch insert error", { error: String(groupError) });
-    await admin.from("eckcm_registrations").delete().eq("id", registration.id);
+    await cleanupFailedRegistration(admin, registration.id);
     return NextResponse.json({ error: "Failed to create groups" }, { status: 500 });
   }
 
@@ -277,7 +333,7 @@ export async function POST(request: Request) {
 
   if (personError || !people) {
     logger.error("[registration/submit] People batch insert error", { error: String(personError) });
-    await admin.from("eckcm_registrations").delete().eq("id", registration.id);
+    await cleanupFailedRegistration(admin, registration.id);
     return NextResponse.json({ error: "Failed to create participants" }, { status: 500 });
   }
 
@@ -300,8 +356,11 @@ export async function POST(request: Request) {
 
   if (membershipError) {
     logger.error("[registration/submit] Membership batch insert error", { error: String(membershipError) });
-    await admin.from("eckcm_people").delete().in("id", people.map(p => p.id));
-    await admin.from("eckcm_registrations").delete().eq("id", registration.id);
+    await cleanupFailedRegistration(
+      admin,
+      registration.id,
+      people.map((person) => person.id)
+    );
     return NextResponse.json({ error: "Failed to create memberships" }, { status: 500 });
   }
 
@@ -330,7 +389,15 @@ export async function POST(request: Request) {
     });
   } catch (invoiceErr) {
     logger.error("[registration/submit] Invoice creation failed", { error: String(invoiceErr) });
-    // Non-fatal: registration is still valid, invoice can be created later
+    await cleanupFailedRegistration(
+      admin,
+      registration.id,
+      people.map((person) => person.id)
+    );
+    return NextResponse.json(
+      { error: "Failed to create invoice" },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({
