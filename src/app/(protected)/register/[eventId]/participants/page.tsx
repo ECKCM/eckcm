@@ -525,7 +525,8 @@ export default function ParticipantsStep() {
 
   const isNoHomeChurch = (churchId: string | undefined) => {
     if (!churchId) return false;
-    return churches.find((c) => c.id === churchId)?.name_en === "No Home Church";
+    const name = churches.find((c) => c.id === churchId)?.name_en ?? "";
+    return name.replace(/\W/g, "").toLowerCase() === "nohomechurch";
   };
 
   // Name change handler: filter → uppercase, auto-populate displayNameKo
@@ -1103,6 +1104,9 @@ export default function ParticipantsStep() {
                           {!p.noEmail && (
                             <>
                               <Label className="text-xs">Email <span className="text-destructive">*</span></Label>
+                              {state.registrationType === "others" && p.isRepresentative && (
+                                <p className="text-xs text-muted-foreground">You may change this to the email of the person you are registering on behalf of.</p>
+                              )}
                               <Input
                                 type="email"
                                 value={p.email}
@@ -1201,6 +1205,7 @@ export default function ParticipantsStep() {
                         {/* Church */}
                         <div className="space-y-1">
                           <Label className="text-xs">Church <span className="text-destructive">*</span></Label>
+                          <p className="text-xs text-muted-foreground">You can type to search for your church.</p>
                           <ChurchCombobox
                             churches={churches}
                             value={p.churchId ?? ""}

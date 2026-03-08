@@ -277,32 +277,37 @@ export default function RegistrationStep1() {
         <CardContent className="space-y-4">
           {/* Registration Type Toggle */}
           <div className="space-y-2">
-            <Label>Who is this registration for?</Label>
+            <Label>Does this registration include you?</Label>
+            <p className="text-xs text-muted-foreground">
+              Select &quot;No&quot; if you are registering on behalf of someone else.
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
                 size="sm"
+                className="truncate"
                 variant={state.registrationType === "self" ? "default" : "outline"}
                 onClick={() => handleRegistrationTypeChange("self")}
               >
-                For Myself
+                Yes
               </Button>
               <Button
                 type="button"
                 size="sm"
+                className="truncate"
                 variant={state.registrationType === "others" ? "default" : "outline"}
                 onClick={() => handleRegistrationTypeChange("others")}
               >
-                For Someone Else
+                No
               </Button>
             </div>
             {state.registrationType === "others" && userProfile && (
               <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
                 <p className="font-medium text-blue-900">
-                  Registering on behalf of someone else
+                  Registering on behalf of another group
                 </p>
                 <p className="text-blue-700 mt-1">
-                  Signed in as <span className="font-semibold">{userProfile.name}</span> ({userProfile.email}).
+                  Signed in as <span className="font-semibold">{userProfile.name}</span> (<span className="break-all">{userProfile.email}</span>).
                   The registration will be linked to your account.
                 </p>
               </div>

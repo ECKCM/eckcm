@@ -133,24 +133,24 @@ export function DateRangePicker({
             )}
           >
             <CalendarIcon className="mr-2 size-4 shrink-0 text-muted-foreground" />
-            <span className="font-medium">
+            <span className="truncate font-medium">
               {startDate
                 ? format(toDate(startDate), "EEE, MMM d")
                 : "Check-in"}
             </span>
-            <span className="flex-1 text-center text-muted-foreground">—</span>
-            <span className="font-medium">
+            <span className="shrink-0 px-1 text-center text-muted-foreground">—</span>
+            <span className="truncate font-medium text-right">
               {endDate ? format(toDate(endDate), "EEE, MMM d") : "Check-out"}
             </span>
           </button>
         </PopoverTrigger>
 
         {/* Popover — header + calendar */}
-        <PopoverContent className="min-w-[340px] overflow-hidden p-0" align="center" sideOffset={4}>
-          <div className="flex items-center justify-between border-b px-4 py-2.5">
-            <div className="flex items-center gap-1">
-              <CalendarIcon className="mr-1.5 size-3.5 text-muted-foreground" />
-              <span className="text-sm font-medium">
+        <PopoverContent className="w-[min(340px,calc(100vw-2rem))] overflow-hidden p-0" align="center" sideOffset={4}>
+          <div className="flex items-center justify-between border-b px-3 py-2.5">
+            <div className="flex items-center gap-1 min-w-0">
+              <CalendarIcon className="mr-1 size-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate text-sm font-medium">
                 {startDate
                   ? format(toDate(startDate), "EEE, MMM d")
                   : "Check-in"}
@@ -170,8 +170,8 @@ export function DateRangePicker({
                 <ChevronRight className="size-3.5 text-muted-foreground" />
               </button>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="text-sm font-medium">
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="truncate text-sm font-medium">
                 {endDate ? format(toDate(endDate), "EEE, MMM d") : "Check-out"}
               </span>
               <button

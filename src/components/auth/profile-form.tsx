@@ -114,7 +114,7 @@ export function ProfileForm({
 
   const selectedChurch = churches.find((c) => c.id === form.churchId);
   const showChurchOther = selectedChurch?.is_other ?? false;
-  const isNoHomeChurch = selectedChurch?.name_en === "No Home Church";
+  const isNoHomeChurch = (selectedChurch?.name_en ?? "").replace(/\W/g, "").toLowerCase() === "nohomechurch";
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
