@@ -32,8 +32,8 @@ import { logActivity } from "@/lib/audit-client";
 interface Church {
   id: string;
   name_en: string;
+  name_ko: string | null;
   is_other: boolean;
-  sort_order: number;
   is_active: boolean;
 }
 
@@ -56,14 +56,14 @@ export function ChurchesManager({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name_en: "",
-    sort_order: "0",
+    name_ko: "",
     is_active: true,
   });
   const [deleteTarget, setDeleteTarget] = useState<Church | null>(null);
 
   const openCreate = () => {
     setEditingId(null);
-    setForm({ name_en: "", sort_order: "0", is_active: true });
+    setForm({ name_en: "", name_ko: "", is_active: true });
     setDialogOpen(true);
   };
 
@@ -71,7 +71,7 @@ export function ChurchesManager({
     setEditingId(church.id);
     setForm({
       name_en: church.name_en,
-      sort_order: church.sort_order.toString(),
+      name_ko: church.name_ko ?? "",
       is_active: church.is_active,
     });
     setDialogOpen(true);
@@ -87,7 +87,7 @@ export function ChurchesManager({
 
     const payload = {
       name_en: form.name_en,
-      sort_order: parseInt(form.sort_order) || 0,
+      name_ko: form.name_ko || null,
       is_active: form.is_active,
     };
 
@@ -127,7 +127,7 @@ export function ChurchesManager({
       .from("eckcm_churches")
       .select("*")
       .order("is_other", { ascending: false })
-      .order("sort_order");
+      .order("name_en");
     setChurches(data ?? []);
   };
 
@@ -181,13 +181,13 @@ export function ChurchesManager({
                 />
               </div>
               <div className="space-y-1">
-                <Label>Sort Order</Label>
+                <Label>Korean Name</Label>
                 <Input
-                  type="number"
-                  value={form.sort_order}
+                  value={form.name_ko}
                   onChange={(e) =>
-                    setForm({ ...form, sort_order: e.target.value })
+                    setForm({ ...form, name_ko: e.target.value })
                   }
+                  placeholder="은혜한인교회"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -215,7 +215,7 @@ export function ChurchesManager({
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Order</TableHead>
+            <TableHead>Korean</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -231,7 +231,7 @@ export function ChurchesManager({
                   )}
                 </div>
               </TableCell>
-              <TableCell>{church.sort_order}</TableCell>
+              <TableCell className="text-muted-foreground">{church.name_ko ?? ""}</TableCell>
               <TableCell>
                 <Badge
                   variant={church.is_active ? "default" : "secondary"}

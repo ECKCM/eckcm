@@ -160,7 +160,7 @@ export default function ParticipantsStep() {
     { id: string; name_en: string; name_ko: string }[]
   >([]);
   const [churches, setChurches] = useState<
-    { id: string; name_en: string; is_other: boolean }[]
+    { id: string; name_en: string; name_ko: string | null; is_other: boolean }[]
   >([]);
   const [eventDates, setEventDates] = useState<{
     eventStartDate: string;
@@ -250,10 +250,10 @@ export default function ParticipantsStep() {
           .order("sort_order"),
         supabase
           .from("eckcm_churches")
-          .select("id, name_en, is_other")
+          .select("id, name_en, name_ko, is_other")
           .eq("is_active", true)
           .order("is_other", { ascending: false })
-          .order("sort_order"),
+          .order("name_en"),
         supabase
           .from("eckcm_events")
           .select("event_start_date, event_end_date, allow_add_group")

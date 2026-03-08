@@ -24,6 +24,7 @@ import type { Gender, Grade, ChurchRole } from "@/lib/types/database";
 interface Church {
   id: string;
   name_en: string;
+  name_ko: string | null;
   is_other: boolean;
 }
 

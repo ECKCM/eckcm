@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 interface Church {
   id: string;
   name_en: string;
+  name_ko: string | null;
   is_other: boolean;
 }
 
@@ -44,17 +45,20 @@ export function ChurchCombobox({
     [churches]
   );
 
-  const names = useMemo(() => sorted.map((c) => c.name_en), [sorted]);
+  const displayLabel = (c: Church) =>
+    c.name_ko ? `${c.name_en} (${c.name_ko})` : c.name_en;
+
+  const labels = useMemo(() => sorted.map(displayLabel), [sorted]);
   const selected = churches.find((c) => c.id === value);
 
   return (
     <Combobox
-      value={selected?.name_en ?? null}
-      onValueChange={(name) => {
-        const church = churches.find((c) => c.name_en === name);
+      value={selected ? displayLabel(selected) : null}
+      onValueChange={(label) => {
+        const church = sorted.find((c) => displayLabel(c) === label);
         onValueChange(church?.id ?? "");
       }}
-      items={names}
+      items={labels}
     >
       <ComboboxInput
         placeholder={placeholder}

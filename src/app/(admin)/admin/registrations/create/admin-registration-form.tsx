@@ -52,6 +52,7 @@ interface DeptOption {
 interface ChurchOption {
   id: string;
   name_en: string;
+  name_ko: string | null;
   is_other: boolean;
 }
 
@@ -156,9 +157,9 @@ export function AdminRegistrationForm() {
           .order("sort_order"),
         supabase
           .from("eckcm_churches")
-          .select("id, name_en, is_other")
+          .select("id, name_en, name_ko, is_other")
           .eq("is_active", true)
-          .order("sort_order"),
+          .order("name_en"),
       ]);
       setEvents(eventsRes.data ?? []);
       setDepartments(deptsRes.data ?? []);

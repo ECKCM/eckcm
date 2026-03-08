@@ -37,6 +37,7 @@ import {
 interface Church {
   id: string;
   name_en: string;
+  name_ko: string | null;
   is_other: boolean;
 }
 

@@ -10,7 +10,7 @@ export default async function ChurchesPage() {
     .from("eckcm_churches")
     .select("*")
     .order("is_other", { ascending: false })
-    .order("sort_order");
+    .order("name_en");
 
   return (
     <div className="flex flex-col">

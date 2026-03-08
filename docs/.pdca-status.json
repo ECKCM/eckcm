@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-08T11:50:38.652Z",
+  "lastUpdated": "2026-03-08T20:24:08.459Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -127,9 +127,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:03:38.722Z",
-        "lastUpdated": "2026-03-07T01:33:57.433Z"
+        "lastUpdated": "2026-03-08T20:22:30.052Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/birth-date-picker.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/components/shared/church-combobox.tsx"
     },
     "stripe-config": {
       "phase": "do",
@@ -335,7 +335,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:31:41.703Z",
-        "lastUpdated": "2026-03-08T11:50:38.652Z"
+        "lastUpdated": "2026-03-08T20:23:11.447Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
@@ -439,7 +439,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T22:59:34.092Z",
-        "lastUpdated": "2026-03-08T11:43:12.362Z"
+        "lastUpdated": "2026-03-08T20:23:51.199Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/components/auth/profile-form.tsx"
     },
@@ -608,7 +608,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:43:46.655Z",
-        "lastUpdated": "2026-02-27T06:51:09.339Z"
+        "lastUpdated": "2026-03-08T20:24:08.459Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/settings/profile-settings.tsx"
     },
@@ -998,7 +998,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-02T13:55:00.301Z",
-        "lastUpdated": "2026-03-06T06:52:15.059Z"
+        "lastUpdated": "2026-03-08T20:23:27.626Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(auth)/signup/complete-profile/page.tsx"
     },
@@ -1102,7 +1102,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-03T05:41:16.253Z",
-        "lastUpdated": "2026-03-03T06:08:25.512Z"
+        "lastUpdated": "2026-03-08T20:23:38.291Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/registrations/create/admin-registration-form.tsx"
     },
@@ -1206,9 +1206,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-03T22:08:27.501Z",
-        "lastUpdated": "2026-03-04T22:08:01.629Z"
+        "lastUpdated": "2026-03-08T20:22:10.748Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/churches/churches-manager.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/churches/page.tsx"
     },
     "fees": {
       "phase": "do",
@@ -6981,6 +6981,132 @@
     {
       "timestamp": "2026-03-08T11:50:38.652Z",
       "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:21:19.332Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:21:25.974Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:21:30.165Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:21:35.066Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:21:39.753Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:21:46.390Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:21:52.969Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:21:57.575Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:22:01.439Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:22:10.748Z",
+      "feature": "churches",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:22:19.226Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:22:30.052Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:22:45.839Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:22:50.171Z",
+      "feature": "create",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:22:55.821Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:23:11.447Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:23:16.880Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:23:27.626Z",
+      "feature": "complete-profile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:23:38.291Z",
+      "feature": "create",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:23:51.199Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-08T20:24:08.459Z",
+      "feature": "settings",
       "phase": "do",
       "action": "updated"
     }

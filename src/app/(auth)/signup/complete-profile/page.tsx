@@ -26,6 +26,7 @@ import Link from "next/link";
 interface Church {
   id: string;
   name_en: string;
+  name_ko: string | null;
   is_other: boolean;
 }
 
@@ -141,9 +142,9 @@ export default function CompleteProfilePage() {
       const [churchRes, deptRes, eventRes] = await Promise.all([
         supabase
           .from("eckcm_churches")
-          .select("id, name_en, is_other")
+          .select("id, name_en, name_ko, is_other")
           .eq("is_active", true)
-          .order("sort_order"),
+          .order("name_en"),
         supabase
           .from("eckcm_departments")
           .select("id, name_en, name_ko")
