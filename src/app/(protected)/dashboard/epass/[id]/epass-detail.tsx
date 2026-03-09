@@ -19,6 +19,7 @@ interface EPassDetailProps {
       display_name_ko: string | null;
       gender: string;
       birth_date: string;
+      church_other: string | null;
       eckcm_churches: { name_en: string } | null;
     };
     eckcm_registrations: {
@@ -124,8 +125,8 @@ export function EPassDetail({ token }: EPassDetailProps) {
               <h2 className="text-4xl font-bold tracking-tight">
                 {person.display_name_ko || `${person.first_name_en} ${person.last_name_en}`}
               </h2>
-              {person.eckcm_churches?.name_en && (
-                <p className="text-xl text-muted-foreground mt-1">{person.eckcm_churches.name_en}</p>
+              {(person.church_other || person.eckcm_churches?.name_en) && (
+                <p className="text-xl text-muted-foreground mt-1">{person.church_other || person.eckcm_churches?.name_en}</p>
               )}
             </div>
 

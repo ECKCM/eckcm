@@ -168,7 +168,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
             role,
             eckcm_people!inner(
               first_name_en, last_name_en, display_name_ko,
-              email, phone,
+              email, phone, church_other,
               eckcm_churches(name_en),
               eckcm_departments(name_en)
             )
@@ -222,7 +222,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
               registrantNameKo = m.eckcm_people.display_name_ko;
               registrantEmail = m.eckcm_people.email;
               registrantPhone = m.eckcm_people.phone;
-              registrantChurch = m.eckcm_people.eckcm_churches?.name_en ?? null;
+              registrantChurch = m.eckcm_people.church_other || m.eckcm_people.eckcm_churches?.name_en || null;
               registrantDept = m.eckcm_people.eckcm_departments?.name_en ?? null;
             }
           }
@@ -308,7 +308,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         participant_code,
         eckcm_people!inner(
           first_name_en, last_name_en, display_name_ko,
-          gender, age_at_event, is_k12, grade,
+          gender, age_at_event, is_k12, grade, church_other,
           eckcm_churches(name_en),
           eckcm_departments(name_en)
         ),
@@ -326,7 +326,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         age_at_event: m.eckcm_people.age_at_event,
         is_k12: m.eckcm_people.is_k12 ?? false,
         grade: m.eckcm_people.grade,
-        church_name: m.eckcm_people.eckcm_churches?.name_en ?? null,
+        church_name: m.eckcm_people.church_other || m.eckcm_people.eckcm_churches?.name_en || null,
         department_name: m.eckcm_people.eckcm_departments?.name_en ?? null,
         group_code: m.eckcm_groups.display_group_code,
         role: m.role,
