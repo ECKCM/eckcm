@@ -5,6 +5,7 @@ import { ColorThemeProvider } from "@/components/shared/color-theme-provider";
 import { I18nProvider } from "@/lib/i18n/context";
 import { getAppColorTheme } from "@/lib/app-config";
 import { DEFAULT_COLOR_THEME } from "@/lib/color-theme";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const siteUrl =
@@ -97,6 +98,7 @@ export default async function RootLayout({
           </ColorThemeProvider>
           <Toaster />
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
