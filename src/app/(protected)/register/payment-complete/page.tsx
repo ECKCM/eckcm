@@ -42,6 +42,21 @@ export default function PaymentCompletePage() {
       const { status, registrationId, confirmationCode } = await res.json();
 
       if (status === "succeeded" || status === "processing") {
+        // Confirm payment server-side (generates E-Pass + sends email)
+        try {
+          const confirmRes = await fetch("/api/payment/confirm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ registrationId, paymentIntentId }),
+          });
+          if (!confirmRes.ok) {
+            const err = await confirmRes.json().catch(() => ({}));
+            console.error("[payment-complete] confirm failed:", confirmRes.status, err);
+          }
+        } catch (err) {
+          console.error("[payment-complete] confirm fetch error:", err);
+        }
+
         // Find the eventId from the registration
         const eventRes = await fetch(
           `/api/registration/${registrationId}/event-id`

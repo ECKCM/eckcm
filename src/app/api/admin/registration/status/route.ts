@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -135,12 +136,14 @@ export async function PATCH(request: Request) {
       }
     }
 
-    // Send confirmation email (non-blocking)
-    try {
-      await sendConfirmationEmail(registrationId);
-    } catch (err) {
-      logger.error("[admin/registration/status] Failed to send confirmation email", { error: String(err) });
-    }
+    // Send confirmation email (non-blocking — runs after response to avoid timeout)
+    after(async () => {
+      try {
+        await sendConfirmationEmail(registrationId);
+      } catch (err) {
+        logger.error("[admin/registration/status] Failed to send confirmation email", { error: String(err) });
+      }
+    });
   }
 
   // Audit log

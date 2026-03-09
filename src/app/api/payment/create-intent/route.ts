@@ -240,13 +240,19 @@ export async function POST(request: Request) {
     const { error: paymentInsertError } = await admin.from("eckcm_payments").insert({
       invoice_id: invoice.id,
       stripe_payment_intent_id: paymentIntent.id,
-      payment_method: "STRIPE",
+      payment_method: "CARD",
       amount_cents: chargeAmount,
       status: "PENDING",
     });
 
     if (paymentInsertError) {
       logger.error("[create-intent] Failed to insert payment record", { error: paymentInsertError?.message ?? JSON.stringify(paymentInsertError) });
+      // Cancel the Stripe PaymentIntent since we can't track it
+      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {});
+      return NextResponse.json(
+        { error: "Failed to create payment record" },
+        { status: 500 }
+      );
     }
   }
 
