@@ -52,6 +52,11 @@ export interface ParticipantInput {
   checkOutDate?: string; // YYYY-MM-DD, participant-specific override
   isDateOverridden?: boolean; // true if participant manually changed their dates
   tshirtSize?: string; // XS, S, M, L, XL
+  guardianName?: string; // required if representative is minor
+  guardianPhone?: string; // required if representative is minor
+  guardianPhoneCountry?: string; // US|CA|KR|OTHER
+  guardianConsent?: boolean; // required if representative is minor
+  guardianSignature?: string; // data URL of e-signature
   mealSelections: MealSelection[];
 }
 

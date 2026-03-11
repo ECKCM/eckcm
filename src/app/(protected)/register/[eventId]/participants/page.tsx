@@ -59,6 +59,7 @@ import { ChurchCombobox } from "@/components/shared/church-combobox";
 import { MealSelectionGrid } from "@/components/registration/meal-selection-grid";
 import { DateRangePicker } from "@/components/registration/date-range-picker";
 import { BirthDatePicker } from "@/components/shared/birth-date-picker";
+import { SignaturePad } from "@/components/shared/signature-pad";
 
 interface MealFeeCat {
   code: string;
@@ -104,6 +105,11 @@ function createEmptyParticipant(isRepresentative: boolean): ParticipantInput {
     phone: "",
     phoneCountry: "US",
     email: "",
+    guardianName: "",
+    guardianPhone: "",
+    guardianPhoneCountry: "US",
+    guardianConsent: false,
+    guardianSignature: "",
     mealSelections: [],
   };
 }
@@ -721,6 +727,21 @@ export default function ParticipantsStep() {
         : new Date(state.startDate + "T00:00:00");
       if (calculateAge(birthDate, refDate) < 11) {
         errs.birthYear = "Representative must be at least 11 years old";
+      }
+    }
+    // Guardian fields required if representative is a minor
+    if (p.isRepresentative && p.birthYear && p.birthMonth && p.birthDay) {
+      const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
+      const refDate = eventDates
+        ? new Date(eventDates.eventStartDate + "T00:00:00")
+        : new Date(state.startDate + "T00:00:00");
+      if (calculateAge(birthDate, refDate) < 18) {
+        if (!p.guardianName?.trim()) errs.guardianName = "Required";
+        else if (!NAME_PATTERN.test(p.guardianName.trim())) errs.guardianName = "Uppercase letters only";
+        if (!p.guardianPhone?.trim()) errs.guardianPhone = "Required";
+        else if (isPhoneIncomplete(p.guardianPhone, p.guardianPhoneCountry ?? "US")) errs.guardianPhone = "Enter a complete phone number";
+        if (!p.guardianSignature) errs.guardianSignature = "Signature is required";
+        if (!p.guardianConsent) errs.guardianConsent = "You must confirm guardian authorization";
       }
     }
     return errs;
@@ -1555,6 +1576,89 @@ export default function ParticipantsStep() {
                             />
                           );
                         })()}
+
+                        {/* Parent/Guardian (shown when representative is a minor) */}
+                        {p.isRepresentative && (() => {
+                          if (!p.birthYear || !p.birthMonth || !p.birthDay) return false;
+                          const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
+                          const refDate = eventDates
+                            ? new Date(eventDates.eventStartDate + "T00:00:00")
+                            : new Date(state.startDate + "T00:00:00");
+                          return calculateAge(birthDate, refDate) < 18;
+                        })() && (
+                          <div className="space-y-4 rounded-md border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+                            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                              The registrant is a minor. Parent/guardian information is required.
+                            </p>
+
+                            {/* Guardian Info Section */}
+                            <div className="space-y-3">
+                              <p className="text-xs font-medium">Guardian who attends camp meeting Information</p>
+
+                              {/* Guardian Name */}
+                              <div className="space-y-1">
+                                <Label className="text-xs">Guardian Name (Legal) <span className="text-destructive">*</span></Label>
+                                <Input
+                                  value={p.guardianName ?? ""}
+                                  onChange={(e) => updateParticipant(gi, pi, "guardianName", filterName(e.target.value))}
+                                  placeholder="Full name of guardian"
+                                  className={errs.guardianName ? "border-destructive" : ""}
+                                />
+                                {errs.guardianName && <p className="text-xs text-destructive">{errs.guardianName}</p>}
+                              </div>
+
+                              {/* Guardian Phone */}
+                              <div className="space-y-1">
+                                <Label className="text-xs">Guardian Phone <span className="text-destructive">*</span></Label>
+                                <PhoneInput
+                                  value={p.guardianPhone ?? ""}
+                                  countryCode={p.guardianPhoneCountry ?? "US"}
+                                  onChange={(v) => updateParticipant(gi, pi, "guardianPhone", v)}
+                                  onCountryChange={(c) => updateParticipant(gi, pi, "guardianPhoneCountry", c)}
+                                  error={!!errs.guardianPhone || isPhoneIncomplete(p.guardianPhone ?? "", p.guardianPhoneCountry ?? "US")}
+                                />
+                                {(errs.guardianPhone || isPhoneIncomplete(p.guardianPhone ?? "", p.guardianPhoneCountry ?? "US")) && (
+                                  <p className="text-xs text-destructive">{errs.guardianPhone || "Enter a complete phone number"}</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Consent and Acknowledgement */}
+                            <div className="space-y-3 border-t border-amber-200 pt-3 dark:border-amber-800">
+                              <p className="text-xs font-medium">Consent and Acknowledgement</p>
+                              <p className="text-xs">By signing this form, I confirm the following:</p>
+                              <ol className="list-decimal pl-5 space-y-1.5 text-xs leading-relaxed">
+                                <li>I authorize my child to attend the camp meeting unaccompanied by me or another legal guardian.</li>
+                                <li>I understand that my child will be under the supervision of the camp meeting organizers and adult volunteers/staff.</li>
+                                <li>I give permission for the camp meeting organizers to direct, supervise, and make reasonable decisions regarding the care and behavior of my child during the event.</li>
+                                <li>I acknowledge that I have provided all relevant medical, allergy, or emergency contact information necessary for the safety and well-being of my child.</li>
+                                <li>I release and hold harmless the camp meeting organizers, staff, and volunteers from any liability that may arise during the course of this camp meeting, except in cases of gross negligence or willful misconduct.</li>
+                              </ol>
+
+                              {/* E-Signature */}
+                              <SignaturePad
+                                value={p.guardianSignature ?? ""}
+                                onChange={(dataUrl) => updateParticipant(gi, pi, "guardianSignature", dataUrl)}
+                                error={!!errs.guardianSignature}
+                              />
+                              {errs.guardianSignature && <p className="text-xs text-destructive">{errs.guardianSignature}</p>}
+                            </div>
+
+                            {/* Consent Checkbox */}
+                            <div className="flex items-start gap-2 border-t border-amber-200 pt-3 dark:border-amber-800">
+                              <input
+                                type="checkbox"
+                                checked={p.guardianConsent ?? false}
+                                onChange={(e) => updateParticipant(gi, pi, "guardianConsent", e.target.checked)}
+                                className="mt-0.5"
+                              />
+                              <Label className="text-xs font-normal leading-relaxed">
+                                I understand that the registrant is a minor. I confirm that the parent/guardian listed above has authorized this minor to serve as the group representative, and I consent to the parent/guardian being contacted in case of any issues or emergencies.
+                              </Label>
+                            </div>
+                            {errs.guardianConsent && <p className="text-xs text-destructive">{errs.guardianConsent}</p>}
+                          </div>
+                        )}
 
                         {/* Save & Continue */}
                         <Button

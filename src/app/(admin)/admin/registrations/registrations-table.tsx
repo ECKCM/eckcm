@@ -41,11 +41,13 @@ interface RegistrationRow {
   id: string;
   confirmation_code: string;
   status: string;
+  registration_type: string;
   start_date: string;
   end_date: string;
   nights_count: number;
   total_amount_cents: number;
   notes: string | null;
+  additional_requests: string | null;
   created_at: string;
   updated_at: string;
   group_count: number;
@@ -56,6 +58,8 @@ interface RegistrationRow {
   registrant_phone: string | null;
   registrant_church: string | null;
   registrant_department: string | null;
+  registrant_guardian_name: string | null;
+  registrant_guardian_phone: string | null;
   registration_group_name: string | null;
   invoice_number: string | null;
   payment_status: string | null;
@@ -73,11 +77,17 @@ interface PersonDetail {
   last_name_en: string;
   display_name_ko: string | null;
   gender: string;
+  birth_date: string | null;
   age_at_event: number | null;
   is_k12: boolean;
   grade: string | null;
+  email: string | null;
+  phone: string | null;
+  phone_country: string | null;
   church_name: string | null;
   department_name: string | null;
+  guardian_name: string | null;
+  guardian_phone: string | null;
   group_code: string;
   role: string;
   participant_code: string | null;
@@ -143,11 +153,13 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         id,
         confirmation_code,
         status,
+        registration_type,
         start_date,
         end_date,
         nights_count,
         total_amount_cents,
         notes,
+        additional_requests,
         created_at,
         updated_at,
         eckcm_registration_groups(name_en),
@@ -168,7 +180,8 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
             role,
             eckcm_people!inner(
               first_name_en, last_name_en, display_name_ko,
-              email, phone, church_other,
+              email, phone, phone_country, church_other,
+              guardian_name, guardian_phone,
               eckcm_churches(name_en),
               eckcm_departments(name_en)
             )
@@ -201,6 +214,8 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         let registrantPhone: string | null = null;
         let registrantChurch: string | null = null;
         let registrantDept: string | null = null;
+        let registrantGuardianName: string | null = null;
+        let registrantGuardianPhone: string | null = null;
         let repPersonId: string | null = null;
         const roomNumbers: string[] = [];
 
@@ -224,6 +239,8 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
               registrantPhone = m.eckcm_people.phone;
               registrantChurch = m.eckcm_people.church_other || m.eckcm_people.eckcm_churches?.name_en || null;
               registrantDept = m.eckcm_people.eckcm_departments?.name_en ?? null;
+              registrantGuardianName = m.eckcm_people.guardian_name ?? null;
+              registrantGuardianPhone = m.eckcm_people.guardian_phone ?? null;
             }
           }
         }
@@ -249,11 +266,13 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
           id: r.id,
           confirmation_code: r.confirmation_code,
           status: r.status,
+          registration_type: r.registration_type,
           start_date: r.start_date,
           end_date: r.end_date,
           nights_count: r.nights_count,
           total_amount_cents: r.total_amount_cents,
           notes: r.notes,
+          additional_requests: r.additional_requests ?? null,
           created_at: r.created_at,
           updated_at: r.updated_at,
           group_count: groups.length,
@@ -264,6 +283,8 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
           registrant_phone: registrantPhone,
           registrant_church: registrantChurch,
           registrant_department: registrantDept,
+          registrant_guardian_name: registrantGuardianName,
+          registrant_guardian_phone: registrantGuardianPhone,
           registration_group_name: r.eckcm_registration_groups?.name_en ?? null,
           invoice_number: invoice?.invoice_number ?? null,
           payment_status: paymentStatus ?? invoice?.status ?? null,
@@ -308,7 +329,9 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         participant_code,
         eckcm_people!inner(
           first_name_en, last_name_en, display_name_ko,
-          gender, age_at_event, is_k12, grade, church_other,
+          gender, birth_date, age_at_event, is_k12, grade,
+          email, phone, phone_country, church_other,
+          guardian_name, guardian_phone,
           eckcm_churches(name_en),
           eckcm_departments(name_en)
         ),
@@ -323,11 +346,17 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         last_name_en: m.eckcm_people.last_name_en,
         display_name_ko: m.eckcm_people.display_name_ko,
         gender: m.eckcm_people.gender,
+        birth_date: m.eckcm_people.birth_date,
         age_at_event: m.eckcm_people.age_at_event,
         is_k12: m.eckcm_people.is_k12 ?? false,
         grade: m.eckcm_people.grade,
+        email: m.eckcm_people.email,
+        phone: m.eckcm_people.phone,
+        phone_country: m.eckcm_people.phone_country,
         church_name: m.eckcm_people.church_other || m.eckcm_people.eckcm_churches?.name_en || null,
         department_name: m.eckcm_people.eckcm_departments?.name_en ?? null,
+        guardian_name: m.eckcm_people.guardian_name,
+        guardian_phone: m.eckcm_people.guardian_phone,
         group_code: m.eckcm_groups.display_group_code,
         role: m.role,
         participant_code: m.participant_code,
@@ -378,7 +407,9 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
       (r.registrant_church?.toLowerCase().includes(q) ?? false) ||
       (r.invoice_number?.toLowerCase().includes(q) ?? false) ||
       r.room_numbers.some((rn) => rn.toLowerCase().includes(q)) ||
-      (r.notes?.toLowerCase().includes(q) ?? false)
+      (r.notes?.toLowerCase().includes(q) ?? false) ||
+      (r.additional_requests?.toLowerCase().includes(q) ?? false) ||
+      (r.registrant_guardian_name?.toLowerCase().includes(q) ?? false)
     );
   });
 
@@ -497,8 +528,12 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                     <TableHead className="whitespace-nowrap">Check-in</TableHead>
                     <TableHead className="whitespace-nowrap">Check-out</TableHead>
                     <TableHead className="whitespace-nowrap">Nights</TableHead>
+                    <TableHead className="whitespace-nowrap">Reg Type</TableHead>
                     <TableHead className="whitespace-nowrap">Paid At</TableHead>
+                    <TableHead className="whitespace-nowrap">Guardian</TableHead>
+                    <TableHead className="whitespace-nowrap">Guardian Phone</TableHead>
                     <TableHead className="whitespace-nowrap">Notes</TableHead>
+                    <TableHead className="whitespace-nowrap">Requests</TableHead>
                     <TableHead className="whitespace-nowrap">Registered</TableHead>
                     <TableHead className="whitespace-nowrap">Updated</TableHead>
                   </TableRow>
@@ -615,13 +650,29 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                       </TableCell>
                       {/* Nights */}
                       <TableCell>{r.nights_count}</TableCell>
+                      {/* Reg Type */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registration_type === "others" ? "Others" : "Self"}
+                      </TableCell>
                       {/* Paid At */}
                       <TableCell className="text-xs whitespace-nowrap">
                         {r.paid_at ? formatTimestamp(r.paid_at) : "-"}
                       </TableCell>
+                      {/* Guardian */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registrant_guardian_name ?? "-"}
+                      </TableCell>
+                      {/* Guardian Phone */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registrant_guardian_phone ?? "-"}
+                      </TableCell>
                       {/* Notes */}
                       <TableCell className="text-xs max-w-[200px] truncate" title={r.notes ?? ""}>
                         {r.notes ?? "-"}
+                      </TableCell>
+                      {/* Requests */}
+                      <TableCell className="text-xs max-w-[200px] truncate" title={r.additional_requests ?? ""}>
+                        {r.additional_requests ?? "-"}
                       </TableCell>
                       {/* Registered */}
                       <TableCell className="text-xs whitespace-nowrap">
@@ -636,7 +687,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                   {filtered.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={24}
+                        colSpan={28}
                         className="text-center text-muted-foreground py-8"
                       >
                         No registrations found.
@@ -803,10 +854,32 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                   <span className="text-muted-foreground">Updated:</span>{" "}
                   {formatTimestamp(detailReg.updated_at)}
                 </div>
+                <div>
+                  <span className="text-muted-foreground">Reg Type:</span>{" "}
+                  {detailReg.registration_type === "others" ? "Others" : "Self"}
+                </div>
+                {detailReg.registrant_guardian_name && (
+                  <div>
+                    <span className="text-muted-foreground">Guardian:</span>{" "}
+                    {detailReg.registrant_guardian_name}
+                  </div>
+                )}
+                {detailReg.registrant_guardian_phone && (
+                  <div>
+                    <span className="text-muted-foreground">Guardian Phone:</span>{" "}
+                    {detailReg.registrant_guardian_phone}
+                  </div>
+                )}
                 {detailReg.notes && (
                   <div className="col-span-2">
                     <span className="text-muted-foreground">Notes:</span>{" "}
                     {detailReg.notes}
+                  </div>
+                )}
+                {detailReg.additional_requests && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Additional Requests:</span>{" "}
+                    {detailReg.additional_requests}
                   </div>
                 )}
               </div>
@@ -852,13 +925,18 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                         <TableHead>Name</TableHead>
                         <TableHead>Korean</TableHead>
                         <TableHead>Gender</TableHead>
+                        <TableHead>DOB</TableHead>
                         <TableHead>Age</TableHead>
                         <TableHead>K-12</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Phone</TableHead>
                         <TableHead>Church</TableHead>
                         <TableHead>Dept</TableHead>
                         <TableHead>Group</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>P.Code</TableHead>
+                        <TableHead>Guardian</TableHead>
+                        <TableHead>Guardian Phone</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -871,8 +949,15 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                             {p.display_name_ko ?? "-"}
                           </TableCell>
                           <TableCell className="text-xs">{p.gender}</TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">{p.birth_date ?? "-"}</TableCell>
                           <TableCell>{p.age_at_event ?? "-"}</TableCell>
                           <TableCell>{p.is_k12 ? "Y" : "-"}</TableCell>
+                          <TableCell className="text-xs">
+                            {p.email ?? "-"}
+                          </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {p.phone ?? "-"}
+                          </TableCell>
                           <TableCell className="text-xs">
                             {p.church_name ?? "-"}
                           </TableCell>
@@ -890,12 +975,18 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                           <TableCell className="font-mono text-xs">
                             {p.participant_code ?? "-"}
                           </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {p.guardian_name ?? "-"}
+                          </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {p.guardian_phone ?? "-"}
+                          </TableCell>
                         </TableRow>
                       ))}
                       {detailPeople.length === 0 && !loadingDetail && (
                         <TableRow>
                           <TableCell
-                            colSpan={10}
+                            colSpan={15}
                             className="text-center text-muted-foreground py-4"
                           >
                             No participants found.

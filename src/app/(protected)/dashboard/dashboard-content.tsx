@@ -174,6 +174,7 @@ export function DashboardContent({
                     "Register for Someone Else"
                   )}
                 </Button>
+                <p className="text-xs text-muted-foreground">&quot;Register for Someone Else&quot; lets you register on behalf of others — this will not include you as a participant.</p>
               </CardContent>
             </Card>
           );

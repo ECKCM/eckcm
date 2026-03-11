@@ -43,7 +43,11 @@ interface ParticipantRow {
   phone: string | null;
   phone_country: string | null;
   church_name: string | null;
+  church_other: string | null;
   department_name: string | null;
+  guardian_name: string | null;
+  guardian_phone: string | null;
+  guardian_phone_country: string | null;
   confirmation_code: string | null;
   registration_status: string;
   registration_start: string | null;
@@ -95,7 +99,8 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
         eckcm_people!inner(
           first_name_en, last_name_en, display_name_ko,
           gender, birth_date, age_at_event, is_k12, grade,
-          email, phone, phone_country,
+          email, phone, phone_country, church_other,
+          guardian_name, guardian_phone, guardian_phone_country,
           eckcm_churches(name_en),
           eckcm_departments(name_en)
         ),
@@ -135,8 +140,12 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
           email: m.eckcm_people.email,
           phone: m.eckcm_people.phone,
           phone_country: m.eckcm_people.phone_country,
-          church_name: m.eckcm_people.eckcm_churches?.name_en ?? null,
+          church_name: m.eckcm_people.church_other || m.eckcm_people.eckcm_churches?.name_en || null,
+          church_other: m.eckcm_people.church_other,
           department_name: m.eckcm_people.eckcm_departments?.name_en ?? null,
+          guardian_name: m.eckcm_people.guardian_name ?? null,
+          guardian_phone: m.eckcm_people.guardian_phone ?? null,
+          guardian_phone_country: m.eckcm_people.guardian_phone_country ?? null,
           confirmation_code:
             m.eckcm_groups.eckcm_registrations.confirmation_code,
           registration_status: m.eckcm_groups.eckcm_registrations.status,
@@ -187,7 +196,8 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
       (p.participant_code?.toLowerCase().includes(q) ?? false) ||
       p.display_group_code.toLowerCase().includes(q) ||
       (p.church_name?.toLowerCase().includes(q) ?? false) ||
-      (p.department_name?.toLowerCase().includes(q) ?? false)
+      (p.department_name?.toLowerCase().includes(q) ?? false) ||
+      (p.guardian_name?.toLowerCase().includes(q) ?? false)
     );
   });
 
@@ -293,6 +303,8 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
                     <TableHead>Amount</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
+                    <TableHead>Guardian</TableHead>
+                    <TableHead>Guardian Phone</TableHead>
                     <TableHead className="whitespace-nowrap">
                       Registered
                     </TableHead>
@@ -369,9 +381,13 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
                         {p.email ?? "-"}
                       </TableCell>
                       <TableCell className="text-xs whitespace-nowrap">
-                        {p.phone
-                          ? `${p.phone_country ? `+${p.phone_country} ` : ""}${p.phone}`
-                          : "-"}
+                        {p.phone ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {p.guardian_name ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {p.guardian_phone ?? "-"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-xs">
                         {formatTimestamp(p.registration_created_at)}
@@ -381,7 +397,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
                   {filtered.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={24}
+                        colSpan={27}
                         className="text-center text-muted-foreground py-8"
                       >
                         No participants found.

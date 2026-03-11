@@ -48,6 +48,12 @@ const participantSchema = z
     checkInDate: dateStr.optional(),
     checkOutDate: dateStr.optional(),
     isDateOverridden: z.boolean().optional(),
+    tshirtSize: z.string().max(5).optional(),
+    guardianName: z.string().max(200).optional(),
+    guardianPhone: z.string().max(30).optional(),
+    guardianPhoneCountry: z.string().max(5).optional(),
+    guardianConsent: z.boolean().optional(),
+    guardianSignature: z.string().max(200000).optional(),
     mealSelections: z.array(mealSelectionSchema).max(100).default([]),
   })
   .superRefine((participant, ctx) => {

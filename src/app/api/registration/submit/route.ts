@@ -335,6 +335,12 @@ export async function POST(request: Request) {
         department_id: participant.departmentId || null,
         church_id: participant.churchId || null,
         church_other: participant.churchOther || null,
+        guardian_name: participant.guardianName?.trim() || null,
+        guardian_phone: participant.guardianPhone
+          ? buildPhoneValue(participant.guardianPhoneCountry || "US", participant.guardianPhone)
+          : null,
+        guardian_phone_country: participant.guardianPhoneCountry || null,
+        guardian_signature: participant.guardianSignature || null,
       });
       personGroupMap.push({ groupIdx: gi, isRep: !!participant.isRepresentative });
     }
