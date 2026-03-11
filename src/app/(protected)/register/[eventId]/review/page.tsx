@@ -265,7 +265,7 @@ export default function ReviewStep() {
       {/* Additional Requests */}
       <Card>
         <CardHeader>
-          <CardTitle>야영회 추가적인 요청 사항</CardTitle>
+          <CardTitle>Additional Requests</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">

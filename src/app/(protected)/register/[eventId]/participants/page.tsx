@@ -290,18 +290,6 @@ export default function ParticipantsStep() {
         }
       } catch {}
 
-      // Fetch meal fee categories for price display
-      if (state.registrationGroupId) {
-        const { data: feeLinks } = await supabase
-          .from("eckcm_registration_group_fee_categories")
-          .select("eckcm_fee_categories!inner(code, name_en, amount_cents, age_min, age_max, pricing_type)")
-          .eq("registration_group_id", state.registrationGroupId);
-        const fees = (feeLinks ?? [])
-          .map((row: any) => row.eckcm_fee_categories)
-          .filter((f: any) => f.code.startsWith("MEAL_") && f.pricing_type === "PER_MEAL");
-        setMealFees(fees);
-      }
-
       // Auto-fill representative from user's profile (only once)
       if (user && !representativeFilledRef.current) {
         // "others" mode: clear all fields, only pre-fill user's email (editable)
@@ -394,6 +382,22 @@ export default function ParticipantsStep() {
     };
     load();
   }, [eventId, state.startDate, state.roomGroups.length, dispatch, router]);
+
+  // Fetch meal fee categories when registration group is known
+  useEffect(() => {
+    if (!state.registrationGroupId) return;
+    const supabase = createClient();
+    supabase
+      .from("eckcm_registration_group_fee_categories")
+      .select("eckcm_fee_categories!inner(code, name_en, amount_cents, age_min, age_max, pricing_type)")
+      .eq("registration_group_id", state.registrationGroupId)
+      .then(({ data: feeLinks }) => {
+        const fees = (feeLinks ?? [])
+          .map((row: any) => row.eckcm_fee_categories)
+          .filter((f: any) => f.code.startsWith("MEAL_") && f.pricing_type === "PER_MEAL");
+        setMealFees(fees);
+      });
+  }, [state.registrationGroupId]);
 
   const addGroup = () => {
     if (state.roomGroups.length >= MAX_GROUPS) {
