@@ -281,6 +281,21 @@ export default function ParticipantsStep() {
         setAllowAddGroup(ev.allow_add_group ?? true);
       }
 
+      // Fetch meal fee categories (use registrationGroupId from state or fall back to default group)
+      const mealGroupId = state.registrationGroupId || (rgs ?? []).find((g) => g.is_default)?.id;
+      if (mealGroupId) {
+        const { data: feeLinks } = await supabase
+          .from("eckcm_registration_group_fee_categories")
+          .select(
+            "eckcm_fee_categories!inner(code, name_en, amount_cents, age_min, age_max, pricing_type)"
+          )
+          .eq("registration_group_id", mealGroupId);
+        const fees = (feeLinks ?? [])
+          .map((row: any) => row.eckcm_fee_categories)
+          .filter((f: any) => f.code.startsWith("MEAL_"));
+        if (fees.length > 0) setMealFees(fees);
+      }
+
       // Fetch app config for duplicate email setting
       try {
         const configRes = await fetch("/api/app-config");
@@ -383,15 +398,22 @@ export default function ParticipantsStep() {
     load();
   }, [eventId, state.startDate, state.roomGroups.length, dispatch, router]);
 
-  // Fetch meal fee categories when registration group is known
+  // Re-fetch meal fee categories when registration group changes (e.g., department switch)
   useEffect(() => {
     if (!state.registrationGroupId) return;
-    fetch(`/api/registration/meal-fees?groupId=${state.registrationGroupId}`)
-      .then((res) => res.json())
-      .then((fees) => {
-        if (Array.isArray(fees)) setMealFees(fees);
-      })
-      .catch(() => {});
+    const supabase = createClient();
+    supabase
+      .from("eckcm_registration_group_fee_categories")
+      .select(
+        "eckcm_fee_categories!inner(code, name_en, amount_cents, age_min, age_max, pricing_type)"
+      )
+      .eq("registration_group_id", state.registrationGroupId)
+      .then(({ data: feeLinks }) => {
+        const fees = (feeLinks ?? [])
+          .map((row: any) => row.eckcm_fee_categories)
+          .filter((f: any) => f.code.startsWith("MEAL_"));
+        if (fees.length > 0) setMealFees(fees);
+      });
   }, [state.registrationGroupId]);
 
   const addGroup = () => {
