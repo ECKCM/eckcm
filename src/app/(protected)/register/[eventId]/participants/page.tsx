@@ -386,17 +386,12 @@ export default function ParticipantsStep() {
   // Fetch meal fee categories when registration group is known
   useEffect(() => {
     if (!state.registrationGroupId) return;
-    const supabase = createClient();
-    supabase
-      .from("eckcm_registration_group_fee_categories")
-      .select("eckcm_fee_categories!inner(code, name_en, amount_cents, age_min, age_max, pricing_type)")
-      .eq("registration_group_id", state.registrationGroupId)
-      .then(({ data: feeLinks }) => {
-        const fees = (feeLinks ?? [])
-          .map((row: any) => row.eckcm_fee_categories)
-          .filter((f: any) => f.code.startsWith("MEAL_") && f.pricing_type === "PER_MEAL");
-        setMealFees(fees);
-      });
+    fetch(`/api/registration/meal-fees?groupId=${state.registrationGroupId}`)
+      .then((res) => res.json())
+      .then((fees) => {
+        if (Array.isArray(fees)) setMealFees(fees);
+      })
+      .catch(() => {});
   }, [state.registrationGroupId]);
 
   const addGroup = () => {
@@ -1321,24 +1316,29 @@ export default function ParticipantsStep() {
                             const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
                             const refDate = new Date(eventDates.eventStartDate + "T00:00:00");
                             const age = calculateAge(birthDate, refDate);
-                            const matched = mealFees.find((f) =>
+                            const matchAge = (f: typeof mealFees[0]) =>
                               (f.age_min == null || age >= f.age_min) &&
-                              (f.age_max == null || age <= f.age_max)
-                            );
-                            if (matched) {
-                              const tier = matched.name_en.replace("Meal - ", "");
-                              mealPriceLabel = matched.amount_cents === 0
-                                ? `${tier}: Free`
-                                : `${tier}: $${(matched.amount_cents / 100).toFixed(2)} per meal`;
+                              (f.age_max == null || age <= f.age_max);
+                            const perMeal = mealFees.find((f) => f.pricing_type === "PER_MEAL" && matchAge(f));
+                            const fullDay = mealFees.find((f) => f.pricing_type === "FLAT" && matchAge(f));
+                            if (perMeal) {
+                              const tier = perMeal.name_en.replace("Meal - ", "");
+                              if (perMeal.amount_cents === 0) {
+                                mealPriceLabel = `${tier}: Free`;
+                              } else {
+                                const parts = [`$${(perMeal.amount_cents / 100).toFixed(2)}/meal`];
+                                if (fullDay) parts.push(`$${(fullDay.amount_cents / 100).toFixed(2)}/full day`);
+                                mealPriceLabel = `${tier}: ${parts.join(" · ")}`;
+                              }
                             }
                           }
 
                           return (
                             <>
                               {mealPriceLabel && (
-                                <p className="text-xs text-muted-foreground font-medium">
-                                  Meal Fee: {mealPriceLabel}
-                                </p>
+                                <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
+                                  Meal Fee — {mealPriceLabel}
+                                </div>
                               )}
                               <MealSelectionGrid
                                 startDate={pDates.startDate}
