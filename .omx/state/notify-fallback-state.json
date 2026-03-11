@@ -4,6 +4,6 @@
   "cwd": "/Users/scottkim/development/eckcm",
   "notify_script": "/Users/scottkim/.npm-global/lib/node_modules/oh-my-codex/scripts/notify-hook.js",
   "poll_ms": 700,
-  "tracked_files": 2,
+  "tracked_files": 3,
   "seen_turns": 2
 }
