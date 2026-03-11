@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, CheckCircle2, Info, CircleHelp, User, CalendarIcon } from "lucide-react";
+import { Plus, Trash2, ChevronDown, CheckCircle2, Info, CircleHelp, User, CalendarIcon, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ParticipantInput, RoomGroupInput, MealSelection } from "@/lib/types/registration";
@@ -67,6 +67,25 @@ interface MealFeeCat {
   amount_cents: number;
   age_min: number | null;
   age_max: number | null;
+}
+
+interface SavedPerson {
+  id: string;
+  first_name: string;
+  last_name: string;
+  display_name_ko: string | null;
+  gender: string | null;
+  birth_year: number | null;
+  birth_month: number | null;
+  birth_day: number | null;
+  phone: string | null;
+  phone_country: string | null;
+  email: string | null;
+  church_id: string | null;
+  church_role: string | null;
+  church_other: string | null;
+  department_id: string | null;
+  tshirt_size: string | null;
 }
 
 function createEmptyParticipant(isRepresentative: boolean): ParticipantInput {
@@ -221,6 +240,10 @@ export default function ParticipantsStep() {
   // Meal fee categories for real-time pricing
   const [mealFeeCategories, setMealFeeCategories] = useState<MealFeeCat[]>([]);
 
+  // Saved persons for quick autofill
+  const [savedPersons, setSavedPersons] = useState<SavedPerson[]>([]);
+  const [removeSavedPersonTarget, setRemoveSavedPersonTarget] = useState<SavedPerson | null>(null);
+
   const isHansamoDept = (deptId: string | undefined) => {
     if (!deptId) return false;
     return departments.find((d) => d.id === deptId)?.name_en?.includes("HANSAMO") ?? false;
@@ -258,7 +281,7 @@ export default function ParticipantsStep() {
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      const [{ data: deps }, { data: chs }, { data: ev }, { data: rgs }, { data: mealFees }] = await Promise.all([
+      const [{ data: deps }, { data: chs }, { data: ev }, { data: rgs }, { data: mealFees }, { data: sp }] = await Promise.all([
         supabase
           .from("eckcm_departments")
           .select("id, name_en, name_ko")
@@ -283,12 +306,17 @@ export default function ParticipantsStep() {
           .from("eckcm_fee_categories")
           .select("code, name_en, pricing_type, amount_cents, age_min, age_max")
           .like("code", "MEAL_%"),
+        supabase
+          .from("eckcm_saved_persons")
+          .select("id, first_name, last_name, display_name_ko, gender, birth_year, birth_month, birth_day, phone, phone_country, email, church_id, church_role, church_other, department_id, tshirt_size")
+          .order("updated_at", { ascending: false }),
       ]);
 
       setDepartments(deps ?? []);
       setChurches(chs ?? []);
       setRegGroups(rgs ?? []);
       setMealFeeCategories(mealFees ?? []);
+      setSavedPersons(sp ?? []);
       if (ev) {
         setEventDates({
           eventStartDate: ev.event_start_date,
@@ -803,10 +831,102 @@ export default function ParticipantsStep() {
       return;
     }
 
+    // Upsert to saved persons for future autofill
+    const savedPersonData = {
+      user_id: user.id,
+      first_name: p.firstName.trim(),
+      last_name: p.lastName.trim(),
+      display_name_ko: p.displayNameKo?.trim() || null,
+      gender: p.gender || null,
+      birth_year: p.birthYear ?? null,
+      birth_month: p.birthMonth ?? null,
+      birth_day: p.birthDay ?? null,
+      phone: p.phone || null,
+      phone_country: p.phoneCountry || "US",
+      email: p.email || null,
+      church_id: p.churchId || null,
+      church_role: p.churchRole || null,
+      church_other: p.churchOther || null,
+      department_id: p.departmentId || null,
+      tshirt_size: p.tshirtSize || null,
+    };
+    const { data: upsertedPerson } = await supabase
+      .from("eckcm_saved_persons")
+      .upsert(savedPersonData, {
+        onConflict: "user_id,first_name,last_name,birth_year,birth_month,birth_day",
+      })
+      .select("id, first_name, last_name, display_name_ko, gender, birth_year, birth_month, birth_day, phone, phone_country, email, church_id, church_role, church_other, department_id, tshirt_size")
+      .single();
+
+    if (upsertedPerson) {
+      setSavedPersons((prev) => {
+        const filtered = prev.filter((sp) => sp.id !== upsertedPerson.id);
+        return [upsertedPerson, ...filtered];
+      });
+    }
+
     // Mark as saved and collapse
     setSavedPanels((prev) => ({ ...prev, [key]: true }));
     setOpenPanels((prev) => ({ ...prev, [key]: false }));
     toast.success(`${p.firstName || "Participant"} saved`);
+  };
+
+  // Autofill participant from a saved person
+  const fillFromSavedPerson = (gi: number, pi: number, personId: string) => {
+    const sp = savedPersons.find((s) => s.id === personId);
+    if (!sp) return;
+    const current = state.roomGroups[gi].participants[pi];
+    const filled: ParticipantInput = {
+      ...current,
+      firstName: sp.first_name,
+      lastName: sp.last_name,
+      displayNameKo: sp.display_name_ko ?? "",
+      gender: (sp.gender as Gender) ?? "",
+      birthYear: sp.birth_year ?? undefined,
+      birthMonth: sp.birth_month ?? undefined,
+      birthDay: sp.birth_day ?? undefined,
+      phone: sp.phone ?? "",
+      phoneCountry: sp.phone_country ?? "US",
+      email: (gi === 0 && pi === 0 && state.registrationType !== "others") ? current.email : (sp.email ?? ""),
+      churchId: sp.church_id ?? undefined,
+      churchRole: (sp.church_role as ParticipantInput["churchRole"]) ?? undefined,
+      churchOther: sp.church_other ?? undefined,
+      departmentId: sp.department_id ?? undefined,
+      tshirtSize: sp.tshirt_size ?? undefined,
+      mealSelections: [], // recalculate from dates
+    };
+    // Clear saved state since we changed the data
+    const key = `${gi}-${pi}`;
+    setSavedPanels((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    dispatch({
+      type: "UPDATE_PARTICIPANT",
+      groupIndex: gi,
+      participantIndex: pi,
+      participant: filled,
+    });
+    toast.success(`Filled from ${sp.first_name} ${sp.last_name}`);
+  };
+
+  // Delete a saved person (called after confirmation)
+  const deleteSavedPerson = async (personId: string) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("eckcm_saved_persons")
+      .delete()
+      .eq("id", personId);
+    if (!error) {
+      setSavedPersons((prev) => prev.filter((sp) => sp.id !== personId));
+      toast.success("Saved person removed");
+    }
   };
 
   const handleNext = () => {
@@ -942,6 +1062,44 @@ export default function ParticipantsStep() {
 
                     <CollapsibleContent>
                       <div className="space-y-2 px-3 pb-3 pt-1">
+                        {/* Saved person autofill */}
+                        {savedPersons.length > 0 && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">
+                              <UserPlus className="inline size-3 mr-1" />
+                              Autofill from saved person
+                            </Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm" className="w-full h-8 justify-start text-xs font-normal text-muted-foreground">
+                                  Select a saved person...
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-(--radix-popover-trigger-width) p-1" align="start">
+                                {savedPersons.map((sp) => (
+                                  <div
+                                    key={sp.id}
+                                    className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs cursor-pointer hover:bg-accent"
+                                    onClick={() => fillFromSavedPerson(gi, pi, sp.id)}
+                                  >
+                                    <span>{sp.first_name} {sp.last_name}</span>
+                                    <button
+                                      type="button"
+                                      className="p-1 hover:bg-destructive/10 rounded shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setRemoveSavedPersonTarget(sp);
+                                      }}
+                                    >
+                                      <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        )}
+
                         {/* Names */}
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
@@ -1490,6 +1648,36 @@ export default function ParticipantsStep() {
                 if (removeGroupTarget !== null) {
                   removeGroup(removeGroupTarget);
                   setRemoveGroupTarget(null);
+                }
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove saved person confirmation dialog */}
+      <AlertDialog
+        open={!!removeSavedPersonTarget}
+        onOpenChange={(open) => {
+          if (!open) setRemoveSavedPersonTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Saved Person</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove {removeSavedPersonTarget?.first_name} {removeSavedPersonTarget?.last_name} from your saved list?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (removeSavedPersonTarget) {
+                  deleteSavedPerson(removeSavedPersonTarget.id);
+                  setRemoveSavedPersonTarget(null);
                 }
               }}
             >
