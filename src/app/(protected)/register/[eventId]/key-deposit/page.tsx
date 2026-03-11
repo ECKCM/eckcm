@@ -86,7 +86,7 @@ export default function KeyDepositStep() {
               className="flex items-center justify-between rounded-lg border p-4"
             >
               <div>
-                <p className="font-medium">Room Group {gi + 1}</p>
+                <p className="font-medium">Room Group{state.roomGroups.length > 1 ? ` ${gi + 1}` : ""}</p>
                 <p className="text-sm text-muted-foreground">
                   {group.participants.length} participant(s)
                 </p>

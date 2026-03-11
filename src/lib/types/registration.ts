@@ -51,6 +51,7 @@ export interface ParticipantInput {
   checkInDate?: string; // YYYY-MM-DD, participant-specific override
   checkOutDate?: string; // YYYY-MM-DD, participant-specific override
   isDateOverridden?: boolean; // true if participant manually changed their dates
+  tshirtSize?: string; // XS, S, M, L, XL
   mealSelections: MealSelection[];
 }
 

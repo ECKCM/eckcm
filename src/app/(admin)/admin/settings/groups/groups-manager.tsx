@@ -57,6 +57,7 @@ interface RegistrationGroup {
   department_id: string | null;
   show_special_preferences: boolean;
   show_key_deposit: boolean;
+  show_tshirt_size: boolean;
   only_one_person: boolean;
   is_default: boolean;
   is_active: boolean;
@@ -87,6 +88,7 @@ const emptyForm = {
   department_id: "",
   show_special_preferences: true,
   show_key_deposit: true,
+  show_tshirt_size: false,
   only_one_person: false,
   is_default: false,
   is_active: true,
@@ -190,6 +192,7 @@ export function RegistrationGroupsManager() {
       department_id: group.department_id ?? "",
       show_special_preferences: group.show_special_preferences,
       show_key_deposit: group.show_key_deposit,
+      show_tshirt_size: group.show_tshirt_size,
       only_one_person: group.only_one_person,
       is_default: group.is_default,
       is_active: group.is_active,
@@ -234,6 +237,7 @@ export function RegistrationGroupsManager() {
       department_id: form.department_id || null,
       show_special_preferences: form.show_special_preferences,
       show_key_deposit: form.show_key_deposit,
+      show_tshirt_size: form.show_tshirt_size,
       only_one_person: form.only_one_person,
       is_default: form.is_default,
       is_active: form.is_active,
@@ -500,6 +504,15 @@ export function RegistrationGroupsManager() {
                     }
                   />
                   <Label>Key Deposit</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.show_tshirt_size}
+                    onCheckedChange={(checked) =>
+                      setForm({ ...form, show_tshirt_size: checked })
+                    }
+                  />
+                  <Label>T-Shirt Size</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch

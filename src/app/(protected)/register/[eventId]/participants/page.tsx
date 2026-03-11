@@ -177,7 +177,7 @@ export default function ParticipantsStep() {
   } | null>(null);
   const [allowAddGroup, setAllowAddGroup] = useState(true);
   const [regGroups, setRegGroups] = useState<
-    { id: string; department_id: string | null; is_default: boolean; only_one_person: boolean }[]
+    { id: string; department_id: string | null; is_default: boolean; only_one_person: boolean; show_tshirt_size: boolean }[]
   >([]);
 
   // Track which participants are open (accordion state)
@@ -233,6 +233,7 @@ export default function ParticipantsStep() {
   // True when current registration group enforces single-person registration
   const currentRegGroup = regGroups.find((g) => g.id === state.registrationGroupId);
   const isOnlyOnePerson = currentRegGroup?.only_one_person ?? false;
+  const showTshirtSize = currentRegGroup?.show_tshirt_size ?? false;
 
   const togglePanel = (key: string) => {
     setOpenPanels((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -276,7 +277,7 @@ export default function ParticipantsStep() {
           .single(),
         supabase
           .from("eckcm_registration_groups")
-          .select("id, department_id, is_default, only_one_person")
+          .select("id, department_id, is_default, only_one_person, show_tshirt_size")
           .eq("is_active", true),
         supabase
           .from("eckcm_fee_categories")
@@ -675,6 +676,10 @@ export default function ParticipantsStep() {
     if (p.isK12 && !p.grade) errs.grade = "Required";
     if (!p.churchId) errs.churchId = "Required";
     if (isChurchOther(p.churchId) && !p.churchOther?.trim()) errs.churchOther = "Required";
+    // T-Shirt size: required for HANSAMO dept, optional otherwise
+    if (showTshirtSize && isHansamoDept(p.departmentId) && !p.tshirtSize) {
+      errs.tshirtSize = "Required";
+    }
     // Birth date required
     if (!p.birthYear || !p.birthMonth || !p.birthDay) {
       errs.birthYear = "Date of birth is required";
@@ -864,7 +869,7 @@ export default function ParticipantsStep() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <CardTitle className="text-base">Room Group {gi + 1}</CardTitle>
+                <CardTitle className="text-base">Room Group{state.roomGroups.length > 1 ? ` ${gi + 1}` : ""}</CardTitle>
                 <div className="flex items-center gap-0.5">
                   {Array.from({ length: group.participants.length }, (_, i) => (
                     <User key={i} className={`h-3.5 w-3.5 ${savedPanels[`${gi}-${i}`] ? "text-green-500" : "text-muted-foreground"}`} />
@@ -907,7 +912,7 @@ export default function ParticipantsStep() {
                           <div className="size-4 shrink-0 rounded-full border-2 border-muted-foreground/30" />
                         )}
                         <span className="text-sm font-medium flex-1">
-                          {p.isRepresentative ? "Representative" : `Member ${pi}`}
+                          {p.isRepresentative ? `Representative (${pi + 1})` : `Member (${pi + 1})`}
                           {(p.firstName || p.lastName) && (
                             <span className="ml-2 font-normal text-muted-foreground">
                               {p.firstName} {p.lastName}
@@ -1283,15 +1288,16 @@ export default function ParticipantsStep() {
                           <div className="space-y-1">
                             <Label className="text-xs">Church Role <span className="text-muted-foreground font-normal">(Optional)</span></Label>
                             <Select
-                              value={p.churchRole ?? ""}
+                              value={p.churchRole ?? "__none__"}
                               onValueChange={(v) =>
-                                updateParticipant(gi, pi, "churchRole", v)
+                                updateParticipant(gi, pi, "churchRole", v === "__none__" ? undefined : v)
                               }
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select your church role" />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="__none__">Select your church role</SelectItem>
                                 <SelectItem value="MEMBER">Member</SelectItem>
                                 <SelectItem value="DEACON">Deacon</SelectItem>
                                 <SelectItem value="ELDER">Elder</SelectItem>
@@ -1339,6 +1345,38 @@ export default function ParticipantsStep() {
                           </div>
                         )}
 
+                        {/* T-Shirt Size - shown when group has toggle on */}
+                        {showTshirtSize && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">
+                              T-Shirt Size
+                              {isHansamoDept(p.departmentId) ? (
+                                <span className="text-destructive"> *</span>
+                              ) : (
+                                <span className="text-muted-foreground font-normal"> (Optional)</span>
+                              )}
+                            </Label>
+                            <Select
+                              value={p.tshirtSize ?? ""}
+                              onValueChange={(v) =>
+                                updateParticipant(gi, pi, "tshirtSize", v)
+                              }
+                            >
+                              <SelectTrigger className={errs.tshirtSize ? "border-destructive" : ""}>
+                                <SelectValue placeholder="Select size" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="XS">XS</SelectItem>
+                                <SelectItem value="S">S</SelectItem>
+                                <SelectItem value="M">M</SelectItem>
+                                <SelectItem value="L">L</SelectItem>
+                                <SelectItem value="XL">XL</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {errs.tshirtSize && <p className="text-xs text-destructive">{errs.tshirtSize}</p>}
+                          </div>
+                        )}
+
                         {/* Meal Selection - hidden when dates match full event period */}
                         {(() => {
                           const pDates = getParticipantDates(p);
@@ -1376,7 +1414,7 @@ export default function ParticipantsStep() {
                 </Collapsible>
               );
             })}
-            {!isHansamoRestricted && !isOnlyOnePerson && (
+            {!isHansamoRestricted && !isOnlyOnePerson && group.participants.length < MAX_PARTICIPANTS_PER_GROUP && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1442,7 +1480,7 @@ export default function ParticipantsStep() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Room Group</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove Room Group {removeGroupTarget !== null ? removeGroupTarget + 1 : ""}?
+              Are you sure you want to remove Room Group{removeGroupTarget !== null && state.roomGroups.length > 1 ? ` ${removeGroupTarget + 1}` : ""}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

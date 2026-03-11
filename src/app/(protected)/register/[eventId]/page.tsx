@@ -103,7 +103,7 @@ export default function RegistrationStep1() {
               .select("id, confirmation_code, status")
               .eq("event_id", eventId)
               .eq("created_by_user_id", user.id)
-              .in("status", ["DRAFT", "SUBMITTED", "PAID"])
+              .in("status", ["SUBMITTED", "PAID"])
               .neq("registration_type", "others")
               .limit(1)
               .maybeSingle();
@@ -218,43 +218,25 @@ export default function RegistrationStep1() {
   }
 
   if (existingRegistration) {
-    const isDraft = existingRegistration.status === "DRAFT";
     return (
       <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
         <h1 className="text-2xl font-bold text-center">{event.name_en}</h1>
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col items-center gap-4 text-center">
-              <AlertCircle className={`size-12 ${isDraft ? "text-blue-500" : "text-amber-500"}`} />
+              <AlertCircle className="size-12 text-amber-500" />
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold">
-                  {isDraft ? "Registration Pending Payment" : "Already Registered"}
-                </h2>
+                <h2 className="text-lg font-semibold">Already Registered</h2>
                 <p className="text-muted-foreground">
-                  {isDraft
-                    ? "You have a registration awaiting payment."
-                    : "You already have a registration for this event."}
+                  You already have a registration for this event.
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Confirmation Code: <span className="font-mono font-semibold text-foreground">{existingRegistration.confirmationCode}</span>
                 </p>
               </div>
-              <div className="flex gap-3">
-                {isDraft && (
-                  <Button
-                    onClick={() =>
-                      router.push(
-                        `/register/${eventId}/payment?registrationId=${existingRegistration.id}&code=${existingRegistration.confirmationCode}`
-                      )
-                    }
-                  >
-                    Continue to Payment
-                  </Button>
-                )}
-                <Button variant={isDraft ? "outline" : "default"} onClick={() => router.push("/dashboard")}>
-                  Go to Dashboard
-                </Button>
-              </div>
+              <Button onClick={() => router.push("/dashboard")}>
+                Go to Dashboard
+              </Button>
             </div>
           </CardContent>
         </Card>

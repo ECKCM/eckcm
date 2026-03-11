@@ -121,7 +121,7 @@ export default function LodgingStep() {
     // Validate: each room group must have a lodging type selected
     for (let i = 0; i < state.roomGroups.length; i++) {
       if (!state.roomGroups[i].lodgingType) {
-        toast.error(`Please select a room type for Room Group ${i + 1}`);
+        toast.error(`Please select a room type for Room Group${state.roomGroups.length > 1 ? ` ${i + 1}` : ""}`);
         return;
       }
     }
@@ -154,7 +154,7 @@ export default function LodgingStep() {
           {state.roomGroups.map((group, gi) => (
             <div key={group.id} className="space-y-4 rounded-lg border p-4">
               <h3 className="font-medium">
-                Room Group {gi + 1} ({group.participants.length} people)
+                Room Group{state.roomGroups.length > 1 ? ` ${gi + 1}` : ""} ({group.participants.length} people)
               </h3>
 
               {/* Lodging Type Selection */}

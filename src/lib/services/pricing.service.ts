@@ -186,17 +186,29 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
         if (participantMealTotal > 0) {
           mealFee += participantMealTotal;
           const name = `${participant.firstName} ${participant.lastName}`;
-          const parts: string[] = [];
-          if (fullDayCount > 0) parts.push(`${fullDayCount} full day(s)`);
-          if (totalMealCount > 0) parts.push(`${totalMealCount} meal(s)`);
 
-          breakdown.push({
-            description: `Meals - ${name} (${tierLabel}, ${parts.join(" + ")})`,
-            descriptionKo: `식사 - ${name} (${tierLabel})`,
-            quantity: 1,
-            unitPrice: participantMealTotal,
-            amount: participantMealTotal,
-          });
+          // Full-day meals as quantity × unit price
+          if (fullDayCount > 0) {
+            const dayCost = Math.min(priceDay, 3 * priceEach);
+            breakdown.push({
+              description: `Meals - ${name} (${tierLabel}, Full Day)`,
+              descriptionKo: `식사 - ${name} (${tierLabel}, 종일)`,
+              quantity: fullDayCount,
+              unitPrice: dayCost,
+              amount: fullDayCount * dayCost,
+            });
+          }
+
+          // Partial meals as quantity × per-meal price
+          if (totalMealCount > 0) {
+            breakdown.push({
+              description: `Meals - ${name} (${tierLabel}, Partial)`,
+              descriptionKo: `식사 - ${name} (${tierLabel}, 부분)`,
+              quantity: totalMealCount,
+              unitPrice: priceEach,
+              amount: totalMealCount * priceEach,
+            });
+          }
         }
       }
     }

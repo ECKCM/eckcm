@@ -132,12 +132,22 @@ export async function POST(request: Request) {
 
   // 1. Check for duplicate registration (skip for "others" mode)
   if (registrationType !== "others" && !appConfig?.allow_duplicate_registration) {
+    // Cancel any existing DRAFT registrations (unpaid) so user can start fresh
+    await admin
+      .from("eckcm_registrations")
+      .update({ status: "CANCELLED" })
+      .eq("event_id", eventId)
+      .eq("created_by_user_id", user.id)
+      .eq("status", "DRAFT")
+      .neq("registration_type", "others");
+
+    // Block only if a paid/submitted registration already exists
     const { data: existingReg } = await admin
       .from("eckcm_registrations")
       .select("id, confirmation_code")
       .eq("event_id", eventId)
       .eq("created_by_user_id", user.id)
-      .in("status", ["DRAFT", "SUBMITTED", "PAID"])
+      .in("status", ["SUBMITTED", "PAID"])
       .neq("registration_type", "others")
       .limit(1)
       .maybeSingle();

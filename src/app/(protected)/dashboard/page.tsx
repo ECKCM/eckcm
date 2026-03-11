@@ -65,7 +65,7 @@ export default async function DashboardPage() {
         .select("event_id")
         .eq("created_by_user_id", user.id)
         .in("event_id", activeEventIds)
-        .in("status", ["DRAFT", "SUBMITTED", "PAID"])
+        .in("status", ["SUBMITTED", "PAID"])
         .neq("registration_type", "others")
     : { data: [] };
 

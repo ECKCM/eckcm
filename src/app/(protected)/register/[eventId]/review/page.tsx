@@ -180,7 +180,7 @@ export default function ReviewStep() {
         <Card key={group.id}>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">
-              Group {gi + 1} - {group.participants.length} participant(s), {group.keyCount} key(s)
+              Group{state.roomGroups.length > 1 ? ` ${gi + 1}` : ""} - {group.participants.length} participant(s), {group.keyCount} key(s)
             </CardTitle>
             <p className="text-sm text-muted-foreground">
               {[
@@ -200,10 +200,11 @@ export default function ReviewStep() {
                   <TableHead>Name</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Age</TableHead>
+                  <TableHead>T-Shirt</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {group.participants.map((p) => (
+                {group.participants.map((p, pi) => (
                   <TableRow key={p.id}>
                     <TableCell>
                       <div>
@@ -216,8 +217,9 @@ export default function ReviewStep() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>{p.isRepresentative ? "Representative" : "Member"}</TableCell>
+                    <TableCell>{p.isRepresentative ? `Representative (${pi + 1})` : `Member (${pi + 1})`}</TableCell>
                     <TableCell>{p.birthYear ? calcAge(p.birthYear, p.birthMonth ?? 1, p.birthDay ?? 1) : "-"}</TableCell>
+                    <TableCell>{p.tshirtSize ?? "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -243,7 +245,9 @@ export default function ReviewStep() {
                 <div key={i} className="flex justify-between text-sm">
                   <span>
                     {item.description}
-                    {item.quantity > 1 ? ` × ${item.quantity}` : ""}
+                    {item.quantity > 1
+                      ? ` (${formatDollars(item.unitPrice)} × ${item.quantity})`
+                      : ""}
                   </span>
                   <span>{formatDollars(item.amount)}</span>
                 </div>
