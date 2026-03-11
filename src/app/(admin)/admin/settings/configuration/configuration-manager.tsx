@@ -349,8 +349,9 @@ function SecuritySection() {
               Allow Duplicate Email
             </Label>
             <p className="text-sm text-muted-foreground">
-              Skip the duplicate email check during registration. Useful for
-              testing with the same email across multiple participants.
+              Skip the duplicate email check during registration. When OFF,
+              only &quot;Register for someone else&quot; mode allows duplicate
+              email for the representative.
             </p>
           </div>
           <Switch

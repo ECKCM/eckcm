@@ -268,9 +268,19 @@ export async function sendConfirmationEmail(
     }
   }
 
+  // Collect unique participant emails to also send to (for "others" registrations)
+  const participantEmails = new Set<string>();
+  for (const m of (membershipsResult.data ?? []) as any[]) {
+    const email = m.eckcm_people?.email;
+    if (email && email.toLowerCase() !== user.email!.toLowerCase()) {
+      participantEmails.add(email.toLowerCase());
+    }
+  }
+  const toAddresses = [user.email, ...participantEmails];
+
   const { data: sendResult, error } = await resend.emails.send({
     from: emailConfig.from,
-    to: user.email,
+    to: toAddresses,
     ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
     subject,
     html,
@@ -278,11 +288,12 @@ export async function sendConfirmationEmail(
     ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
   });
 
+  const toEmailLog = toAddresses.join(", ");
   if (error) {
     console.error("[sendConfirmationEmail] Resend error:", error);
     await logEmail({
       eventId: reg.event_id,
-      toEmail: user.email,
+      toEmail: toEmailLog,
       fromEmail: emailConfig.from,
       subject,
       template: "confirmation",
@@ -293,11 +304,11 @@ export async function sendConfirmationEmail(
     });
   } else {
     console.log(
-      `[sendConfirmationEmail] Email sent to ${user.email} for registration ${registrationId}`
+      `[sendConfirmationEmail] Email sent to ${toEmailLog} for registration ${registrationId}`
     );
     await logEmail({
       eventId: reg.event_id,
-      toEmail: user.email,
+      toEmail: toEmailLog,
       fromEmail: emailConfig.from,
       subject,
       template: "confirmation",

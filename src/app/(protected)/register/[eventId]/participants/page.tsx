@@ -206,6 +206,11 @@ export default function ParticipantsStep() {
   // App config: allow duplicate email for testing
   const [allowDuplicateEmail, setAllowDuplicateEmail] = useState(false);
 
+  // Meal fee categories for price display
+  const [mealFees, setMealFees] = useState<
+    { code: string; name_en: string; amount_cents: number; age_min: number | null; age_max: number | null; pricing_type: string }[]
+  >([]);
+
   // HANSAMO policy: representative-only registration unless general lodging opted
   const [hansamoGeneralLodging, setHansamoGeneralLodging] = useState(false);
 
@@ -285,6 +290,17 @@ export default function ParticipantsStep() {
         }
       } catch {}
 
+      // Fetch meal fee categories for price display
+      if (state.registrationGroupId) {
+        const { data: feeLinks } = await supabase
+          .from("eckcm_registration_group_fee_categories")
+          .select("eckcm_fee_categories!inner(code, name_en, amount_cents, age_min, age_max, pricing_type)")
+          .eq("registration_group_id", state.registrationGroupId);
+        const fees = (feeLinks ?? [])
+          .map((row: any) => row.eckcm_fee_categories)
+          .filter((f: any) => f.code.startsWith("MEAL_") && f.pricing_type === "PER_MEAL");
+        setMealFees(fees);
+      }
 
       // Auto-fill representative from user's profile (only once)
       if (user && !representativeFilledRef.current) {
@@ -1293,16 +1309,43 @@ export default function ParticipantsStep() {
                         {/* Meal Selection - hidden when dates match full event period */}
                         {(() => {
                           const pDates = getParticipantDates(p);
-                          return pDates.startDate && pDates.endDate && eventDates && !participantDatesMatchEvent(p) ? (
-                            <MealSelectionGrid
-                              startDate={pDates.startDate}
-                              endDate={pDates.endDate}
-                              eventStartDate={eventDates.eventStartDate}
-                              eventEndDate={eventDates.eventEndDate}
-                              selections={p.mealSelections}
-                              onChange={(meals) => updateMealSelections(gi, pi, meals)}
-                            />
-                          ) : null;
+                          if (!pDates.startDate || !pDates.endDate || !eventDates || participantDatesMatchEvent(p)) return null;
+
+                          // Find matching meal fee for this participant's age
+                          let mealPriceLabel: string | null = null;
+                          if (mealFees.length > 0 && p.birthYear && p.birthMonth && p.birthDay) {
+                            const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
+                            const refDate = new Date(eventDates.eventStartDate + "T00:00:00");
+                            const age = calculateAge(birthDate, refDate);
+                            const matched = mealFees.find((f) =>
+                              (f.age_min == null || age >= f.age_min) &&
+                              (f.age_max == null || age <= f.age_max)
+                            );
+                            if (matched) {
+                              const tier = matched.name_en.replace("Meal - ", "");
+                              mealPriceLabel = matched.amount_cents === 0
+                                ? `${tier}: Free`
+                                : `${tier}: $${(matched.amount_cents / 100).toFixed(2)} per meal`;
+                            }
+                          }
+
+                          return (
+                            <>
+                              {mealPriceLabel && (
+                                <p className="text-xs text-muted-foreground font-medium">
+                                  Meal Fee: {mealPriceLabel}
+                                </p>
+                              )}
+                              <MealSelectionGrid
+                                startDate={pDates.startDate}
+                                endDate={pDates.endDate}
+                                eventStartDate={eventDates.eventStartDate}
+                                eventEndDate={eventDates.eventEndDate}
+                                selections={p.mealSelections}
+                                onChange={(meals) => updateMealSelections(gi, pi, meals)}
+                              />
+                            </>
+                          );
                         })()}
 
                         {/* Save & Continue */}

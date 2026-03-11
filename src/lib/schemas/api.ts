@@ -113,6 +113,7 @@ export const submitRegistrationSchema = z.object({
   roomGroups: z.array(roomGroupSchema).min(1).max(20),
   keyDeposit: z.number().int().min(0).default(0),
   airportPickup: airportPickupSchema.default({ needed: false, selectedRides: [] }),
+  additionalRequests: z.string().max(2000).optional(),
 });
 
 export const createIntentSchema = z.object({

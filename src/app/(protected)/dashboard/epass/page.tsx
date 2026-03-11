@@ -33,6 +33,7 @@ export default async function EPassPage() {
         end_date,
         event_id,
         created_by_user_id,
+        registration_type,
         eckcm_events!inner(name_en, name_ko, year)
       )
     `)

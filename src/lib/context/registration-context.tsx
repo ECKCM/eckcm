@@ -37,6 +37,7 @@ type Action =
   | { type: "UPDATE_PARTICIPANT"; groupIndex: number; participantIndex: number; participant: ParticipantInput }
   | { type: "SET_KEY_DEPOSIT"; count: number }
   | { type: "SET_AIRPORT_PICKUP"; pickup: AirportPickupInput }
+  | { type: "SET_ADDITIONAL_REQUESTS"; text: string }
   | { type: "RESET" };
 
 const initialState: RegistrationState = {
@@ -118,6 +119,8 @@ function reducer(state: RegistrationState, action: Action): RegistrationState {
       return { ...state, keyDeposit: action.count };
     case "SET_AIRPORT_PICKUP":
       return { ...state, airportPickup: action.pickup };
+    case "SET_ADDITIONAL_REQUESTS":
+      return { ...state, additionalRequests: action.text };
     case "RESET":
       return { ...initialState, eventId: state.eventId };
     default:
@@ -182,6 +185,9 @@ export function RegistrationProvider({
           }
           if (parsed.airportPickup) {
             dispatch({ type: "SET_AIRPORT_PICKUP", pickup: parsed.airportPickup });
+          }
+          if (parsed.additionalRequests) {
+            dispatch({ type: "SET_ADDITIONAL_REQUESTS", text: parsed.additionalRequests });
           }
         }
       } catch {

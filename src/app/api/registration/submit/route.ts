@@ -100,6 +100,7 @@ export async function POST(request: Request) {
     registrationGroupId,
     roomGroups,
     airportPickup,
+    additionalRequests,
   } = parsed.data;
 
   // Use admin client for multi-table inserts (bypasses RLS for server-side transaction)
@@ -241,6 +242,8 @@ export async function POST(request: Request) {
       end_date: endDate,
       nights_count: nightsCount,
       total_amount_cents: estimate.total,
+      registration_type: registrationType,
+      additional_requests: additionalRequests || null,
     })
     .select("id")
     .single();

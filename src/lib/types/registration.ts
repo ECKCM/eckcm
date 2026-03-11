@@ -14,6 +14,7 @@ export interface RegistrationWizardState {
   accessCode?: string;
   registrationGroupId?: string;
   roomGroups: RoomGroupInput[];
+  additionalRequests?: string;
 }
 
 export interface RoomGroupInput {

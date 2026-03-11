@@ -39,6 +39,7 @@ interface EPassToken {
     start_date: string;
     end_date: string;
     event_id: string;
+    registration_type: string | null;
     eckcm_events: {
       name_en: string;
       name_ko: string | null;
@@ -162,6 +163,14 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
     return myPersonIds.includes(token.person_id);
   }
 
+  // Determine card style: my pass = normal, group member = gray, someone else reg = dark gray
+  function getCardStyle(token: EPassToken): string {
+    if (isMyPass(token)) return ""; // normal
+    const regType = token.eckcm_registrations.registration_type;
+    if (regType === "others") return "opacity-40"; // dark gray for "someone else" registrations
+    return "opacity-60"; // gray for group members (not me)
+  }
+
   function handleCardClick(token: EPassToken, e: React.MouseEvent) {
     if (!isMyPass(token)) {
       e.preventDefault();
@@ -222,7 +231,7 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
           );
 
           return (
-            <Card key={token.id} className="hover:bg-accent/50 transition-colors">
+            <Card key={token.id} className={`hover:bg-accent/50 transition-colors ${getCardStyle(token)}`}>
               <Link
                 href={`/dashboard/epass/${token.id}`}
                 onClick={(e) => handleCardClick(token, e)}

@@ -21,13 +21,15 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
 import type { PriceEstimate } from "@/lib/types/registration";
 
 export default function ReviewStep() {
   const router = useRouter();
   const { eventId } = useParams<{ eventId: string }>();
-  const { state, hydrated } = useRegistration();
+  const { state, dispatch, hydrated } = useRegistration();
   const [estimate, setEstimate] = useState<PriceEstimate | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -86,6 +88,7 @@ export default function ReviewStep() {
           roomGroups: state.roomGroups,
           keyDeposit: state.keyDeposit,
           airportPickup: state.airportPickup,
+          additionalRequests: state.additionalRequests || undefined,
         }),
       });
       if (!res.ok) {
@@ -256,6 +259,27 @@ export default function ReviewStep() {
               Unable to calculate pricing. Please proceed and pricing will be finalized.
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Additional Requests */}
+      <Card>
+        <CardHeader>
+          <CardTitle>야영회 추가적인 요청 사항</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Label htmlFor="additional-requests" className="text-sm text-muted-foreground">
+              Please enter any additional requests or special needs for the camp meeting.
+            </Label>
+            <Textarea
+              id="additional-requests"
+              value={state.additionalRequests ?? ""}
+              onChange={(e) => dispatch({ type: "SET_ADDITIONAL_REQUESTS", text: e.target.value })}
+              placeholder="e.g., dietary restrictions, special accommodations, etc."
+              rows={3}
+            />
+          </div>
         </CardContent>
       </Card>
 
