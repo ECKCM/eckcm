@@ -206,11 +206,6 @@ export default function ParticipantsStep() {
   // App config: allow duplicate email for testing
   const [allowDuplicateEmail, setAllowDuplicateEmail] = useState(false);
 
-  // Meal fee categories for price display
-  const [mealFees, setMealFees] = useState<
-    { code: string; name_en: string; amount_cents: number; age_min: number | null; age_max: number | null; pricing_type: string }[]
-  >([]);
-
   // HANSAMO policy: representative-only registration unless general lodging opted
   const [hansamoGeneralLodging, setHansamoGeneralLodging] = useState(false);
 
@@ -279,21 +274,6 @@ export default function ParticipantsStep() {
           eventEndDate: ev.event_end_date,
         });
         setAllowAddGroup(ev.allow_add_group ?? true);
-      }
-
-      // Fetch meal fee categories (use registrationGroupId from state or fall back to default group)
-      const mealGroupId = state.registrationGroupId || (rgs ?? []).find((g) => g.is_default)?.id;
-      if (mealGroupId) {
-        const { data: feeLinks } = await supabase
-          .from("eckcm_registration_group_fee_categories")
-          .select(
-            "eckcm_fee_categories!inner(code, name_en, amount_cents, age_min, age_max, pricing_type)"
-          )
-          .eq("registration_group_id", mealGroupId);
-        const fees = (feeLinks ?? [])
-          .map((row: any) => row.eckcm_fee_categories)
-          .filter((f: any) => f.code.startsWith("MEAL_"));
-        if (fees.length > 0) setMealFees(fees);
       }
 
       // Fetch app config for duplicate email setting
@@ -398,23 +378,6 @@ export default function ParticipantsStep() {
     load();
   }, [eventId, state.startDate, state.roomGroups.length, dispatch, router]);
 
-  // Re-fetch meal fee categories when registration group changes (e.g., department switch)
-  useEffect(() => {
-    if (!state.registrationGroupId) return;
-    const supabase = createClient();
-    supabase
-      .from("eckcm_registration_group_fee_categories")
-      .select(
-        "eckcm_fee_categories!inner(code, name_en, amount_cents, age_min, age_max, pricing_type)"
-      )
-      .eq("registration_group_id", state.registrationGroupId)
-      .then(({ data: feeLinks }) => {
-        const fees = (feeLinks ?? [])
-          .map((row: any) => row.eckcm_fee_categories)
-          .filter((f: any) => f.code.startsWith("MEAL_"));
-        if (fees.length > 0) setMealFees(fees);
-      });
-  }, [state.registrationGroupId]);
 
   const addGroup = () => {
     if (state.roomGroups.length >= MAX_GROUPS) {
@@ -1332,36 +1295,8 @@ export default function ParticipantsStep() {
                           const pDates = getParticipantDates(p);
                           if (!pDates.startDate || !pDates.endDate || !eventDates || participantDatesMatchEvent(p)) return null;
 
-                          // Find matching meal fee for this participant's age
-                          let mealPriceLabel: string | null = null;
-                          if (mealFees.length > 0 && p.birthYear && p.birthMonth && p.birthDay) {
-                            const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
-                            const refDate = new Date(eventDates.eventStartDate + "T00:00:00");
-                            const age = calculateAge(birthDate, refDate);
-                            const matchAge = (f: typeof mealFees[0]) =>
-                              (f.age_min == null || age >= f.age_min) &&
-                              (f.age_max == null || age <= f.age_max);
-                            const perMeal = mealFees.find((f) => f.pricing_type === "PER_MEAL" && matchAge(f));
-                            const fullDay = mealFees.find((f) => f.pricing_type === "FLAT" && matchAge(f));
-                            if (perMeal) {
-                              const tier = perMeal.name_en.replace("Meal - ", "");
-                              if (perMeal.amount_cents === 0) {
-                                mealPriceLabel = `${tier}: Free`;
-                              } else {
-                                const parts = [`$${(perMeal.amount_cents / 100).toFixed(2)}/meal`];
-                                if (fullDay) parts.push(`$${(fullDay.amount_cents / 100).toFixed(2)}/full day`);
-                                mealPriceLabel = `${tier}: ${parts.join(" · ")}`;
-                              }
-                            }
-                          }
-
                           return (
                             <>
-                              {mealPriceLabel && (
-                                <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
-                                  Meal Fee — {mealPriceLabel}
-                                </div>
-                              )}
                               <MealSelectionGrid
                                 startDate={pDates.startDate}
                                 endDate={pDates.endDate}

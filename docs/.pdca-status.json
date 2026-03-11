@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-09T05:46:24.874Z",
+  "lastUpdated": "2026-03-11T03:08:49.177Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -102,7 +102,8 @@
     "reset-password",
     "schemas",
     "(auth)",
-    "payment-complete"
+    "payment-complete",
+    "meal-fees"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -128,9 +129,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:03:38.722Z",
-        "lastUpdated": "2026-03-09T05:46:24.874Z"
+        "lastUpdated": "2026-03-11T01:07:09.347Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/layout.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/types/registration.ts"
     },
     "stripe-config": {
       "phase": "do",
@@ -193,7 +194,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:13.807Z",
-        "lastUpdated": "2026-03-07T01:06:51.889Z"
+        "lastUpdated": "2026-03-11T01:08:43.623Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/submit/route.ts"
     },
@@ -336,7 +337,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:31:41.703Z",
-        "lastUpdated": "2026-03-08T20:23:11.447Z"
+        "lastUpdated": "2026-03-11T03:08:49.177Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
@@ -583,7 +584,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T00:17:53.123Z",
-        "lastUpdated": "2026-02-27T00:17:53.123Z"
+        "lastUpdated": "2026-03-11T01:10:35.996Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/configuration/configuration-manager.tsx"
     },
@@ -635,9 +636,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:44:12.622Z",
-        "lastUpdated": "2026-03-05T03:06:55.900Z"
+        "lastUpdated": "2026-03-11T01:09:10.788Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/email/page.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/email/send-confirmation.ts"
     },
     "google-sheets": {
       "phase": "do",
@@ -817,7 +818,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T05:24:21.000Z",
-        "lastUpdated": "2026-03-04T21:24:14.972Z"
+        "lastUpdated": "2026-03-11T01:10:19.706Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/epass/epass-list.tsx"
     },
@@ -895,7 +896,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T07:59:00.220Z",
-        "lastUpdated": "2026-03-07T01:05:33.305Z"
+        "lastUpdated": "2026-03-11T01:07:38.711Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/context/registration-context.tsx"
     },
@@ -1129,7 +1130,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-03T07:15:45.932Z",
-        "lastUpdated": "2026-03-07T01:06:58.047Z"
+        "lastUpdated": "2026-03-11T02:30:57.680Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
     },
@@ -1389,7 +1390,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-06T05:30:10.790Z",
-        "lastUpdated": "2026-03-07T01:06:41.070Z"
+        "lastUpdated": "2026-03-11T01:08:30.083Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/schemas/api.ts"
     },
@@ -1418,6 +1419,19 @@
         "lastUpdated": "2026-03-09T01:36:10.649Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/payment-complete/page.tsx"
+    },
+    "meal-fees": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-11T02:37:58.516Z",
+        "lastUpdated": "2026-03-11T02:37:58.516Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/meal-fees/route.ts"
     }
   },
   "history": [
@@ -7223,6 +7237,270 @@
     {
       "timestamp": "2026-03-09T05:46:24.874Z",
       "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:07:09.347Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:07:26.878Z",
+      "feature": "context",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:07:32.565Z",
+      "feature": "context",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:07:38.711Z",
+      "feature": "context",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:07:47.731Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:07:55.118Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:08:03.681Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:08:12.209Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:08:30.083Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:08:36.328Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:08:43.623Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:09:00.849Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:09:10.788Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:09:24.483Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:09:33.741Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:09:47.591Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:09:55.576Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:10:04.493Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:10:13.478Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:10:19.706Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T01:10:35.996Z",
+      "feature": "configuration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:30:36.221Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:30:52.706Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:30:57.680Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:37:58.516Z",
+      "feature": "meal-fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:38:05.830Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:38:21.028Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:46:46.685Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:46:53.049Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:49:36.570Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:49:47.038Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:49:54.693Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:53:14.918Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:53:20.532Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:53:26.789Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:53:31.978Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:53:39.063Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:58:39.466Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:58:47.628Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T02:59:00.174Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T03:07:00.755Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T03:07:06.729Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T03:07:31.151Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-11T03:08:49.177Z",
+      "feature": "participants",
       "phase": "do",
       "action": "updated"
     }
