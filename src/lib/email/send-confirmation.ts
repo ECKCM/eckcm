@@ -38,7 +38,7 @@ export async function sendConfirmationEmail(
       .select(
         `
         person_id,
-        eckcm_people!inner(first_name_en, last_name_en, display_name_ko, phone),
+        eckcm_people!inner(first_name_en, last_name_en, display_name_ko, phone, email),
         eckcm_groups!inner(registration_id)
       `
       )

@@ -60,6 +60,15 @@ import { MealSelectionGrid } from "@/components/registration/meal-selection-grid
 import { DateRangePicker } from "@/components/registration/date-range-picker";
 import { BirthDatePicker } from "@/components/shared/birth-date-picker";
 
+interface MealFeeCat {
+  code: string;
+  name_en: string;
+  pricing_type: string;
+  amount_cents: number;
+  age_min: number | null;
+  age_max: number | null;
+}
+
 function createEmptyParticipant(isRepresentative: boolean): ParticipantInput {
   return {
     id: crypto.randomUUID(),
@@ -153,7 +162,7 @@ export default function ParticipantsStep() {
   const router = useRouter();
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
-  const representativeFilledRef = useRef(false);
+  const representativeFilledRef = useRef<string | null>(null); // tracks which type was filled
   const groupInitRef = useRef(false);
 
   const [departments, setDepartments] = useState<
@@ -209,6 +218,9 @@ export default function ParticipantsStep() {
   // HANSAMO policy: representative-only registration unless general lodging opted
   const [hansamoGeneralLodging, setHansamoGeneralLodging] = useState(false);
 
+  // Meal fee categories for real-time pricing
+  const [mealFeeCategories, setMealFeeCategories] = useState<MealFeeCat[]>([]);
+
   const isHansamoDept = (deptId: string | undefined) => {
     if (!deptId) return false;
     return departments.find((d) => d.id === deptId)?.name_en?.includes("HANSAMO") ?? false;
@@ -237,12 +249,15 @@ export default function ParticipantsStep() {
       dispatch({ type: "ADD_ROOM_GROUP", group: createEmptyGroup() });
     }
 
+    // Wait until roomGroups is initialized before loading
+    if (state.roomGroups.length === 0) return;
+
     const load = async () => {
       const supabase = createClient();
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      const [{ data: deps }, { data: chs }, { data: ev }, { data: rgs }] = await Promise.all([
+      const [{ data: deps }, { data: chs }, { data: ev }, { data: rgs }, { data: mealFees }] = await Promise.all([
         supabase
           .from("eckcm_departments")
           .select("id, name_en, name_ko")
@@ -263,11 +278,16 @@ export default function ParticipantsStep() {
           .from("eckcm_registration_groups")
           .select("id, department_id, is_default, only_one_person")
           .eq("is_active", true),
+        supabase
+          .from("eckcm_fee_categories")
+          .select("code, name_en, pricing_type, amount_cents, age_min, age_max")
+          .like("code", "MEAL_%"),
       ]);
 
       setDepartments(deps ?? []);
       setChurches(chs ?? []);
       setRegGroups(rgs ?? []);
+      setMealFeeCategories(mealFees ?? []);
       if (ev) {
         setEventDates({
           eventStartDate: ev.event_start_date,
@@ -285,8 +305,8 @@ export default function ParticipantsStep() {
         }
       } catch {}
 
-      // Auto-fill representative from user's profile (only once)
-      if (user && !representativeFilledRef.current) {
+      // Auto-fill representative from user's profile (only once per registration type)
+      if (user && representativeFilledRef.current !== state.registrationType) {
         // "others" mode: clear all fields, only pre-fill user's email (editable)
         if (state.registrationType === "others") {
           if (state.roomGroups.length > 0) {
@@ -301,7 +321,7 @@ export default function ParticipantsStep() {
                 email: user.email ?? "",
               },
             });
-            representativeFilledRef.current = true;
+            representativeFilledRef.current = "others";
           }
         } else {
         // "self" mode: auto-fill from user's profile
@@ -368,7 +388,7 @@ export default function ParticipantsStep() {
                 participantIndex: 0,
                 participant: filledRepresentative,
               });
-              representativeFilledRef.current = true;
+              representativeFilledRef.current = "self";
             }
           }
         }
@@ -376,7 +396,7 @@ export default function ParticipantsStep() {
       }
     };
     load();
-  }, [eventId, state.startDate, state.roomGroups.length, dispatch, router]);
+  }, [eventId, state.startDate, state.roomGroups.length, state.registrationType, dispatch, router]);
 
 
   const addGroup = () => {
@@ -516,6 +536,34 @@ export default function ParticipantsStep() {
       participantIndex: pIndex,
       participant,
     });
+  };
+
+  const getParticipantMealPricing = (p: ParticipantInput) => {
+    if (mealFeeCategories.length === 0 || !eventDates) return null;
+    if (p.birthYear == null || p.birthMonth == null || p.birthDay == null) return null;
+
+    const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
+    const eventStart = new Date(eventDates.eventStartDate + "T00:00:00");
+    const age = calculateAge(birthDate, eventStart);
+
+    const matchAge = (cat: MealFeeCat, a: number) =>
+      (cat.age_min == null || a >= cat.age_min) &&
+      (cat.age_max == null || a <= cat.age_max);
+
+    const perMealCat = mealFeeCategories.find(
+      (c) => c.pricing_type === "PER_MEAL" && matchAge(c, age)
+    );
+    const fullDayCat = mealFeeCategories.find(
+      (c) => c.pricing_type === "FLAT" && matchAge(c, age)
+    );
+
+    if (!perMealCat) return null;
+
+    return {
+      perMealCents: perMealCat.amount_cents,
+      fullDayCents: fullDayCat?.amount_cents ?? perMealCat.amount_cents * 3,
+      tierLabel: perMealCat.name_en.replace("Meal - ", ""),
+    };
   };
 
   const isChurchOther = (churchId: string | undefined) => {
@@ -929,7 +977,8 @@ export default function ParticipantsStep() {
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="text-xs">
-                                  This name will be printed on your name badge.
+                                  This name will be printed on your name badge.<br />
+                                  한국어 이름이 있다면 한국어로 입력해 주세요.
                                 </PopoverContent>
                               </Popover>
                             </div>
@@ -1295,17 +1344,19 @@ export default function ParticipantsStep() {
                           const pDates = getParticipantDates(p);
                           if (!pDates.startDate || !pDates.endDate || !eventDates || participantDatesMatchEvent(p)) return null;
 
+                          const pricing = getParticipantMealPricing(p);
                           return (
-                            <>
-                              <MealSelectionGrid
-                                startDate={pDates.startDate}
-                                endDate={pDates.endDate}
-                                eventStartDate={eventDates.eventStartDate}
-                                eventEndDate={eventDates.eventEndDate}
-                                selections={p.mealSelections}
-                                onChange={(meals) => updateMealSelections(gi, pi, meals)}
-                              />
-                            </>
+                            <MealSelectionGrid
+                              startDate={pDates.startDate}
+                              endDate={pDates.endDate}
+                              eventStartDate={eventDates.eventStartDate}
+                              eventEndDate={eventDates.eventEndDate}
+                              selections={p.mealSelections}
+                              onChange={(meals) => updateMealSelections(gi, pi, meals)}
+                              perMealPriceCents={pricing?.perMealCents}
+                              fullDayPriceCents={pricing?.fullDayCents}
+                              tierLabel={pricing?.tierLabel}
+                            />
                           );
                         })()}
 

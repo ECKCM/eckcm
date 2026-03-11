@@ -76,16 +76,23 @@ export function ConfigurationManager() {
         body: JSON.stringify({ eventId: selectedEventId }),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok && res.status !== 207) {
         toast.error(data.error || `Reset failed (${res.status})`);
         return;
       }
 
-      const data = await res.json();
-      toast.success(
-        `Event reset complete. Deleted ${data.deletedRegistrations} registrations, ${data.deletedInvoices} invoices, ${data.deletedPayments} payments.`
-      );
+      if (res.status === 207) {
+        toast.warning(
+          `Reset completed with errors: ${(data.errors ?? []).join("; ")}`,
+          { duration: 10000 }
+        );
+      } else {
+        toast.success(
+          `Event reset complete. Deleted ${data.deletedRegistrations} registrations, ${data.deletedInvoices} invoices, ${data.deletedPayments} payments.`
+        );
+      }
       setDialogOpen(false);
       setConfirmText("");
       setSelectedEventId("");

@@ -234,7 +234,8 @@ export function ProfileForm({
               </button>
             </PopoverTrigger>
             <PopoverContent className="text-xs">
-              This name will be printed on your name badge.
+              This name will be printed on your name badge.<br />
+              한국어 이름이 있다면 한국어로 입력해 주세요.
             </PopoverContent>
           </Popover>
         </div>

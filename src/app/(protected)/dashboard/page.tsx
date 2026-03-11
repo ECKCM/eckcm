@@ -57,6 +57,31 @@ export default async function DashboardPage() {
 
   const isAdmin = (staffAssignments?.length ?? 0) > 0;
 
+  // Check existing registrations per active event
+  const activeEventIds = (events ?? []).map((e) => e.id);
+  const { data: existingRegs } = activeEventIds.length > 0
+    ? await supabase
+        .from("eckcm_registrations")
+        .select("event_id")
+        .eq("created_by_user_id", user.id)
+        .in("event_id", activeEventIds)
+        .in("status", ["DRAFT", "SUBMITTED", "PAID"])
+        .neq("registration_type", "others")
+    : { data: [] };
+
+  const registeredEventIds = new Set(
+    (existingRegs ?? []).map((r) => r.event_id)
+  );
+
+  // Fetch allow_duplicate_registration config
+  const { data: appConfig } = await supabase
+    .from("eckcm_app_config")
+    .select("allow_duplicate_registration")
+    .eq("id", 1)
+    .single();
+
+  const allowDuplicateRegistration = appConfig?.allow_duplicate_registration ?? false;
+
   return (
     <DashboardContent
       user={{
@@ -66,6 +91,8 @@ export default async function DashboardPage() {
       person={personData}
       events={events ?? []}
       isAdmin={isAdmin}
+      registeredEventIds={Array.from(registeredEventIds)}
+      allowDuplicateRegistration={allowDuplicateRegistration}
     />
   );
 }

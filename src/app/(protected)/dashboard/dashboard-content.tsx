@@ -10,7 +10,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, QrCode, Receipt, ClipboardList, Settings } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, QrCode, Receipt, ClipboardList, Settings, Check } from "lucide-react";
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -42,24 +52,61 @@ interface DashboardContentProps {
     is_active: boolean;
   }[];
   isAdmin?: boolean;
+  registeredEventIds: string[];
+  allowDuplicateRegistration: boolean;
 }
+
+type RegistrationType = "self" | "others";
 
 export function DashboardContent({
   user,
   person,
   events,
+  registeredEventIds,
+  allowDuplicateRegistration,
 }: DashboardContentProps) {
   const router = useRouter();
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+  const [selectedTypes, setSelectedTypes] = useState<Record<string, RegistrationType>>({});
+  const [othersDialogEventId, setOthersDialogEventId] = useState<string | null>(null);
+  const [othersConfirmed, setOthersConfirmed] = useState(false);
 
   const displayName = person
     ? person.display_name_ko ??
       `${person.first_name_en} ${person.last_name_en}`
     : user.email;
 
-  const handleRegister = (eventId: string) => {
+  const registeredSet = new Set(registeredEventIds);
+
+  const clearAndNavigate = (eventId: string, type: RegistrationType) => {
+    sessionStorage.removeItem("eckcm_registration");
     setNavigatingTo(eventId);
-    router.push(`/register/${eventId}`);
+    setSelectedTypes((prev) => ({ ...prev, [eventId]: type }));
+    router.push(`/register/${eventId}?type=${type}`);
+  };
+
+  const handleRegister = (eventId: string) => {
+    clearAndNavigate(eventId, "self");
+  };
+
+  const handleTypeSelect = (eventId: string, type: RegistrationType) => {
+    if (type === "others") {
+      setOthersDialogEventId(eventId);
+      setOthersConfirmed(false);
+    }
+  };
+
+  const handleOthersConfirm = () => {
+    if (othersDialogEventId) {
+      clearAndNavigate(othersDialogEventId, "others");
+    }
+    setOthersDialogEventId(null);
+    setOthersConfirmed(false);
+  };
+
+  const handleOthersCancel = () => {
+    setOthersDialogEventId(null);
+    setOthersConfirmed(false);
   };
 
   return (
@@ -72,33 +119,65 @@ export function DashboardContent({
 
       {/* Active Events */}
       {events.length > 0 ? (
-        events.map((event) => (
-          <Card key={event.id}>
-            <CardHeader>
-              <CardTitle>{event.name_en}</CardTitle>
-              <CardDescription>
-                {formatShortDate(event.event_start_date)} - {formatShortDate(event.event_end_date)}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                className="w-full text-lg font-bold tracking-wide"
-                size="lg"
-                onClick={() => handleRegister(event.id)}
-                disabled={navigatingTo === event.id}
-              >
-                {navigatingTo === event.id ? (
-                  <>
-                    <Loader2 className="mr-2 size-5 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  "Register Now"
+        events.map((event) => {
+          const isRegistered = registeredSet.has(event.id);
+          const selfDisabled = isRegistered && !allowDuplicateRegistration;
+          const currentType = selectedTypes[event.id] ?? (selfDisabled ? "others" : "self");
+
+          return (
+            <Card key={event.id}>
+              <CardHeader>
+                <CardTitle>{event.name_en}</CardTitle>
+                <CardDescription>
+                  {formatShortDate(event.event_start_date)} - {formatShortDate(event.event_end_date)}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Already registered banner */}
+                {isRegistered && (
+                  <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                    <Check className="size-4 shrink-0" />
+                    <span className="font-medium">You are already registered for this event</span>
+                  </div>
                 )}
-              </Button>
-            </CardContent>
-          </Card>
-        ))
+
+                {/* Register Now button */}
+                <Button
+                  className="w-full text-lg font-bold tracking-wide"
+                  size="lg"
+                  onClick={() => handleRegister(event.id)}
+                  disabled={selfDisabled || navigatingTo === event.id}
+                >
+                  {navigatingTo === event.id && currentType === "self" ? (
+                    <>
+                      <Loader2 className="mr-2 size-5 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Register Now"
+                  )}
+                </Button>
+
+                {/* Register for someone else */}
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleTypeSelect(event.id, "others")}
+                  disabled={navigatingTo === event.id}
+                >
+                  {navigatingTo === event.id && currentType === "others" ? (
+                    <>
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Register for Someone Else"
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })
       ) : (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
@@ -146,6 +225,43 @@ export function DashboardContent({
           <span className="text-xs text-muted-foreground">Edit profile</span>
         </Button>
       </div>
+
+      {/* Confirmation dialog for registering on behalf of others */}
+      <AlertDialog open={!!othersDialogEventId} onOpenChange={(open) => { if (!open) handleOthersCancel(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Registering for Someone Else</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  You are about to register on behalf of another person or group.
+                  The registration will be linked to your account.
+                </p>
+                <p>
+                  Signed in as <span className="font-semibold text-foreground">{displayName}</span> (<span className="break-all">{user.email}</span>)
+                </p>
+                <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={othersConfirmed}
+                    onChange={(e) => setOthersConfirmed(e.target.checked)}
+                    className="mt-0.5 size-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm">
+                    I understand that I am registering on behalf of someone else and that this registration will be linked to my account.
+                  </span>
+                </label>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleOthersCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleOthersConfirm} disabled={!othersConfirmed}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

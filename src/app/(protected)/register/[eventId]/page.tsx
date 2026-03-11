@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRegistration } from "@/lib/context/registration-context";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
@@ -19,7 +19,6 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { AlertCircle } from "lucide-react";
 import { DateRangePicker } from "@/components/registration/date-range-picker";
-import type { RegistrationType } from "@/lib/types/registration";
 
 interface EventData {
   id: string;
@@ -38,6 +37,7 @@ interface RegGroup {
 export default function RegistrationStep1() {
   const router = useRouter();
   const { eventId } = useParams<{ eventId: string }>();
+  const searchParams = useSearchParams();
   const { state, dispatch } = useRegistration();
 
   const [event, setEvent] = useState<EventData | null>(null);
@@ -53,6 +53,14 @@ export default function RegistrationStep1() {
     name: string;
     email: string;
   } | null>(null);
+
+  // Set registration type from URL query param (from dashboard selection)
+  useEffect(() => {
+    const typeParam = searchParams.get("type");
+    if (typeParam === "self" || typeParam === "others") {
+      dispatch({ type: "SET_REGISTRATION_TYPE", registrationType: typeParam });
+    }
+  }, [searchParams, dispatch]);
 
   useEffect(() => {
     const load = async () => {
@@ -82,7 +90,9 @@ export default function RegistrationStep1() {
         });
 
         // Check if user already has an active registration (skip for "others" mode)
-        if (state.registrationType === "self") {
+        const typeParam = new URLSearchParams(window.location.search).get("type");
+        const effectiveType = typeParam === "others" ? "others" : state.registrationType;
+        if (effectiveType === "self") {
           const configRes = await fetch("/api/app-config");
           const configData = configRes.ok ? await configRes.json() : {};
           const allowDupReg = configData.allow_duplicate_registration ?? false;
@@ -94,6 +104,7 @@ export default function RegistrationStep1() {
               .eq("event_id", eventId)
               .eq("created_by_user_id", user.id)
               .in("status", ["DRAFT", "SUBMITTED", "PAID"])
+              .neq("registration_type", "others")
               .limit(1)
               .maybeSingle();
 
@@ -133,13 +144,6 @@ export default function RegistrationStep1() {
     };
     load();
   }, [eventId, state.startDate, state.registrationGroupId, state.registrationType, dispatch]);
-
-  const handleRegistrationTypeChange = (type: RegistrationType) => {
-    dispatch({ type: "SET_REGISTRATION_TYPE", registrationType: type });
-    if (type === "others") {
-      setExistingRegistration(null);
-    }
-  };
 
   const calcNights = (start: string, end: string) => {
     const d1 = new Date(start);
@@ -275,44 +279,18 @@ export default function RegistrationStep1() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Registration Type Toggle */}
-          <div className="space-y-2">
-            <Label>Does this registration include you?</Label>
-            <p className="text-xs text-muted-foreground">
-              Select &quot;No&quot; if you are registering on behalf of someone else.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                size="sm"
-                className="truncate"
-                variant={state.registrationType === "self" ? "default" : "outline"}
-                onClick={() => handleRegistrationTypeChange("self")}
-              >
-                Yes
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="truncate"
-                variant={state.registrationType === "others" ? "default" : "outline"}
-                onClick={() => handleRegistrationTypeChange("others")}
-              >
-                No
-              </Button>
+          {/* Registration type info */}
+          {state.registrationType === "others" && userProfile && (
+            <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
+              <p className="font-medium text-blue-900">
+                Registering on behalf of another group
+              </p>
+              <p className="text-blue-700 mt-1">
+                Signed in as <span className="font-semibold">{userProfile.name}</span> (<span className="break-all">{userProfile.email}</span>).
+                The registration will be linked to your account.
+              </p>
             </div>
-            {state.registrationType === "others" && userProfile && (
-              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
-                <p className="font-medium text-blue-900">
-                  Registering on behalf of another group
-                </p>
-                <p className="text-blue-700 mt-1">
-                  Signed in as <span className="font-semibold">{userProfile.name}</span> (<span className="break-all">{userProfile.email}</span>).
-                  The registration will be linked to your account.
-                </p>
-              </div>
-            )}
-          </div>
+          )}
 
           <DateRangePicker
             startDate={state.startDate}

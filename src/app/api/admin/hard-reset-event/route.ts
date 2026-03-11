@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSuperAdmin } from "@/lib/auth/admin";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
   const auth = await requireSuperAdmin();
@@ -12,7 +13,6 @@ export async function POST(request: Request) {
   }
   const { user } = auth;
 
-  // 3. Parse body
   const { eventId } = await request.json();
   if (!eventId) {
     return NextResponse.json(
@@ -34,16 +34,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
-  // 4. Delete in FK-safe order (deepest children first)
-  // Get registration IDs for this event
+  const errors: string[] = [];
+
+  // Helper: delete with error tracking
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function safeDelete(label: string, fn: () => PromiseLike<{ error: any }>) {
+    const { error } = await fn();
+    if (error) {
+      const msg = `${label}: ${error.message ?? JSON.stringify(error)}`;
+      logger.error(`[hard-reset] ${msg}`);
+      errors.push(msg);
+    }
+  }
+
+  // Collect IDs for FK-safe deletion
   const { data: registrations } = await admin
     .from("eckcm_registrations")
     .select("id")
     .eq("event_id", eventId);
-
   const regIds = registrations?.map((r) => r.id) ?? [];
 
-  // Get invoice IDs for these registrations
   let invoiceIds: string[] = [];
   if (regIds.length > 0) {
     const { data: invoices } = await admin
@@ -53,7 +63,6 @@ export async function POST(request: Request) {
     invoiceIds = invoices?.map((i) => i.id) ?? [];
   }
 
-  // Get payment IDs for these invoices
   let paymentIds: string[] = [];
   if (invoiceIds.length > 0) {
     const { data: payments } = await admin
@@ -63,14 +72,12 @@ export async function POST(request: Request) {
     paymentIds = payments?.map((p) => p.id) ?? [];
   }
 
-  // Get group IDs for this event
   const { data: groups } = await admin
     .from("eckcm_groups")
     .select("id")
     .eq("event_id", eventId);
   const groupIds = groups?.map((g) => g.id) ?? [];
 
-  // Get person IDs from group memberships (for orphan cleanup)
   let personIds: string[] = [];
   if (groupIds.length > 0) {
     const { data: memberships } = await admin
@@ -82,71 +89,67 @@ export async function POST(request: Request) {
 
   // --- Tier 1: Leaf nodes ---
 
-  // Refunds
   if (paymentIds.length > 0) {
-    await admin.from("eckcm_refunds").delete().in("payment_id", paymentIds);
+    await safeDelete("refunds", () =>
+      admin.from("eckcm_refunds").delete().in("payment_id", paymentIds)
+    );
   }
 
-  // Checkins
-  await admin.from("eckcm_checkins").delete().eq("event_id", eventId);
+  await safeDelete("checkins", () =>
+    admin.from("eckcm_checkins").delete().eq("event_id", eventId)
+  );
 
-  // E-pass tokens (QR)
   if (regIds.length > 0) {
-    await admin
-      .from("eckcm_epass_tokens")
-      .delete()
-      .in("registration_id", regIds);
+    await safeDelete("epass_tokens", () =>
+      admin.from("eckcm_epass_tokens").delete().in("registration_id", regIds)
+    );
   }
 
-  // Email logs (NO ACTION FK — must delete before registrations)
+  // Delete email logs by event_id (catches all, including those with NULL registration_id)
+  await safeDelete("email_logs", () =>
+    admin.from("eckcm_email_logs").delete().eq("event_id", eventId)
+  );
+  // Also clear any email_logs by registration_id (for logs with NULL event_id)
   if (regIds.length > 0) {
-    await admin
-      .from("eckcm_email_logs")
-      .delete()
-      .in("registration_id", regIds);
+    await safeDelete("email_logs_by_reg", () =>
+      admin.from("eckcm_email_logs").delete().in("registration_id", regIds)
+    );
   }
 
-  // Invoice line items
   if (invoiceIds.length > 0) {
-    await admin
-      .from("eckcm_invoice_line_items")
-      .delete()
-      .in("invoice_id", invoiceIds);
+    await safeDelete("invoice_line_items", () =>
+      admin.from("eckcm_invoice_line_items").delete().in("invoice_id", invoiceIds)
+    );
   }
 
-  // Registration selections
   if (regIds.length > 0) {
-    await admin
-      .from("eckcm_registration_selections")
-      .delete()
-      .in("registration_id", regIds);
+    await safeDelete("registration_selections", () =>
+      admin.from("eckcm_registration_selections").delete().in("registration_id", regIds)
+    );
   }
 
   // --- Tier 2: Parents of leaf nodes ---
 
-  // Payments
-  const deletedPayments = paymentIds.length;
   if (invoiceIds.length > 0) {
-    await admin.from("eckcm_payments").delete().in("invoice_id", invoiceIds);
+    await safeDelete("payments", () =>
+      admin.from("eckcm_payments").delete().in("invoice_id", invoiceIds)
+    );
   }
 
-  // Invoices
-  const deletedInvoices = invoiceIds.length;
   if (regIds.length > 0) {
-    await admin.from("eckcm_invoices").delete().in("registration_id", regIds);
+    await safeDelete("invoices", () =>
+      admin.from("eckcm_invoices").delete().in("registration_id", regIds)
+    );
   }
 
-  // Group memberships
   if (groupIds.length > 0) {
-    await admin
-      .from("eckcm_group_memberships")
-      .delete()
-      .in("group_id", groupIds);
+    await safeDelete("group_memberships", () =>
+      admin.from("eckcm_group_memberships").delete().in("group_id", groupIds)
+    );
   }
 
-  // --- Tier 2.5: Orphaned people (not linked to user accounts) ---
+  // --- Tier 2.5: Orphaned people ---
   if (personIds.length > 0) {
-    // Find which person IDs are linked to user accounts
     const { data: linkedPeople } = await admin
       .from("eckcm_user_people")
       .select("person_id")
@@ -155,37 +158,63 @@ export async function POST(request: Request) {
     const orphanIds = personIds.filter((id) => !linkedIds.has(id));
 
     if (orphanIds.length > 0) {
-      await admin.from("eckcm_people").delete().in("id", orphanIds);
+      await safeDelete("orphan_people", () =>
+        admin.from("eckcm_people").delete().in("id", orphanIds)
+      );
     }
   }
 
   // --- Tier 3: Core data ---
 
-  // Groups
-  await admin.from("eckcm_groups").delete().eq("event_id", eventId);
+  await safeDelete("groups", () =>
+    admin.from("eckcm_groups").delete().eq("event_id", eventId)
+  );
 
-  // Registrations
-  const deletedRegistrations = regIds.length;
-  await admin.from("eckcm_registrations").delete().eq("event_id", eventId);
+  await safeDelete("registrations", () =>
+    admin.from("eckcm_registrations").delete().eq("event_id", eventId)
+  );
 
   // --- Tier 4: Event operational data ---
-  await admin.from("eckcm_sessions").delete().eq("event_id", eventId);
-  await admin
-    .from("eckcm_registration_drafts")
-    .delete()
-    .eq("event_id", eventId);
-  await admin.from("eckcm_notifications").delete().eq("event_id", eventId);
 
-  // 5. Reset registration sequence counter
+  await safeDelete("sessions", () =>
+    admin.from("eckcm_sessions").delete().eq("event_id", eventId)
+  );
+  await safeDelete("registration_drafts", () =>
+    admin.from("eckcm_registration_drafts").delete().eq("event_id", eventId)
+  );
+  await safeDelete("notifications", () =>
+    admin.from("eckcm_notifications").delete().eq("event_id", eventId)
+  );
+
+  // --- Verify cleanup ---
+  const { count: remainingInvoices } = await admin
+    .from("eckcm_invoices")
+    .select("id", { count: "exact", head: true })
+    .in("registration_id", regIds.length > 0 ? regIds : ["__none__"]);
+
+  const { count: remainingRegs } = await admin
+    .from("eckcm_registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("event_id", eventId);
+
+  if ((remainingInvoices ?? 0) > 0 || (remainingRegs ?? 0) > 0) {
+    logger.error(
+      `[hard-reset] Incomplete cleanup: ${remainingRegs} registrations, ${remainingInvoices} invoices remaining`
+    );
+    errors.push(
+      `Incomplete: ${remainingRegs ?? 0} registrations and ${remainingInvoices ?? 0} invoices still remain`
+    );
+  }
+
+  // Reset sequence counters
   await admin
     .from("eckcm_events")
     .update({ next_registration_seq: 1 })
     .eq("id", eventId);
 
-  // 5b. Reset invoice sequence counter
   await admin.rpc("reset_invoice_seq");
 
-  // 6. Audit log
+  // Audit log
   await admin.from("eckcm_audit_logs").insert({
     event_id: eventId,
     user_id: user.id,
@@ -193,16 +222,31 @@ export async function POST(request: Request) {
     entity_type: "event",
     entity_id: eventId,
     new_data: {
-      deletedRegistrations,
-      deletedInvoices,
-      deletedPayments,
+      deletedRegistrations: regIds.length,
+      deletedInvoices: invoiceIds.length,
+      deletedPayments: paymentIds.length,
+      errors: errors.length > 0 ? errors : undefined,
     },
   });
 
+  if (errors.length > 0) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: `Hard reset completed with errors: ${errors.join("; ")}`,
+        deletedRegistrations: regIds.length,
+        deletedInvoices: invoiceIds.length,
+        deletedPayments: paymentIds.length,
+        errors,
+      },
+      { status: 207 }
+    );
+  }
+
   return NextResponse.json({
     success: true,
-    deletedRegistrations,
-    deletedInvoices,
-    deletedPayments,
+    deletedRegistrations: regIds.length,
+    deletedInvoices: invoiceIds.length,
+    deletedPayments: paymentIds.length,
   });
 }

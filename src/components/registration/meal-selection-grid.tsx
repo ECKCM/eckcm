@@ -21,6 +21,10 @@ interface MealSelectionGridProps {
   eventEndDate: string; // YYYY-MM-DD (event end)
   selections: MealSelection[];
   onChange: (selections: MealSelection[]) => void;
+  // Optional pricing
+  perMealPriceCents?: number;
+  fullDayPriceCents?: number;
+  tierLabel?: string;
 }
 
 function getDatesInRange(start: string, end: string): string[] {
@@ -75,6 +79,10 @@ function buildSelections(
   });
 }
 
+function formatPrice(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
 export function MealSelectionGrid({
   startDate,
   endDate,
@@ -82,7 +90,12 @@ export function MealSelectionGrid({
   eventEndDate,
   selections,
   onChange,
+  perMealPriceCents,
+  fullDayPriceCents,
+  tierLabel,
 }: MealSelectionGridProps) {
+  const showPricing = perMealPriceCents != null;
+
   const visibleDates = useMemo(
     () =>
       getDatesInRange(startDate, endDate).filter(
@@ -121,11 +134,37 @@ export function MealSelectionGrid({
 
   const selectedCount = effective.filter((s) => s.selected).length;
 
+  const totalCost = useMemo(() => {
+    if (!showPricing || perMealPriceCents === 0) return 0;
+    let total = 0;
+    for (const date of visibleDates) {
+      const count = MEAL_TYPES.filter((m) => isChecked(date, m.type)).length;
+      if (count === 3 && fullDayPriceCents != null) {
+        total += Math.min(fullDayPriceCents, 3 * perMealPriceCents!);
+      } else {
+        total += count * perMealPriceCents!;
+      }
+    }
+    return total;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleDates, effective, perMealPriceCents, fullDayPriceCents]);
+
   if (visibleDates.length === 0) return null;
 
   return (
     <div className="space-y-2">
-      <Label className="text-xs">Meals ({selectedCount} selected)</Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-xs">Meals ({selectedCount} selected)</Label>
+        {showPricing && tierLabel && (
+          perMealPriceCents === 0 ? (
+            <span className="text-xs font-medium text-green-600">{tierLabel}: Free</span>
+          ) : (
+            <span className="text-xs font-semibold tabular-nums">
+              Meal Total: {formatPrice(totalCost)}
+            </span>
+          )
+        )}
+      </div>
       <div className="rounded-md border overflow-hidden">
         {/* Header */}
         <div className="grid grid-cols-[1fr_repeat(3,64px)] gap-0 bg-muted/50 px-2 py-1.5 text-xs font-medium text-muted-foreground">

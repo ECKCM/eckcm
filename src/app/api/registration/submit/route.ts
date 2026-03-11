@@ -138,6 +138,7 @@ export async function POST(request: Request) {
       .eq("event_id", eventId)
       .eq("created_by_user_id", user.id)
       .in("status", ["DRAFT", "SUBMITTED", "PAID"])
+      .neq("registration_type", "others")
       .limit(1)
       .maybeSingle();
 

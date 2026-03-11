@@ -194,6 +194,15 @@ export function RegistrationProvider({
         // ignore parse errors
       }
     }
+
+    // URL type param always takes priority (set by dashboard before navigation)
+    if (typeof window !== "undefined") {
+      const urlType = new URLSearchParams(window.location.search).get("type");
+      if (urlType === "self" || urlType === "others") {
+        dispatch({ type: "SET_REGISTRATION_TYPE", registrationType: urlType });
+      }
+    }
+
     setHydrated(true);
   }, [eventId]);
 

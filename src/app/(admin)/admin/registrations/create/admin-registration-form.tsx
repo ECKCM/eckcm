@@ -792,6 +792,9 @@ export function AdminRegistrationForm() {
                     <Label className="text-xs">
                       Display Name *
                     </Label>
+                    <p className="text-[10px] text-muted-foreground">
+                      한국어 이름이 있다면 한국어로 입력해 주세요.
+                    </p>
                     <Input
                       value={p.displayNameKo}
                       onChange={(e) =>
