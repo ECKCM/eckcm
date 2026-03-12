@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { useRealtime } from "@/lib/hooks/use-realtime";
+import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -58,6 +58,7 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
     if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
     _reloadTimer.current = setTimeout(() => router.refresh(), 500);
   });
+  useChangeDetector("eckcm_events", () => router.refresh(), 5000);
 
   const [deleteTarget, setDeleteTarget] = useState<Event | null>(null);
   const [deleting, setDeleting] = useState(false);

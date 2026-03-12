@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRealtime } from "@/lib/hooks/use-realtime";
+import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -170,6 +170,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
   };
   useRealtime({ table: "eckcm_invoices", event: "*" }, _reload);
   useRealtime({ table: "eckcm_payments", event: "*" }, _reload);
+  useChangeDetector("eckcm_invoices", loadInvoices, 5000);
 
   const filtered = invoices.filter((inv) => {
     if (!search) return true;

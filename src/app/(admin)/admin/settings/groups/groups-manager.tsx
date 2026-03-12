@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRealtime } from "@/lib/hooks/use-realtime";
+import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 
 function toDatetimeLocal(value: string | null): string {
   if (!value) return "";
@@ -168,6 +168,7 @@ export function RegistrationGroupsManager() {
     if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
     _reloadTimer.current = setTimeout(loadGroups, 500);
   });
+  useChangeDetector("eckcm_registration_groups", loadGroups, 5000);
 
   const openCreate = () => {
     setEditingId(null);

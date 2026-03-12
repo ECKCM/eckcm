@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { useRealtime } from "@/lib/hooks/use-realtime";
+import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,6 +30,7 @@ export function LegalManager({ initialPages }: { initialPages: LegalPage[] }) {
     if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
     _reloadTimer.current = setTimeout(() => router.refresh(), 500);
   });
+  useChangeDetector("eckcm_legal_content", () => router.refresh(), 5000);
   const [saving, setSaving] = useState<string | null>(null);
   const [contents, setContents] = useState<Record<string, string>>(
     Object.fromEntries(initialPages.map((p) => [p.slug, p.content]))

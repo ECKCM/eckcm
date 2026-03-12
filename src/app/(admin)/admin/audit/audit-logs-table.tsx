@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRealtime } from "@/lib/hooks/use-realtime";
+import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -82,6 +82,7 @@ export function AuditLogsTable() {
     if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
     _reloadTimer.current = setTimeout(loadLogs, 500);
   });
+  useChangeDetector("eckcm_audit_logs", loadLogs, 5000);
 
   const filtered = logs.filter((log) => {
     if (!search) return true;

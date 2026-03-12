@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRealtime } from "@/lib/hooks/use-realtime";
+import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -323,7 +323,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
     loadRegistrations();
   }, [loadRegistrations]);
 
-  // Live updates
+  // Live updates — Realtime + smart polling fallback
   const _reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const _reload = () => {
     if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
@@ -333,6 +333,10 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
   useRealtime({ table: "eckcm_invoices", event: "*" }, _reload);
   useRealtime({ table: "eckcm_payments", event: "*" }, _reload);
   useRealtime({ table: "eckcm_checkins", event: "*", filter: `event_id=eq.${eventId}` }, _reload);
+
+  // Smart polling: only reloads when data actually changed (no UI flicker)
+  useChangeDetector("eckcm_registrations", loadRegistrations, 5000, { column: "event_id", value: eventId });
+  useChangeDetector("eckcm_payments", loadRegistrations, 5000);
 
   // ─── Detail dialog ─────────────────────────────────────────────
 

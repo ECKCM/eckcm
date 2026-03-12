@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRealtime } from "@/lib/hooks/use-realtime";
+import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -106,6 +106,7 @@ export function FeeCategoriesManager() {
     if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
     _reloadTimer.current = setTimeout(loadFees, 500);
   });
+  useChangeDetector("eckcm_fee_categories", loadFees, 5000);
 
   const openCreate = () => {
     setEditingId(null);

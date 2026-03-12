@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRealtime } from "@/lib/hooks/use-realtime";
+import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -169,6 +169,7 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
     if (_reloadTimer.current) clearTimeout(_reloadTimer.current);
     _reloadTimer.current = setTimeout(loadGroups, 500);
   });
+  useChangeDetector("eckcm_groups", loadGroups, 5000, { column: "event_id", value: eventId });
 
   const openAssignDialog = async (group: GroupRow) => {
     setAssignDialog(group);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRealtime } from "@/lib/hooks/use-realtime";
+import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -182,6 +182,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
   };
   useRealtime({ table: "eckcm_registrations", event: "*", filter: `event_id=eq.${eventId}` }, _reload);
   useRealtime({ table: "eckcm_group_memberships", event: "*" }, _reload);
+  useChangeDetector("eckcm_group_memberships", loadParticipants, 5000);
 
   const filtered = participants.filter((p) => {
     if (!search) return true;
