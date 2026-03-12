@@ -29,12 +29,16 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Eye, Users, RefreshCw } from "lucide-react";
+import { Eye, Users, RefreshCw, ExternalLink } from "lucide-react";
+
+// Fetched from eckcm_app_config via /api/admin/stripe-config
+// Falls back to empty string (links won't render without it)
 
 interface Event {
   id: string;
   name_en: string;
   year: number;
+  stripe_mode: string | null;
 }
 
 interface RegistrationRow {
@@ -64,6 +68,7 @@ interface RegistrationRow {
   invoice_number: string | null;
   payment_status: string | null;
   payment_method: string | null;
+  stripe_payment_intent_id: string | null;
   paid_at: string | null;
   // On-site check-in/out (Yes/No)
   checked_in: boolean;
@@ -122,7 +127,18 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
 
+  const [stripeAccountId, setStripeAccountId] = useState("");
+
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    fetch("/api/admin/stripe-config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.stripe_account_id) setStripeAccountId(data.stripe_account_id);
+      })
+      .catch(() => {});
+  }, []);
 
   // Detail dialog
   const [detailReg, setDetailReg] = useState<RegistrationRow | null>(null);
@@ -167,7 +183,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
           invoice_number,
           status,
           paid_at,
-          eckcm_payments(payment_method, status)
+          eckcm_payments(payment_method, status, stripe_payment_intent_id)
         ),
         eckcm_groups(
           id,
@@ -253,12 +269,14 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         const invoice = invoices[0];
         let paymentMethod: string | null = null;
         let paymentStatus: string | null = null;
+        let stripePaymentIntentId: string | null = null;
         if (invoice) {
           const payments = invoice.eckcm_payments ?? [];
           const successPayment = payments.find((p: any) => p.status === "SUCCEEDED") ?? payments[0];
           if (successPayment) {
             paymentMethod = successPayment.payment_method;
             paymentStatus = successPayment.status;
+            stripePaymentIntentId = successPayment.stripe_payment_intent_id ?? null;
           }
         }
 
@@ -289,6 +307,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
           invoice_number: invoice?.invoice_number ?? null,
           payment_status: paymentStatus ?? invoice?.status ?? null,
           payment_method: paymentMethod,
+          stripe_payment_intent_id: stripePaymentIntentId,
           paid_at: invoice?.paid_at ?? null,
           checked_in: checkedIn,
           checked_out: false, // Not tracked yet
@@ -516,6 +535,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                     <TableHead className="whitespace-nowrap">C-OUT</TableHead>
                     <TableHead className="whitespace-nowrap">Room</TableHead>
                     <TableHead className="whitespace-nowrap">Pay Method</TableHead>
+                    <TableHead className="whitespace-nowrap">Stripe Link</TableHead>
                     <TableHead className="whitespace-nowrap">People</TableHead>
                     <TableHead className="whitespace-nowrap">Invoice</TableHead>
                     {/* Remaining columns by importance */}
@@ -604,6 +624,24 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                       {/* Pay Method */}
                       <TableCell className="text-xs whitespace-nowrap">
                         {r.payment_method?.replace(/_/g, " ") ?? "-"}
+                      </TableCell>
+                      {/* Stripe Link */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.stripe_payment_intent_id && stripeAccountId ? (
+                          <a
+                            href={`https://dashboard.stripe.com/${stripeAccountId}/${
+                              events.find((e) => e.id === eventId)?.stripe_mode === "live" ? "" : "test/"
+                            }payments/${r.stripe_payment_intent_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-blue-600 hover:underline"
+                          >
+                            <ExternalLink className="size-3" />
+                            View
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                       {/* People */}
                       <TableCell>
@@ -789,6 +827,24 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                 <div>
                   <span className="text-muted-foreground">Pay Method:</span>{" "}
                   {detailReg.payment_method?.replace(/_/g, " ") ?? "-"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Stripe Link:</span>{" "}
+                  {detailReg.stripe_payment_intent_id && stripeAccountId ? (
+                    <a
+                      href={`https://dashboard.stripe.com/${stripeAccountId}/${
+                        events.find((e) => e.id === eventId)?.stripe_mode === "live" ? "" : "test/"
+                      }payments/${detailReg.stripe_payment_intent_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-600 hover:underline"
+                    >
+                      <ExternalLink className="size-3" />
+                      View in Stripe
+                    </a>
+                  ) : (
+                    "-"
+                  )}
                 </div>
                 <div>
                   <span className="text-muted-foreground">People:</span>{" "}

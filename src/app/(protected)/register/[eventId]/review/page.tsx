@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Banknote } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
@@ -265,6 +265,16 @@ export default function ReviewStep() {
           )}
         </CardContent>
       </Card>
+
+      {/* Manual payment discount banner */}
+      {!loading && estimate && estimate.manualPaymentDiscount > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+          <Banknote className="h-5 w-5 text-green-600 shrink-0" />
+          <p className="text-sm font-medium text-green-800">
+            Save {formatDollars(estimate.manualPaymentDiscount)} with manual payment (Zelle)!
+          </p>
+        </div>
+      )}
 
       {/* Additional Requests */}
       <Card>

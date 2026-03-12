@@ -32,6 +32,7 @@ interface KeyStatus {
 }
 
 interface StripeConfig {
+  stripe_account_id: string;
   stripe_test_publishable_key: KeyStatus;
   stripe_test_secret_key: KeyStatus;
   stripe_live_publishable_key: KeyStatus;
@@ -54,6 +55,9 @@ export function StripeConfigManager() {
   const [deductFees, setDeductFees] = useState(false);
   const [donorCoversRegistration, setDonorCoversRegistration] = useState(false);
   const [donorCoversDonation, setDonorCoversDonation] = useState(false);
+  const [accountId, setAccountId] = useState("");
+  const [accountIdDraft, setAccountIdDraft] = useState("");
+  const [savingAccountId, setSavingAccountId] = useState(false);
   const [testKeys, setTestKeys] = useState({
     publishable: "",
     secret: "",
@@ -84,6 +88,7 @@ export function StripeConfigManager() {
       }
       const data: StripeConfig = await res.json();
       setConfig(data);
+      setAccountId(data.stripe_account_id ?? "");
       setDeductFees(data.deduct_stripe_fees_on_refund ?? false);
       setDonorCoversRegistration(data.donor_covers_fees_registration ?? false);
       setDonorCoversDonation(data.donor_covers_fees_donation ?? false);
@@ -91,6 +96,34 @@ export function StripeConfigManager() {
       toast.error("Network error loading Stripe config");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSaveAccountId() {
+    const val = accountIdDraft.trim();
+    if (val && !val.startsWith("acct_")) {
+      toast.error("Stripe Account ID must start with acct_");
+      return;
+    }
+    setSavingAccountId(true);
+    try {
+      const res = await fetch("/api/admin/stripe-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stripe_account_id: val }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to save Account ID");
+        return;
+      }
+      toast.success("Stripe Account ID saved");
+      setAccountId(val);
+      setAccountIdDraft("");
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setSavingAccountId(false);
     }
   }
 
@@ -213,6 +246,46 @@ export function StripeConfigManager() {
         Configure your Stripe API keys for processing payments. Each event can
         be set to use either Test or Live mode keys.
       </p>
+
+      {/* Stripe Account ID */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Stripe Account ID</CardTitle>
+          <CardDescription>
+            Used for linking to the Stripe Dashboard from admin pages. Found in
+            Stripe Dashboard &rarr; Settings &rarr; Account details.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {accountId && !accountIdDraft && (
+            <p className="text-sm">
+              Current:{" "}
+              <span className="font-mono font-medium">{accountId}</span>
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Input
+              placeholder="acct_..."
+              value={accountIdDraft}
+              onChange={(e) => setAccountIdDraft(e.target.value)}
+              className="max-w-sm font-mono"
+              {...noAutoFillText}
+            />
+            <Button
+              onClick={handleSaveAccountId}
+              disabled={savingAccountId || !accountIdDraft.trim()}
+              size="sm"
+            >
+              {savingAccountId ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Save
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Refund Settings */}
       <Card>

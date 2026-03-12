@@ -85,8 +85,12 @@ export default function PaymentStep() {
   const [updatingFees, setUpdatingFees] = useState(false);
 
   /* ---- mode & processing ---- */
-  const [payMode, setPayMode] = useState<PayMode>(null);
+  const [payMode, setPayMode] = useState<PayMode>("stripe");
   const [processing, setProcessing] = useState(false);
+
+  /* ---- refs for beforeunload cleanup (must track latest values) ---- */
+  const clientSecretRef = useRef<string | null>(null);
+  const paymentCompletedRef = useRef(false);
 
   /* ================================================================ */
   /*  Effects — all hooks MUST be before any early returns             */
@@ -199,6 +203,30 @@ export default function PaymentStep() {
     createIntent();
   }, [payMode, loading, error, freeRegistration, registrationId, clientSecret]);
 
+  // Keep ref in sync with clientSecret
+  useEffect(() => {
+    clientSecretRef.current = clientSecret;
+  }, [clientSecret]);
+
+  // Cancel orphaned Stripe PI when user leaves the page (close tab, navigate away)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const cs = clientSecretRef.current;
+      if (cs && !paymentCompletedRef.current) {
+        const piId = cs.split("_secret_")[0];
+        navigator.sendBeacon(
+          "/api/payment/cancel-intent",
+          new Blob(
+            [JSON.stringify({ paymentIntentId: piId })],
+            { type: "application/json" }
+          )
+        );
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
   // Derive which modes are available
   const stripeEnabled = enabledMethods.some((m) =>
     ["card", "ach", "check"].includes(m)
@@ -245,6 +273,7 @@ export default function PaymentStep() {
   };
 
   const goToConfirmation = async (paymentIntentId?: string) => {
+    paymentCompletedRef.current = true;
     if (paymentIntentId && registrationId) {
       try {
         const res = await fetch("/api/payment/confirm", {
@@ -491,13 +520,6 @@ export default function PaymentStep() {
                 </div>
               </button>
             </div>
-          )}
-
-          {/* Prompt to select payment method */}
-          {payMode === null && stripeEnabled && zelleEnabled && (
-            <p className="text-center text-sm text-muted-foreground">
-              Please select a payment method above to continue.
-            </p>
           )}
 
           {/* === Stripe Payment Form (inside Elements, only when PI exists) === */}

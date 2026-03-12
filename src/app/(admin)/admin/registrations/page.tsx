@@ -8,7 +8,7 @@ export default async function RegistrationsPage() {
 
   const { data: events } = await supabase
     .from("eckcm_events")
-    .select("id, name_en, year")
+    .select("id, name_en, year, stripe_mode")
     .order("is_default", { ascending: false })
     .order("year", { ascending: false });
 

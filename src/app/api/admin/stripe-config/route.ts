@@ -35,7 +35,7 @@ export async function GET() {
   const { data, error } = await admin
     .from("eckcm_app_config")
     .select(
-      "stripe_test_publishable_key, stripe_test_secret_key, stripe_live_publishable_key, stripe_live_secret_key, stripe_test_webhook_secret, stripe_live_webhook_secret, enabled_payment_methods, deduct_stripe_fees_on_refund, donor_covers_fees_registration, donor_covers_fees_donation"
+      "stripe_account_id, stripe_test_publishable_key, stripe_test_secret_key, stripe_live_publishable_key, stripe_live_secret_key, stripe_test_webhook_secret, stripe_live_webhook_secret, enabled_payment_methods, deduct_stripe_fees_on_refund, donor_covers_fees_registration, donor_covers_fees_donation"
     )
     .eq("id", 1)
     .single();
@@ -48,6 +48,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
+    stripe_account_id: data.stripe_account_id ?? "",
     stripe_test_publishable_key: maskKey(data.stripe_test_publishable_key),
     stripe_test_secret_key: maskKey(data.stripe_test_secret_key),
     stripe_live_publishable_key: maskKey(data.stripe_live_publishable_key),
@@ -137,6 +138,40 @@ export async function PATCH(request: Request) {
 
       return NextResponse.json({ success: true, [field]: body[field] });
     }
+  }
+
+  // Handle stripe_account_id update
+  if ("stripe_account_id" in body) {
+    const val = typeof body.stripe_account_id === "string" ? body.stripe_account_id.trim() : "";
+    if (val && !val.startsWith("acct_")) {
+      return NextResponse.json(
+        { error: "Stripe Account ID must start with acct_" },
+        { status: 400 }
+      );
+    }
+
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("eckcm_app_config")
+      .update({ stripe_account_id: val || null })
+      .eq("id", 1);
+
+    if (error) {
+      return NextResponse.json(
+        { error: "Failed to update Stripe Account ID" },
+        { status: 500 }
+      );
+    }
+
+    await admin.from("eckcm_audit_logs").insert({
+      user_id: user.id,
+      action: "UPDATE_STRIPE_CONFIG",
+      entity_type: "app_config",
+      entity_id: "1",
+      new_data: { stripe_account_id: val || null },
+    });
+
+    return NextResponse.json({ success: true, stripe_account_id: val });
   }
 
   // Handle payment methods update
