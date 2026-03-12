@@ -137,7 +137,10 @@ export async function POST(request: Request) {
 
   const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
-  if (paymentIntent.status !== "succeeded") {
+  const isProcessing = paymentIntent.status === "processing"; // ACH/us_bank_account
+  const isSucceeded = paymentIntent.status === "succeeded";  // Card/wallet
+
+  if (!isSucceeded && !isProcessing) {
     return NextResponse.json(
       { error: `Payment not succeeded. Status: ${paymentIntent.status}` },
       { status: 400 }
@@ -157,70 +160,105 @@ export async function POST(request: Request) {
 
   const invoiceId = paymentIntent.metadata.invoiceId;
 
-  // 1. Update registration to PAID first (critical)
-  const { error: registrationError, data: registrationData } = await admin
+  if (isSucceeded) {
+    // ── Card/wallet: payment confirmed instantly → PAID ──
+    const { error: registrationError, data: registrationData } = await admin
+      .from("eckcm_registrations")
+      .update({ status: "PAID" })
+      .select("id")
+      .eq("id", registrationId);
+
+    if (registrationError || !registrationData?.length) {
+      logger.error("[payment/confirm] Failed to update registration to PAID", {
+        registrationId,
+        error: registrationError ? String(registrationError) : "no rows updated",
+      });
+      return NextResponse.json(
+        { error: "Failed to finalize payment" },
+        { status: 500 }
+      );
+    }
+
+    // Update payment and invoice
+    const [paymentUpdate, invoiceUpdate] = await Promise.all([
+      admin
+        .from("eckcm_payments")
+        .update({
+          status: "SUCCEEDED",
+          metadata: {
+            stripe_payment_method: paymentIntent.payment_method,
+            stripe_charge_id:
+              typeof paymentIntent.latest_charge === "string"
+                ? paymentIntent.latest_charge
+                : null,
+            confirmed_by: "client",
+          },
+        })
+        .select("id")
+        .eq("stripe_payment_intent_id", paymentIntentId),
+      invoiceId
+        ? admin
+            .from("eckcm_invoices")
+            .update({ status: "SUCCEEDED", paid_at: new Date().toISOString() })
+            .select("id")
+            .eq("id", invoiceId)
+        : Promise.resolve(null),
+    ]);
+
+    if (paymentUpdate.error || !paymentUpdate.data?.length) {
+      logger.warn("[payment/confirm] Payment record update issue (non-blocking)", {
+        registrationId,
+        paymentIntentId,
+        error: paymentUpdate.error ? String(paymentUpdate.error) : "no matching payment row",
+      });
+    }
+    if (invoiceId && (invoiceUpdate?.error || !invoiceUpdate?.data?.length)) {
+      logger.warn("[payment/confirm] Invoice update issue (non-blocking)", {
+        registrationId,
+        invoiceId,
+        error: invoiceUpdate?.error ? String(invoiceUpdate.error) : "no matching invoice row",
+      });
+    }
+
+    // Generate E-Pass tokens and send email
+    await generateEPassAndSendEmail(admin, registrationId);
+
+    return NextResponse.json({ status: "confirmed" });
+  }
+
+  // ── ACH/us_bank_account: still processing → SUBMITTED (awaiting bank confirmation) ──
+  // Final confirmation will come via Stripe webhook
+  logger.info("[payment/confirm] ACH payment processing — setting SUBMITTED", {
+    registrationId,
+    paymentIntentId,
+  });
+
+  await admin
     .from("eckcm_registrations")
-    .update({ status: "PAID" })
-    .select("id")
+    .update({ status: "SUBMITTED" })
     .eq("id", registrationId);
 
-  if (registrationError || !registrationData?.length) {
-    logger.error("[payment/confirm] Failed to update registration to PAID", {
-      registrationId,
-      error: registrationError ? String(registrationError) : "no rows updated",
-    });
-    return NextResponse.json(
-      { error: "Failed to finalize payment" },
-      { status: 500 }
-    );
+  // Mark payment as PENDING (not SUCCEEDED yet)
+  await admin
+    .from("eckcm_payments")
+    .update({
+      status: "PENDING",
+      metadata: {
+        stripe_payment_method: paymentIntent.payment_method,
+        confirmed_by: "client",
+        ach_processing: true,
+      },
+    })
+    .eq("stripe_payment_intent_id", paymentIntentId);
+
+  if (invoiceId) {
+    await admin
+      .from("eckcm_invoices")
+      .update({ status: "PENDING" })
+      .eq("id", invoiceId);
   }
 
-  // 2. Update payment and invoice (best-effort — don't block e-pass/email)
-  const [paymentUpdate, invoiceUpdate] = await Promise.all([
-    admin
-      .from("eckcm_payments")
-      .update({
-        status: "SUCCEEDED",
-        metadata: {
-          stripe_payment_method: paymentIntent.payment_method,
-          stripe_charge_id:
-            typeof paymentIntent.latest_charge === "string"
-              ? paymentIntent.latest_charge
-              : null,
-          confirmed_by: "client",
-        },
-      })
-      .select("id")
-      .eq("stripe_payment_intent_id", paymentIntentId),
-    invoiceId
-      ? admin
-          .from("eckcm_invoices")
-          .update({ status: "SUCCEEDED", paid_at: new Date().toISOString() })
-          .select("id")
-          .eq("id", invoiceId)
-      : Promise.resolve(null),
-  ]);
-
-  // Log payment/invoice update issues but don't block e-pass/email
-  if (paymentUpdate.error || !paymentUpdate.data?.length) {
-    logger.warn("[payment/confirm] Payment record update issue (non-blocking)", {
-      registrationId,
-      paymentIntentId,
-      error: paymentUpdate.error ? String(paymentUpdate.error) : "no matching payment row",
-    });
-  }
-  if (invoiceId && (invoiceUpdate?.error || !invoiceUpdate?.data?.length)) {
-    logger.warn("[payment/confirm] Invoice update issue (non-blocking)", {
-      registrationId,
-      invoiceId,
-      error: invoiceUpdate?.error ? String(invoiceUpdate.error) : "no matching invoice row",
-    });
-  }
-
-  // 3. Generate E-Pass tokens and send email (always runs)
-  await generateEPassAndSendEmail(admin, registrationId);
-
-  return NextResponse.json({ status: "confirmed" });
+  return NextResponse.json({ status: "processing" });
   } catch (err) {
     logger.error("[payment/confirm] Unhandled error", { error: String(err) });
     return NextResponse.json(
