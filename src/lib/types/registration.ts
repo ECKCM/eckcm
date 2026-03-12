@@ -97,6 +97,7 @@ export interface PriceEstimate {
   subtotal: number;
   total: number;
   breakdown: PriceLineItem[];
+  manualPaymentDiscount: number; // cents — per-person discount × participants (informational, NOT subtracted from total)
 }
 
 export interface PriceLineItem {

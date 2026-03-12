@@ -74,6 +74,9 @@ export default function PaymentStep() {
   const [baseAmount, setBaseAmount] = useState(0);
   const [updatingFees, setUpdatingFees] = useState(false);
   const [paymentTestMode, setPaymentTestMode] = useState(false);
+  const [invoiceTotal, setInvoiceTotal] = useState(0);
+  const [manualPaymentDiscount, setManualPaymentDiscount] = useState(0);
+  const [payMode, setPayMode] = useState<"stripe" | "zelle">("stripe");
 
   // Fetch enabled payment methods
   useEffect(() => {
@@ -149,6 +152,8 @@ export default function PaymentStep() {
         if (data.registrantPhone) setRegistrantPhone(data.registrantPhone as string);
         if (data.registrantEmail) setRegistrantEmail(data.registrantEmail as string);
         if (data.paymentTestMode) setPaymentTestMode(true);
+        if (data.invoiceTotal) setInvoiceTotal(data.invoiceTotal as number);
+        if (data.manualPaymentDiscount) setManualPaymentDiscount(data.manualPaymentDiscount as number);
       } catch {
         setError("Network error. Please try again.");
       }
@@ -267,6 +272,11 @@ export default function PaymentStep() {
   const zelleEnabled = enabledMethods.includes("zelle");
   const walletEnabled = enabledMethods.includes("wallet") && !paymentTestMode;
 
+  // Set default payMode once after methods are loaded
+  useEffect(() => {
+    if (!stripeEnabled && zelleEnabled) setPayMode("zelle");
+  }, [stripeEnabled, zelleEnabled]);
+
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
       <WizardStepper currentStep={8} />
@@ -293,7 +303,7 @@ export default function PaymentStep() {
                 <span className="font-mono font-bold">{confirmationCode}</span>
               </div>
               <Separator className="my-3" />
-              {coversFees && feeCents > 0 && (
+              {payMode === "stripe" && coversFees && feeCents > 0 && (
                 <>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
@@ -306,13 +316,28 @@ export default function PaymentStep() {
                   <Separator className="my-2" />
                 </>
               )}
+              {payMode === "zelle" && manualPaymentDiscount > 0 && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>${((invoiceTotal || amount) / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-green-700">
+                    <span>Manual Payment Discount</span>
+                    <span>-${(manualPaymentDiscount / 100).toFixed(2)}</span>
+                  </div>
+                  <Separator className="my-2" />
+                </>
+              )}
               <div className="flex justify-between items-center">
                 <span className="font-medium">Total Due</span>
                 <span className="text-2xl font-bold">
-                  ${(amount / 100).toFixed(2)}
+                  {payMode === "zelle" && manualPaymentDiscount > 0
+                    ? `$${(Math.max(0, (invoiceTotal || amount) - manualPaymentDiscount) / 100).toFixed(2)}`
+                    : `$${(amount / 100).toFixed(2)}`}
                 </span>
               </div>
-              {donorCoversFees && (
+              {donorCoversFees && payMode === "stripe" && (
                 <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-dashed p-3 mt-3 hover:bg-muted/30 transition-colors">
                   <input
                     type="checkbox"
@@ -372,6 +397,10 @@ export default function PaymentStep() {
             registrantName={registrantName}
             registrantPhone={registrantPhone}
             registrantEmail={registrantEmail}
+            invoiceTotal={invoiceTotal}
+            manualPaymentDiscount={manualPaymentDiscount}
+            payMode={payMode}
+            onPayModeChange={setPayMode}
             onSuccess={(piId) => goToConfirmation(piId)}
             onCancel={() =>
               router.push(
@@ -411,6 +440,10 @@ function PaymentForm({
   registrantName,
   registrantPhone,
   registrantEmail,
+  invoiceTotal,
+  manualPaymentDiscount,
+  payMode,
+  onPayModeChange,
   onSuccess,
   onCancel,
 }: {
@@ -424,14 +457,15 @@ function PaymentForm({
   registrantName: string;
   registrantPhone: string;
   registrantEmail: string;
+  invoiceTotal: number;
+  manualPaymentDiscount: number;
+  payMode: PayMode;
+  onPayModeChange: (mode: PayMode) => void;
   onSuccess: (paymentIntentId?: string) => void;
   onCancel: () => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
-  const [payMode, setPayMode] = useState<PayMode>(
-    stripeEnabled ? "stripe" : "zelle"
-  );
   const [processing, setProcessing] = useState(false);
   const [paymentRequest, setPaymentRequest] =
     useState<StripePaymentRequest | null>(null);
@@ -565,6 +599,11 @@ function PaymentForm({
     onSuccess();
   };
 
+  /* ---- zelle discounted amount ---- */
+  const zelleAmount = manualPaymentDiscount > 0
+    ? Math.max(0, invoiceTotal - manualPaymentDiscount)
+    : invoiceTotal || amount;
+
   /* ---- button label ---- */
   const buttonLabel = (() => {
     const amt = `$${(amount / 100).toFixed(2)}`;
@@ -618,7 +657,7 @@ function PaymentForm({
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
-            onClick={() => setPayMode("stripe")}
+            onClick={() => onPayModeChange("stripe")}
             className={`relative flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${
               payMode === "stripe"
                 ? "border-primary bg-primary/5 shadow-sm"
@@ -637,7 +676,7 @@ function PaymentForm({
           </button>
           <button
             type="button"
-            onClick={() => setPayMode("zelle")}
+            onClick={() => onPayModeChange("zelle")}
             className={`relative flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${
               payMode === "zelle"
                 ? "border-primary bg-primary/5 shadow-sm"
@@ -724,7 +763,7 @@ function PaymentForm({
                     <CopyButton text="kimdani1@icloud.com" />
                   </p>
                   <p>3. Account Holder: <strong>EMPOWER MINISTRY GROUP, INC</strong></p>
-                  <p>4. Amount: <strong className="font-mono">${(amount / 100).toFixed(2)}</strong></p>
+                  <p>4. Amount: <strong className="font-mono">${(zelleAmount / 100).toFixed(2)}</strong></p>
                   <div className="space-y-1">
                     <p className="flex items-center gap-1 flex-wrap">
                       <span>5. Memo/Note <strong className="text-red-600">(Required)</strong>:</span>
@@ -757,7 +796,7 @@ function PaymentForm({
                   />
                   <span className="text-sm">
                     I agree to send the Zelle payment of{" "}
-                    <strong className="font-mono">${(amount / 100).toFixed(2)}</strong>{" "}
+                    <strong className="font-mono">${(zelleAmount / 100).toFixed(2)}</strong>{" "}
                     with the memo/note shown above.
                   </span>
                 </label>

@@ -81,6 +81,10 @@ export async function POST(request: Request) {
   const vbsMaterialsCat = allLinkedFees.find((f: any) => f.code === "VBS_MATERIALS");
   const vbsMaterialsFeeCents = vbsMaterialsCat?.amount_cents ?? 0;
 
+  // Extract manual payment discount per person
+  const manualDiscountCat = allLinkedFees.find((f: any) => f.code === "MANUAL_PAYMENT_DISCOUNT");
+  const manualPaymentDiscountPerPerson = manualDiscountCat?.amount_cents ?? 0;
+
   // Load VBS department IDs (only if fee applies)
   let vbsDepartmentIds: string[] = [];
   if (vbsMaterialsFeeCents > 0) {
@@ -117,13 +121,14 @@ export async function POST(request: Request) {
     earlyBirdFeePerPerson,
     isEarlyBird,
     keyDepositPerKey,
-    additionalLodgingThreshold: settings?.additional_lodging_threshold ?? 3,
+    additionalLodgingThreshold: settings?.additional_lodging_threshold ?? 2,
     additionalLodgingFeePerNight: settings?.additional_lodging_fee_cents ?? 400,
     lodgingRates,
     mealFeeCategories,
     eventStartDate: event?.event_start_date ?? startDate,
     vbsMaterialsFeeCents,
     vbsDepartmentIds,
+    manualPaymentDiscountPerPerson,
   });
 
   return NextResponse.json(estimate);

@@ -105,6 +105,9 @@ export async function POST(request: Request) {
     const vbsMaterialsCat = allLinkedFees.find((f: any) => f.code === "VBS_MATERIALS");
     const vbsMaterialsFeeCents = vbsMaterialsCat?.amount_cents ?? 0;
 
+    const manualDiscountCat = allLinkedFees.find((f: any) => f.code === "MANUAL_PAYMENT_DISCOUNT");
+    const manualPaymentDiscountPerPerson = manualDiscountCat?.amount_cents ?? 0;
+
     let vbsDepartmentIds: string[] = [];
     if (vbsMaterialsFeeCents > 0) {
       const { data: vbsDepts } = await admin
@@ -144,13 +147,14 @@ export async function POST(request: Request) {
       earlyBirdFeePerPerson,
       isEarlyBird,
       keyDepositPerKey,
-      additionalLodgingThreshold: settings?.additional_lodging_threshold ?? 3,
+      additionalLodgingThreshold: settings?.additional_lodging_threshold ?? 2,
       additionalLodgingFeePerNight: settings?.additional_lodging_fee_cents ?? 400,
       lodgingRates,
       mealFeeCategories,
       eventStartDate: event?.event_start_date ?? startDate,
       vbsMaterialsFeeCents,
       vbsDepartmentIds,
+      manualPaymentDiscountPerPerson,
     });
 
     // 9. Generate confirmation code

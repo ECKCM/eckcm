@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Info } from "lucide-react";
+import { calculateAge } from "@/lib/utils/validators";
+import { INFANT_AGE_THRESHOLD } from "@/lib/utils/constants";
 
 interface LodgingOption {
   code: string;
@@ -222,20 +224,34 @@ export default function LodgingStep() {
                 </div>
               )}
 
-              {/* LODGING_EXTRA notice for 3+ people */}
-              {hasExtraFee && group.participants.length >= 3 && (
-                <div className="flex items-start gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground">
-                  <Info className="h-4 w-4 mt-0.5 shrink-0" />
-                  <p>
-                    An additional lodging fee of {formatPrice(extraFeeAmount)}/night per person
-                    applies for each person beyond 2 in this room group (
-                    {group.participants.length - 2} extra × {state.nightsCount} night
-                    {state.nightsCount !== 1 ? "s" : ""} ={" "}
-                    {formatPrice(extraFeeAmount * (group.participants.length - 2) * state.nightsCount)}
-                    ).
-                  </p>
-                </div>
-              )}
+              {/* LODGING_EXTRA notice for 3+ billable people (infants exempt) */}
+              {(() => {
+                if (!hasExtraFee) return null;
+                const refDate = new Date(state.startDate + "T00:00:00");
+                const billable = group.participants.filter((p) => {
+                  const bd = new Date(
+                    p.birthYear ?? 2000,
+                    (p.birthMonth ?? 1) - 1,
+                    p.birthDay ?? 1
+                  );
+                  return calculateAge(bd, refDate) >= INFANT_AGE_THRESHOLD;
+                }).length;
+                const extraPeople = billable - 2;
+                if (extraPeople <= 0) return null;
+                return (
+                  <div className="flex items-start gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+                    <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                    <p>
+                      An additional lodging fee of {formatPrice(extraFeeAmount)}/night per person
+                      applies for each person beyond 2 in this room group (
+                      {extraPeople} extra × {state.nightsCount} night
+                      {state.nightsCount !== 1 ? "s" : ""} ={" "}
+                      {formatPrice(extraFeeAmount * extraPeople * state.nightsCount)}
+                      ).{billable < group.participants.length && " Children under 4 are exempt."}
+                    </p>
+                  </div>
+                );
+              })()}
 
               {/* Special Preferences */}
               {showSpecialPreferences && (

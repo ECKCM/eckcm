@@ -74,11 +74,63 @@ export async function POST(request: Request) {
     );
   }
 
+  // Calculate manual payment discount
+  let discountCents = 0;
+  {
+    const { data: regData } = await admin
+      .from("eckcm_registrations")
+      .select("registration_group_id")
+      .eq("id", registrationId)
+      .single();
+    if (regData?.registration_group_id) {
+      const { data: discountFee } = await admin
+        .from("eckcm_registration_group_fee_categories")
+        .select("eckcm_fee_categories!inner(amount_cents)")
+        .eq("registration_group_id", regData.registration_group_id)
+        .eq("eckcm_fee_categories.code", "MANUAL_PAYMENT_DISCOUNT")
+        .maybeSingle();
+      const discountPerPerson = (discountFee as any)?.eckcm_fee_categories?.amount_cents ?? 0;
+      if (discountPerPerson > 0) {
+        // Count participants
+        const { count } = await admin
+          .from("eckcm_group_memberships")
+          .select("id", { count: "exact", head: true })
+          .in(
+            "group_id",
+            (await admin.from("eckcm_groups").select("id").eq("registration_id", registrationId)).data?.map((g: { id: string }) => g.id) ?? []
+          );
+        discountCents = discountPerPerson * (count ?? 0);
+      }
+    }
+  }
+
+  // Apply discount: add negative line item and update invoice total
+  const discountedTotal = Math.max(0, invoice.total_cents - discountCents);
+  if (discountCents > 0) {
+    await admin.from("eckcm_invoice_line_items").insert({
+      invoice_id: invoice.id,
+      description_en: "Manual Payment Discount (Zelle)",
+      description_ko: "수동 결제 할인 (Zelle)",
+      quantity: 1,
+      unit_price_cents: -discountCents,
+      total_cents: -discountCents,
+      sort_order: 999,
+    });
+    await admin
+      .from("eckcm_invoices")
+      .update({ total_cents: discountedTotal })
+      .eq("id", invoice.id);
+    await admin
+      .from("eckcm_registrations")
+      .update({ total_amount_cents: discountedTotal })
+      .eq("id", registrationId);
+  }
+
   // Create ZELLE payment record
   const { error: paymentInsertError } = await admin.from("eckcm_payments").insert({
     invoice_id: invoice.id,
     payment_method: "ZELLE",
-    amount_cents: invoice.total_cents,
+    amount_cents: discountedTotal,
     status: "PENDING",
   });
   if (paymentInsertError) {
@@ -166,7 +218,8 @@ export async function POST(request: Request) {
     entity_id: registrationId,
     new_data: {
       confirmation_code: registration.confirmation_code,
-      amount_cents: invoice.total_cents,
+      amount_cents: discountedTotal,
+      discount_cents: discountCents,
       payment_method: "ZELLE",
       epass_tokens_generated: tokensGenerated,
     },

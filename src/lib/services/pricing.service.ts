@@ -1,5 +1,6 @@
 import type { PriceEstimate, PriceLineItem, RoomGroupInput } from "@/lib/types/registration";
 import { calculateAge } from "@/lib/utils/validators";
+import { INFANT_AGE_THRESHOLD } from "@/lib/utils/constants";
 
 export interface LodgingRate {
   code: string;
@@ -31,6 +32,7 @@ interface PricingInput {
   eventStartDate: string; // YYYY-MM-DD for age calculation
   vbsMaterialsFeeCents: number; // per-child VBS materials fee (0 if not applicable)
   vbsDepartmentIds: string[]; // IDs of VBS departments
+  manualPaymentDiscountPerPerson: number; // cents — MANUAL_PAYMENT_DISCOUNT per person (0 if none)
 }
 
 export function calculateEstimate(input: PricingInput): PriceEstimate {
@@ -88,11 +90,22 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
   }
 
   // 3. Additional lodging fee if group exceeds threshold
+  //    Infants (age < INFANT_AGE_THRESHOLD) are exempt from the extra fee
+  const eventStart = new Date(input.eventStartDate + "T00:00:00");
   for (let gi = 0; gi < input.roomGroups.length; gi++) {
     const group = input.roomGroups[gi];
-    if (group.participants.length > input.additionalLodgingThreshold) {
-      const extraPeople =
-        group.participants.length - input.additionalLodgingThreshold;
+    // Count only non-infant participants for extra lodging calculation
+    const billableCount = group.participants.filter((p) => {
+      const birthDate = new Date(
+        p.birthYear ?? 2000,
+        (p.birthMonth ?? 1) - 1,
+        p.birthDay ?? 1
+      );
+      return calculateAge(birthDate, eventStart) >= INFANT_AGE_THRESHOLD;
+    }).length;
+
+    if (billableCount > input.additionalLodgingThreshold) {
+      const extraPeople = billableCount - input.additionalLodgingThreshold;
       const extraFee =
         extraPeople *
         input.nightsCount *
@@ -127,8 +140,6 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
   // 5. Meal fees per participant (matched by fee category age_min/age_max)
   let mealFee = 0;
   if (input.mealFeeCategories.length > 0) {
-    const eventStart = new Date(input.eventStartDate + "T00:00:00");
-
     const matchAge = (cat: MealFeeCategory, age: number) =>
       (cat.age_min == null || age >= cat.age_min) &&
       (cat.age_max == null || age <= cat.age_max);
@@ -240,6 +251,12 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
   const subtotal = registrationFee + lodgingFee + additionalLodgingFee + mealFee + vbsFee;
   const total = subtotal + keyDeposit;
 
+  // 7. Manual payment discount (informational — not subtracted from total)
+  const manualPaymentDiscount =
+    input.manualPaymentDiscountPerPerson > 0
+      ? input.manualPaymentDiscountPerPerson * totalParticipants
+      : 0;
+
   return {
     registrationFee,
     lodgingFee,
@@ -250,5 +267,6 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     subtotal,
     total,
     breakdown,
+    manualPaymentDiscount,
   };
 }

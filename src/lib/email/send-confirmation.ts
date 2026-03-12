@@ -200,12 +200,15 @@ export async function sendConfirmationEmail(
       ? {
           invoiceNumber: invoiceData.invoice_number,
           lineItems: (invoiceData.eckcm_invoice_line_items ?? []).map(
-            (li: { description_en: string; quantity: number; unit_price_cents: number; total_cents: number }) => ({
-              description: li.description_en,
-              quantity: li.quantity,
-              unitPrice: `$${(li.unit_price_cents / 100).toFixed(2)}`,
-              amount: `$${(li.total_cents / 100).toFixed(2)}`,
-            })
+            (li: { description_en: string; quantity: number; unit_price_cents: number; total_cents: number }) => {
+              const fmtCents = (c: number) => c < 0 ? `-$${(Math.abs(c) / 100).toFixed(2)}` : `$${(c / 100).toFixed(2)}`;
+              return {
+                description: li.description_en,
+                quantity: li.quantity,
+                unitPrice: fmtCents(li.unit_price_cents),
+                amount: fmtCents(li.total_cents),
+              };
+            }
           ),
           subtotal: `$${(invoiceData.total_cents / 100).toFixed(2)}`,
           total: `$${(invoiceData.total_cents / 100).toFixed(2)}`,
