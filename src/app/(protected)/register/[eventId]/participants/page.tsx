@@ -87,6 +87,7 @@ interface SavedPerson {
   church_other: string | null;
   department_id: string | null;
   tshirt_size: string | null;
+  updated_at: string | null;
 }
 
 function createEmptyParticipant(isRepresentative: boolean): ParticipantInput {
@@ -314,7 +315,7 @@ export default function ParticipantsStep() {
           .like("code", "MEAL_%"),
         supabase
           .from("eckcm_saved_persons")
-          .select("id, first_name, last_name, display_name_ko, gender, birth_year, birth_month, birth_day, phone, phone_country, email, church_id, church_role, church_other, department_id, tshirt_size")
+          .select("id, first_name, last_name, display_name_ko, gender, birth_year, birth_month, birth_day, phone, phone_country, email, church_id, church_role, church_other, department_id, tshirt_size, updated_at")
           .order("updated_at", { ascending: false }),
       ]);
 
@@ -876,7 +877,7 @@ export default function ParticipantsStep() {
       .upsert(savedPersonData, {
         onConflict: "user_id,first_name,last_name,birth_year,birth_month,birth_day",
       })
-      .select("id, first_name, last_name, display_name_ko, gender, birth_year, birth_month, birth_day, phone, phone_country, email, church_id, church_role, church_other, department_id, tshirt_size")
+      .select("id, first_name, last_name, display_name_ko, gender, birth_year, birth_month, birth_day, phone, phone_country, email, church_id, church_role, church_other, department_id, tshirt_size, updated_at")
       .single();
 
     if (upsertedPerson) {
@@ -1097,13 +1098,29 @@ export default function ParticipantsStep() {
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-(--radix-popover-trigger-width) p-1" align="start">
-                                {savedPersons.map((sp) => (
+                                {savedPersons.map((sp) => {
+                                  const updatedLabel = sp.updated_at
+                                    ? (() => {
+                                        const d = new Date(sp.updated_at);
+                                        const mm = String(d.getMonth() + 1).padStart(2, "0");
+                                        const dd = String(d.getDate()).padStart(2, "0");
+                                        const yy = String(d.getFullYear()).slice(-2);
+                                        const hh = d.getHours() % 12 || 12;
+                                        const min = String(d.getMinutes()).padStart(2, "0");
+                                        const ampm = d.getHours() >= 12 ? "PM" : "AM";
+                                        return `${mm}.${dd}.${yy} ${String(hh).padStart(2, "0")}:${min}${ampm}`;
+                                      })()
+                                    : "";
+                                  return (
                                   <div
                                     key={sp.id}
                                     className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs cursor-pointer hover:bg-accent"
                                     onClick={() => fillFromSavedPerson(gi, pi, sp.id)}
                                   >
-                                    <span>{sp.first_name} {sp.last_name}</span>
+                                    <span className="flex items-center gap-2">
+                                      <span>{sp.first_name} {sp.last_name}</span>
+                                      {updatedLabel && <span className="text-muted-foreground text-[10px]">{updatedLabel}</span>}
+                                    </span>
                                     <button
                                       type="button"
                                       className="p-1 hover:bg-destructive/10 rounded shrink-0"
@@ -1115,7 +1132,8 @@ export default function ParticipantsStep() {
                                       <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
                                     </button>
                                   </div>
-                                ))}
+                                  );
+                                })}
                               </PopoverContent>
                             </Popover>
                           </div>

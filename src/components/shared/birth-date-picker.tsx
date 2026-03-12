@@ -86,6 +86,19 @@ export function BirthDatePicker({
     }
   };
 
+  const age = year && month && day
+    ? (() => {
+        const today = new Date();
+        const birthDate = new Date(year, month - 1, day);
+        let a = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          a--;
+        }
+        return a >= 0 && a <= 150 ? a : null;
+      })()
+    : null;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1">
@@ -100,6 +113,7 @@ export function BirthDatePicker({
             We collect your date of birth to determine your appropriate room assignment, calculate accurate meal pricing, and assign you to the correct department or group for this event. This information helps us coordinate travel logistics, dietary accommodations, and group organization efficiently. Your date of birth is securely stored, used only for these stated purposes, and never sold to third parties. It may be shared with authorized event organizers only as needed to support your participation. Participants under age 13 require parental consent in accordance with applicable U.S. regulations.
           </PopoverContent>
         </Popover>
+        {age !== null && <span className="text-xs text-muted-foreground">Age: {age}</span>}
       </div>
       <div className="grid grid-cols-3 gap-2">
         {/* Month - Dropdown */}

@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { generateEPassToken } from "@/lib/services/epass.service";
 import { zelleSubmitSchema } from "@/lib/schemas/api";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
+import { getStripeForMode } from "@/lib/stripe/config";
 import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
   // Load registration and verify ownership
   const { data: registration } = await admin
     .from("eckcm_registrations")
-    .select("id, status, created_by_user_id, total_amount_cents, confirmation_code")
+    .select("id, status, created_by_user_id, total_amount_cents, confirmation_code, event_id")
     .eq("id", registrationId)
     .single();
 
@@ -124,6 +125,47 @@ export async function POST(request: Request) {
       .from("eckcm_registrations")
       .update({ total_amount_cents: discountedTotal })
       .eq("id", registrationId);
+  }
+
+  // Cancel any orphaned Stripe PaymentIntents (created if user visited card form first)
+  const { data: pendingCardPayments } = await admin
+    .from("eckcm_payments")
+    .select("id, stripe_payment_intent_id")
+    .eq("invoice_id", invoice.id)
+    .eq("status", "PENDING")
+    .not("stripe_payment_intent_id", "is", null);
+
+  if (pendingCardPayments && pendingCardPayments.length > 0) {
+    try {
+      const { data: event } = await admin
+        .from("eckcm_events")
+        .select("stripe_mode")
+        .eq("id", registration.event_id)
+        .single();
+      const stripe = await getStripeForMode(
+        (event?.stripe_mode as "test" | "live") ?? "test"
+      );
+      for (const payment of pendingCardPayments) {
+        if (payment.stripe_payment_intent_id) {
+          try {
+            await stripe.paymentIntents.cancel(payment.stripe_payment_intent_id);
+          } catch (err) {
+            logger.warn("[payment/zelle-submit] Failed to cancel Stripe PI", {
+              piId: payment.stripe_payment_intent_id,
+              error: String(err),
+            });
+          }
+        }
+        await admin.from("eckcm_payments").delete().eq("id", payment.id);
+      }
+      logger.info("[payment/zelle-submit] Cleaned up orphaned Stripe payments", {
+        count: pendingCardPayments.length,
+      });
+    } catch (err) {
+      logger.warn("[payment/zelle-submit] Error cleaning up Stripe payments", {
+        error: String(err),
+      });
+    }
   }
 
   // Create ZELLE payment record

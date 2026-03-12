@@ -19,69 +19,8 @@ import {
   EyeOff,
   Loader2,
   Save,
-  CreditCard,
-  Building2,
-  Landmark,
-  Banknote,
-  Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
-
-/* ------------------------------------------------------------------ */
-/*  Constants                                                          */
-/* ------------------------------------------------------------------ */
-
-export type PaymentMethodId =
-  | "card"
-  | "ach"
-  | "zelle"
-  | "check"
-  | "wallet";
-
-export const ALL_PAYMENT_METHODS: {
-  id: PaymentMethodId;
-  label: string;
-  description: string;
-  icon: React.ReactNode;
-}[] = [
-  {
-    id: "card",
-    label: "Credit / Debit Card",
-    description: "Visa, Mastercard, Amex",
-    icon: <CreditCard className="h-4 w-4" />,
-  },
-  {
-    id: "ach",
-    label: "ACH Transfer",
-    description: "Bank account routing/account number",
-    icon: <Building2 className="h-4 w-4" />,
-  },
-  {
-    id: "zelle",
-    label: "Zelle",
-    description: "Instructions-based, pay later via Zelle",
-    icon: <Landmark className="h-4 w-4" />,
-  },
-  {
-    id: "check",
-    label: "Bank Check",
-    description: "ACH Direct Debit via routing/account number",
-    icon: <Banknote className="h-4 w-4" />,
-  },
-  {
-    id: "wallet",
-    label: "Apple Pay / Google Pay",
-    description: "Mobile wallet payments",
-    icon: <Smartphone className="h-4 w-4" />,
-  },
-];
-
-export const DEFAULT_PAYMENT_METHODS: PaymentMethodId[] = [
-  "card",
-  "ach",
-  "zelle",
-  "wallet",
-];
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -99,7 +38,6 @@ interface StripeConfig {
   stripe_live_secret_key: KeyStatus;
   stripe_test_webhook_secret: KeyStatus;
   stripe_live_webhook_secret: KeyStatus;
-  enabled_payment_methods: PaymentMethodId[];
   deduct_stripe_fees_on_refund: boolean;
   donor_covers_fees_registration: boolean;
   donor_covers_fees_donation: boolean;
@@ -113,9 +51,6 @@ export function StripeConfigManager() {
   const [config, setConfig] = useState<StripeConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savingMethods, setSavingMethods] = useState(false);
-  const [enabledMethods, setEnabledMethods] =
-    useState<PaymentMethodId[]>(DEFAULT_PAYMENT_METHODS);
   const [deductFees, setDeductFees] = useState(false);
   const [donorCoversRegistration, setDonorCoversRegistration] = useState(false);
   const [donorCoversDonation, setDonorCoversDonation] = useState(false);
@@ -149,7 +84,6 @@ export function StripeConfigManager() {
       }
       const data: StripeConfig = await res.json();
       setConfig(data);
-      setEnabledMethods(data.enabled_payment_methods ?? DEFAULT_PAYMENT_METHODS);
       setDeductFees(data.deduct_stripe_fees_on_refund ?? false);
       setDonorCoversRegistration(data.donor_covers_fees_registration ?? false);
       setDonorCoversDonation(data.donor_covers_fees_donation ?? false);
@@ -198,45 +132,6 @@ export function StripeConfigManager() {
       toast.error("Network error. Please try again.");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleToggleMethod(
-    methodId: PaymentMethodId,
-    enabled: boolean
-  ) {
-    const prev = enabledMethods;
-    const updated = enabled
-      ? [...prev, methodId]
-      : prev.filter((m) => m !== methodId);
-
-    if (updated.length === 0) {
-      toast.error("At least one payment method must be enabled");
-      return;
-    }
-
-    setEnabledMethods(updated);
-    setSavingMethods(true);
-    try {
-      const res = await fetch("/api/admin/stripe-config", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled_payment_methods: updated }),
-      });
-      if (!res.ok) {
-        setEnabledMethods(prev);
-        toast.error("Failed to update payment methods");
-        return;
-      }
-      const method = ALL_PAYMENT_METHODS.find((m) => m.id === methodId);
-      toast.success(
-        `${enabled ? "Enabled" : "Disabled"} ${method?.label ?? methodId}`
-      );
-    } catch {
-      setEnabledMethods(prev);
-      toast.error("Network error. Please try again.");
-    } finally {
-      setSavingMethods(false);
     }
   }
 
@@ -318,41 +213,6 @@ export function StripeConfigManager() {
         Configure your Stripe API keys for processing payments. Each event can
         be set to use either Test or Live mode keys.
       </p>
-
-      {/* Payment Methods */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Payment Methods</CardTitle>
-          <CardDescription>
-            Choose which payment methods are available to registrants.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {ALL_PAYMENT_METHODS.map((method) => (
-            <div
-              key={method.id}
-              className="flex items-center justify-between rounded-lg border p-3"
-            >
-              <div className="flex items-center gap-3">
-                <div className="text-muted-foreground">{method.icon}</div>
-                <div>
-                  <p className="text-sm font-medium">{method.label}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {method.description}
-                  </p>
-                </div>
-              </div>
-              <Switch
-                checked={enabledMethods.includes(method.id)}
-                onCheckedChange={(checked) =>
-                  handleToggleMethod(method.id, checked)
-                }
-                disabled={savingMethods}
-              />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
 
       {/* Refund Settings */}
       <Card>
