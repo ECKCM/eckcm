@@ -10,7 +10,11 @@ import { withTimeout } from "@/lib/utils/with-timeout";
 export async function sendConfirmationEmail(
   registrationId: string,
   sentBy?: string | null,
-  options?: { paymentMethod?: string }
+  options?: {
+    paymentMethod?: string;
+    /** Control which PDFs to attach: 'both' (default for Stripe paid), 'invoice-only' (pending), 'receipt-only' (manual payment confirmed) */
+    pdfMode?: "both" | "invoice-only" | "receipt-only";
+  }
 ): Promise<void> {
   const admin = createAdminClient();
 
@@ -236,36 +240,74 @@ export async function sendConfirmationEmail(
     ? `ECKCM Registration Submitted - ${reg.confirmation_code}`
     : `ECKCM Registration Confirmed - ${reg.confirmation_code}`;
 
-  // Generate PDF attachment (with 15s timeout — don't let it block email delivery)
-  let pdfAttachment: { filename: string; content: Buffer } | null = null;
+  // Generate PDF attachments (with 15s timeout — don't let it block email delivery)
+  // Invoice PDF: always shows PENDING PAYMENT (the billing document)
+  // Receipt PDF: always shows PAID (proof of payment) — only when paid
+  //
+  // pdfMode controls which PDFs to attach:
+  //   - 'both' (default for Stripe paid): Invoice + Receipt
+  //   - 'invoice-only' (default for pending): Invoice only
+  //   - 'receipt-only' (manual payment confirmed): Receipt only
+  const pdfAttachments: { filename: string; content: Buffer }[] = [];
   if (includeInvoice) {
+    const explicitMode = options?.pdfMode;
+    const pdfMode: "both" | "invoice-only" | "receipt-only" = explicitMode
+      ?? (invoicePaid ? "both" : "invoice-only");
+
+    const eventEndDate = reg.eckcm_events.event_end_date;
+    const basePdfData = {
+      invoiceNumber: includeInvoice.invoiceNumber,
+      confirmationCode: reg.confirmation_code,
+      eventName: reg.eckcm_events.name_en,
+      issuedDate: new Date().toLocaleDateString("en-US"),
+      billTo: user.email!,
+      dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
+      lineItems: includeInvoice.lineItems.map((li: { description: string; quantity: number; unitPrice: string; amount: string }) => ({
+        description: li.description,
+        quantity: li.quantity,
+        unitPrice: li.unitPrice,
+        amount: li.amount,
+      })),
+      subtotal: includeInvoice.subtotal,
+      total: includeInvoice.total,
+    };
+
     try {
-      const pdfBuffer = await withTimeout(
-        generateInvoicePdf({
-          invoiceNumber: includeInvoice.invoiceNumber,
-          confirmationCode: reg.confirmation_code,
-          eventName: reg.eckcm_events.name_en,
-          issuedDate: new Date().toLocaleDateString("en-US"),
-          isPaid: invoicePaid,
-          paymentMethod: paymentMethod ?? "-",
-          paymentDate: includeInvoice.paymentDate,
-          lineItems: includeInvoice.lineItems.map((li: { description: string; quantity: number; unitPrice: string; amount: string }) => ({
-            description: li.description,
-            quantity: li.quantity,
-            unitPrice: li.unitPrice,
-            amount: li.amount,
-          })),
-          subtotal: includeInvoice.subtotal,
-          total: includeInvoice.total,
-        }),
-        15_000,
-        "PDF generation timeout"
-      );
-      const docType = invoicePaid ? "receipt" : "invoice";
-      pdfAttachment = {
-        filename: `eckcm-${docType}-${includeInvoice.invoiceNumber}.pdf`,
-        content: pdfBuffer,
-      };
+      // Attach Invoice PDF (PENDING PAYMENT) — unless receipt-only mode
+      if (pdfMode !== "receipt-only") {
+        const invoicePdfBuffer = await withTimeout(
+          generateInvoicePdf({
+            ...basePdfData,
+            isPaid: false,
+            paymentMethod: "-",
+            paymentDate: "-",
+          }),
+          15_000,
+          "Invoice PDF generation timeout"
+        );
+        pdfAttachments.push({
+          filename: `eckcm-invoice-${includeInvoice.invoiceNumber}.pdf`,
+          content: invoicePdfBuffer,
+        });
+      }
+
+      // Attach Receipt PDF (PAID) — unless invoice-only mode
+      if (pdfMode !== "invoice-only" && invoicePaid) {
+        const receiptPdfBuffer = await withTimeout(
+          generateInvoicePdf({
+            ...basePdfData,
+            isPaid: true,
+            paymentMethod: paymentMethod ?? "-",
+            paymentDate: includeInvoice.paymentDate,
+          }),
+          15_000,
+          "Receipt PDF generation timeout"
+        );
+        pdfAttachments.push({
+          filename: `eckcm-receipt-${includeInvoice.invoiceNumber}.pdf`,
+          content: receiptPdfBuffer,
+        });
+      }
     } catch (err) {
       console.error("[sendConfirmationEmail] PDF generation failed:", err);
     }
@@ -310,7 +352,7 @@ export async function sendConfirmationEmail(
     html,
     text,
     headers: getEmailHeaders(),
-    ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
+    ...(pdfAttachments.length > 0 ? { attachments: pdfAttachments } : {}),
   });
 
   const toEmailLog = toAddresses.join(", ");

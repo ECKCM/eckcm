@@ -6,12 +6,13 @@ import { getEmailConfig, getEmailHeaders } from "@/lib/email/email-config";
 import { logEmail } from "@/lib/email/email-log.service";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { buildInvoiceEmail } from "@/lib/email/templates/invoice";
+import { generateInvoicePdf } from "@/lib/pdf/generate";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 const schema = z.object({
   registrationId: z.string().uuid(),
-  type: z.enum(["confirmation", "invoice"]),
+  type: z.enum(["confirmation", "invoice", "receipt"]),
 });
 
 export async function POST(req: NextRequest) {
@@ -41,7 +42,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // type === "invoice"
+  // type === "invoice" or "receipt"
+  const isReceiptType = type === "receipt";
+
   // Load invoice for this registration
   const { data: invoice } = await admin
     .from("eckcm_invoices")
@@ -51,6 +54,7 @@ export async function POST(req: NextRequest) {
       invoice_number,
       total_cents,
       status,
+      issued_at,
       paid_at,
       registration_id,
       eckcm_invoice_line_items(description_en, quantity, unit_price_cents, total_cents)
@@ -67,11 +71,17 @@ export async function POST(req: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const inv = invoice as any;
+  const isPaid = inv.status === "SUCCEEDED";
+
+  // Cannot send receipt if not paid
+  if (isReceiptType && !isPaid) {
+    return NextResponse.json({ error: "Cannot send receipt — invoice is not paid" }, { status: 400 });
+  }
 
   // Load registration info
   const { data: reg } = await admin
     .from("eckcm_registrations")
-    .select("confirmation_code, event_id, created_by_user_id, eckcm_events!inner(name_en)")
+    .select("confirmation_code, event_id, created_by_user_id, eckcm_events!inner(name_en, event_end_date)")
     .eq("id", registrationId)
     .single();
 
@@ -103,9 +113,10 @@ export async function POST(req: NextRequest) {
     })
   );
 
-  const isPaid = inv.status === "SUCCEEDED";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const eventName = (reg as any).eckcm_events?.name_en ?? "ECKCM Event";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const eventEndDate = (reg as any).eckcm_events?.event_end_date;
 
   const html = buildInvoiceEmail({
     invoiceNumber: inv.invoice_number,
@@ -114,16 +125,59 @@ export async function POST(req: NextRequest) {
     lineItems,
     subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
     total: `$${(inv.total_cents / 100).toFixed(2)}`,
-    paymentMethod: payment?.payment_method ?? "-",
-    paymentDate: inv.paid_at
+    paymentMethod: isReceiptType ? (payment?.payment_method ?? "-") : "-",
+    paymentDate: isReceiptType && inv.paid_at
       ? new Date(inv.paid_at).toLocaleDateString("en-US")
       : "-",
   });
 
   const emailConfig = await getEmailConfig();
-  const subject = isPaid
-    ? `ECKCM Receipt - ${inv.invoice_number}`
-    : `ECKCM Invoice - ${inv.invoice_number}`;
+  const docLabel = isReceiptType ? "Receipt" : "Invoice";
+  const subject = `ECKCM ${docLabel} - ${inv.invoice_number}`;
+
+  // Generate PDF attachment for the specific document type
+  const pdfAttachments: { filename: string; content: Buffer }[] = [];
+  try {
+    const basePdfData = {
+      invoiceNumber: inv.invoice_number,
+      confirmationCode: reg.confirmation_code ?? "",
+      eventName,
+      issuedDate: new Date(inv.issued_at).toLocaleDateString("en-US"),
+      billTo: registrant.email,
+      dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
+      lineItems,
+      subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
+      total: `$${(inv.total_cents / 100).toFixed(2)}`,
+    };
+
+    if (isReceiptType) {
+      // Receipt PDF only
+      const pdfBuffer = await generateInvoicePdf({
+        ...basePdfData,
+        isPaid: true,
+        paymentMethod: payment?.payment_method ?? "-",
+        paymentDate: inv.paid_at ? new Date(inv.paid_at).toLocaleDateString("en-US") : "-",
+      });
+      pdfAttachments.push({
+        filename: `eckcm-receipt-${inv.invoice_number}.pdf`,
+        content: pdfBuffer,
+      });
+    } else {
+      // Invoice PDF only
+      const pdfBuffer = await generateInvoicePdf({
+        ...basePdfData,
+        isPaid: false,
+        paymentMethod: "-",
+        paymentDate: "-",
+      });
+      pdfAttachments.push({
+        filename: `eckcm-invoice-${inv.invoice_number}.pdf`,
+        content: pdfBuffer,
+      });
+    }
+  } catch (err) {
+    logger.error("[admin/email/send] PDF generation failed", { error: String(err) });
+  }
 
   try {
     const resend = await getResendClient();
@@ -134,6 +188,7 @@ export async function POST(req: NextRequest) {
       subject,
       html,
       headers: getEmailHeaders(),
+      ...(pdfAttachments.length > 0 ? { attachments: pdfAttachments } : {}),
     });
 
     if (error) {
@@ -142,7 +197,7 @@ export async function POST(req: NextRequest) {
         toEmail: registrant.email,
         fromEmail: emailConfig.from,
         subject,
-        template: isPaid ? "receipt" : "invoice",
+        template: isReceiptType ? "receipt" : "invoice",
         registrationId,
         invoiceId: inv.id,
         status: "failed",
@@ -157,7 +212,7 @@ export async function POST(req: NextRequest) {
       toEmail: registrant.email,
       fromEmail: emailConfig.from,
       subject,
-      template: isPaid ? "receipt" : "invoice",
+      template: isReceiptType ? "receipt" : "invoice",
       registrationId,
       invoiceId: inv.id,
       status: "sent",
@@ -167,7 +222,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error("[admin/email/send] Invoice email failed", { error: String(error) });
+    logger.error("[admin/email/send] Invoice/receipt email failed", { error: String(error) });
     return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
   }
 }

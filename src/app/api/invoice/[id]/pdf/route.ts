@@ -5,10 +5,15 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { generateInvoicePdf } from "@/lib/pdf/generate";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: invoiceId } = await params;
+
+  // ?type=invoice → always render as Invoice (PENDING PAYMENT)
+  // ?type=receipt → always render as Receipt (PAID) — only if invoice is actually paid
+  // no param    → auto-detect based on invoice status (legacy behavior)
+  const typeParam = req.nextUrl.searchParams.get("type") as "invoice" | "receipt" | null;
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -44,10 +49,10 @@ export async function GET(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const inv = invoice as any;
 
-  // Verify ownership
+  // Verify ownership and load registration + event data
   const { data: reg } = await admin
     .from("eckcm_registrations")
-    .select("created_by_user_id, confirmation_code, eckcm_events!inner(name_en)")
+    .select("created_by_user_id, confirmation_code, eckcm_events!inner(name_en, event_end_date)")
     .eq("id", inv.registration_id)
     .single();
 
@@ -61,7 +66,23 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const isPaid = inv.status === "SUCCEEDED";
+  // Get registrant email for "Bill To"
+  const { data: { user: registrant } } = await admin.auth.admin.getUserById(r.created_by_user_id);
+  const billTo = registrant?.email ?? user.email ?? "-";
+
+  const actuallyPaid = inv.status === "SUCCEEDED";
+
+  // Cannot generate receipt if not actually paid
+  if (typeParam === "receipt" && !actuallyPaid) {
+    return NextResponse.json(
+      { error: "Receipt is not available — invoice is not paid" },
+      { status: 400 }
+    );
+  }
+
+  // Determine document type: invoice always shows PENDING, receipt always shows PAID
+  const renderAsReceipt = typeParam === "receipt" || (typeParam === null && actuallyPaid);
+
   const payment = (inv.eckcm_payments ?? []).find(
     (p: { status: string }) => p.status === "SUCCEEDED" || p.status === "PARTIALLY_REFUNDED"
   );
@@ -75,20 +96,23 @@ export async function GET(
     })
   );
 
+  const eventEndDate = r.eckcm_events?.event_end_date;
   const pdfBuffer = await generateInvoicePdf({
     invoiceNumber: inv.invoice_number,
     confirmationCode: r.confirmation_code ?? "",
     eventName: r.eckcm_events?.name_en ?? "ECKCM Event",
     issuedDate: new Date(inv.issued_at).toLocaleDateString("en-US"),
-    isPaid,
-    paymentMethod: payment?.payment_method ?? "-",
-    paymentDate: inv.paid_at ? new Date(inv.paid_at).toLocaleDateString("en-US") : "-",
+    isPaid: renderAsReceipt,
+    paymentMethod: renderAsReceipt ? (payment?.payment_method ?? "-") : "-",
+    paymentDate: renderAsReceipt && inv.paid_at ? new Date(inv.paid_at).toLocaleDateString("en-US") : "-",
+    billTo,
+    dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
     lineItems,
     subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
     total: `$${(inv.total_cents / 100).toFixed(2)}`,
   });
 
-  const docType = isPaid ? "receipt" : "invoice";
+  const docType = renderAsReceipt ? "receipt" : "invoice";
   const filename = `eckcm-${docType}-${inv.invoice_number}.pdf`;
 
   return new NextResponse(new Uint8Array(pdfBuffer), {

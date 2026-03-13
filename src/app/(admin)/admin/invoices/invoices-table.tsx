@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { MoreHorizontal, RotateCcw, CreditCard, Loader2, Mail, FileText } from "lucide-react";
+import { MoreHorizontal, RotateCcw, CreditCard, Loader2, Mail, FileText, Receipt, Download } from "lucide-react";
 
 interface Event {
   id: string;
@@ -378,7 +378,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
 
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
 
-  const handleSendEmail = async (inv: InvoiceRow, type: "confirmation" | "invoice") => {
+  const handleSendEmail = async (inv: InvoiceRow, type: "confirmation" | "invoice" | "receipt") => {
     if (!inv.registration_id) {
       toast.error("No registration linked to this invoice");
       return;
@@ -394,9 +394,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
       if (!res.ok) {
         toast.error(data.error || "Failed to send email");
       } else {
-        const label = type === "confirmation"
-          ? "Confirmation"
-          : inv.status === "SUCCEEDED" ? "Receipt" : "Invoice";
+        const label = type === "confirmation" ? "Confirmation" : type === "receipt" ? "Receipt" : "Invoice";
         toast.success(`${label} email sent to ${inv.registrant_email}`);
       }
     } catch {
@@ -523,7 +521,29 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                             {inv.registration_id && (
                               <DropdownMenuItem onClick={() => handleSendEmail(inv, "invoice")}>
                                 <FileText className="mr-2 size-4" />
-                                {inv.status === "SUCCEEDED" ? "Send Receipt" : "Send Invoice"}
+                                Send Invoice Email
+                              </DropdownMenuItem>
+                            )}
+                            {inv.registration_id && inv.status === "SUCCEEDED" && (
+                              <DropdownMenuItem onClick={() => handleSendEmail(inv, "receipt")}>
+                                <Receipt className="mr-2 size-4" />
+                                Send Receipt Email
+                              </DropdownMenuItem>
+                            )}
+                            {inv.registration_id && (
+                              <DropdownMenuItem asChild>
+                                <a href={`/api/invoice/${inv.id}/pdf?type=invoice`} download>
+                                  <Download className="mr-2 size-4" />
+                                  Download Invoice PDF
+                                </a>
+                              </DropdownMenuItem>
+                            )}
+                            {inv.registration_id && inv.status === "SUCCEEDED" && (
+                              <DropdownMenuItem asChild>
+                                <a href={`/api/invoice/${inv.id}/pdf?type=receipt`} download>
+                                  <Download className="mr-2 size-4" />
+                                  Download Receipt PDF
+                                </a>
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>

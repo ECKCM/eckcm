@@ -33,19 +33,30 @@ const MOCK_INVOICE = {
   lineItems: [
     { description: "Adult Registration (Full Week)", quantity: 1, unitPrice: "$250.00", amount: "$250.00" },
     { description: "Child Registration (Full Week)", quantity: 1, unitPrice: "$150.00", amount: "$150.00" },
-    { description: "Airport Ride (JFK → Camp)", quantity: 2, unitPrice: "$25.00", amount: "$50.00" },
+    { description: "Airport Ride (JFK - Camp)", quantity: 2, unitPrice: "$25.00", amount: "$50.00" },
   ],
   subtotal: "$450.00",
   total: "$450.00",
   paymentDate: new Date().toLocaleDateString("en-US"),
+  billTo: "test@eckcm.com",
+  dateDue: "6/28/2026",
+};
+
+const MOCK_PDF_BASE = {
+  ...MOCK_INVOICE,
+  confirmationCode: MOCK_BASE.confirmationCode,
+  eventName: MOCK_BASE.eventName,
+  issuedDate: new Date().toLocaleDateString("en-US"),
 };
 
 // ─── Scenario builders ────────────────────────────────────────────────────────
 
+type PdfAttachment = { filename: string; content: string };
+
 type ScenarioResult = {
   subject: string;
   html: string;
-  pdf?: { filename: string; content: string };
+  pdfs: PdfAttachment[];
 };
 
 async function buildScenario(
@@ -74,9 +85,10 @@ async function buildScenario(
             </table>
             <p style="color:#9ca3af;font-size:12px;border-top:1px solid #e5e7eb;padding-top:16px;">East Coast Korean Camp Meeting · eckcm.com</p>
           </div>`,
+        pdfs: [],
       };
 
-    // 2. Stripe/Card paid confirmation (with receipt PDF)
+    // 2. Stripe/Card paid confirmation (Invoice PDF + Receipt PDF)
     case "confirmation_stripe": {
       const html = buildConfirmationEmail({
         ...MOCK_BASE,
@@ -85,32 +97,33 @@ async function buildScenario(
         zelleInfo: null,
         invoiceInfo: { ...MOCK_INVOICE, paymentDate: MOCK_INVOICE.paymentDate },
       });
-      let pdf: ScenarioResult["pdf"];
+      const pdfs: PdfAttachment[] = [];
       try {
-        const buf = await withTimeout(
-          generateInvoicePdf({
-            ...MOCK_INVOICE,
-            confirmationCode: MOCK_BASE.confirmationCode,
-            eventName: MOCK_BASE.eventName,
-            issuedDate: new Date().toLocaleDateString("en-US"),
-            isPaid: true,
-            paymentMethod: "CARD",
-          }),
-          15_000,
-          "PDF timeout"
+        const [invoiceBuf, receiptBuf] = await Promise.all([
+          withTimeout(
+            generateInvoicePdf({ ...MOCK_PDF_BASE, isPaid: false, paymentMethod: "-", paymentDate: "-" }),
+            15_000, "Invoice PDF timeout"
+          ),
+          withTimeout(
+            generateInvoicePdf({ ...MOCK_PDF_BASE, isPaid: true, paymentMethod: "CARD", paymentDate: MOCK_INVOICE.paymentDate }),
+            15_000, "Receipt PDF timeout"
+          ),
+        ]);
+        pdfs.push(
+          { filename: "eckcm-invoice-INV-2026-0001.pdf", content: invoiceBuf.toString("base64") },
+          { filename: "eckcm-receipt-RCT-2026-0001.pdf", content: receiptBuf.toString("base64") },
         );
-        pdf = { filename: "eckcm-receipt-INV-2026-0001.pdf", content: buf.toString("base64") };
       } catch {
-        // send without PDF
+        // send without PDFs
       }
       return {
         subject: `ECKCM Registration Confirmed — ${MOCK_BASE.confirmationCode} [TEST]`,
         html,
-        ...(pdf ? { pdf } : {}),
+        pdfs,
       };
     }
 
-    // 3. Zelle pending (submitted, not yet paid)
+    // 3. Zelle pending (submitted, not yet paid — Invoice PDF only)
     case "confirmation_zelle_pending": {
       const html = buildConfirmationEmail({
         ...MOCK_BASE,
@@ -126,13 +139,24 @@ async function buildScenario(
           paymentDate: "-",
         },
       });
+      const pdfs: PdfAttachment[] = [];
+      try {
+        const buf = await withTimeout(
+          generateInvoicePdf({ ...MOCK_PDF_BASE, isPaid: false, paymentMethod: "-", paymentDate: "-" }),
+          15_000, "Invoice PDF timeout"
+        );
+        pdfs.push({ filename: "eckcm-invoice-INV-2026-0001.pdf", content: buf.toString("base64") });
+      } catch {
+        // send without PDF
+      }
       return {
         subject: `ECKCM Registration Submitted — ${MOCK_BASE.confirmationCode} [TEST]`,
         html,
+        pdfs,
       };
     }
 
-    // 4. Zelle confirmed (admin approved payment, e-pass activated)
+    // 4. Zelle/manual confirmed (admin approved payment — Receipt PDF only)
     case "confirmation_zelle_paid": {
       const html = buildConfirmationEmail({
         ...MOCK_BASE,
@@ -141,28 +165,20 @@ async function buildScenario(
         zelleInfo: null,
         invoiceInfo: { ...MOCK_INVOICE, paymentDate: MOCK_INVOICE.paymentDate },
       });
-      let pdf: ScenarioResult["pdf"];
+      const pdfs: PdfAttachment[] = [];
       try {
         const buf = await withTimeout(
-          generateInvoicePdf({
-            ...MOCK_INVOICE,
-            confirmationCode: MOCK_BASE.confirmationCode,
-            eventName: MOCK_BASE.eventName,
-            issuedDate: new Date().toLocaleDateString("en-US"),
-            isPaid: true,
-            paymentMethod: "ZELLE",
-          }),
-          15_000,
-          "PDF timeout"
+          generateInvoicePdf({ ...MOCK_PDF_BASE, isPaid: true, paymentMethod: "ZELLE", paymentDate: MOCK_INVOICE.paymentDate }),
+          15_000, "Receipt PDF timeout"
         );
-        pdf = { filename: "eckcm-receipt-INV-2026-0001.pdf", content: buf.toString("base64") };
+        pdfs.push({ filename: "eckcm-receipt-RCT-2026-0001.pdf", content: buf.toString("base64") });
       } catch {
         // send without PDF
       }
       return {
         subject: `ECKCM Registration Confirmed — ${MOCK_BASE.confirmationCode} [TEST]`,
         html,
-        ...(pdf ? { pdf } : {}),
+        pdfs,
       };
     }
 
@@ -175,28 +191,20 @@ async function buildScenario(
         zelleInfo: null,
         invoiceInfo: { ...MOCK_INVOICE, paymentDate: "-" },
       });
-      let pdf: ScenarioResult["pdf"];
+      const pdfs: PdfAttachment[] = [];
       try {
         const buf = await withTimeout(
-          generateInvoicePdf({
-            ...MOCK_INVOICE,
-            confirmationCode: MOCK_BASE.confirmationCode,
-            eventName: MOCK_BASE.eventName,
-            issuedDate: new Date().toLocaleDateString("en-US"),
-            isPaid: false,
-            paymentMethod: "-",
-          }),
-          15_000,
-          "PDF timeout"
+          generateInvoicePdf({ ...MOCK_PDF_BASE, isPaid: false, paymentMethod: "-", paymentDate: "-" }),
+          15_000, "Invoice PDF timeout"
         );
-        pdf = { filename: "eckcm-invoice-INV-2026-0001.pdf", content: buf.toString("base64") };
+        pdfs.push({ filename: "eckcm-invoice-INV-2026-0001.pdf", content: buf.toString("base64") });
       } catch {
         // send without PDF
       }
       return {
         subject: `ECKCM Invoice — ${MOCK_BASE.confirmationCode} [TEST]`,
         html,
-        ...(pdf ? { pdf } : {}),
+        pdfs,
       };
     }
 
@@ -259,14 +267,12 @@ export async function POST(request: Request) {
       ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
       subject: scenarioResult.subject,
       html: scenarioResult.html,
-      ...(scenarioResult.pdf
+      ...(scenarioResult.pdfs.length > 0
         ? {
-            attachments: [
-              {
-                filename: scenarioResult.pdf.filename,
-                content: scenarioResult.pdf.content,
-              },
-            ],
+            attachments: scenarioResult.pdfs.map((pdf) => ({
+              filename: pdf.filename,
+              content: pdf.content,
+            })),
           }
         : {}),
     });
@@ -281,7 +287,12 @@ export async function POST(request: Request) {
         resendId: sendResult?.id,
         sentBy: user.id,
       });
-      return NextResponse.json({ success: true, from, scenario });
+      return NextResponse.json({
+        success: true,
+        from,
+        scenario,
+        pdfCount: scenarioResult.pdfs.length,
+      });
     }
 
     console.error(`[email/test] scenario=${scenario} failed with from=${from}:`, error);

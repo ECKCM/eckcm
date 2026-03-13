@@ -49,6 +49,8 @@ import {
   Send,
   AlertTriangle,
   KeyRound,
+  FileText,
+  Receipt,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -324,35 +326,35 @@ const TEST_SCENARIOS = [
     label: "Connectivity Check",
     description: "Simple ping — confirms Resend API key and from-address are working.",
     badge: null,
-    hasPdf: false,
+    pdfCount: 0,
   },
   {
     id: "confirmation_stripe",
     label: "Stripe Confirmation",
-    description: "Paid confirmation email with receipt PDF attached and E-Pass links.",
-    badge: "PDF",
-    hasPdf: true,
+    description: "Paid confirmation email with Invoice PDF + Receipt PDF attached and E-Pass links.",
+    badge: "2 PDFs",
+    pdfCount: 2,
   },
   {
     id: "confirmation_zelle_pending",
     label: "Zelle — Pending",
-    description: "Registration submitted, awaiting Zelle payment. Includes payment instructions. No E-Pass links.",
-    badge: null,
-    hasPdf: false,
+    description: "Registration submitted, awaiting Zelle payment. Includes payment instructions and Invoice PDF. No E-Pass links.",
+    badge: "PDF",
+    pdfCount: 1,
   },
   {
     id: "confirmation_zelle_paid",
     label: "Zelle — Confirmed",
-    description: "Admin confirmed Zelle payment. Includes receipt PDF and E-Pass links.",
+    description: "Admin confirmed Zelle payment. Includes Receipt PDF only and E-Pass links.",
     badge: "PDF",
-    hasPdf: true,
+    pdfCount: 1,
   },
   {
     id: "invoice_pdf",
     label: "Invoice PDF",
-    description: "Unpaid invoice with PDF attachment. Tests PDF generation speed.",
+    description: "Unpaid invoice with Invoice PDF attachment. Tests PDF generation speed.",
     badge: "PDF",
-    hasPdf: true,
+    pdfCount: 1,
   },
 ] as const;
 
@@ -376,8 +378,8 @@ function TestEmailTab() {
       });
       const data = await res.json();
       if (res.ok) {
-        const selected = TEST_SCENARIOS.find((s) => s.id === scenario);
-        const pdfNote = selected?.hasPdf ? " (with PDF)" : "";
+        const count = data.pdfCount ?? 0;
+        const pdfNote = count > 1 ? ` (with ${count} PDFs)` : count === 1 ? " (with PDF)" : "";
         setResult({ ok: true, message: `Sent${pdfNote} via ${data.from}` });
       } else {
         setResult({ ok: false, message: data.error || "Failed to send." });
@@ -595,6 +597,45 @@ function PdfSettingsTab() {
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save PDF Settings"}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>PDF Preview</CardTitle>
+          <CardDescription>
+            Preview Invoice and Receipt PDFs with sample data to verify layout and settings.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button
+              variant="outline"
+              className="h-auto py-4"
+              onClick={() => window.open("/api/admin/pdf-preview?type=invoice", "_blank")}
+            >
+              <div className="flex items-center gap-3">
+                <FileText className="size-5 shrink-0 text-muted-foreground" />
+                <div className="text-left">
+                  <div className="font-medium">Invoice PDF</div>
+                  <div className="text-xs text-muted-foreground font-normal">Pending payment template</div>
+                </div>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto py-4"
+              onClick={() => window.open("/api/admin/pdf-preview?type=receipt", "_blank")}
+            >
+              <div className="flex items-center gap-3">
+                <Receipt className="size-5 shrink-0 text-muted-foreground" />
+                <div className="text-left">
+                  <div className="font-medium">Receipt PDF</div>
+                  <div className="text-xs text-muted-foreground font-normal">Paid receipt template</div>
+                </div>
+              </div>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

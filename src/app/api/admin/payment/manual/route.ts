@@ -198,7 +198,7 @@ export async function POST(request: Request) {
   // 11. Send confirmation email (non-blocking — runs after response to avoid timeout)
   after(async () => {
     try {
-      await sendConfirmationEmail(registration.id);
+      await sendConfirmationEmail(registration.id, null, { pdfMode: "receipt-only" });
     } catch (err) {
       logger.error("[admin/payment/manual] Failed to send confirmation email", { error: String(err) });
     }

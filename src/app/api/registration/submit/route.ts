@@ -458,6 +458,7 @@ export async function POST(request: Request) {
       registrationId: registration.id,
       totalCents: estimate.total,
       breakdown: estimate.breakdown,
+      confirmationCode,
     });
   } catch (invoiceErr) {
     logger.error("[registration/submit] Invoice creation failed", { error: String(invoiceErr) });

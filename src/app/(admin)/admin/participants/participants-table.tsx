@@ -260,7 +260,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
         <Input
           placeholder="Search name, email, phone, church, code..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
           className="max-w-sm"
         />
       </div>

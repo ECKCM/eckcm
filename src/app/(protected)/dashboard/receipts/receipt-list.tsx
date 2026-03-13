@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, Download } from "lucide-react";
+import { ArrowLeft, FileText, Receipt } from "lucide-react";
 
 interface LineItem {
   description_en: string;
@@ -79,13 +79,12 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <CardTitle className="text-base">
-                      {inv.invoice_number}
-                    </CardTitle>
-                    <span className="text-xs text-muted-foreground">
-                      {docType}
-                    </span>
+                    {isPaid ? (
+                      <Receipt className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <CardTitle className="text-base">{docType}</CardTitle>
                   </div>
                   <Badge variant={statusVariant[inv.status] ?? "secondary"}>
                     {statusLabel(inv.status)}
@@ -95,6 +94,14 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
               <CardContent className="space-y-4">
                 {/* Summary */}
                 <div className="grid grid-cols-2 gap-2 text-sm overflow-x-auto">
+                  <span className="text-muted-foreground">Invoice #</span>
+                  <span className="font-mono">{inv.invoice_number}</span>
+                  {isPaid && (
+                    <>
+                      <span className="text-muted-foreground">Receipt #</span>
+                      <span className="font-mono">{inv.invoice_number.replace(/^INV-/, "RCT-")}</span>
+                    </>
+                  )}
                   <span className="text-muted-foreground">Event</span>
                   <span>{event.name_en}</span>
                   {reg.confirmation_code && (
@@ -159,16 +166,27 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
                 )}
 
                 {/* Download */}
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
                   <Button variant="outline" size="sm" asChild>
                     <a
-                      href={`/api/invoice/${inv.id}/pdf`}
-                      download={`eckcm-${isPaid ? "receipt" : "invoice"}-${inv.invoice_number}.pdf`}
+                      href={`/api/invoice/${inv.id}/pdf?type=invoice`}
+                      download={`eckcm-invoice-${inv.invoice_number}.pdf`}
                     >
-                      <Download className="mr-1.5 h-3.5 w-3.5" />
-                      Download {docType} PDF
+                      <FileText className="mr-1.5 h-3.5 w-3.5" />
+                      Invoice PDF
                     </a>
                   </Button>
+                  {isPaid && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a
+                        href={`/api/invoice/${inv.id}/pdf?type=receipt`}
+                        download={`eckcm-receipt-${inv.invoice_number}.pdf`}
+                      >
+                        <Receipt className="mr-1.5 h-3.5 w-3.5" />
+                        Receipt PDF
+                      </a>
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

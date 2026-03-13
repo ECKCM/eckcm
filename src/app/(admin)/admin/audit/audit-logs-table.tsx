@@ -109,7 +109,7 @@ export function AuditLogsTable() {
       <Input
         placeholder="Search action, entity, actor..."
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => { setSearch(e.target.value); setPage(0); }}
         className="max-w-xs"
       />
 

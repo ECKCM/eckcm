@@ -3,15 +3,29 @@ import type { PriceLineItem } from "@/lib/types/registration";
 
 /**
  * Generate invoice number: INV-YYYY-NNNN
+ * Uses the same sequence number as the confirmation code for consistency.
  */
-export function generateInvoiceNumber(sequence: number): string {
-  const year = new Date().getFullYear();
-  return `INV-${year}-${String(sequence).padStart(4, "0")}`;
+export function generateInvoiceNumber(sequence: number, year?: number): string {
+  const y = year ?? new Date().getFullYear();
+  return `INV-${y}-${String(sequence).padStart(4, "0")}`;
+}
+
+/**
+ * Extract trailing sequence number from a confirmation code.
+ * e.g. "R26KIM0023" → 23
+ */
+export function extractSeqFromConfirmationCode(code: string): number | null {
+  const match = code.match(/(\d+)$/);
+  return match ? parseInt(match[1], 10) : null;
 }
 
 /**
  * Create an invoice with line items for a registration.
  * Returns the created invoice ID.
+ *
+ * @param confirmationCode - The registration's confirmation code.
+ *   The trailing number is reused as the invoice sequence so that
+ *   R26KIM0023 → INV-2026-0023 → RCT-2026-0023.
  */
 export async function createInvoice(
   admin: SupabaseClient,
@@ -19,12 +33,14 @@ export async function createInvoice(
     registrationId: string;
     totalCents: number;
     breakdown: PriceLineItem[];
+    confirmationCode: string;
   }
 ): Promise<string> {
-  // Atomically get next sequence number (race-condition safe)
-  const { data: seqResult } = await admin.rpc("get_next_invoice_seq");
-  const seq = (seqResult as number) ?? 1;
-  const invoiceNumber = generateInvoiceNumber(seq);
+  const seq = extractSeqFromConfirmationCode(params.confirmationCode) ?? 1;
+  // Derive year from confirmation code: R26... → 2026
+  const yyMatch = params.confirmationCode.match(/^R(\d{2})/);
+  const year = yyMatch ? 2000 + parseInt(yyMatch[1], 10) : new Date().getFullYear();
+  const invoiceNumber = generateInvoiceNumber(seq, year);
 
   // Create invoice
   const { data: invoice, error: invoiceError } = await admin

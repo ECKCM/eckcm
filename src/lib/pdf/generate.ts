@@ -9,6 +9,8 @@ export interface InvoicePdfData {
   isPaid: boolean;
   paymentMethod: string;
   paymentDate: string;
+  billTo: string;        // representative user email
+  dateDue?: string;      // event end date (for invoices)
   lineItems: Array<{
     description: string;
     quantity: number;
@@ -80,10 +82,15 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
     isPaid,
     paymentMethod,
     paymentDate,
+    billTo,
+    dateDue,
     lineItems,
     subtotal,
     total,
   } = data;
+
+  // Derive receipt number from invoice number: INV-YYYY-NNNN → RCT-YYYY-NNNN
+  const receiptNumber = invoiceNumber.replace(/^INV-/, "RCT-");
 
   const pdfSettings = await getPdfSettings();
 
@@ -127,10 +134,11 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
   txt(pdfSettings.orgSubtitle, MX + 24, y - 39, regular, 9, C_GRAY_LIGHT);
 
   // Right: doc type label + number (right-aligned)
+  const headerNumber = isPaid ? receiptNumber : invoiceNumber;
   const docLabel = `${docTitle} #`;
   const rightEdge = MX + CW - 24;
   txt(docLabel, rightEdge - regular.widthOfTextAtSize(docLabel, 9), y - 23, regular, 9, C_GRAY_LIGHT);
-  txt(invoiceNumber, rightEdge - bold.widthOfTextAtSize(invoiceNumber, 13), y - 39, bold, 13, C_WHITE);
+  txt(headerNumber, rightEdge - bold.widthOfTextAtSize(headerNumber, 13), y - 39, bold, 13, C_WHITE);
 
   y -= HEADER_H + 16;
 
@@ -154,13 +162,26 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 
   // ─── INFO ROWS ────────────────────────────────────────────────────────────
   const ROW_H = 20;
-  const infoRows: [string, string][] = [
-    ["Event", truncate(eventName, bold, 10, CW * 0.65)],
-    ["Confirmation Code", confirmationCode],
-    ["Issued", issuedDate],
-    ...(isPaid ? ([["Payment Method", paymentMethod]] as [string, string][]) : []),
-    ...(isPaid && paymentDate !== "-" ? ([["Payment Date", paymentDate]] as [string, string][]) : []),
-  ];
+  const infoRows: [string, string][] = isPaid
+    ? [
+        // Receipt: Invoice #, Receipt #, Date Paid, Bill To, Event, Code
+        ["Invoice Number", invoiceNumber],
+        ["Receipt Number", receiptNumber],
+        ...(paymentDate !== "-" ? ([["Date Paid", paymentDate]] as [string, string][]) : []),
+        ["Bill To", truncate(billTo, bold, 10, CW * 0.65)],
+        ["Event", truncate(eventName, bold, 10, CW * 0.65)],
+        ["Confirmation Code", confirmationCode],
+        ["Payment Method", paymentMethod],
+      ]
+    : [
+        // Invoice: Invoice #, Date of Issue, Date Due, Bill To, Event, Code
+        ["Invoice Number", invoiceNumber],
+        ["Date of Issue", issuedDate],
+        ...(dateDue ? ([["Date Due", dateDue]] as [string, string][]) : []),
+        ["Bill To", truncate(billTo, bold, 10, CW * 0.65)],
+        ["Event", truncate(eventName, bold, 10, CW * 0.65)],
+        ["Confirmation Code", confirmationCode],
+      ];
 
   for (const [label, value] of infoRows) {
     txt(label, MX, y - 14, regular, 10, C_GRAY_MID);
@@ -251,7 +272,7 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
   const FOOTER_Y = 40;
   page.drawLine({ start: { x: MX, y: FOOTER_Y + 20 }, end: { x: MX + CW, y: FOOTER_Y + 20 }, color: C_BORDER, thickness: 0.5 });
   txt(pdfSettings.footerText, MX, FOOTER_Y + 8, regular, 9, C_FOOTER);
-  const genText = `${invoiceNumber} · Generated ${new Date().toLocaleDateString("en-US")}`;
+  const genText = `${headerNumber} · Generated ${new Date().toLocaleDateString("en-US")}`;
   txt(genText, MX + CW - regular.widthOfTextAtSize(genText, 9), FOOTER_Y + 8, regular, 9, C_FOOTER);
 
   const pdfBytes = await doc.save();

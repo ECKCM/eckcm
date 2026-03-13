@@ -353,6 +353,7 @@ export async function POST(request: Request) {
         registrationId: registration.id,
         totalCents: estimate.total,
         breakdown: estimate.breakdown,
+        confirmationCode,
       });
 
       // Mark invoice as paid

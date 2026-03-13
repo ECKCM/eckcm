@@ -480,7 +480,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
           </SelectContent>
         </Select>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
           <SelectTrigger className="w-[160px]">
             <SelectValue />
           </SelectTrigger>
@@ -496,7 +496,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         <Input
           placeholder="Search code, name, room..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
           className="max-w-[250px]"
         />
 
@@ -531,6 +531,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                   <TableRow>
                     {/* User-specified order first */}
                     <TableHead className="whitespace-nowrap">Actions</TableHead>
+                    <TableHead className="whitespace-nowrap">No.</TableHead>
                     <TableHead className="whitespace-nowrap">Code</TableHead>
                     <TableHead className="whitespace-nowrap">Name</TableHead>
                     <TableHead className="whitespace-nowrap">Reg Status</TableHead>
@@ -542,6 +543,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                     <TableHead className="whitespace-nowrap">Stripe Link</TableHead>
                     <TableHead className="whitespace-nowrap">People</TableHead>
                     <TableHead className="whitespace-nowrap">Invoice</TableHead>
+                    <TableHead className="whitespace-nowrap">Receipt</TableHead>
                     {/* Remaining columns by importance */}
                     <TableHead className="whitespace-nowrap">Amount</TableHead>
                     <TableHead className="whitespace-nowrap">Email</TableHead>
@@ -576,6 +578,10 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                           <Eye className="mr-1 size-3" />
                           View
                         </Button>
+                      </TableCell>
+                      {/* No. */}
+                      <TableCell className="font-mono text-xs whitespace-nowrap text-muted-foreground">
+                        {r.confirmation_code?.match(/(\d+)$/)?.[1] ?? "-"}
                       </TableCell>
                       {/* Code */}
                       <TableCell className="font-mono text-sm whitespace-nowrap">
@@ -657,6 +663,10 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                       {/* Invoice */}
                       <TableCell className="font-mono text-xs whitespace-nowrap">
                         {r.invoice_number ?? "-"}
+                      </TableCell>
+                      {/* Receipt */}
+                      <TableCell className="font-mono text-xs whitespace-nowrap">
+                        {r.invoice_number ? r.invoice_number.replace(/^INV-/, "RCT-") : "-"}
                       </TableCell>
                       {/* Amount */}
                       <TableCell className="font-mono text-sm whitespace-nowrap">

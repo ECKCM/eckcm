@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
   // Verify user owns the registration linked to this invoice
   const { data: reg } = await admin
     .from("eckcm_registrations")
-    .select("created_by_user_id, confirmation_code, event_id, eckcm_events!inner(name_en)")
+    .select("created_by_user_id, confirmation_code, event_id, eckcm_events!inner(name_en, event_end_date)")
     .eq("id", inv.registration_id)
     .single();
 
@@ -105,6 +105,8 @@ export async function POST(req: NextRequest) {
   const isPaid = inv.status === "SUCCEEDED";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const eventName = (reg as any).eckcm_events?.name_en ?? "ECKCM Event";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const eventEndDate = (reg as any).eckcm_events?.event_end_date;
 
   const html = buildInvoiceEmail({
     invoiceNumber: inv.invoice_number,
@@ -124,25 +126,46 @@ export async function POST(req: NextRequest) {
     ? `ECKCM Receipt - ${inv.invoice_number}`
     : `ECKCM Invoice - ${inv.invoice_number}`;
 
-  // Generate PDF attachment
-  let pdfAttachment: { filename: string; content: Buffer } | null = null;
+  // Generate PDF attachments — Invoice (always) + Receipt (if paid)
+  const pdfAttachments: { filename: string; content: Buffer }[] = [];
   try {
-    const pdfBuffer = await generateInvoicePdf({
+    const basePdfData = {
       invoiceNumber: inv.invoice_number,
       confirmationCode: reg.confirmation_code ?? "",
       eventName,
       issuedDate: new Date(inv.issued_at).toLocaleDateString("en-US"),
-      isPaid,
-      paymentMethod: payment?.payment_method ?? "-",
-      paymentDate: inv.paid_at ? new Date(inv.paid_at).toLocaleDateString("en-US") : "-",
+      billTo: recipientEmail,
+      dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
       lineItems,
       subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
       total: `$${(inv.total_cents / 100).toFixed(2)}`,
-    });
-    pdfAttachment = {
-      filename: `eckcm-${isPaid ? "receipt" : "invoice"}-${inv.invoice_number}.pdf`,
-      content: pdfBuffer,
     };
+
+    // Always attach Invoice PDF (PENDING PAYMENT)
+    const invoicePdfBuffer = await generateInvoicePdf({
+      ...basePdfData,
+      isPaid: false,
+      paymentMethod: "-",
+      paymentDate: "-",
+    });
+    pdfAttachments.push({
+      filename: `eckcm-invoice-${inv.invoice_number}.pdf`,
+      content: invoicePdfBuffer,
+    });
+
+    // If paid, also attach Receipt PDF (PAID)
+    if (isPaid) {
+      const receiptPdfBuffer = await generateInvoicePdf({
+        ...basePdfData,
+        isPaid: true,
+        paymentMethod: payment?.payment_method ?? "-",
+        paymentDate: inv.paid_at ? new Date(inv.paid_at).toLocaleDateString("en-US") : "-",
+      });
+      pdfAttachments.push({
+        filename: `eckcm-receipt-${inv.invoice_number}.pdf`,
+        content: receiptPdfBuffer,
+      });
+    }
   } catch (err) {
     logger.error("[email/invoice] PDF generation failed", { error: String(err) });
   }
@@ -156,7 +179,7 @@ export async function POST(req: NextRequest) {
       subject,
       html,
       headers: getEmailHeaders(),
-      ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
+      ...(pdfAttachments.length > 0 ? { attachments: pdfAttachments } : {}),
     });
 
     if (error) {
