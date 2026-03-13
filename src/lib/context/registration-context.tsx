@@ -5,6 +5,7 @@ import {
   useContext,
   useReducer,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -132,6 +133,7 @@ interface RegistrationContextValue {
   state: RegistrationState;
   dispatch: React.Dispatch<Action>;
   hydrated: boolean;
+  suppressUnloadWarning: React.MutableRefObject<boolean>;
 }
 
 const RegistrationContext = createContext<RegistrationContextValue | null>(null);
@@ -148,6 +150,7 @@ export function RegistrationProvider({
     eventId,
   });
   const [hydrated, setHydrated] = useState(false);
+  const suppressUnloadWarning = useRef(false);
 
 
   // Restore from sessionStorage on mount
@@ -217,6 +220,7 @@ export function RegistrationProvider({
     if (state.step <= 1) return;
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (suppressUnloadWarning.current) return;
       e.preventDefault();
     };
 
@@ -225,7 +229,7 @@ export function RegistrationProvider({
   }, [state.step]);
 
   return (
-    <RegistrationContext.Provider value={{ state, dispatch, hydrated }}>
+    <RegistrationContext.Provider value={{ state, dispatch, hydrated, suppressUnloadWarning }}>
       {children}
     </RegistrationContext.Provider>
   );

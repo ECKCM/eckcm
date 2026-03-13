@@ -79,14 +79,7 @@ interface SavedPerson {
   birth_year: number | null;
   birth_month: number | null;
   birth_day: number | null;
-  phone: string | null;
-  phone_country: string | null;
-  email: string | null;
   church_id: string | null;
-  church_role: string | null;
-  church_other: string | null;
-  department_id: string | null;
-  tshirt_size: string | null;
   updated_at: string | null;
 }
 
@@ -315,7 +308,7 @@ export default function ParticipantsStep() {
           .like("code", "MEAL_%"),
         supabase
           .from("eckcm_saved_persons")
-          .select("id, first_name, last_name, display_name_ko, gender, birth_year, birth_month, birth_day, phone, phone_country, email, church_id, church_role, church_other, department_id, tshirt_size, updated_at")
+          .select("id, first_name, last_name, display_name_ko, gender, birth_year, birth_month, birth_day, church_id, updated_at")
           .order("updated_at", { ascending: false }),
       ]);
 
@@ -853,7 +846,7 @@ export default function ParticipantsStep() {
       return;
     }
 
-    // Upsert to saved persons for future autofill
+    // Upsert to saved persons for future autofill (only core identity fields)
     const savedPersonData = {
       user_id: user.id,
       first_name: p.firstName.trim(),
@@ -863,21 +856,14 @@ export default function ParticipantsStep() {
       birth_year: p.birthYear ?? null,
       birth_month: p.birthMonth ?? null,
       birth_day: p.birthDay ?? null,
-      phone: p.phone || null,
-      phone_country: p.phoneCountry || "US",
-      email: p.email || null,
       church_id: p.churchId || null,
-      church_role: p.churchRole || null,
-      church_other: p.churchOther || null,
-      department_id: p.departmentId || null,
-      tshirt_size: p.tshirtSize || null,
     };
     const { data: upsertedPerson } = await supabase
       .from("eckcm_saved_persons")
       .upsert(savedPersonData, {
         onConflict: "user_id,first_name,last_name,birth_year,birth_month,birth_day",
       })
-      .select("id, first_name, last_name, display_name_ko, gender, birth_year, birth_month, birth_day, phone, phone_country, email, church_id, church_role, church_other, department_id, tshirt_size, updated_at")
+      .select("id, first_name, last_name, display_name_ko, gender, birth_year, birth_month, birth_day, church_id, updated_at")
       .single();
 
     if (upsertedPerson) {
@@ -907,15 +893,7 @@ export default function ParticipantsStep() {
       birthYear: sp.birth_year ?? undefined,
       birthMonth: sp.birth_month ?? undefined,
       birthDay: sp.birth_day ?? undefined,
-      phone: sp.phone ?? "",
-      phoneCountry: sp.phone_country ?? "US",
-      email: (gi === 0 && pi === 0 && state.registrationType !== "others") ? current.email : (sp.email ?? ""),
       churchId: sp.church_id ?? undefined,
-      churchRole: (sp.church_role as ParticipantInput["churchRole"]) ?? undefined,
-      churchOther: sp.church_other ?? undefined,
-      departmentId: sp.department_id ?? undefined,
-      tshirtSize: sp.tshirt_size ?? undefined,
-      mealSelections: [], // recalculate from dates
     };
     // Clear saved state since we changed the data
     const key = `${gi}-${pi}`;

@@ -254,8 +254,6 @@ export async function POST(request: Request) {
       "klarna",
       "amazon_pay",
     ],
-  }, {
-    idempotencyKey: `pi_create_${invoice.id}`,
   });
 
   // Create pending payment record

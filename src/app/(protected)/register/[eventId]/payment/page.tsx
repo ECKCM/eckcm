@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { STRIPE_APPEARANCE } from "./_components/payment-constants";
 import { CopyButton } from "./_components/copy-button";
+import { useRegistration } from "@/lib/context/registration-context";
 
 /* ------------------------------------------------------------------ */
 /*  Zelle SVG icon                                                     */
@@ -54,6 +55,7 @@ export default function PaymentStep() {
   const { eventId } = useParams<{ eventId: string }>();
   const registrationId = searchParams.get("registrationId");
   const confirmationCode = searchParams.get("code");
+  const { suppressUnloadWarning } = useRegistration();
 
   /* ---- payment info (loaded without creating Stripe PI) ---- */
   const [loading, setLoading] = useState(true);
@@ -95,6 +97,7 @@ export default function PaymentStep() {
   /* ---- refs for beforeunload cleanup (must track latest values) ---- */
   const clientSecretRef = useRef<string | null>(null);
   const paymentCompletedRef = useRef(false);
+  const beforeUnloadHandlerRef = useRef<(() => void) | null>(null);
 
   /* ================================================================ */
   /*  Effects — all hooks MUST be before any early returns             */
@@ -212,7 +215,7 @@ export default function PaymentStep() {
     clientSecretRef.current = clientSecret;
   }, [clientSecret]);
 
-  // Cancel orphaned Stripe PI when user closes/refreshes the browser tab
+  // Cancel orphaned Stripe PI + DRAFT registration when user closes/refreshes
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (paymentCompletedRef.current) return;
@@ -229,11 +232,39 @@ export default function PaymentStep() {
           )
         );
       }
+
+      // Cancel DRAFT registration
+      if (registrationId && eventId) {
+        navigator.sendBeacon(
+          "/api/registration/cancel-drafts",
+          new Blob(
+            [JSON.stringify({ eventId, registrationId })],
+            { type: "application/json" }
+          )
+        );
+      }
     };
+    beforeUnloadHandlerRef.current = handleBeforeUnload;
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
+      beforeUnloadHandlerRef.current = null;
     };
+  }, [registrationId, eventId]);
+
+  // Cancel DRAFT registration on in-app navigation away (unmount)
+  useEffect(() => {
+    return () => {
+      if (paymentCompletedRef.current) return;
+      if (!registrationId || !eventId) return;
+      fetch("/api/registration/cancel-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId, registrationId }),
+        keepalive: true,
+      }).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [registrationId, eventId]);
 
   // Derive which modes are available
@@ -306,6 +337,41 @@ export default function PaymentStep() {
     if (!paymentIntentId) params.set("method", "zelle");
     if (achProcessing) params.set("method", "ach");
     router.push(`/register/${eventId}/confirmation?${params.toString()}`);
+  };
+
+  // Cancel PI + DRAFT registration, then go back to start fresh
+  const cancelPaymentAndGoBack = async () => {
+    // Mark as completed to prevent useEffect cleanup from double-cancelling
+    paymentCompletedRef.current = true;
+
+    const cs = clientSecretRef.current;
+    if (cs) {
+      const piId = cs.split("_secret_")[0];
+      try {
+        await fetch("/api/payment/cancel-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentIntentId: piId }),
+        });
+      } catch (err) {
+        console.error("[Payment] cancel-intent error:", err);
+      }
+    }
+
+    // Cancel the DRAFT registration
+    if (registrationId && eventId) {
+      try {
+        await fetch("/api/registration/cancel-drafts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ eventId, registrationId }),
+        });
+      } catch (err) {
+        console.error("[Payment] cancel-drafts error:", err);
+      }
+    }
+
+    router.push(`/register/${eventId}`);
   };
 
   /* ---- derived values ---- */
@@ -587,11 +653,12 @@ export default function PaymentStep() {
                     setAchDiscountApplied(discountApplied);
                   }}
                   onSuccess={(piId, achProcessing) => goToConfirmation(piId, achProcessing)}
-                  onCancel={() =>
-                    router.push(
-                      `/register/${eventId}/review?registrationId=${registrationId}&code=${confirmationCode || ""}`
-                    )
-                  }
+                  onCancel={cancelPaymentAndGoBack}
+                  onPaymentFailed={cancelPaymentAndGoBack}
+                  beforeUnloadHandlerRef={beforeUnloadHandlerRef}
+                  suppressUnloadWarning={suppressUnloadWarning}
+                  registrantEmail={registrantEmail}
+                  registrantName={registrantName}
                 />
               </Elements>
             ) : (
@@ -656,6 +723,11 @@ function StripePaymentForm({
   onAmountUpdate,
   onSuccess,
   onCancel,
+  onPaymentFailed,
+  beforeUnloadHandlerRef,
+  suppressUnloadWarning,
+  registrantEmail,
+  registrantName,
 }: {
   clientSecret: string;
   amount: number;
@@ -668,6 +740,11 @@ function StripePaymentForm({
   onAmountUpdate: (amount: number, discountApplied: boolean) => void;
   onSuccess: (paymentIntentId: string, achProcessing?: boolean) => void;
   onCancel: () => void;
+  onPaymentFailed: () => void;
+  beforeUnloadHandlerRef: React.MutableRefObject<(() => void) | null>;
+  suppressUnloadWarning: React.MutableRefObject<boolean>;
+  registrantEmail: string;
+  registrantName: string;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -784,16 +861,40 @@ function StripePaymentForm({
       }
 
       const returnUrl = `${window.location.origin}/register/payment-complete`;
+
+      // Suppress "Leave site?" dialog during redirect (Amazon Pay, Klarna, etc.)
+      suppressUnloadWarning.current = true;
+      if (beforeUnloadHandlerRef.current) {
+        window.removeEventListener("beforeunload", beforeUnloadHandlerRef.current);
+      }
+
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         clientSecret,
-        confirmParams: { return_url: returnUrl },
+        confirmParams: {
+          return_url: returnUrl,
+          payment_method_data: {
+            billing_details: {
+              ...(registrantEmail ? { email: registrantEmail } : {}),
+              ...(registrantName ? { name: registrantName } : {}),
+            },
+          },
+        },
         redirect: "if_required",
       });
 
+      // If confirmPayment returned (no redirect, e.g. card), restore warnings
+      suppressUnloadWarning.current = false;
+      if (beforeUnloadHandlerRef.current) {
+        window.addEventListener("beforeunload", beforeUnloadHandlerRef.current);
+      }
+
       if (error) {
+        console.error("[Payment] Stripe error:", error.type, error.code, error.message);
         toast.error(error.message || "Payment failed. Please try again.");
         setProcessing(false);
+        onPaymentFailed();
+        return;
       } else if (
         paymentIntent?.status === "succeeded" ||
         paymentIntent?.status === "processing"
@@ -812,6 +913,7 @@ function StripePaymentForm({
       console.error("[Payment] Unexpected error:", err);
       toast.error("An unexpected error occurred. Please try again.");
       setProcessing(false);
+      onPaymentFailed();
     }
   };
 
