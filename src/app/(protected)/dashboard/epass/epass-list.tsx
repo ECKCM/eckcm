@@ -163,6 +163,13 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
     return myPersonIds.includes(token.person_id);
   }
 
+  // Sort: my passes first, then others (preserve original order within each group)
+  const sortedTokens = [...tokens].sort((a, b) => {
+    const aIsMine = isMyPass(a) ? 0 : 1;
+    const bIsMine = isMyPass(b) ? 0 : 1;
+    return aIsMine - bIsMine;
+  });
+
   // Determine card style: my pass = normal, group member = gray, someone else reg = dark gray
   function getCardStyle(token: EPassToken): string {
     if (isMyPass(token)) return ""; // normal
@@ -216,7 +223,7 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
           </CardContent>
         </Card>
       ) : (
-        tokens.map((token) => {
+        sortedTokens.map((token) => {
           const person = token.eckcm_people;
           const reg = token.eckcm_registrations;
           const event = reg.eckcm_events;

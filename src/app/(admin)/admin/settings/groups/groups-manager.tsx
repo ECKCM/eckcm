@@ -39,10 +39,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Copy, Check } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
+
+function generateAccessCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/O/0/1 to avoid confusion
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
 
 interface RegistrationGroup {
   id: string;
@@ -71,6 +81,7 @@ interface Department {
 interface FeeCategory {
   id: string;
   code: string;
+  category: string;
   name_en: string;
   amount_cents: number;
   pricing_type: string;
@@ -93,6 +104,86 @@ const emptyForm = {
   is_default: false,
   is_active: true,
 };
+
+function AccessCodeList({ groups, loading }: { groups: RegistrationGroup[]; loading: boolean }) {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const groupsWithCodes = groups.filter((g) => g.access_code && g.is_active);
+
+  async function handleCopy(code: string, groupId: string) {
+    await navigator.clipboard.writeText(code);
+    setCopiedId(groupId);
+    setTimeout(() => setCopiedId(null), 1500);
+  }
+
+  if (loading) {
+    return <p className="text-center text-muted-foreground py-8">Loading...</p>;
+  }
+
+  if (groupsWithCodes.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          No active groups with access codes.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-muted-foreground">
+        Click to copy access codes and share with participants.
+      </p>
+      <div className="rounded-md border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/50">
+              <th className="px-4 py-2 text-left font-medium">Group</th>
+              <th className="px-4 py-2 text-left font-medium">Access Code</th>
+              <th className="px-4 py-2 text-right font-medium">Copy</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groupsWithCodes.map((group) => (
+              <tr key={group.id} className="border-b last:border-b-0">
+                <td className="px-4 py-2.5">
+                  {group.name_en}
+                  {group.name_ko && (
+                    <span className="text-muted-foreground ml-1">({group.name_ko})</span>
+                  )}
+                </td>
+                <td className="px-4 py-2.5">
+                  <code className="rounded bg-muted px-2 py-0.5 font-mono text-sm font-semibold">
+                    {group.access_code}
+                  </code>
+                </td>
+                <td className="px-4 py-2.5 text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5"
+                    onClick={() => handleCopy(group.access_code!, group.id)}
+                  >
+                    {copiedId === group.id ? (
+                      <>
+                        <Check className="size-3.5" /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="size-3.5" /> Copy
+                      </>
+                    )}
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 export function RegistrationGroupsManager() {
   const [groups, setGroups] = useState<RegistrationGroup[]>([]);
@@ -140,7 +231,7 @@ export function RegistrationGroupsManager() {
     const supabase = createClient();
     const { data } = await supabase
       .from("eckcm_fee_categories")
-      .select("id, code, name_en, amount_cents, pricing_type")
+      .select("id, code, category, name_en, amount_cents, pricing_type")
       .eq("is_active", true)
       .order("sort_order");
     setAllFees(data ?? []);
@@ -234,7 +325,9 @@ export function RegistrationGroupsManager() {
       global_early_bird_fee_cents: form.global_early_bird_fee_cents
         ? parseInt(form.global_early_bird_fee_cents)
         : null,
-      early_bird_deadline: form.early_bird_deadline || null,
+      early_bird_deadline: form.early_bird_deadline
+        ? new Date(form.early_bird_deadline).toISOString()
+        : null,
       department_id: form.department_id || null,
       show_special_preferences: form.show_special_preferences,
       show_key_deposit: form.show_key_deposit,
@@ -337,7 +430,13 @@ export function RegistrationGroupsManager() {
   };
 
   return (
-    <div className="space-y-4">
+    <Tabs defaultValue="groups" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="groups">Groups</TabsTrigger>
+        <TabsTrigger value="access-codes">Access Codes</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="groups" className="space-y-4">
       <div className="flex items-center gap-4">
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -397,13 +496,25 @@ export function RegistrationGroupsManager() {
               </div>
               <div className="space-y-1">
                 <Label>Access Code (optional)</Label>
-                <Input
-                  value={form.access_code}
-                  onChange={(e) =>
-                    setForm({ ...form, access_code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })
-                  }
-                  placeholder="Leave empty for public group"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    value={form.access_code}
+                    onChange={(e) =>
+                      setForm({ ...form, access_code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })
+                    }
+                    placeholder="Leave empty for public group"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => setForm({ ...form, access_code: generateAccessCode() })}
+                    title="Generate random code"
+                  >
+                    <RefreshCw className="size-4" />
+                  </Button>
+                </div>
               </div>
               <div className="space-y-1">
                 <Label>Activate by Group Representative Department (optional)</Label>
@@ -533,32 +644,54 @@ export function RegistrationGroupsManager() {
                 <p className="text-xs text-muted-foreground">
                   Select which fee categories apply to this group
                 </p>
-                <div className="space-y-2 rounded-md border p-3">
+                <div className="space-y-1 rounded-md border p-3">
                   {allFees.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       No fee categories available
                     </p>
                   ) : (
-                    allFees.map((fee) => (
-                      <div
-                        key={fee.id}
-                        className="flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={selectedFeeIds.has(fee.id)}
-                            onCheckedChange={() => toggleFee(fee.id)}
-                          />
-                          <span className="text-sm">{fee.name_en}</span>
+                    (() => {
+                      const catLabels: Record<string, string> = {
+                        GENERAL: "General",
+                        LODGING: "Lodging",
+                        MEALS: "Meal",
+                      };
+                      const catOrder = ["GENERAL", "LODGING", "MEALS"];
+                      const grouped = new Map<string, FeeCategory[]>();
+                      for (const fee of allFees) {
+                        const list = grouped.get(fee.category) ?? [];
+                        list.push(fee);
+                        grouped.set(fee.category, list);
+                      }
+                      const sortedEntries = Array.from(grouped.entries()).sort(
+                        (a, b) => (catOrder.indexOf(a[0]) === -1 ? 99 : catOrder.indexOf(a[0])) - (catOrder.indexOf(b[0]) === -1 ? 99 : catOrder.indexOf(b[0]))
+                      );
+                      return sortedEntries.map(([cat, fees], i) => (
+                        <div key={cat}>
+                          {i > 0 && <Separator className="my-2" />}
+                          <p className="text-xs font-semibold text-muted-foreground mb-1">{catLabels[cat] ?? cat}</p>
+                          <div className="space-y-1">
+                          {fees.map((fee) => (
+                            <div
+                              key={fee.id}
+                              className="flex items-center justify-between pl-1"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={selectedFeeIds.has(fee.id)}
+                                  onCheckedChange={() => toggleFee(fee.id)}
+                                />
+                                <span className="text-sm">{fee.name_en}</span>
+                              </div>
+                              <span className="text-xs text-muted-foreground tabular-nums">
+                                ${(fee.amount_cents / 100).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                          </div>
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          ${(fee.amount_cents / 100).toFixed(2)}{" "}
-                          <Badge variant="outline" className="text-xs ml-1">
-                            {fee.pricing_type}
-                          </Badge>
-                        </span>
-                      </div>
-                    ))
+                      ));
+                    })()
                   )}
                 </div>
               </div>
@@ -683,6 +816,11 @@ export function RegistrationGroupsManager() {
         title="Delete registration group?"
         description="This will permanently delete this registration group and its fee category mappings. This action cannot be undone."
       />
-    </div>
+      </TabsContent>
+
+      <TabsContent value="access-codes" className="space-y-4">
+        <AccessCodeList groups={groups} loading={loading} />
+      </TabsContent>
+    </Tabs>
   );
 }

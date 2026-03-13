@@ -196,7 +196,7 @@ export async function POST(request: Request) {
       failMessage,
     });
 
-    // Revert registration back to DRAFT
+    // Cancel registration when payment fails
     // Handles both SUBMITTED (new flow) and PAID (old flow that incorrectly marked ACH as PAID)
     const { data: registration } = await admin
       .from("eckcm_registrations")
@@ -205,14 +205,14 @@ export async function POST(request: Request) {
       .single();
 
     if (registration && (registration.status === "SUBMITTED" || registration.status === "PAID")) {
-      logger.warn("[stripe/webhook] Reverting registration to DRAFT", {
+      logger.warn("[stripe/webhook] Cancelling registration — payment failed", {
         registrationId,
         previousStatus: registration.status,
         piId: pi.id,
       });
       await admin
         .from("eckcm_registrations")
-        .update({ status: "DRAFT" })
+        .update({ status: "CANCELLED" })
         .eq("id", registrationId);
     }
 

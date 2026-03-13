@@ -235,7 +235,7 @@ export function ProfileForm({
             </PopoverTrigger>
             <PopoverContent className="text-xs">
               This name will be printed on your name badge.<br />
-              한국어 이름이 있다면 한국어로 입력해 주세요.
+              한국어 이름을 명찰에 표시하고 싶으시면 여기에 입력해 주세요.
             </PopoverContent>
           </Popover>
         </div>
@@ -246,6 +246,7 @@ export function ProfileForm({
           placeholder="NAME ON BADGE"
           className={errors.displayNameKo ? "border-destructive" : ""}
         />
+        <p className="text-[0.625rem] text-muted-foreground">명찰용 한국어 이름 변경 가능</p>
         {errors.displayNameKo && (
           <p className="text-xs text-destructive">{errors.displayNameKo}</p>
         )}

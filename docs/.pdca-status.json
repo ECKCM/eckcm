@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-12T18:47:59.041Z",
+  "lastUpdated": "2026-03-12T22:02:44.125Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -341,9 +341,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:31:41.703Z",
-        "lastUpdated": "2026-03-12T18:47:31.927Z"
+        "lastUpdated": "2026-03-12T21:17:39.429Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/participants/participants-table.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
     "estimate": {
       "phase": "do",
@@ -445,7 +445,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T22:59:34.092Z",
-        "lastUpdated": "2026-03-11T05:30:09.260Z"
+        "lastUpdated": "2026-03-12T21:17:38.249Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/components/auth/profile-form.tsx"
     },
@@ -822,7 +822,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T05:24:21.000Z",
-        "lastUpdated": "2026-03-11T01:10:19.706Z"
+        "lastUpdated": "2026-03-12T20:59:40.068Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/epass/epass-list.tsx"
     },
@@ -1056,7 +1056,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-02T19:26:39.349Z",
-        "lastUpdated": "2026-03-12T18:47:49.749Z"
+        "lastUpdated": "2026-03-12T22:02:44.125Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/groups/groups-manager.tsx"
     },
@@ -1485,7 +1485,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-12T07:43:25.105Z",
-        "lastUpdated": "2026-03-12T07:54:04.610Z"
+        "lastUpdated": "2026-03-12T20:49:32.002Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/stripe/webhook/route.ts"
     }
@@ -9405,6 +9405,168 @@
     {
       "timestamp": "2026-03-12T18:47:59.041Z",
       "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T20:49:32.002Z",
+      "feature": "webhook",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T20:57:57.354Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T20:59:36.326Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T20:59:40.068Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:05:25.462Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:06:24.000Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:06:32.197Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:06:33.281Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:09:45.027Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:09:47.419Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:09:51.080Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:12:23.384Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:12:25.692Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:17:38.249Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:17:39.429Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:47:22.076Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:54:53.364Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:54:59.638Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:55:06.305Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:55:11.801Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:55:28.821Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T21:59:54.764Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T22:01:47.715Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T22:01:54.446Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T22:02:31.723Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T22:02:35.091Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-12T22:02:44.125Z",
+      "feature": "groups",
       "phase": "do",
       "action": "updated"
     }

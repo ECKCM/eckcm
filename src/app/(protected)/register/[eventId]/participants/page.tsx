@@ -1192,6 +1192,7 @@ export default function ParticipantsStep() {
                               placeholder="NAME ON BADGE"
                               className={errs.displayNameKo ? "border-destructive" : ""}
                             />
+                            <p className="text-[0.625rem] text-muted-foreground">명찰용 한국어 이름 변경 가능</p>
                             {errs.displayNameKo && <p className="text-xs text-destructive">{errs.displayNameKo}</p>}
                           </div>
                           <div className="space-y-1">

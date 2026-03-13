@@ -137,7 +137,7 @@ export function DashboardContent({
                 {isRegistered && (
                   <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
                     <Check className="size-4 shrink-0" />
-                    <span className="font-medium">You are already registered for this event</span>
+                    <span className="font-medium">You are already registered</span>
                   </div>
                 )}
 
