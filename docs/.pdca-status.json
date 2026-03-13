@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-13T02:30:30.188Z",
+  "lastUpdated": "2026-03-13T20:32:04.816Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -108,7 +108,9 @@
     "cancel-intent",
     "update-method-discount",
     "webhook",
-    "cancel-drafts"
+    "cancel-drafts",
+    "pdf-preview",
+    "invoice.service.ts"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -199,7 +201,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:13.807Z",
-        "lastUpdated": "2026-03-13T01:41:33.629Z"
+        "lastUpdated": "2026-03-13T20:23:57.151Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/submit/route.ts"
     },
@@ -238,7 +240,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:30.002Z",
-        "lastUpdated": "2026-03-13T02:11:18.910Z"
+        "lastUpdated": "2026-03-13T19:01:52.775Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/email/invoice/route.ts"
     },
@@ -329,7 +331,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:29:03.785Z",
-        "lastUpdated": "2026-03-12T18:45:36.451Z"
+        "lastUpdated": "2026-03-13T20:31:41.746Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/registrations/registrations-table.tsx"
     },
@@ -342,7 +344,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:31:41.703Z",
-        "lastUpdated": "2026-03-13T01:55:25.789Z"
+        "lastUpdated": "2026-03-13T20:31:59.571Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/participants/participants-table.tsx"
     },
@@ -381,7 +383,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:33:55.200Z",
-        "lastUpdated": "2026-03-13T01:41:48.086Z"
+        "lastUpdated": "2026-03-13T20:24:04.536Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/registration/route.ts"
     },
@@ -420,7 +422,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:34:06.527Z",
-        "lastUpdated": "2026-03-05T02:06:17.859Z"
+        "lastUpdated": "2026-03-13T19:07:37.975Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/payment/manual/route.ts"
     },
@@ -641,9 +643,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:44:12.622Z",
-        "lastUpdated": "2026-03-13T02:12:07.361Z"
+        "lastUpdated": "2026-03-13T19:17:39.811Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/lib/email/send-confirmation.ts"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/email/page.tsx"
     },
     "google-sheets": {
       "phase": "do",
@@ -758,7 +760,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:45:54.890Z",
-        "lastUpdated": "2026-03-05T03:07:15.150Z"
+        "lastUpdated": "2026-03-13T19:35:42.451Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/email/test/route.ts"
     },
@@ -797,9 +799,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:46:10.946Z",
-        "lastUpdated": "2026-03-05T03:06:49.243Z"
+        "lastUpdated": "2026-03-13T19:01:11.483Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/lib/pdf/generate.ts"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/invoice/[id]/pdf/route.ts"
     },
     "templates": {
       "phase": "do",
@@ -862,7 +864,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T06:51:08.256Z",
-        "lastUpdated": "2026-03-11T05:57:23.844Z"
+        "lastUpdated": "2026-03-13T20:20:32.562Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/receipts/receipt-list.tsx"
     },
@@ -927,7 +929,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-28T20:50:32.608Z",
-        "lastUpdated": "2026-03-13T02:11:27.086Z"
+        "lastUpdated": "2026-03-13T19:02:18.401Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/email/send/route.ts"
     },
@@ -979,7 +981,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-28T20:51:28.710Z",
-        "lastUpdated": "2026-03-12T18:47:33.130Z"
+        "lastUpdated": "2026-03-13T18:44:13.067Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/invoices/invoices-table.tsx"
     },
@@ -1148,7 +1150,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-03T22:07:07.027Z",
-        "lastUpdated": "2026-03-12T18:47:35.529Z"
+        "lastUpdated": "2026-03-13T20:32:04.816Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/audit/audit-logs-table.tsx"
     },
@@ -1502,6 +1504,32 @@
         "lastUpdated": "2026-03-13T01:58:15.130Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/cancel-drafts/route.ts"
+    },
+    "pdf-preview": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-13T19:16:52.440Z",
+        "lastUpdated": "2026-03-13T19:35:32.134Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/pdf-preview/route.ts"
+    },
+    "invoice.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-13T20:23:47.653Z",
+        "lastUpdated": "2026-03-13T20:23:47.653Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/invoice.service.ts"
     }
   },
   "history": [
@@ -9701,6 +9729,318 @@
     {
       "timestamp": "2026-03-13T02:30:30.188Z",
       "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:41:06.556Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:41:54.914Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:42:03.049Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:42:09.527Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:42:32.258Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:42:35.769Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:42:50.430Z",
+      "feature": "invoice",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:42:56.163Z",
+      "feature": "invoice",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:43:03.369Z",
+      "feature": "send",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:43:14.327Z",
+      "feature": "send",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:43:49.710Z",
+      "feature": "send",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:43:57.119Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:44:05.436Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T18:44:13.067Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:00:12.783Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:00:18.878Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:00:28.126Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:00:37.506Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:00:42.719Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:01:02.704Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:01:11.483Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:01:30.595Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:01:42.397Z",
+      "feature": "invoice",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:01:47.530Z",
+      "feature": "invoice",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:01:52.775Z",
+      "feature": "invoice",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:02:07.621Z",
+      "feature": "send",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:02:11.789Z",
+      "feature": "send",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:02:18.401Z",
+      "feature": "send",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:02:51.234Z",
+      "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:07:07.008Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:07:27.360Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:07:37.975Z",
+      "feature": "manual",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:09:04.275Z",
+      "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:11:06.715Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:11:12.916Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:16:52.440Z",
+      "feature": "pdf-preview",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:17:29.165Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:17:39.811Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:35:32.135Z",
+      "feature": "pdf-preview",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:35:42.451Z",
+      "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:38:56.071Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:38:59.659Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:39:04.719Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T19:39:12.050Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T20:20:32.562Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T20:23:47.653Z",
+      "feature": "invoice.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T20:23:57.151Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T20:24:04.536Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T20:31:31.040Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T20:31:41.746Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T20:31:59.571Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T20:32:04.816Z",
+      "feature": "audit",
       "phase": "do",
       "action": "updated"
     }
