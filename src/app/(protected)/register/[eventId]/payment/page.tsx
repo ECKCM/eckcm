@@ -212,11 +212,14 @@ export default function PaymentStep() {
     clientSecretRef.current = clientSecret;
   }, [clientSecret]);
 
-  // Cancel orphaned Stripe PI when user leaves the page (close tab, navigate away)
+  // Cancel orphaned Stripe PI when user closes/refreshes the browser tab
   useEffect(() => {
     const handleBeforeUnload = () => {
+      if (paymentCompletedRef.current) return;
+
+      // Cancel Stripe PI
       const cs = clientSecretRef.current;
-      if (cs && !paymentCompletedRef.current) {
+      if (cs) {
         const piId = cs.split("_secret_")[0];
         navigator.sendBeacon(
           "/api/payment/cancel-intent",
@@ -228,8 +231,10 @@ export default function PaymentStep() {
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, []);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [registrationId, eventId]);
 
   // Derive which modes are available
   const stripeEnabled = enabledMethods.some((m) =>
@@ -278,6 +283,7 @@ export default function PaymentStep() {
 
   const goToConfirmation = async (paymentIntentId?: string, achProcessing?: boolean) => {
     paymentCompletedRef.current = true;
+    sessionStorage.removeItem("eckcm_registration");
     if (paymentIntentId && registrationId) {
       try {
         const res = await fetch("/api/payment/confirm", {

@@ -149,6 +149,7 @@ export function RegistrationProvider({
   });
   const [hydrated, setHydrated] = useState(false);
 
+
   // Restore from sessionStorage on mount
   useEffect(() => {
     const saved = sessionStorage.getItem(STORAGE_KEY);

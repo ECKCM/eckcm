@@ -82,8 +82,9 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
     // Get total count for pagination (must include join for filter to work)
     const { count } = await supabase
       .from("eckcm_group_memberships")
-      .select("person_id, eckcm_groups!inner(event_id)", { count: "exact", head: true })
-      .eq("eckcm_groups.event_id", eventId);
+      .select("person_id, eckcm_groups!inner(event_id, eckcm_registrations!inner(status))", { count: "exact", head: true })
+      .eq("eckcm_groups.event_id", eventId)
+      .in("eckcm_groups.eckcm_registrations.status", ["SUBMITTED", "PAID"]);
     setTotalCount(count ?? 0);
 
     const from = page * PAGE_SIZE;
@@ -118,6 +119,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
         )
       `)
       .eq("eckcm_groups.event_id", eventId)
+      .in("eckcm_groups.eckcm_registrations.status", ["SUBMITTED", "PAID"])
       .range(from, to);
 
     if (data) {

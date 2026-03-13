@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-12T22:02:44.125Z",
+  "lastUpdated": "2026-03-13T02:30:30.188Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -107,7 +107,8 @@
     "key-deposit",
     "cancel-intent",
     "update-method-discount",
-    "webhook"
+    "webhook",
+    "cancel-drafts"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -198,7 +199,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:13.807Z",
-        "lastUpdated": "2026-03-12T00:32:25.531Z"
+        "lastUpdated": "2026-03-13T01:41:33.629Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/submit/route.ts"
     },
@@ -237,7 +238,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:30.002Z",
-        "lastUpdated": "2026-03-05T03:01:37.068Z"
+        "lastUpdated": "2026-03-13T02:11:18.910Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/email/invoice/route.ts"
     },
@@ -341,9 +342,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:31:41.703Z",
-        "lastUpdated": "2026-03-12T21:17:39.429Z"
+        "lastUpdated": "2026-03-13T01:55:25.789Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/participants/participants-table.tsx"
     },
     "estimate": {
       "phase": "do",
@@ -380,7 +381,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:33:55.200Z",
-        "lastUpdated": "2026-03-12T00:32:36.959Z"
+        "lastUpdated": "2026-03-13T01:41:48.086Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/registration/route.ts"
     },
@@ -536,7 +537,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T23:03:24.266Z",
-        "lastUpdated": "2026-03-12T07:44:05.377Z"
+        "lastUpdated": "2026-03-13T02:20:44.893Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
     },
@@ -640,7 +641,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:44:12.622Z",
-        "lastUpdated": "2026-03-12T00:35:01.006Z"
+        "lastUpdated": "2026-03-13T02:12:07.361Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/email/send-confirmation.ts"
     },
@@ -900,7 +901,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T07:59:00.220Z",
-        "lastUpdated": "2026-03-11T05:47:03.281Z"
+        "lastUpdated": "2026-03-13T02:18:47.833Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/context/registration-context.tsx"
     },
@@ -926,7 +927,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-28T20:50:32.608Z",
-        "lastUpdated": "2026-03-05T03:01:50.797Z"
+        "lastUpdated": "2026-03-13T02:11:27.086Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/email/send/route.ts"
     },
@@ -939,7 +940,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-28T20:50:54.220Z",
-        "lastUpdated": "2026-03-05T03:06:56.767Z"
+        "lastUpdated": "2026-03-13T02:11:40.775Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/email/announcement/route.ts"
     },
@@ -1134,7 +1135,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-03T07:15:45.932Z",
-        "lastUpdated": "2026-03-12T07:35:40.499Z"
+        "lastUpdated": "2026-03-13T02:30:30.188Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
     },
@@ -1488,6 +1489,19 @@
         "lastUpdated": "2026-03-12T20:49:32.002Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/stripe/webhook/route.ts"
+    },
+    "cancel-drafts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-13T01:58:15.130Z",
+        "lastUpdated": "2026-03-13T01:58:15.130Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/cancel-drafts/route.ts"
     }
   },
   "history": [
@@ -9567,6 +9581,126 @@
     {
       "timestamp": "2026-03-12T22:02:44.125Z",
       "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T01:41:33.629Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T01:41:48.086Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T01:55:25.789Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T01:58:15.130Z",
+      "feature": "cancel-drafts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T01:58:30.241Z",
+      "feature": "context",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T01:58:40.151Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T01:58:47.482Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T01:58:59.835Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T02:11:08.022Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T02:11:12.051Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T02:11:18.910Z",
+      "feature": "invoice",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T02:11:27.086Z",
+      "feature": "send",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T02:11:37.481Z",
+      "feature": "announcement",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T02:11:40.775Z",
+      "feature": "announcement",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T02:12:07.361Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T02:18:47.833Z",
+      "feature": "context",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T02:20:44.893Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T02:30:08.535Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T02:30:17.690Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-13T02:30:30.188Z",
+      "feature": "review",
       "phase": "do",
       "action": "updated"
     }

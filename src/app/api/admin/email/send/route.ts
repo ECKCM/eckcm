@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
       ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
       subject,
       html,
-      headers: getEmailHeaders(emailConfig.replyTo),
+      headers: getEmailHeaders(),
     });
 
     if (error) {

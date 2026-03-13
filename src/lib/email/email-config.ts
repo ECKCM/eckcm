@@ -59,8 +59,22 @@ export function clearEmailConfigCache(): void {
   cacheTime = 0;
 }
 
-/** Standard email headers to improve deliverability and avoid spam filters */
-export function getEmailHeaders(replyTo?: string): Record<string, string> {
+/**
+ * Email headers for transactional emails (confirmations, invoices, e-pass).
+ * Does NOT include List-Unsubscribe — that header signals marketing/bulk email
+ * and causes Gmail to route to Promotions/Updates tab.
+ */
+export function getEmailHeaders(): Record<string, string> {
+  return {
+    "X-Entity-Ref-ID": `eckcm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  };
+}
+
+/**
+ * Email headers for bulk/announcement emails.
+ * Includes List-Unsubscribe as required by Gmail for bulk senders.
+ */
+export function getBulkEmailHeaders(replyTo?: string): Record<string, string> {
   const unsubscribeEmail = replyTo || "contact@eckcm.com";
   return {
     "List-Unsubscribe": `<mailto:${unsubscribeEmail}?subject=Unsubscribe>`,

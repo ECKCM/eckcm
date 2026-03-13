@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getResendClient } from "@/lib/email/resend";
-import { getEmailConfig, getEmailHeaders } from "@/lib/email/email-config";
+import { getEmailConfig, getBulkEmailHeaders } from "@/lib/email/email-config";
 import { logEmail } from "@/lib/email/email-log.service";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
         ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
         subject: `[TEST] ${subject}`,
         html,
-        headers: getEmailHeaders(emailConfig.replyTo),
+        headers: getBulkEmailHeaders(emailConfig.replyTo),
       });
 
       if (error) {
@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
         ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
         subject,
         html,
-        headers: getEmailHeaders(emailConfig.replyTo),
+        headers: getBulkEmailHeaders(emailConfig.replyTo),
       });
 
       if (error) {

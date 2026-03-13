@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useRegistration } from "@/lib/context/registration-context";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ export default function ReviewStep() {
   const [estimate, setEstimate] = useState<PriceEstimate | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const submitCalledRef = useRef(false);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -73,6 +74,8 @@ export default function ReviewStep() {
   }
 
   const handleSubmit = async () => {
+    if (submitCalledRef.current) return;
+    submitCalledRef.current = true;
     setSubmitting(true);
     try {
       const res = await fetch("/api/registration/submit", {
@@ -102,6 +105,7 @@ export default function ReviewStep() {
         }
         toast.error(message);
         setSubmitting(false);
+        submitCalledRef.current = false;
         return;
       }
       const data = await res.json();
@@ -109,13 +113,15 @@ export default function ReviewStep() {
       router.push(
         `/register/${eventId}/payment?registrationId=${data.registrationId}&code=${data.confirmationCode}`
       );
+      return; // Keep button disabled — don't allow re-submission during navigation
     } catch (err) {
       console.error("[ReviewStep] Submit error:", err);
       toast.error(
         err instanceof Error ? err.message : "Network error. Please try again."
       );
+      setSubmitting(false);
+      submitCalledRef.current = false;
     }
-    setSubmitting(false);
   };
 
   const totalParticipants = state.roomGroups.reduce(

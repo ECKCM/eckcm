@@ -60,6 +60,52 @@ export async function POST(request: Request) {
 
     const admin = createAdminClient();
 
+    // 3b. Check for duplicate participants (same name + birth_date already registered for this event)
+    {
+      const allParticipants = roomGroups.flatMap((g) =>
+        g.participants.map((p) => ({
+          firstName: p.firstName.trim().toUpperCase(),
+          lastName: p.lastName.trim().toUpperCase(),
+          birthDate: `${p.birthYear}-${String(p.birthMonth).padStart(2, "0")}-${String(p.birthDay).padStart(2, "0")}`,
+        }))
+      );
+
+      const { data: existingPeople } = await admin
+        .from("eckcm_group_memberships")
+        .select(`
+          eckcm_people!inner(first_name_en, last_name_en, birth_date),
+          eckcm_groups!inner(
+            eckcm_registrations!inner(event_id, status)
+          )
+        `)
+        .eq("eckcm_groups.eckcm_registrations.event_id", eventId)
+        .in("eckcm_groups.eckcm_registrations.status", ["SUBMITTED", "PAID"]);
+
+      if (existingPeople && existingPeople.length > 0) {
+        const existingSet = new Set(
+          (existingPeople as any[]).map((ep) => {
+            const p = ep.eckcm_people;
+            return `${(p.first_name_en as string).toUpperCase()}|${(p.last_name_en as string).toUpperCase()}|${p.birth_date}`;
+          })
+        );
+
+        const duplicates = allParticipants.filter(
+          (p) => existingSet.has(`${p.firstName}|${p.lastName}|${p.birthDate}`)
+        );
+
+        if (duplicates.length > 0) {
+          const names = duplicates.map((d) => `${d.firstName} ${d.lastName}`);
+          const unique = [...new Set(names)];
+          return NextResponse.json(
+            {
+              error: `The following participant(s) are already registered for this event: ${unique.join(", ")}`,
+            },
+            { status: 409 }
+          );
+        }
+      }
+    }
+
     // 4. Load registration group
     const { data: regGroup } = await admin
       .from("eckcm_registration_groups")

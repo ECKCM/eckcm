@@ -281,13 +281,35 @@ export async function sendConfirmationEmail(
   }
   const toAddresses = [user.email, ...participantEmails];
 
+  // Plain text fallback improves deliverability (avoids spam filters)
+  const participantNames = participants.map((p, i) => `  ${i + 1}. ${p.name}`).join("\n");
+  const text = [
+    isZellePending ? "Your registration has been submitted!" : "Your registration has been confirmed!",
+    "",
+    `Confirmation Code: ${reg.confirmation_code}`,
+    "",
+    "Event Details:",
+    `  Event: ${reg.eckcm_events.name_en}`,
+    `  Location: ${reg.eckcm_events.location || "TBD"}`,
+    `  Dates: ${eventDates}`,
+    `  ${isZellePending ? "Amount Due" : "Amount Paid"}: ${totalAmount}`,
+    "",
+    "Participants:",
+    participantNames,
+    "",
+    "View your registration at https://my.eckcm.com/dashboard",
+    "",
+    "East Coast Korean Camp Meeting",
+  ].join("\n");
+
   const { data: sendResult, error } = await resend.emails.send({
     from: emailConfig.from,
     to: toAddresses,
     ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
     subject,
     html,
-    headers: getEmailHeaders(emailConfig.replyTo),
+    text,
+    headers: getEmailHeaders(),
     ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
   });
 
