@@ -2,9 +2,10 @@
 
 > Feature: `online-registration`
 > Created: 2026-02-11
+> Updated: 2026-03-14
 > Plan Reference: [online-registration.plan.md](../../01-plan/features/online-registration.plan.md)
-> Status: Draft (v4 - Synced with implementation, Act-5)
-> Level: Dynamic (Next.js + Supabase + Stripe)
+> Status: v5 — Synced with implementation (post-PDCA updates)
+> Level: Dynamic (Next.js 16 + Supabase + Stripe)
 
 ---
 
@@ -31,10 +32,11 @@ eckcm/
 │   │   ├── (public)/
 │   │   │   ├── layout.tsx
 │   │   │   ├── page.tsx                          # Landing
-│   │   │   ├── pay/[code]/page.tsx               # Manual Payment (public)
-│   │   │   ├── donate/page.tsx                   # Donation (public)
+│   │   │   ├── pay/[code]/page.tsx               # Manual Payment (public, deferred)
+│   │   │   ├── donate/page.tsx                   # Donation (public, deferred)
 │   │   │   ├── terms/page.tsx                    # Terms of service
-│   │   │   └── privacy/page.tsx                  # Privacy policy
+│   │   │   ├── privacy/page.tsx                  # Privacy policy
+│   │   │   └── error.tsx                         # Error boundary for public routes
 │   │   ├── epass/
 │   │   │   └── [token]/page.tsx                  # E-Pass Viewer (public, at root level)
 │   │   ├── (protected)/
@@ -45,17 +47,19 @@ eckcm/
 │   │   │   │   ├── registrations/page.tsx        # Registration history
 │   │   │   │   ├── receipts/page.tsx             # Receipt history
 │   │   │   │   └── settings/page.tsx             # Profile settings
+│   │   │   ├── error.tsx                         # Error boundary for protected routes
+│   │   │   ├── loading.tsx                       # Loading state for protected routes
 │   │   │   └── register/
 │   │   │       ├── [eventId]/
 │   │   │       │   ├── layout.tsx                # Registration wizard layout
-│   │   │       │   ├── page.tsx                  # Step 1: Start Registration
-│   │   │       │   ├── instructions/page.tsx     # Pre-registration instructions
-│   │   │       │   ├── participants/page.tsx     # Step 2: Participants Info
+│   │   │       │   ├── page.tsx                  # Step 1: Start Registration (self/others)
+│   │   │       │   ├── instructions/page.tsx     # Pre-registration: fee schedule, instructions
+│   │   │       │   ├── participants/page.tsx     # Step 2: Participants Info (+ tshirt, guardian, autofill)
 │   │   │       │   ├── lodging/page.tsx          # Step 3: Lodging Preferences
 │   │   │       │   ├── key-deposit/page.tsx      # Step 4: Key Deposit
 │   │   │       │   ├── airport-pickup/page.tsx   # Step 5: Airport Pickup
 │   │   │       │   ├── review/page.tsx           # Review & Summary
-│   │   │       │   ├── payment/page.tsx          # Stripe Payment
+│   │   │       │   ├── payment/page.tsx          # Online/Manual Payment tabs (Stripe + Zelle)
 │   │   │       │   └── confirmation/page.tsx     # Success Page
 │   │   │       └── payment-complete/page.tsx     # Post-payment landing
 │   │   ├── (admin)/
@@ -66,14 +70,14 @@ eckcm/
 │   │   │       │   ├── page.tsx                  # System settings overview
 │   │   │       │   ├── registration/page.tsx     # Registration status
 │   │   │       │   ├── fees/page.tsx             # Fee categories
-│   │   │       │   ├── groups/page.tsx           # Registration groups
+│   │   │       │   ├── groups/page.tsx           # Registration groups (+ access code UI)
 │   │   │       │   ├── departments/page.tsx      # Departments
-│   │   │       │   ├── churches/page.tsx         # Church list
+│   │   │       │   ├── churches/page.tsx         # Church list (EN/KO names)
 │   │   │       │   ├── form-fields/page.tsx      # Form field manager
-│   │   │       │   ├── stripe/page.tsx           # Stripe config
-│   │   │       │   ├── google-sheets/page.tsx    # Google Sheets config
-│   │   │       │   ├── email/page.tsx            # Email config & test
-│   │   │       │   ├── roles/page.tsx            # Role management
+│   │   │       │   ├── stripe/page.tsx           # Stripe config (+ Stripe sync)
+│   │   │       │   ├── google-sheets/page.tsx    # Google Sheets config (deferred)
+│   │   │       │   ├── email/page.tsx            # Email config, test, PDF preview
+│   │   │       │   ├── roles/page.tsx            # Role management + permissions editor
 │   │   │       │   ├── legal/page.tsx            # Legal content management
 │   │   │       │   ├── configuration/page.tsx    # System configuration
 │   │   │       │   ├── airport-rides/page.tsx    # Airport ride options
@@ -105,10 +109,10 @@ eckcm/
 │   │   │       │       ├── [sessionId]/page.tsx  # Session dashboard + QR
 │   │   │       │       └── new/page.tsx          # Create session
 │   │   │       ├── registrations/
-│   │   │       │   ├── page.tsx                  # Registrations management
+│   │   │       │   ├── page.tsx                  # Registrations management (+ DRAFT delete)
 │   │   │       │   └── create/page.tsx           # Admin registration creation
 │   │   │       ├── invoices/
-│   │   │       │   └── page.tsx                  # Invoice search & management
+│   │   │       │   └── page.tsx                  # Invoice search & management (+ PDF preview)
 │   │   │       ├── print/
 │   │   │       │   ├── lanyard/page.tsx          # Lanyard print
 │   │   │       │   └── qr-cards/page.tsx         # QR card print
@@ -120,70 +124,89 @@ eckcm/
 │   │   │           └── page.tsx                  # Audit logs
 │   │   ├── api/
 │   │   │   ├── auth/
-│   │   │   │   └── callback/route.ts             # OAuth callback
-│   │   │   ├── webhooks/
-│   │   │   │   └── stripe/route.ts               # Stripe webhook
+│   │   │   │   └── login-log/route.ts            # POST Login event logging
 │   │   │   ├── stripe/
-│   │   │   │   └── publishable-key/route.ts      # GET publishable key
+│   │   │   │   ├── publishable-key/route.ts      # GET publishable key
+│   │   │   │   └── webhook/route.ts              # POST Stripe webhook (future use)
 │   │   │   ├── registration/
 │   │   │   │   ├── estimate/route.ts             # POST price estimate
 │   │   │   │   ├── submit/route.ts               # POST submit registration
+│   │   │   │   ├── cancel-drafts/route.ts        # POST delete abandoned DRAFT registrations
 │   │   │   │   ├── [id]/cancel/route.ts          # POST cancel registration
 │   │   │   │   └── [id]/event-id/route.ts        # GET event ID by registration
 │   │   │   ├── payment/
 │   │   │   │   ├── create-intent/route.ts        # POST Create PaymentIntent
-│   │   │   │   ├── confirm/route.ts              # POST Confirm payment
+│   │   │   │   ├── confirm/route.ts              # POST Confirm payment (synchronous)
 │   │   │   │   ├── retrieve-intent/route.ts      # GET Retrieve PaymentIntent
+│   │   │   │   ├── cancel-intent/route.ts        # POST Cancel PaymentIntent
+│   │   │   │   ├── info/route.ts                 # GET Payment info for registration
+│   │   │   │   ├── methods/route.ts              # GET Available payment methods
 │   │   │   │   ├── zelle-submit/route.ts         # POST Zelle payment submission
-│   │   │   │   └── methods/route.ts              # GET Available payment methods
+│   │   │   │   ├── update-cover-fees/route.ts    # POST Update cover-processing-fees flag
+│   │   │   │   ├── update-method-discount/route.ts # POST Update payment method discount
+│   │   │   │   └── enable-ach/                   # ACH payment enablement
 │   │   │   ├── checkin/
 │   │   │   │   ├── verify/route.ts               # POST QR verification
 │   │   │   │   ├── batch-sync/route.ts           # POST Batch upload (offline)
 │   │   │   │   ├── epass-cache/route.ts          # GET Full participant allowlist cache
 │   │   │   │   ├── delta/route.ts                # GET Changes since timestamp
 │   │   │   │   └── stats/route.ts                # GET Check-in statistics
-│   │   │   ├── epass/
-│   │   │   │   └── [token]/route.ts              # E-Pass public endpoint
+│   │   │   ├── invoice/
+│   │   │   │   └── [id]/pdf/route.ts             # GET Invoice/Receipt PDF download
 │   │   │   ├── email/
 │   │   │   │   ├── confirmation/route.ts         # POST Send confirmation
 │   │   │   │   ├── invoice/route.ts              # POST Send invoice
-│   │   │   │   └── test/route.ts                 # POST Test email
+│   │   │   │   └── test/route.ts                 # POST Test email (+ PDF preview)
 │   │   │   ├── export/
 │   │   │   │   ├── csv/route.ts                  # POST CSV export
 │   │   │   │   └── pdf/route.ts                  # POST PDF export
-│   │   │   ├── sheets/
-│   │   │   │   └── sync/route.ts                 # POST Google Sheets sync
+│   │   │   ├── app-config/route.ts               # GET Public app configuration
+│   │   │   ├── audit/route.ts                    # GET Audit log entries
 │   │   │   └── admin/
-│   │   │       ├── lodging/
-│   │   │       │   └── magic-generator/route.ts  # POST Room magic generator
-│   │   │       ├── hard-reset-event/route.ts     # POST Event force reset
-│   │   │       ├── registration/route.ts         # POST Manual registration
-│   │   │       ├── refund/route.ts               # POST Process refund
+│   │   │       ├── hard-reset-event/route.ts     # POST Event force reset (+ invoice seq reset)
+│   │   │       ├── registration/
+│   │   │       │   ├── route.ts                  # POST Manual registration
+│   │   │       │   └── status/route.ts           # GET Registration open/closed status
+│   │   │       ├── refund/
+│   │   │       │   ├── route.ts                  # POST Process refund
+│   │   │       │   └── info/route.ts             # GET Refund summary info
 │   │   │       ├── payment/
-│   │   │       │   └── manual/route.ts           # POST Manual payment processing
+│   │   │       │   └── manual/route.ts           # POST Manual payment (+ discount)
 │   │   │       ├── stripe-config/route.ts        # GET Stripe config management
-│   │   │       ├── invoices/
-│   │   │       │   └── custom/route.ts           # POST Create custom invoice
-│   │   │       └── app-config/route.ts           # GET App configuration
+│   │   │       ├── stripe-sync/route.ts          # POST Stripe-DB payment sync
+│   │   │       ├── epass/
+│   │   │       │   └── repair/route.ts           # POST E-Pass token repair
+│   │   │       ├── pdf-preview/route.ts          # GET/POST PDF preview for admin
+│   │   │       ├── events/
+│   │   │       │   └── [eventId]/route.ts        # GET Event detail API
+│   │   │       ├── email/
+│   │   │       │   ├── announcement/route.ts     # POST Bulk announcement email
+│   │   │       │   ├── config/route.ts           # GET+PUT Email configuration
+│   │   │       │   ├── logs/route.ts             # GET Email delivery logs
+│   │   │       │   └── send/route.ts             # POST Admin send confirmation/invoice
+│   │   │       └── app-config/route.ts           # GET Admin app configuration
 │   │   ├── layout.tsx                            # Root layout
 │   │   └── not-found.tsx
 │   ├── components/
-│   │   ├── ui/                                   # shadcn/ui components
+│   │   ├── ui/                                   # shadcn/ui v4 components
 │   │   ├── auth/
 │   │   │   ├── oauth-buttons.tsx
 │   │   │   └── profile-form.tsx
 │   │   ├── registration/
 │   │   │   ├── wizard-stepper.tsx
 │   │   │   ├── date-range-picker.tsx
-│   │   │   └── meal-selection-grid.tsx           # meal-selector equivalent
+│   │   │   ├── meal-selection-grid.tsx           # meal-selector equivalent
+│   │   │   └── force-light-mode.tsx              # Forces light mode during wizard
 │   │   ├── payment/
 │   │   │   ├── stripe-checkout.tsx
-│   │   │   └── payment-method-selector.tsx
+│   │   │   ├── payment-method-selector.tsx
+│   │   │   └── payment-icons.tsx                 # Brand icons for payment methods
 │   │   ├── checkin/
 │   │   │   ├── scan-result-card.tsx              # checkin-result equivalent
 │   │   │   └── recent-checkins.tsx
 │   │   ├── admin/
 │   │   │   ├── admin-sidebar.tsx                 # sidebar equivalent
+│   │   │   ├── admin-presence.tsx                # Real-time admin presence indicator
 │   │   │   └── confirm-delete-dialog.tsx
 │   │   └── shared/
 │   │       ├── language-switcher.tsx             # locale-switcher equivalent
@@ -200,41 +223,54 @@ eckcm/
 │   │       ├── color-theme-provider.tsx
 │   │       ├── top-header.tsx
 │   │       ├── site-footer.tsx
+│   │       ├── signature-pad.tsx                 # E-signature for guardian consent
+│   │       ├── sanitized-html.tsx                # Safe HTML rendering (DOMPurify)
 │   │       └── turnstile-widget.tsx              # Cloudflare Turnstile bot protection
 │   ├── lib/
 │   │   ├── supabase/
 │   │   │   ├── client.ts                         # Browser client
-│   │   │   ├── server.ts                         # Server client
+│   │   │   ├── server.ts                         # Server client (export: createClient)
 │   │   │   ├── middleware.ts                      # Auth middleware
 │   │   │   └── admin.ts                          # Service role client
 │   │   ├── stripe/
-│   │   │   ├── client.ts                         # Stripe client
+│   │   │   ├── client.ts                         # Stripe client (lazy getStripeServer())
 │   │   │   └── config.ts                         # Stripe config (test/live)
 │   │   ├── email/
 │   │   │   ├── resend.ts                         # Resend client
-│   │   │   ├── send-confirmation.ts              # Confirmation send helper
+│   │   │   ├── send-confirmation.ts              # Confirmation send helper (+ PDF attachment)
+│   │   │   ├── email-config.ts                   # Email configuration reader
+│   │   │   ├── email-log.service.ts              # Email delivery logging
 │   │   │   └── templates/
 │   │   │       ├── confirmation.tsx              # Registration confirmation
 │   │   │       ├── epass.tsx                      # E-Pass email
 │   │   │       ├── invoice.tsx                    # Invoice email
 │   │   │       └── session-attendance.tsx         # Session attendance
+│   │   ├── pdf/
+│   │   │   └── generate.ts                       # Invoice/Receipt PDF generation (pdf-lib)
 │   │   ├── services/
-│   │   │   ├── pricing.service.ts                # Fee calculation engine
+│   │   │   ├── pricing.service.ts                # Fee calculation engine (+ discount, cover fees)
 │   │   │   ├── confirmation-code.service.ts      # 6-char code generator
 │   │   │   ├── epass.service.ts                  # E-Pass / QR token
-│   │   │   ├── invoice.service.ts                # Invoice creation service
+│   │   │   ├── invoice.service.ts                # Invoice creation (INV-YYYY-NNNN numbering)
+│   │   │   ├── refund.service.ts                 # Stripe refund processing
 │   │   │   ├── checkin.service.ts                # Check-in logic
 │   │   │   ├── registration.service.ts           # Registration workflow
 │   │   │   ├── lodging.service.ts                # Room assignment
 │   │   │   ├── meal.service.ts                   # Meal pricing
-│   │   │   ├── audit.service.ts                  # Audit logging
-│   │   │   └── sheets.service.ts                 # Google Sheets sync
+│   │   │   └── audit.service.ts                  # Audit logging
 │   │   ├── hooks/
 │   │   │   ├── use-auth.ts
-│   │   │   ├── use-registration.ts
-│   │   │   ├── use-realtime.ts
+│   │   │   ├── use-realtime.ts                   # Supabase Realtime + smart polling (useChangeDetector)
 │   │   │   ├── use-offline-checkin.ts
 │   │   │   └── use-mobile.tsx
+│   │   ├── auth/
+│   │   │   └── admin.ts                          # Admin auth verification helper
+│   │   ├── context/
+│   │   │   └── registration-context.tsx          # Registration wizard context
+│   │   ├── checkin/
+│   │   │   └── offline-store.ts                  # IndexedDB store for offline check-in
+│   │   ├── schemas/
+│   │   │   └── api.ts                            # Zod validation schemas for API
 │   │   ├── i18n/
 │   │   │   ├── config.ts
 │   │   │   ├── context.tsx
@@ -246,12 +282,16 @@ eckcm/
 │   │   │   ├── formatters.ts
 │   │   │   ├── field-helpers.ts
 │   │   │   └── profanity-filter.ts
-│   │   └── types/
-│   │       ├── database.ts                       # Supabase generated types
-│   │       ├── registration.ts
-│   │       ├── payment.ts
-│   │       └── checkin.ts
-│   └── middleware.ts                             # Next.js middleware (auth + i18n)
+│   │   ├── types/
+│   │   │   ├── database.ts                       # Core enum types
+│   │   │   ├── registration.ts                   # Registration + participant types
+│   │   │   ├── payment.ts                        # Payment + invoice types
+│   │   │   └── checkin.ts
+│   │   ├── app-config.ts                         # App configuration helper
+│   │   ├── color-theme.ts                        # Color theme constants
+│   │   ├── logger.ts                             # Structured application logger
+│   │   └── rate-limit.ts                         # Request rate limiting
+│   └── proxy.ts                                  # Next.js 16 proxy (renamed from middleware.ts)
 ├── supabase/
 │   └── migrations/                               # SQL migration files
 ├── next.config.ts
@@ -408,6 +448,7 @@ CREATE TABLE eckcm_events (
   registration_start_date TIMESTAMPTZ,
   registration_end_date TIMESTAMPTZ,
   location TEXT,
+  allow_add_group BOOLEAN DEFAULT TRUE,               -- v5: allow users to add new groups during registration
   is_active BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -428,6 +469,7 @@ CREATE TABLE eckcm_departments (
 CREATE TABLE eckcm_churches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name_en TEXT NOT NULL,
+  name_ko TEXT,                                    -- v5: Korean church name
   is_other BOOLEAN NOT NULL DEFAULT FALSE, -- "Other" always at top
   sort_order INTEGER NOT NULL DEFAULT 0,
   is_active BOOLEAN NOT NULL DEFAULT TRUE
@@ -447,6 +489,9 @@ CREATE TABLE eckcm_registration_groups (
   custom_registration_fee_cents INTEGER,
   custom_early_bird_fee_cents INTEGER,
   is_default BOOLEAN NOT NULL DEFAULT FALSE,
+  only_one_person BOOLEAN DEFAULT FALSE,              -- v5: single-person registration enforcement
+  show_tshirt_size BOOLEAN DEFAULT FALSE,             -- v5: show T-shirt size field in registration
+  department_id UUID REFERENCES eckcm_departments(id),-- v5: linked department (global scope)
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -507,10 +552,22 @@ CREATE TABLE eckcm_people (
   is_k12 BOOLEAN NOT NULL DEFAULT FALSE,
   grade eckcm_grade,
   email TEXT,
+  no_email BOOLEAN DEFAULT FALSE,                  -- v5: participant has no email
   phone TEXT,
+  phone_country TEXT DEFAULT 'US',                  -- v5: phone country code (US|CA|KR|OTHER)
+  no_phone BOOLEAN DEFAULT FALSE,                   -- v5: participant has no phone
   department_id UUID REFERENCES eckcm_departments(id),
   church_id UUID REFERENCES eckcm_churches(id),
+  church_role eckcm_church_role,                    -- v5: MEMBER|DEACON|ELDER|MINISTER|PASTOR
   church_other TEXT, -- when church = "Other"
+  tshirt_size TEXT,                                  -- v5: XS, S, M, L, XL
+  check_in_date DATE,                                -- v5: per-participant date override
+  check_out_date DATE,                               -- v5: per-participant date override
+  guardian_name TEXT,                                 -- v5: required for minor representatives
+  guardian_phone TEXT,                                -- v5: guardian phone
+  guardian_phone_country TEXT,                        -- v5: guardian phone country
+  guardian_consent BOOLEAN DEFAULT FALSE,             -- v5: guardian consent given
+  guardian_signature TEXT,                            -- v5: data URL of e-signature
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -529,12 +586,14 @@ CREATE TABLE eckcm_registrations (
   event_id UUID NOT NULL REFERENCES eckcm_events(id),
   created_by_user_id UUID NOT NULL REFERENCES eckcm_users(id),
   registration_group_id UUID NOT NULL REFERENCES eckcm_registration_groups(id),
+  registration_type TEXT DEFAULT 'self',              -- v5: 'self' | 'others'
   status eckcm_registration_status NOT NULL DEFAULT 'DRAFT',
   confirmation_code TEXT, -- 6-char alphanumeric, unique per event
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   nights_count INTEGER NOT NULL,
   total_amount_cents INTEGER NOT NULL DEFAULT 0,
+  additional_requests TEXT,                            -- v5: free-text additional requests
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -586,6 +645,7 @@ CREATE TABLE eckcm_group_memberships (
   person_id UUID NOT NULL REFERENCES eckcm_people(id),
   role eckcm_group_role NOT NULL DEFAULT 'MEMBER',  -- REPRESENTATIVE | MEMBER
   status eckcm_member_status NOT NULL DEFAULT 'ACTIVE',
+  participant_code TEXT,                              -- v5: unique code for E-Pass identification
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(group_id, person_id)
 );
@@ -676,12 +736,14 @@ CREATE TABLE eckcm_meal_selections (
 
 ```sql
 -- eckcm_invoices
+-- v5 Note: invoice_number uses unified numbering INV-YYYY-NNNN (sequence from confirmation code)
+-- Status uses custom enum, NOT eckcm_payment_status
 CREATE TABLE eckcm_invoices (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   registration_id UUID NOT NULL REFERENCES eckcm_registrations(id),
-  invoice_number TEXT NOT NULL UNIQUE, -- auto-generated
+  invoice_number TEXT NOT NULL UNIQUE, -- INV-YYYY-NNNN (auto-generated from confirmation code sequence)
   total_cents INTEGER NOT NULL DEFAULT 0,
-  status eckcm_payment_status NOT NULL DEFAULT 'PENDING',
+  status TEXT NOT NULL DEFAULT 'DRAFT', -- 'DRAFT' | 'SENT' | 'PAID' | 'VOID'
   issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   paid_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -708,6 +770,9 @@ CREATE TABLE eckcm_payments (
   stripe_payment_intent_id TEXT,
   payment_method eckcm_payment_method NOT NULL,
   amount_cents INTEGER NOT NULL,
+  currency TEXT DEFAULT 'usd',                       -- v5: payment currency
+  cover_fees BOOLEAN DEFAULT FALSE,                  -- v5: registrant covers Stripe processing fees
+  fee_amount_cents INTEGER DEFAULT 0,                -- v5: Stripe fee amount
   status eckcm_payment_status NOT NULL DEFAULT 'PENDING',
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -833,6 +898,11 @@ CREATE TABLE eckcm_app_config (
   additional_lodging_fee_cents INTEGER DEFAULT 400, -- $4
   vbs_fee_cents INTEGER DEFAULT 1500,               -- $15
   key_deposit_cents INTEGER DEFAULT 6500,            -- $65
+  epass_hmac_secret TEXT,                            -- v5: HMAC secret for E-Pass token verification
+  color_theme TEXT,                                   -- v5: UI color theme ID
+  turnstile_enabled BOOLEAN DEFAULT FALSE,            -- v5: Cloudflare Turnstile CAPTCHA toggle
+  allow_duplicate_email BOOLEAN DEFAULT FALSE,        -- v5: allow multiple registrations from same email
+  allow_duplicate_registration BOOLEAN DEFAULT FALSE, -- v5: allow multiple registrations for same person
   settings JSONB DEFAULT '{}',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -875,6 +945,23 @@ CREATE TABLE eckcm_legal_content (
   version TEXT,
   published_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- eckcm_email_logs: email delivery tracking (v5)
+CREATE TABLE eckcm_email_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID REFERENCES eckcm_events(id),
+  to_email TEXT NOT NULL,
+  from_email TEXT,
+  subject TEXT,
+  template TEXT,                                      -- template name used
+  registration_id UUID REFERENCES eckcm_registrations(id),
+  invoice_id UUID REFERENCES eckcm_invoices(id),
+  status TEXT NOT NULL DEFAULT 'sent',                -- 'sent' | 'failed'
+  error_message TEXT,
+  sent_by TEXT,                                       -- user/system that triggered send
+  resend_id TEXT,                                     -- external Resend service ID
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- eckcm_sheets_cache_participants: Google Sheets sync cache
@@ -1036,17 +1123,18 @@ CREATE POLICY "Staff can read all people"
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| POST | `/api/auth/callback` | OAuth callback handler | Public |
+| POST | `/api/auth/login-log` | Login event logging | User |
 | - | Supabase client SDK | signUp, signIn, signOut, resetPassword | Direct |
 
 ### 4.2 Registration Routes
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| POST | `/api/registration/estimate` | Calculate price estimate | User |
+| POST | `/api/registration/estimate` | Calculate price estimate (+ discount, cover fees) | User |
 | POST | `/api/registration/submit` | Submit registration (atomic: reg + groups + members + selections + meals) | User |
 | POST | `/api/registration/[id]/cancel` | Request cancellation | User (owner) |
 | GET | `/api/registration/[id]/event-id` | Get event ID for a registration | User |
+| POST | `/api/registration/cancel-drafts` | Delete abandoned DRAFT registrations | User |
 
 ### 4.3 Payment Routes
 
@@ -1055,11 +1143,16 @@ CREATE POLICY "Staff can read all people"
 | POST | `/api/payment/create-intent` | Create Stripe PaymentIntent | User |
 | POST | `/api/payment/confirm` | Confirm payment synchronously (server-side) | User |
 | GET | `/api/payment/retrieve-intent` | Retrieve PaymentIntent status | User |
-| POST | `/api/payment/zelle-submit` | Submit Zelle payment | User |
+| POST | `/api/payment/cancel-intent` | Cancel a PaymentIntent | User |
+| GET | `/api/payment/info` | Get payment info for a registration | User |
 | GET | `/api/payment/methods` | Get available payment methods | User |
+| POST | `/api/payment/zelle-submit` | Submit Zelle payment | User |
 | POST | `/api/payment/update-cover-fees` | Update cover-processing-fees flag on payment | User |
-| POST | `/api/payment/donate` | Create donation PaymentIntent | Public |
+| POST | `/api/payment/update-method-discount` | Update payment method discount | User |
 | GET | `/api/stripe/publishable-key` | Get Stripe publishable key | Public |
+| GET | `/api/invoice/[id]/pdf` | Download invoice/receipt PDF | User |
+| GET | `/api/app-config` | Public app configuration | Public |
+| GET | `/api/audit` | Audit log entries | Staff |
 
 > **v4 Note**: `POST /api/webhooks/stripe` was intentionally removed in commit `27e23d8` ("webhook cleanup"). Payment confirmation is now handled **synchronously** via `POST /api/payment/confirm` which updates registration status, invoice, and triggers confirmation email all in a single server-side call after Stripe's `confirmPayment()` succeeds on the client. The webhook approach has been replaced by this synchronous flow. Stripe webhook secrets remain configurable in admin settings for potential future use.
 
@@ -1077,10 +1170,10 @@ CREATE POLICY "Staff can read all people"
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| POST | `/api/email/confirmation` | Send registration confirmation (to group representative) | Server |
-| POST | `/api/email/invoice` | Send invoice email | Server |
-| POST | `/api/email/test` | Test email delivery | Staff |
-| GET | `/api/admin/email/logs` | View email delivery log | Staff |
+| POST | `/api/email/confirmation` | Send registration confirmation (+ PDF attachment) | Server |
+| POST | `/api/email/invoice` | Send invoice email (+ PDF attachment) | Server |
+| POST | `/api/email/test` | Test email delivery (+ PDF preview) | Staff |
+| GET | `/api/admin/email/logs` | View email delivery log (`eckcm_email_logs`) | Staff |
 | POST | `/api/admin/email/send` | Admin send confirmation/invoice for a registration | Staff |
 | GET+PUT | `/api/admin/email/config` | Read/update email configuration (Resend key, from address) | Super Admin |
 | POST | `/api/admin/email/announcement` | Send bulk announcement email to all registrants | Staff |
@@ -1089,22 +1182,21 @@ CREATE POLICY "Staff can read all people"
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| POST | `/api/admin/lodging/magic-generator` | Generate rooms for building | Staff |
-| POST | `/api/admin/hard-reset-event` | Force reset event (super admin + password) | Super Admin |
-| POST | `/api/admin/invoices/custom` | Create custom invoice | Staff |
+| POST | `/api/admin/hard-reset-event` | Force reset event (+ invoice sequence reset) | Super Admin |
 | POST | `/api/admin/registration` | Manual registration (admin creates for participant) | Staff |
+| GET | `/api/admin/registration/status` | Registration open/closed status check | Public |
 | POST | `/api/admin/refund` | Process refund (full/partial) | Staff |
 | GET | `/api/admin/refund/info` | Get refund summary info for a payment | Staff |
-| POST | `/api/admin/payment/manual` | Process manual payment | Staff |
+| POST | `/api/admin/payment/manual` | Process manual payment (+ discount) | Staff |
 | GET | `/api/admin/stripe-config` | Stripe configuration | Super Admin |
 | POST | `/api/admin/stripe-sync` | Sync Stripe payment intents with DB | Super Admin |
+| POST | `/api/admin/epass/repair` | Repair broken E-Pass tokens | Super Admin |
+| GET/POST | `/api/admin/pdf-preview` | PDF preview for admin | Staff |
 | GET | `/api/admin/app-config` | App configuration | Staff |
 | GET | `/api/admin/events/[eventId]` | Event detail API (read single event) | Staff |
-| GET | `/api/admin/registration/status` | Registration open/closed status check | Public |
 | POST | `/api/export/csv` | Export data as CSV | Staff |
 | POST | `/api/export/pdf` | Export data as PDF | Staff |
-| POST | `/api/sheets/sync` | Trigger Google Sheets sync | Staff |
-| GET | `/api/epass/[token]` | Public E-Pass viewer | Public |
+| GET | `/api/epass/[token]` | Public E-Pass viewer (at root, not admin) | Public |
 
 ### 4.7 Standard API Response Format
 
@@ -1146,7 +1238,7 @@ Inputs:
 Logic:
   1. Registration Fee: FLAT per person (early bird check by deadline)
   2. Lodging: PER_NIGHT × nights × room type (AC/Non-AC)
-     - Additional lodging: if group size >= threshold, +$4/night/extra person
+     - Additional lodging: if group size >= threshold, +fee/night/extra person
   3. Meals: per person × per day × meal_type
      - Full-day discount: if 3 meals selected for a day, apply day rate
      - Free for under-4 (event start date basis)
@@ -1155,7 +1247,9 @@ Logic:
 
 Output:
   - line items array with description, quantity, unit_price, total
-  - grand total
+  - subtotal, total
+  - manualPaymentDiscount: per-person discount × participants (informational)
+  - Cover processing fees: calculated Stripe fee amount (if opted in)
 ```
 
 ### 5.2 ConfirmationCodeService (`confirmation-code.service.ts`)
@@ -1180,9 +1274,32 @@ Verification: hash comparison, check is_active + registration status
 ### 5.4 Invoice Service (`invoice.service.ts`)
 
 ```
+Unified numbering system:
+  - Invoice: INV-YYYY-NNNN (sequence from confirmation code)
+  - Receipt: RCT-YYYY-NNNN (same sequence)
+  - Example: confirmation code R26KIM0023 → INV-2026-0023 → RCT-2026-0023
+
 Creates invoices and line items from registration selections.
-Generates invoice_number (auto-generated, unique).
 Snapshot of line items at payment time.
+Reset: Hard-reset event also resets invoice sequence.
+```
+
+### 5.4.1 PDF Generation Service (`pdf/generate.ts`)
+
+```
+Library: pdf-lib (server-side, no browser dependencies)
+Output: PDF document with:
+  - Organization header (configurable via eckcm_app_config.settings)
+  - Invoice/Receipt details (number, date, payment method, bill-to)
+  - Line items table (description, quantity, unit price, amount)
+  - Subtotal, total
+  - Footer text (configurable)
+  - Cached PDF settings (60s TTL)
+
+Usage:
+  - Attached to confirmation emails automatically
+  - Downloadable via GET /api/invoice/[id]/pdf
+  - Admin preview via /api/admin/pdf-preview
 ```
 
 ### 5.5 Offline Check-in Flow
@@ -1213,20 +1330,25 @@ Snapshot of line items at payment time.
 
 ## 6. State Management
 
-### 6.1 Server State (Supabase + React Query / SWR)
+### 6.1 Server State (Supabase + Realtime + Smart Polling)
 - All database reads via Supabase client SDK with RLS
-- Real-time subscriptions for notifications and check-in updates
+- Real-time subscriptions via `useRealtime` hook (Supabase Postgres Changes)
+- Smart Polling (useChangeDetector) — built into `useRealtime` hook, fires callback only when data changes
+- Admin Presence — real-time indicator of which admins are online (via `admin-presence.tsx`)
 - Server Components for initial data loading (Next.js App Router)
 
 ### 6.2 Client State
-- **Registration Wizard**: React Context (`RegistrationContext`) for multi-step form state
+- **Registration Wizard**: React Context (`RegistrationContext` in `lib/context/registration-context.tsx`) for multi-step form state
   - Persisted to `sessionStorage` to survive page refreshes
   - Also persisted to `eckcm_registration_drafts` table for cross-device continuity
-  - Shape: `{ step, dates, groups[], participants[], meals[], lodging, keyDeposit, pickup }`
-- **Auth**: Supabase `onAuthStateChange` + React Context
+  - Shape: `{ eventId, registrationType, startDate, endDate, nightsCount, accessCode, registrationGroupId, roomGroups[], additionalRequests }`
+  - Registration type: `'self'` (for myself) or `'others'` (for someone else)
+  - Participant data includes: tshirtSize, churchRole, guardian fields, per-participant date overrides
+  - Saved Persons Autofill: reuse previously registered person data
+- **Auth**: Supabase `onAuthStateChange` + `use-auth.ts` hook
 - **i18n**: Cookie-based locale with custom i18n context implementation
-- **Theme**: `next-themes` for dark mode
-- **Offline Check-in**: IndexedDB via `idb` library
+- **Theme**: `next-themes` for dark mode (registration wizard: forced light mode)
+- **Offline Check-in**: IndexedDB via `lib/checkin/offline-store.ts`
 
 ---
 
@@ -1291,16 +1413,22 @@ CREATE INDEX idx_epass_tokens_token_hash ON eckcm_epass_tokens(token_hash);
 ### 10.1 Stripe
 - **SDK**: `@stripe/stripe-js` + `@stripe/react-stripe-js` (client), `stripe` (server)
 - **Flow**: Create PaymentIntent (server) -> Confirm with Elements (client) -> Synchronous server confirmation via `POST /api/payment/confirm`
-- **Confirmation Flow**: After client-side `stripe.confirmPayment()` succeeds, the client calls `POST /api/payment/confirm` which: updates registration status to PAID, updates invoice, inserts payment record, generates confirmation code, generates E-Pass tokens, sends confirmation and invoice emails, and inserts audit log. This replaces the previous async webhook approach.
+- **Confirmation Flow**: After client-side `stripe.confirmPayment()` succeeds, the client calls `POST /api/payment/confirm` which: updates registration status to PAID, updates invoice, inserts payment record, generates confirmation code, generates E-Pass tokens, sends confirmation email (with PDF invoice attached), sends invoice email, and inserts audit log.
 - **Config**: Test/Live mode toggle in admin settings (encrypted keys in DB)
 - **Methods**: Card, Apple Pay, Google Pay, ACH (us_bank_account), Link
+- **Cover Processing Fees**: Registrant can opt-in to cover Stripe processing fees; tracked in `eckcm_payments.cover_fees` and `fee_amount_cents`
+- **Cancel Intent**: `POST /api/payment/cancel-intent` to cancel a pending PaymentIntent
+- **Stripe Sync**: `POST /api/admin/stripe-sync` to reconcile Stripe payment intents with DB records
 - **Note**: Must use lazy `getStripeServer()` function, not module-level instantiation
 
 ### 10.2 Zelle
 - **Flow**: User selects Zelle as payment method -> system displays Zelle recipient info (Zelle ID, name, memo format) -> user submits confirmation via `POST /api/payment/zelle-submit`
 - **Memo format**: Includes 10-digit confirmation code for reconciliation
 - **Manual confirmation**: Admin manually verifies Zelle receipt and marks payment as received via `POST /api/admin/payment/manual`
+- **Manual Payment Discount**: Configurable per-person discount for manual payment methods (ACH, Zelle, etc.)
 - **Agreement**: User must agree to terms before Zelle submission
+- **Configurable Settings**: Zelle recipient info (ID, name) configurable via admin settings
+- **Email**: Zelle payment instructions included in confirmation email
 
 ### 10.3 Resend
 - **SDK**: `resend` npm package
@@ -1312,10 +1440,12 @@ CREATE INDEX idx_epass_tokens_token_hash ON eckcm_epass_tokens(token_hash);
 - **Config**: Sheet ID + range stored in app config
 - **RLS**: Only staff can access cached data
 
-### 10.5 Supabase Realtime
+### 10.5 Supabase Realtime + Smart Polling
 - **Channels**: `notifications:{user_id}` for personal alerts
 - **Events**: New registration, payment confirmation, room assignment, check-in
 - **Client**: `supabase.channel()` subscription in `useRealtime` hook
+- **Smart Polling (useChangeDetector)**: Built into `useRealtime` hook — all 17+ admin pages use this for automatic data refresh when underlying table data changes
+- **Admin Presence**: `admin-presence.tsx` component shows real-time online status of admin users
 
 ### 10.6 Cloudflare Turnstile
 - **Purpose**: Bot protection on public-facing forms (signup, payment, etc.)
@@ -1378,7 +1508,32 @@ CREATE INDEX idx_epass_tokens_token_hash ON eckcm_epass_tokens(token_hash);
 | Google OAuth email | Cannot change in profile settings (read-only) |
 | Profile completion | Required after OAuth signup before accessing dashboard |
 
-### 12.4 Email/Password Signup UI Flow
+### 12.4 Guardian/Parent Consent Rules
+
+| Rule | Value | Enforced At |
+|------|-------|-------------|
+| Required when | Minor (< 18 at event start) is the group representative | Client + Server |
+| Guardian name | Required, max 200 chars | Client + Server |
+| Guardian phone | Required, max 30 chars | Client + Server |
+| Guardian consent checkbox | Must be checked | Client + Server |
+| Guardian e-signature | Optional (data URL via signature pad) | Client |
+
+### 12.5 Registration Type Rules
+
+| Type | Description | Behavior |
+|------|-------------|----------|
+| `self` | User registers for themselves | User automatically added as first participant |
+| `others` | User registers on behalf of others | User is NOT a participant, only the registrant |
+
+### 12.6 Per-Participant Date Override
+
+| Rule | Description |
+|------|-------------|
+| Default | All participants use registration start/end dates |
+| Override | Individual participants can set custom check-in/check-out dates |
+| Constraint | Must be within event dates |
+
+### 12.7 Email/Password Signup UI Flow
 
 - **OAuth (Google, Apple)**: 2-step flow
   1. `/signup` - OAuth button click -> redirect
@@ -1462,16 +1617,16 @@ The registration wizard collects all data client-side via `RegistrationContext` 
 
 ```
 Transaction: POST /api/registration/submit
-├─ 1. Validate all input data (dates, participants, meals, fees)
-├─ 2. INSERT eckcm_registrations (status: SUBMITTED)
-├─ 3. INSERT eckcm_people (for each new participant)
+├─ 1. Validate all input data (dates, participants, meals, fees, guardian consent)
+├─ 2. INSERT eckcm_registrations (status: SUBMITTED, registration_type, additional_requests)
+├─ 3. INSERT eckcm_people (for each new participant: + tshirt_size, church_role, guardian fields, per-participant dates)
 ├─ 4. INSERT eckcm_groups (for each room group)
 ├─ 5. INSERT eckcm_group_memberships (representative + members)
 ├─ 6. INSERT eckcm_registration_selections (fee choices)
 ├─ 7. INSERT eckcm_meal_selections (per person × date × type)
 ├─ 8. INSERT eckcm_registration_rides (if airport ride selected)
-├─ 9. Calculate total via PricingService
-├─ 10. INSERT eckcm_invoices + eckcm_invoice_line_items (snapshot)
+├─ 9. Calculate total via PricingService (+ discount calculation)
+├─ 10. INSERT eckcm_invoices (INV-YYYY-NNNN) + eckcm_invoice_line_items (snapshot)
 └─ COMMIT or ROLLBACK on any error
 ```
 
@@ -1480,13 +1635,15 @@ After payment confirmation (synchronous server call):
 POST /api/payment/confirm (called by client after stripe.confirmPayment() succeeds)
 ├─ 1. Verify payment intent status with Stripe server SDK
 ├─ 2. UPDATE eckcm_registrations (status: PAID)
-├─ 3. UPDATE eckcm_invoices (status: SUCCEEDED, paid_at)
-├─ 4. INSERT eckcm_payments
+├─ 3. UPDATE eckcm_invoices (status: PAID, paid_at)
+├─ 4. INSERT eckcm_payments (+ cover_fees, fee_amount_cents, currency)
 ├─ 5. Generate confirmation_code (ConfirmationCodeService)
 ├─ 6. Generate eckcm_epass_tokens (for each participant)
-├─ 7. Send confirmation email to group representative (all confirmation codes + E-Pass links)
-├─ 8. Send invoice email
-└─ 9. INSERT eckcm_audit_logs
+├─ 7. Generate Invoice/Receipt PDF (pdf-lib)
+├─ 8. Send confirmation email to group representative (all confirmation codes + E-Pass links + PDF attachment)
+├─ 9. Send invoice email (+ PDF attachment)
+├─ 10. INSERT eckcm_email_logs
+└─ 11. INSERT eckcm_audit_logs
 ```
 
 > **v4 Architecture Note**: The original design used `POST /api/webhooks/stripe` for async payment confirmation. This was intentionally replaced by the synchronous confirm flow above. The synchronous approach eliminates webhook signature verification complexity and ensures immediate confirmation delivery. The webhook endpoint has been removed from the codebase.
@@ -1579,7 +1736,7 @@ CREATE TRIGGER trg_app_config_updated_at
 
 ---
 
-## 19. Implementation-Only Items (v4 - Officially Recognized)
+## 19. Implementation-Only Items (v5 - Officially Recognized)
 
 These items exist in the implementation but were not in the original design specification. They are recognized as valid implementation decisions and documented here to keep design and implementation in sync.
 
@@ -1596,6 +1753,7 @@ These items exist in the implementation but were not in the original design spec
 |---------|---------|------|
 | `refund.service.ts` | Stripe refund processing logic | `src/lib/services/refund.service.ts` |
 | `email-log.service.ts` | Email delivery logging to `eckcm_email_logs` | `src/lib/email/email-log.service.ts` |
+| `generate.ts` | Invoice/Receipt PDF generation (pdf-lib) | `src/lib/pdf/generate.ts` |
 
 ### 19.3 Additional Components
 
@@ -1604,6 +1762,8 @@ These items exist in the implementation but were not in the original design spec
 | `force-light-mode.tsx` | Forces light mode during registration wizard | `src/components/registration/force-light-mode.tsx` |
 | `payment-icons.tsx` | Brand icons for payment method display | `src/components/payment/payment-icons.tsx` |
 | `sanitized-html.tsx` | Safe HTML rendering (DOMPurify-based) | `src/components/shared/sanitized-html.tsx` |
+| `signature-pad.tsx` | E-signature pad for guardian consent | `src/components/shared/signature-pad.tsx` |
+| `admin-presence.tsx` | Real-time admin presence indicator | `src/components/admin/admin-presence.tsx` |
 
 ### 19.4 Additional Library Files
 
@@ -1612,11 +1772,13 @@ These items exist in the implementation but were not in the original design spec
 | `src/lib/app-config.ts` | App configuration helper (reads `eckcm_app_config`) |
 | `src/lib/color-theme.ts` | Color theme constants and helpers |
 | `src/lib/checkin/offline-store.ts` | IndexedDB store for offline check-in data |
-| `src/lib/context/registration-context.tsx` | Registration wizard context (implements `use-registration.ts`) |
+| `src/lib/context/registration-context.tsx` | Registration wizard context |
 | `src/lib/email/email-config.ts` | Email configuration reader |
 | `src/lib/logger.ts` | Structured application logger |
 | `src/lib/rate-limit.ts` | Request rate limiting middleware helper |
 | `src/lib/auth/admin.ts` | Admin auth verification helper |
+| `src/lib/schemas/api.ts` | Zod validation schemas for API requests |
+| `src/lib/pdf/generate.ts` | PDF invoice/receipt generation (pdf-lib) |
 
 ### 19.5 Additional Pages (Error/Loading Boundaries)
 
@@ -1626,7 +1788,42 @@ These items exist in the implementation but were not in the original design spec
 | `src/app/(protected)/error.tsx` | Error boundary for protected routes |
 | `src/app/(protected)/loading.tsx` | Loading state for protected routes |
 
-### 19.6 Intentionally Deferred Items
+### 19.6 Post-PDCA Features (v5 — Implemented after PDCA completion)
+
+The following features were implemented after the initial PDCA cycle completed at 93% match rate. They are now part of the design specification:
+
+| Feature | Description | Key Files |
+|---------|-------------|-----------|
+| Register for Someone Else | Registration type: `self` vs `others` | `register/[eventId]/page.tsx`, `registration.ts` |
+| T-shirt Size | Per-participant XS/S/M/L/XL field | `participants/page.tsx`, `api.ts` |
+| Guardian/Parent Consent | Required for minor representatives: name, phone, consent, e-signature | `participants/page.tsx`, `signature-pad.tsx` |
+| Saved Persons Autofill | Reuse previously registered person data | `participants/page.tsx` |
+| Fee Schedule Display | Show fee schedule on instructions page | `instructions/page.tsx` |
+| Per-Participant Date Override | Individual check-in/check-out dates | `participants/page.tsx`, `submit/route.ts` |
+| Cover Processing Fees | Option to cover Stripe fees | `payment/page.tsx`, `create-intent/route.ts` |
+| Payment Method Discount | Discount for manual payment methods | `pricing.service.ts`, `update-method-discount/route.ts` |
+| PDF Invoice/Receipt | pdf-lib generation + email attachment | `lib/pdf/generate.ts`, `invoice/[id]/pdf/route.ts` |
+| Unified Numbering | INV-YYYY-NNNN / RCT-YYYY-NNNN from confirmation code | `invoice.service.ts` |
+| Smart Polling | useChangeDetector in useRealtime for all admin pages | `use-realtime.ts`, 17+ admin pages |
+| Admin Presence | Real-time online admin indicator | `admin-presence.tsx` |
+| E-Pass Repair | Admin tool to repair broken tokens | `admin/epass/repair/route.ts` |
+| Delete DRAFT Registrations | Delete abandoned DRAFTs instead of cancelling | `cancel-drafts/route.ts` |
+| Stripe Sync | Reconcile Stripe PaymentIntents with DB | `admin/stripe-sync/route.ts` |
+| Admin PDF Preview | Preview invoices/receipts in admin | `admin/pdf-preview/route.ts` |
+| Cancel PaymentIntent | Cancel pending Stripe intents | `payment/cancel-intent/route.ts` |
+| Payment Info Endpoint | Get payment info for registration | `payment/info/route.ts` |
+| Login Logging | Auth login event tracking | `auth/login-log/route.ts` |
+| Korean Church Names | `name_ko` column on churches | `churches-manager.tsx` |
+| Church Role | Per-participant church role | `participants/page.tsx` |
+| No Phone/No Email | Flags for participants without contact | `api.ts`, `participants/page.tsx` |
+| Phone Country Code | International phone support | `phone-input.tsx`, `api.ts` |
+| Email System Overhaul | Announcement, config, logs, manual send | `admin/email/` routes |
+| Roles Permissions Editor | Edit role-permission mappings | `settings/roles/roles-manager.tsx` |
+| Vercel Analytics | Site usage analytics | `layout.tsx` |
+| Admin Registration Status API | Public API for open/closed check | `admin/registration/status/route.ts` |
+| Groups Access Code UI | Admin UI for access code management | `settings/groups/groups-manager.tsx` |
+
+### 19.7 Intentionally Deferred Items
 
 The following designed items are deferred to a future iteration:
 
@@ -1643,9 +1840,11 @@ The following designed items are deferred to a future iteration:
 | `eckcm_meal_rules` table wiring | Meals admin uses `eckcm_registration_selections` |
 | `eckcm_meal_selections` table wiring | Meals admin uses `eckcm_registration_selections` |
 | `eckcm_sheets_cache_participants` | Google Sheets deferred |
+| i18n (full Korean/English) | Partial — UI labels mostly English |
+| Apple OAuth | Only Google OAuth implemented |
 
 ---
 
-*Generated by bkit PDCA v1.5.2 (v4 - Synced with implementation, Act-5)*
+*Generated by bkit PDCA v1.5.5 (v5 - Synced with implementation, post-PDCA updates)*
 *Plan Reference: docs/01-plan/features/online-registration.plan.md*
-*Last updated: 2026-03-01 (Iteration 5 - pdca-iterator)*
+*Last updated: 2026-03-14*
