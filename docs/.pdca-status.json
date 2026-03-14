@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-13T22:28:34.990Z",
+  "lastUpdated": "2026-03-14T06:39:42.203Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -110,7 +110,8 @@
     "webhook",
     "cancel-drafts",
     "pdf-preview",
-    "invoice.service.ts"
+    "invoice.service.ts",
+    "registration.service.ts"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -201,7 +202,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:13.807Z",
-        "lastUpdated": "2026-03-13T20:23:57.151Z"
+        "lastUpdated": "2026-03-14T04:37:09.744Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/submit/route.ts"
     },
@@ -526,9 +527,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T23:02:41.685Z",
-        "lastUpdated": "2026-03-01T04:48:56.507Z"
+        "lastUpdated": "2026-03-14T06:07:05.968Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/_components/payment-constants.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/_components/copy-button.tsx"
     },
     "payment": {
       "phase": "do",
@@ -539,7 +540,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T23:03:24.266Z",
-        "lastUpdated": "2026-03-13T22:28:34.990Z"
+        "lastUpdated": "2026-03-14T06:35:57.827Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
     },
@@ -643,9 +644,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:44:12.622Z",
-        "lastUpdated": "2026-03-13T19:17:39.811Z"
+        "lastUpdated": "2026-03-14T06:39:42.203Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/email/page.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/email/send-confirmation.ts"
     },
     "google-sheets": {
       "phase": "do",
@@ -812,7 +813,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:46:45.786Z",
-        "lastUpdated": "2026-03-05T03:07:13.477Z"
+        "lastUpdated": "2026-03-14T06:16:05.546Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/email/templates/confirmation.tsx"
     },
@@ -1501,7 +1502,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-13T01:58:15.130Z",
-        "lastUpdated": "2026-03-13T01:58:15.130Z"
+        "lastUpdated": "2026-03-14T04:36:39.941Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/cancel-drafts/route.ts"
     },
@@ -1530,6 +1531,19 @@
         "lastUpdated": "2026-03-13T20:23:47.653Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/invoice.service.ts"
+    },
+    "registration.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-14T04:36:22.514Z",
+        "lastUpdated": "2026-03-14T04:36:22.514Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/registration.service.ts"
     }
   },
   "history": [
@@ -10263,6 +10277,102 @@
     {
       "timestamp": "2026-03-13T22:28:34.990Z",
       "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T03:59:09.107Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T04:36:22.514Z",
+      "feature": "registration.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T04:36:39.941Z",
+      "feature": "cancel-drafts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T04:36:52.831Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T04:37:00.900Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T04:37:09.744Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T06:07:05.968Z",
+      "feature": "_components",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T06:07:47.562Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T06:07:51.462Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T06:14:27.111Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T06:15:55.804Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T06:16:00.207Z",
+      "feature": "templates",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T06:16:05.546Z",
+      "feature": "templates",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T06:35:49.600Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T06:35:57.827Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T06:39:42.203Z",
+      "feature": "email",
       "phase": "do",
       "action": "updated"
     }

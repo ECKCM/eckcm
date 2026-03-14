@@ -253,8 +253,15 @@ export default function PaymentStep() {
   }, [registrationId, eventId]);
 
   // Cancel DRAFT registration on in-app navigation away (unmount)
+  // Use a mounted ref with a delay to avoid React Strict Mode's double-mount cycle
+  const reallyMountedRef = useRef(false);
   useEffect(() => {
+    const timer = setTimeout(() => {
+      reallyMountedRef.current = true;
+    }, 500);
     return () => {
+      clearTimeout(timer);
+      if (!reallyMountedRef.current) return; // Strict Mode double-mount, skip
       if (paymentCompletedRef.current) return;
       if (!registrationId || !eventId) return;
       fetch("/api/registration/cancel-drafts", {
@@ -1103,7 +1110,7 @@ function ZellePaymentForm({
               <div className="space-y-2 text-sm text-purple-900 pl-1">
                 <p>1. Open your banking app and select <strong>Send with Zelle</strong></p>
                 <p className="flex items-center gap-1 flex-wrap">
-                  <span>2. Zelle Payment Email:</span>
+                  <span>2. Send with Zelle to:</span>
                   <CopyButton text="kimdani1@icloud.com" />
                 </p>
                 <p>3. Account Holder: <strong>EMPOWER MINISTRY GROUP, INC</strong></p>
@@ -1113,7 +1120,7 @@ function ZellePaymentForm({
                     <span>5. Memo/Note <strong className="text-red-600">(Required)</strong>:</span>
                   </p>
                   <div className="pl-5">
-                    <CopyButton text={`${confirmationCode} - ${registrantName} - ${registrantPhone.replace(/\D/g, "")} - ${registrantEmail}`} />
+                    <CopyButton text={`${confirmationCode}-${registrantName.replace(/\s+/g, "")}-${registrantPhone.replace(/\D/g, "")}-${registrantEmail.replace(/[@.]/g, "")}`} />
                   </div>
                   <p className="text-xs text-purple-700 pl-5">
                     Please copy and paste the memo exactly as shown so we can match your payment.

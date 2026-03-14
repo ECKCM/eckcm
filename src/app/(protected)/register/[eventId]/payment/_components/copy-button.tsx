@@ -32,7 +32,7 @@ export function CopyButton({ text }: { text: string }) {
       }`}
       style={pulse ? { transform: "scale(1.08)" } : undefined}
     >
-      <span className="flex-1 min-w-0">{text}</span>
+      <code className="flex-1 min-w-0">{text}</code>
       {copied ? (
         <ClipboardCheck className="h-3.5 w-3.5 shrink-0 mt-0.5 text-green-600" />
       ) : (

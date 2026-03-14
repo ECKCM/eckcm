@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { deleteDraftRegistration } from "@/lib/services/registration.service";
 import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
@@ -25,31 +26,42 @@ export async function POST(request: Request) {
 
     const admin = createAdminClient();
 
-    // Build query: cancel DRAFT registrations for this user + event
+    // Find DRAFT registrations to delete
     let query = admin
       .from("eckcm_registrations")
-      .update({ status: "CANCELLED" })
+      .select("id")
       .eq("event_id", eventId)
       .eq("created_by_user_id", user.id)
       .eq("status", "DRAFT");
 
-    // If a specific registrationId is provided, only cancel that one
     if (registrationId) {
       query = query.eq("id", registrationId);
     }
 
-    const { error } = await query;
+    const { data: drafts, error: findError } = await query;
 
-    if (error) {
-      logger.error("[cancel-drafts] Failed to cancel drafts", {
-        error: String(error),
+    if (findError) {
+      logger.error("[cancel-drafts] Failed to find drafts", {
+        error: String(findError),
         userId: user.id,
         eventId,
       });
       return NextResponse.json(
-        { error: "Failed to cancel drafts" },
+        { error: "Failed to find drafts" },
         { status: 500 }
       );
+    }
+
+    // Delete each draft registration and all related records
+    for (const draft of drafts ?? []) {
+      try {
+        await deleteDraftRegistration(admin, draft.id);
+      } catch (err) {
+        logger.error("[cancel-drafts] Failed to delete draft", {
+          registrationId: draft.id,
+          error: String(err),
+        });
+      }
     }
 
     return NextResponse.json({ success: true });

@@ -194,7 +194,7 @@ export async function sendConfirmationEmail(
     ? {
         zelleEmail: emailConfig.zelleEmail ?? "",
         accountHolder: emailConfig.zelleAccountHolder ?? "",
-        memo: `${reg.confirmation_code} - ${participants[0]?.name || "N/A"} - ${registrantPhone} - ${user.email}`,
+        memo: `${reg.confirmation_code}-${firstMember?.eckcm_people?.first_name_en || ""}${firstMember?.eckcm_people?.last_name_en || ""}-${registrantPhone}-${user.email.replace(/[@.]/g, "")}`,
       }
     : null;
 

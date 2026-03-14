@@ -12,53 +12,15 @@ import { submitRegistrationSchema } from "@/lib/schemas/api";
 import { rateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { populateDefaultMeals } from "@/lib/services/meal.service";
+import { deleteDraftRegistration } from "@/lib/services/registration.service";
 
 async function cleanupFailedRegistration(
   admin: SupabaseClient,
   registrationId: string,
-  peopleIds: string[] = []
+  _peopleIds: string[] = []
 ) {
   try {
-    const { data: invoices } = await admin
-      .from("eckcm_invoices")
-      .select("id")
-      .eq("registration_id", registrationId);
-    const invoiceIds = (invoices ?? []).map((invoice) => invoice.id);
-
-    if (invoiceIds.length > 0) {
-      await admin
-        .from("eckcm_invoice_line_items")
-        .delete()
-        .in("invoice_id", invoiceIds);
-      await admin.from("eckcm_payments").delete().in("invoice_id", invoiceIds);
-      await admin.from("eckcm_invoices").delete().in("id", invoiceIds);
-    }
-
-    const { data: groups } = await admin
-      .from("eckcm_groups")
-      .select("id")
-      .eq("registration_id", registrationId);
-    const groupIds = (groups ?? []).map((group) => group.id);
-
-    if (groupIds.length > 0) {
-      await admin
-        .from("eckcm_group_memberships")
-        .delete()
-        .in("group_id", groupIds);
-    }
-
-    await admin
-      .from("eckcm_registration_rides")
-      .delete()
-      .eq("registration_id", registrationId);
-    await admin.from("eckcm_epass_tokens").delete().eq("registration_id", registrationId);
-    await admin.from("eckcm_groups").delete().eq("registration_id", registrationId);
-
-    if (peopleIds.length > 0) {
-      await admin.from("eckcm_people").delete().in("id", peopleIds);
-    }
-
-    await admin.from("eckcm_registrations").delete().eq("id", registrationId);
+    await deleteDraftRegistration(admin, registrationId);
   } catch (cleanupErr) {
     logger.error("[registration/submit] Cleanup failed", {
       registrationId,
@@ -132,14 +94,18 @@ export async function POST(request: Request) {
 
   // 1. Check for duplicate registration (skip for "others" mode)
   if (registrationType !== "others" && !appConfig?.allow_duplicate_registration) {
-    // Cancel any existing DRAFT registrations (unpaid) so user can start fresh
-    await admin
+    // Delete any existing DRAFT registrations (unpaid) so user can start fresh
+    const { data: oldDrafts } = await admin
       .from("eckcm_registrations")
-      .update({ status: "CANCELLED" })
+      .select("id")
       .eq("event_id", eventId)
       .eq("created_by_user_id", user.id)
       .eq("status", "DRAFT")
       .neq("registration_type", "others");
+
+    for (const draft of oldDrafts ?? []) {
+      await deleteDraftRegistration(admin, draft.id);
+    }
 
     // Block only if a paid/submitted registration already exists
     const { data: existingReg } = await admin
