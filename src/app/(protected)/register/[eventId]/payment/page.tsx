@@ -927,7 +927,8 @@ function StripePaymentForm({
             googlePay: "auto",
             amazonPay: "never",
             link: "never",
-          },
+            klarna: "never",
+          } as Record<string, "auto" | "never">,
           buttonType: {
             applePay: "plain",
             googlePay: "plain",
