@@ -922,6 +922,12 @@ function StripePaymentForm({
       <ExpressCheckoutElement
         onConfirm={handleExpressCheckout}
         options={{
+          paymentMethods: {
+            applePay: "auto",
+            googlePay: "auto",
+            amazonPay: "never",
+            link: "never",
+          },
           buttonType: {
             applePay: "plain",
             googlePay: "plain",
