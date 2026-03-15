@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, useParams } from "next/navigation";
 import {
   Elements,
   PaymentElement,
+  ExpressCheckoutElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
@@ -866,9 +867,78 @@ function StripePaymentForm({
     }
   };
 
+  /* ---- Express Checkout (Apple Pay / Google Pay black buttons) ---- */
+  const handleExpressCheckout = async ({ expressPaymentType }: { expressPaymentType: string }) => {
+    if (!stripe || !elements) return;
+    setProcessing(true);
+
+    try {
+      const returnUrl = `${window.location.origin}/register/payment-complete`;
+
+      suppressUnloadWarning.current = true;
+      if (beforeUnloadHandlerRef.current) {
+        window.removeEventListener("beforeunload", beforeUnloadHandlerRef.current);
+      }
+
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        clientSecret,
+        confirmParams: {
+          return_url: returnUrl,
+        },
+        redirect: "if_required",
+      });
+
+      suppressUnloadWarning.current = false;
+      if (beforeUnloadHandlerRef.current) {
+        window.addEventListener("beforeunload", beforeUnloadHandlerRef.current);
+      }
+
+      if (error) {
+        console.error(`[Payment] ${expressPaymentType} error:`, error.type, error.code, error.message);
+        toast.error(error.message || "Payment failed. Please try again.");
+        setProcessing(false);
+        onPaymentFailed();
+      } else if (
+        paymentIntent?.status === "succeeded" ||
+        paymentIntent?.status === "processing"
+      ) {
+        toast.success("Payment successful!");
+        onSuccess(paymentIntent.id);
+      } else {
+        setProcessing(false);
+      }
+    } catch (err) {
+      console.error("[Payment] Express checkout error:", err);
+      toast.error("An unexpected error occurred. Please try again.");
+      setProcessing(false);
+      onPaymentFailed();
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* PaymentElement — wallets (Apple Pay / Google Pay) shown natively at top */}
+      {/* Express Checkout — Apple Pay / Google Pay black buttons */}
+      <ExpressCheckoutElement
+        onConfirm={handleExpressCheckout}
+        options={{
+          buttonType: {
+            applePay: "plain",
+            googlePay: "plain",
+          },
+          buttonHeight: 48,
+        }}
+      />
+
+      <div className="flex items-center gap-3">
+        <Separator className="flex-1" />
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          or pay with
+        </span>
+        <Separator className="flex-1" />
+      </div>
+
+      {/* PaymentElement — card, bank, etc. (wallets handled by ExpressCheckoutElement above) */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -893,14 +963,12 @@ function StripePaymentForm({
                 spacedAccordionItems: true,
               },
               paymentMethodOrder: [
-                "apple_pay",
-                "google_pay",
                 "card",
                 "us_bank_account",
                 "amazon_pay",
                 "klarna",
               ],
-              wallets: { applePay: "auto", googlePay: "auto" },
+              wallets: { applePay: "never", googlePay: "never" },
             }}
           />
         </CardContent>
