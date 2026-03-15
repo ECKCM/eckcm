@@ -641,7 +641,6 @@ export default function PaymentStep() {
                   amount={amount}
                   registrationId={registrationId!}
                   coversFees={coversFees}
-                  walletEnabled={!paymentTestMode}
                   processing={processing}
                   setProcessing={setProcessing}
                   onPaymentMethodChange={(method) => {
@@ -720,7 +719,6 @@ function StripePaymentForm({
   amount,
   registrationId,
   coversFees,
-  walletEnabled,
   processing,
   setProcessing,
   onPaymentMethodChange,
@@ -737,7 +735,6 @@ function StripePaymentForm({
   amount: number;
   registrationId: string;
   coversFees: boolean;
-  walletEnabled: boolean;
   processing: boolean;
   setProcessing: (v: boolean) => void;
   onPaymentMethodChange: (method: string) => void;
@@ -903,9 +900,7 @@ function StripePaymentForm({
                 "amazon_pay",
                 "klarna",
               ],
-              wallets: walletEnabled
-                ? { applePay: "auto", googlePay: "auto" }
-                : { applePay: "never", googlePay: "never" },
+              wallets: { applePay: "auto", googlePay: "auto" },
             }}
           />
         </CardContent>
