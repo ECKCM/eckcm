@@ -5,11 +5,10 @@ import { useSearchParams, useRouter, useParams } from "next/navigation";
 import {
   Elements,
   PaymentElement,
-  PaymentRequestButtonElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
-import type { Stripe as StripeType, PaymentRequest as StripePaymentRequest } from "@stripe/stripe-js";
+import type { Stripe as StripeType } from "@stripe/stripe-js";
 import { getStripe, getStripeWithKey } from "@/lib/stripe/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -279,8 +278,6 @@ export default function PaymentStep() {
     ["card", "ach", "check"].includes(m)
   );
   const zelleEnabled = enabledMethods.includes("zelle");
-  const walletEnabled = enabledMethods.includes("wallet") && !paymentTestMode;
-
   // Auto-select payMode when only one option is available
   useEffect(() => {
     if (stripeEnabled && !zelleEnabled) setPayMode("stripe");
@@ -644,7 +641,7 @@ export default function PaymentStep() {
                   amount={amount}
                   registrationId={registrationId!}
                   coversFees={coversFees}
-                  walletEnabled={walletEnabled}
+                  walletEnabled={!paymentTestMode}
                   processing={processing}
                   setProcessing={setProcessing}
                   onPaymentMethodChange={(method) => {
@@ -755,9 +752,6 @@ function StripePaymentForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
-  const [paymentRequest, setPaymentRequest] =
-    useState<StripePaymentRequest | null>(null);
-  const [walletAvailable, setWalletAvailable] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState("card");
   const abortRef = useRef<AbortController | null>(null);
   const isFirstMount = useRef(true);
@@ -803,55 +797,6 @@ function StripePaymentForm({
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMethod]);
-
-  /* ---- Apple Pay / Google Pay via PaymentRequest API ---- */
-  useEffect(() => {
-    if (!stripe || !amount) return;
-
-    const pr = stripe.paymentRequest({
-      country: "US",
-      currency: "usd",
-      total: { label: "ECKCM Registration", amount },
-      requestPayerName: true,
-      requestPayerEmail: true,
-    });
-
-    pr.canMakePayment().then((result) => {
-      if (result && (result.applePay || result.googlePay)) {
-        setPaymentRequest(pr);
-        setWalletAvailable(true);
-      }
-    });
-
-    pr.on("paymentmethod", async (ev) => {
-      const { error, paymentIntent } = await stripe.confirmCardPayment(
-        clientSecret,
-        { payment_method: ev.paymentMethod.id },
-        { handleActions: false }
-      );
-
-      if (error) {
-        ev.complete("fail");
-        toast.error(error.message || "Payment failed.");
-      } else {
-        ev.complete("success");
-        if (paymentIntent?.status === "requires_action") {
-          const { error: confirmError, paymentIntent: confirmedPI } =
-            await stripe.confirmCardPayment(clientSecret);
-          if (confirmError) {
-            toast.error(confirmError.message || "Payment failed.");
-          } else {
-            toast.success("Payment successful!");
-            onSuccess(confirmedPI!.id);
-          }
-        } else {
-          toast.success("Payment successful!");
-          onSuccess(paymentIntent!.id);
-        }
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stripe, amount]);
 
   /* ---- submit ---- */
   const handleSubmit = async (e: React.FormEvent) => {
@@ -926,34 +871,7 @@ function StripePaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Wallet buttons */}
-      {walletEnabled && walletAvailable && paymentRequest && (
-        <>
-          <div>
-            <PaymentRequestButtonElement
-              options={{
-                paymentRequest,
-                style: {
-                  paymentRequestButton: {
-                    type: "default",
-                    theme: "dark",
-                    height: "48px",
-                  },
-                },
-              }}
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
-              or pay with
-            </span>
-            <Separator className="flex-1" />
-          </div>
-        </>
-      )}
-
-      {/* PaymentElement */}
+      {/* PaymentElement — wallets (Apple Pay / Google Pay) shown natively at top */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -978,12 +896,16 @@ function StripePaymentForm({
                 spacedAccordionItems: true,
               },
               paymentMethodOrder: [
+                "apple_pay",
+                "google_pay",
                 "card",
                 "us_bank_account",
                 "amazon_pay",
                 "klarna",
               ],
-              wallets: { applePay: "never", googlePay: "never" },
+              wallets: walletEnabled
+                ? { applePay: "auto", googlePay: "auto" }
+                : { applePay: "never", googlePay: "never" },
             }}
           />
         </CardContent>
