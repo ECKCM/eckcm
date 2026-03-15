@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-14T06:39:42.203Z",
+  "lastUpdated": "2026-03-15T03:10:04.080Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -111,7 +111,18 @@
     "cancel-drafts",
     "pdf-preview",
     "invoice.service.ts",
-    "registration.service.ts"
+    "registration.service.ts",
+    "helpers",
+    "unit",
+    "epass.service.test.ts",
+    "confirmation-code.test.ts",
+    "invoice.service.test.ts",
+    "meal.service.test.ts",
+    "pricing.service.test.ts",
+    "refund.service.test.ts",
+    "registration.service.test.ts",
+    "checkin.service.test.ts",
+    "e2e"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -137,9 +148,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:03:38.722Z",
-        "lastUpdated": "2026-03-12T18:45:18.485Z"
+        "lastUpdated": "2026-03-15T03:06:20.273Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/lib/hooks/use-realtime.ts"
+      "lastFile": "/Users/scottkim/development/eckcm/playwright.config.ts"
     },
     "stripe-config": {
       "phase": "do",
@@ -319,9 +330,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:28:33.228Z",
-        "lastUpdated": "2026-03-12T06:18:06.434Z"
+        "lastUpdated": "2026-03-15T03:03:42.347Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/stripe/stripe-config-manager.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/api/stripe/webhook.test.ts"
     },
     "registrations": {
       "phase": "do",
@@ -540,9 +551,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T23:03:24.266Z",
-        "lastUpdated": "2026-03-14T06:35:57.827Z"
+        "lastUpdated": "2026-03-15T03:04:44.734Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/api/payment/stripe-fee.test.ts"
     },
     "verify": {
       "phase": "do",
@@ -1398,9 +1409,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-06T05:30:10.790Z",
-        "lastUpdated": "2026-03-11T21:18:09.449Z"
+        "lastUpdated": "2026-03-15T02:52:18.308Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/lib/schemas/api.ts"
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/unit/schemas/api.test.ts"
     },
     "(auth)": {
       "phase": "do",
@@ -1544,6 +1555,149 @@
         "lastUpdated": "2026-03-14T04:36:22.514Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/registration.service.ts"
+    },
+    "helpers": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-15T02:49:56.583Z",
+        "lastUpdated": "2026-03-15T02:54:55.163Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/helpers/mock-supabase.ts"
+    },
+    "unit": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-15T02:50:12.613Z",
+        "lastUpdated": "2026-03-15T03:04:32.638Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/unit/rate-limit.test.ts"
+    },
+    "epass.service.test.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-15T02:50:26.163Z",
+        "lastUpdated": "2026-03-15T02:52:35.581Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/unit/services/epass.service.test.ts"
+    },
+    "confirmation-code.test.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-15T02:50:35.100Z",
+        "lastUpdated": "2026-03-15T02:52:22.692Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/unit/services/confirmation-code.test.ts"
+    },
+    "invoice.service.test.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-15T02:50:41.487Z",
+        "lastUpdated": "2026-03-15T02:50:41.487Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/unit/services/invoice.service.test.ts"
+    },
+    "meal.service.test.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-15T02:51:00.215Z",
+        "lastUpdated": "2026-03-15T02:51:00.215Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/unit/services/meal.service.test.ts"
+    },
+    "pricing.service.test.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-15T02:51:56.370Z",
+        "lastUpdated": "2026-03-15T02:51:56.370Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/unit/services/pricing.service.test.ts"
+    },
+    "refund.service.test.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-15T02:55:24.901Z",
+        "lastUpdated": "2026-03-15T02:56:53.442Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/integration/services/refund.service.test.ts"
+    },
+    "registration.service.test.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-15T02:55:47.460Z",
+        "lastUpdated": "2026-03-15T02:55:47.460Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/integration/services/registration.service.test.ts"
+    },
+    "checkin.service.test.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-15T02:56:13.302Z",
+        "lastUpdated": "2026-03-15T02:56:13.302Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/integration/services/checkin.service.test.ts"
+    },
+    "e2e": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-15T03:06:35.615Z",
+        "lastUpdated": "2026-03-15T03:10:04.080Z"
+      },
+      "lastFile": "/Users/scottkim/development/eckcm/src/e2e/smoke.spec.ts"
     }
   },
   "history": [
@@ -10373,6 +10527,180 @@
     {
       "timestamp": "2026-03-14T06:39:42.203Z",
       "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:49:55.285Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:49:56.583Z",
+      "feature": "helpers",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:50:12.613Z",
+      "feature": "unit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:50:26.163Z",
+      "feature": "epass.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:50:35.100Z",
+      "feature": "confirmation-code.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:50:41.487Z",
+      "feature": "invoice.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:51:00.215Z",
+      "feature": "meal.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:51:56.370Z",
+      "feature": "pricing.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:52:18.308Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:52:22.692Z",
+      "feature": "confirmation-code.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:52:35.581Z",
+      "feature": "epass.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:54:55.163Z",
+      "feature": "helpers",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:55:24.901Z",
+      "feature": "refund.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:55:47.460Z",
+      "feature": "registration.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:56:13.302Z",
+      "feature": "checkin.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:56:42.698Z",
+      "feature": "refund.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T02:56:53.442Z",
+      "feature": "refund.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T03:03:03.152Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T03:03:42.347Z",
+      "feature": "stripe",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T03:04:21.949Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T03:04:32.638Z",
+      "feature": "unit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T03:04:44.734Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T03:06:20.273Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T03:06:35.615Z",
+      "feature": "e2e",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T03:06:44.177Z",
+      "feature": "e2e",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T03:06:52.002Z",
+      "feature": "e2e",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T03:09:33.431Z",
+      "feature": "e2e",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T03:09:36.619Z",
+      "feature": "e2e",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T03:10:04.080Z",
+      "feature": "e2e",
       "phase": "do",
       "action": "updated"
     }

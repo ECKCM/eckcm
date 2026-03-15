@@ -1,25 +1,14 @@
 {
   "version": "1.0",
-  "enabled": true,
+  "enabled": false,
   "teamName": "",
   "feature": "online-registration",
   "pdcaPhase": "completed",
   "orchestrationPattern": "leader",
   "ctoAgent": "opus",
-  "startedAt": "2026-03-14T16:47:06.101Z",
-  "lastUpdated": "2026-03-14T16:47:06.105Z",
-  "teammates": [
-    {
-      "name": "ae98798f7b8643527",
-      "role": "bkit:gap-detector",
-      "model": "sonnet",
-      "status": "spawning",
-      "currentTask": null,
-      "taskId": null,
-      "startedAt": "2026-03-14T16:47:06.105Z",
-      "lastActivityAt": "2026-03-14T16:47:06.105Z"
-    }
-  ],
+  "startedAt": "2026-03-15T02:36:54.561Z",
+  "lastUpdated": "2026-03-15T03:09:26.127Z",
+  "teammates": [],
   "progress": {
     "totalTasks": 0,
     "completedTasks": 0,
@@ -28,5 +17,5 @@
     "pendingTasks": 0
   },
   "recentMessages": [],
-  "sessionId": "8fec7a8a-5e5d-42e0-98fc-efb8688bce7d"
+  "sessionId": "b5e23a66-9d06-475c-b316-a7b2e173cb8a"
 }
