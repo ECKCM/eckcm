@@ -71,6 +71,13 @@ function makeInput(overrides: Record<string, unknown> = {}) {
     vbsMaterialsFeeCents: 500,
     vbsDepartmentIds: ["dept-vbs-1"],
     manualPaymentDiscountPerPerson: 0,
+    applyGeneralFeesToMembers: true,
+    applyMealFeesToMembers: true,
+    defaultRegistrationFeePerPerson: 10000,
+    defaultEarlyBirdFeePerPerson: 8000,
+    defaultIsEarlyBird: false,
+    defaultMealFeeCategories: defaultMealCategories,
+    defaultManualPaymentDiscountPerPerson: 0,
     ...overrides,
   };
 }

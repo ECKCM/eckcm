@@ -39,6 +39,7 @@ type Action =
   | { type: "SET_KEY_DEPOSIT"; count: number }
   | { type: "SET_AIRPORT_PICKUP"; pickup: AirportPickupInput }
   | { type: "SET_ADDITIONAL_REQUESTS"; text: string }
+  | { type: "SET_HAS_OTHER_VOLUNTEERS"; value: boolean }
   | { type: "RESET" };
 
 const initialState: RegistrationState = {
@@ -48,6 +49,7 @@ const initialState: RegistrationState = {
   endDate: "",
   nightsCount: 0,
   roomGroups: [],
+  hasOtherVolunteers: false,
   step: 1,
   keyDeposit: 1,
   airportPickup: { needed: false, selectedRides: [] },
@@ -122,6 +124,8 @@ function reducer(state: RegistrationState, action: Action): RegistrationState {
       return { ...state, airportPickup: action.pickup };
     case "SET_ADDITIONAL_REQUESTS":
       return { ...state, additionalRequests: action.text };
+    case "SET_HAS_OTHER_VOLUNTEERS":
+      return { ...state, hasOtherVolunteers: action.value };
     case "RESET":
       return { ...initialState, eventId: state.eventId };
     default:
@@ -192,6 +196,9 @@ export function RegistrationProvider({
           }
           if (parsed.additionalRequests) {
             dispatch({ type: "SET_ADDITIONAL_REQUESTS", text: parsed.additionalRequests });
+          }
+          if (parsed.hasOtherVolunteers) {
+            dispatch({ type: "SET_HAS_OTHER_VOLUNTEERS", value: parsed.hasOtherVolunteers });
           }
         }
       } catch {

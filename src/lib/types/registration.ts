@@ -13,6 +13,7 @@ export interface RegistrationWizardState {
   nightsCount: number;
   accessCode?: string;
   registrationGroupId?: string;
+  hasOtherVolunteers?: boolean;
   roomGroups: RoomGroupInput[];
   additionalRequests?: string;
 }
@@ -57,6 +58,8 @@ export interface ParticipantInput {
   guardianPhoneCountry?: string; // US|CA|KR|OTHER
   guardianConsent?: boolean; // required if representative is minor
   guardianSignature?: string; // data URL of e-signature
+  memberAccessCode?: string; // per-member access code (non-representative only)
+  memberRegistrationGroupId?: string; // resolved group from member's access code
   mealSelections: MealSelection[];
 }
 

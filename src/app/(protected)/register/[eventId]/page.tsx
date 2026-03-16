@@ -32,6 +32,9 @@ interface RegGroup {
   name_en: string;
   access_code: string | null;
   is_default: boolean;
+  only_one_person: boolean;
+  apply_general_fees_to_members: boolean;
+  apply_meal_fees_to_members: boolean;
 }
 
 export default function RegistrationStep1() {
@@ -44,6 +47,9 @@ export default function RegistrationStep1() {
   const [groups, setGroups] = useState<RegGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [accessCode, setAccessCode] = useState(state.accessCode ?? "");
+  const [accessCodeApplied, setAccessCodeApplied] = useState(!!state.accessCode);
+  const [accessCodeGroupName, setAccessCodeGroupName] = useState("");
+  const [hasOtherVolunteers, setHasOtherVolunteers] = useState(state.hasOtherVolunteers ?? false);
   const [existingRegistration, setExistingRegistration] = useState<{
     id: string;
     confirmationCode: string;
@@ -75,7 +81,7 @@ export default function RegistrationStep1() {
           .single(),
         supabase
           .from("eckcm_registration_groups")
-          .select("id, name_en, access_code, is_default")
+          .select("id, name_en, access_code, is_default, only_one_person, apply_general_fees_to_members, apply_meal_fees_to_members")
           .eq("is_active", true)
           .order("created_at"),
       ]);
@@ -140,6 +146,16 @@ export default function RegistrationStep1() {
         }
       }
 
+      // Restore access code group name if returning to this step
+      if (state.accessCode && grps) {
+        const matched = grps.find(
+          (g) => g.access_code && g.access_code === state.accessCode
+        );
+        if (matched) {
+          setAccessCodeGroupName(matched.name_en);
+        }
+      }
+
       setLoading(false);
     };
     load();
@@ -162,15 +178,40 @@ export default function RegistrationStep1() {
     return groups.find((g) => g.is_default);
   };
 
-  const handleAccessCodeChange = (value: string) => {
+  const handleAccessCodeInput = (value: string) => {
     const sanitized = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
     setAccessCode(sanitized);
-    dispatch({ type: "SET_ACCESS_CODE", code: sanitized });
-
-    const group = resolveGroup(sanitized);
-    if (group) {
-      dispatch({ type: "SET_REGISTRATION_GROUP", groupId: group.id });
+    // Reset applied state when code changes
+    if (accessCodeApplied) {
+      setAccessCodeApplied(false);
+      setAccessCodeGroupName("");
+      setHasOtherVolunteers(false);
+      // Fall back to default group
+      const defaultGroup = groups.find((g) => g.is_default);
+      if (defaultGroup) {
+        dispatch({ type: "SET_REGISTRATION_GROUP", groupId: defaultGroup.id });
+      }
+      dispatch({ type: "SET_ACCESS_CODE", code: "" });
     }
+  };
+
+  const handleApplyAccessCode = () => {
+    if (!accessCode.trim()) {
+      toast.error("Please enter an access code");
+      return;
+    }
+    const matched = groups.find(
+      (g) => g.access_code && g.access_code === accessCode.trim()
+    );
+    if (!matched) {
+      toast.error("Invalid access code");
+      return;
+    }
+    dispatch({ type: "SET_ACCESS_CODE", code: accessCode.trim() });
+    dispatch({ type: "SET_REGISTRATION_GROUP", groupId: matched.id });
+    setAccessCodeApplied(true);
+    setAccessCodeGroupName(matched.name_en);
+    toast.success(`Access code applied: ${matched.name_en}`);
   };
 
   const handleNext = () => {
@@ -183,16 +224,18 @@ export default function RegistrationStep1() {
       return;
     }
 
-    // Resolve group
-    const group = resolveGroup(accessCode);
-    if (!group) {
-      toast.error("No registration group available");
+    // If access code was entered but not applied
+    if (accessCode.trim() && !accessCodeApplied) {
+      toast.error("Please click Apply to validate your access code");
       return;
     }
 
-    // If access code was entered but didn't match any group
-    if (accessCode.trim() && !groups.find((g) => g.access_code === accessCode.trim())) {
-      toast.error("Invalid access code");
+    // Resolve group (access code applied > default)
+    const group = accessCodeApplied
+      ? groups.find((g) => g.id === state.registrationGroupId)
+      : resolveGroup("");
+    if (!group) {
+      toast.error("No registration group available");
       return;
     }
 
@@ -291,14 +334,101 @@ export default function RegistrationStep1() {
           />
 
           {/* Access Code */}
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label>Access Code (optional)</Label>
-            <Input
-              value={accessCode}
-              onChange={(e) => handleAccessCodeChange(e.target.value)}
-              placeholder="Enter if you have one"
-            />
+            <div className="flex gap-2">
+              <Input
+                value={accessCode}
+                onChange={(e) => handleAccessCodeInput(e.target.value)}
+                placeholder="Enter if you have one"
+                disabled={accessCodeApplied}
+              />
+              {!accessCodeApplied ? (
+                <Button
+                  variant="outline"
+                  onClick={handleApplyAccessCode}
+                  disabled={!accessCode.trim()}
+                  className="shrink-0"
+                >
+                  Apply
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setAccessCode("");
+                    setAccessCodeApplied(false);
+                    setAccessCodeGroupName("");
+                    setHasOtherVolunteers(false);
+                    dispatch({ type: "SET_ACCESS_CODE", code: "" });
+                    dispatch({ type: "SET_HAS_OTHER_VOLUNTEERS", value: false });
+                    const defaultGroup = groups.find((g) => g.is_default);
+                    if (defaultGroup) {
+                      dispatch({ type: "SET_REGISTRATION_GROUP", groupId: defaultGroup.id });
+                    }
+                  }}
+                  className="shrink-0 text-muted-foreground"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+            {accessCodeApplied && (
+              <p className="text-sm text-green-700">
+                ✓ Applied: {accessCodeGroupName}
+              </p>
+            )}
           </div>
+
+          {/* Volunteer question — shown only when:
+              1. Access code applied
+              2. Group allows multiple people (not only_one_person)
+              3. At least one fee scope toggle is OFF */}
+          {accessCodeApplied && (() => {
+            const matched = groups.find((g) => g.id === state.registrationGroupId);
+            return matched
+              && !matched.only_one_person
+              && (!matched.apply_general_fees_to_members || !matched.apply_meal_fees_to_members);
+          })() && (
+            <div className="space-y-3 rounded-md border border-blue-200 bg-blue-50 p-4">
+              <p className="text-sm font-medium text-blue-900">
+                Are there other volunteers among the room members currently staying?
+              </p>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="otherVolunteers"
+                    checked={!hasOtherVolunteers}
+                    onChange={() => {
+                      setHasOtherVolunteers(false);
+                      dispatch({ type: "SET_HAS_OTHER_VOLUNTEERS", value: false });
+                    }}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">No</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="otherVolunteers"
+                    checked={hasOtherVolunteers}
+                    onChange={() => {
+                      setHasOtherVolunteers(true);
+                      dispatch({ type: "SET_HAS_OTHER_VOLUNTEERS", value: true });
+                    }}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">Yes</span>
+                </label>
+              </div>
+              {hasOtherVolunteers && (
+                <p className="text-xs text-blue-700">
+                  You can apply access codes for your members on Step 3 (People).
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-between pt-4">
             <Button variant="outline" onClick={() => router.push("/dashboard")}>

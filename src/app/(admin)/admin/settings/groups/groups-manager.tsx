@@ -68,7 +68,10 @@ interface RegistrationGroup {
   show_special_preferences: boolean;
   show_key_deposit: boolean;
   show_tshirt_size: boolean;
+  require_tshirt_size: boolean;
   only_one_person: boolean;
+  apply_general_fees_to_members: boolean;
+  apply_meal_fees_to_members: boolean;
   is_default: boolean;
   is_active: boolean;
 }
@@ -100,7 +103,10 @@ const emptyForm = {
   show_special_preferences: true,
   show_key_deposit: true,
   show_tshirt_size: false,
+  require_tshirt_size: false,
   only_one_person: false,
+  apply_general_fees_to_members: true,
+  apply_meal_fees_to_members: true,
   is_default: false,
   is_active: true,
 };
@@ -285,7 +291,10 @@ export function RegistrationGroupsManager() {
       show_special_preferences: group.show_special_preferences,
       show_key_deposit: group.show_key_deposit,
       show_tshirt_size: group.show_tshirt_size,
+      require_tshirt_size: group.require_tshirt_size,
       only_one_person: group.only_one_person,
+      apply_general_fees_to_members: group.apply_general_fees_to_members,
+      apply_meal_fees_to_members: group.apply_meal_fees_to_members,
       is_default: group.is_default,
       is_active: group.is_active,
     });
@@ -332,7 +341,10 @@ export function RegistrationGroupsManager() {
       show_special_preferences: form.show_special_preferences,
       show_key_deposit: form.show_key_deposit,
       show_tshirt_size: form.show_tshirt_size,
+      require_tshirt_size: form.require_tshirt_size,
       only_one_person: form.only_one_person,
+      apply_general_fees_to_members: form.apply_general_fees_to_members,
+      apply_meal_fees_to_members: form.apply_meal_fees_to_members,
       is_default: form.is_default,
       is_active: form.is_active,
     };
@@ -626,6 +638,17 @@ export function RegistrationGroupsManager() {
                   />
                   <Label>T-Shirt Size</Label>
                 </div>
+                {form.show_tshirt_size && (
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={form.require_tshirt_size}
+                      onCheckedChange={(checked) =>
+                        setForm({ ...form, require_tshirt_size: checked })
+                      }
+                    />
+                    <Label>T-Shirt Required</Label>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={form.only_one_person}
@@ -696,6 +719,53 @@ export function RegistrationGroupsManager() {
                 </div>
               </div>
 
+              {/* Fee Application Scope — hidden for Default group */}
+              {!form.is_default && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Fee Application Scope</Label>
+                    <p className="text-xs text-muted-foreground">
+                      When ON, this group&apos;s fee structure applies to all room members.
+                      When OFF, only the person with this access code uses this group&apos;s fees —
+                      other members follow the Default group&apos;s fees.
+                      Lodging is always per room (shared).
+                    </p>
+                    <div className="space-y-2 rounded-md border p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm">General fees to all members</span>
+                          <p className="text-xs text-muted-foreground">
+                            OFF: other members use Default group&apos;s General fees
+                          </p>
+                        </div>
+                        <Switch
+                          checked={form.apply_general_fees_to_members}
+                          onCheckedChange={(checked) =>
+                            setForm({ ...form, apply_general_fees_to_members: checked })
+                          }
+                        />
+                      </div>
+                      <Separator />
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm">Meal fees to all members</span>
+                          <p className="text-xs text-muted-foreground">
+                            OFF: other members use Default group&apos;s Meal fees
+                          </p>
+                        </div>
+                        <Switch
+                          checked={form.apply_meal_fees_to_members}
+                          onCheckedChange={(checked) =>
+                            setForm({ ...form, apply_meal_fees_to_members: checked })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
               <Button
                 onClick={handleSave}
                 className="w-full"
@@ -746,6 +816,12 @@ export function RegistrationGroupsManager() {
                         <Badge variant="outline">
                           Dept: {allDepartments.find((d) => d.id === group.department_id)?.name_en ?? "—"}
                         </Badge>
+                      )}
+                      {!group.apply_general_fees_to_members && (
+                        <Badge variant="secondary">General: Rep Only</Badge>
+                      )}
+                      {!group.apply_meal_fees_to_members && (
+                        <Badge variant="secondary">Meals: Rep Only</Badge>
                       )}
                     </div>
                     <div className="flex gap-1">

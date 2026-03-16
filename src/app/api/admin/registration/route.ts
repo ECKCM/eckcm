@@ -201,6 +201,14 @@ export async function POST(request: Request) {
       vbsMaterialsFeeCents,
       vbsDepartmentIds,
       manualPaymentDiscountPerPerson,
+      // Admin registrations always apply fees to all members (default behavior)
+      applyGeneralFeesToMembers: true,
+      applyMealFeesToMembers: true,
+      defaultRegistrationFeePerPerson: registrationFeePerPerson,
+      defaultEarlyBirdFeePerPerson: earlyBirdFeePerPerson,
+      defaultIsEarlyBird: isEarlyBird,
+      defaultMealFeeCategories: mealFeeCategories,
+      defaultManualPaymentDiscountPerPerson: manualPaymentDiscountPerPerson,
     });
 
     // 9. Generate confirmation code

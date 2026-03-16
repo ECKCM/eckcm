@@ -85,6 +85,55 @@ export async function POST(request: Request) {
   const manualDiscountCat = allLinkedFees.find((f: any) => f.code === "MANUAL_PAYMENT_DISCOUNT");
   const manualPaymentDiscountPerPerson = manualDiscountCat?.amount_cents ?? 0;
 
+  // Fee Application Scope flags
+  const applyGeneralFeesToMembers = regGroup.apply_general_fees_to_members ?? true;
+  const applyMealFeesToMembers = regGroup.apply_meal_fees_to_members ?? true;
+
+  // Load default group fees when scope toggles are OFF
+  let defaultRegistrationFeePerPerson = 0;
+  let defaultEarlyBirdFeePerPerson: number | null = null;
+  let defaultIsEarlyBird = false;
+  let defaultMealFeeCategories: MealFeeCategory[] = [];
+  let defaultManualPaymentDiscountPerPerson = 0;
+
+  if (!applyGeneralFeesToMembers || !applyMealFeesToMembers) {
+    const { data: defaultGroup } = await supabase
+      .from("eckcm_registration_groups")
+      .select("*")
+      .eq("is_default", true)
+      .eq("is_active", true)
+      .single();
+
+    if (defaultGroup) {
+      const { data: defaultFeeLinks } = await supabase
+        .from("eckcm_registration_group_fee_categories")
+        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
+        .eq("registration_group_id", defaultGroup.id);
+
+      const defaultLinkedFees = (defaultFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
+
+      if (!applyGeneralFeesToMembers) {
+        const defRegFeeCat = defaultLinkedFees.find((f: any) => f.code === "REG_FEE");
+        const defEarlyBirdCat = defaultLinkedFees.find((f: any) => f.code === "EARLY_BIRD");
+        defaultRegistrationFeePerPerson =
+          defaultGroup.global_registration_fee_cents ?? defRegFeeCat?.amount_cents ?? 0;
+        defaultEarlyBirdFeePerPerson =
+          defaultGroup.global_early_bird_fee_cents ?? defEarlyBirdCat?.amount_cents ?? null;
+        defaultIsEarlyBird =
+          defaultGroup.early_bird_deadline != null &&
+          new Date() < new Date(defaultGroup.early_bird_deadline);
+        const defManualDiscount = defaultLinkedFees.find((f: any) => f.code === "MANUAL_PAYMENT_DISCOUNT");
+        defaultManualPaymentDiscountPerPerson = defManualDiscount?.amount_cents ?? 0;
+      }
+
+      if (!applyMealFeesToMembers) {
+        defaultMealFeeCategories = defaultLinkedFees.filter(
+          (f: any) => f.code.startsWith("MEAL_")
+        );
+      }
+    }
+  }
+
   // Load VBS department IDs (only if fee applies)
   let vbsDepartmentIds: string[] = [];
   if (vbsMaterialsFeeCents > 0) {
@@ -129,6 +178,13 @@ export async function POST(request: Request) {
     vbsMaterialsFeeCents,
     vbsDepartmentIds,
     manualPaymentDiscountPerPerson,
+    applyGeneralFeesToMembers,
+    applyMealFeesToMembers,
+    defaultRegistrationFeePerPerson,
+    defaultEarlyBirdFeePerPerson,
+    defaultIsEarlyBird,
+    defaultMealFeeCategories,
+    defaultManualPaymentDiscountPerPerson,
   });
 
   return NextResponse.json(estimate);

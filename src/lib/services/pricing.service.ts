@@ -33,6 +33,14 @@ interface PricingInput {
   vbsMaterialsFeeCents: number; // per-child VBS materials fee (0 if not applicable)
   vbsDepartmentIds: string[]; // IDs of VBS departments
   manualPaymentDiscountPerPerson: number; // cents — MANUAL_PAYMENT_DISCOUNT per person (0 if none)
+  // Fee Application Scope: when OFF, non-representative members use default group fees
+  applyGeneralFeesToMembers: boolean;
+  applyMealFeesToMembers: boolean;
+  defaultRegistrationFeePerPerson: number; // cents — from default group
+  defaultEarlyBirdFeePerPerson: number | null; // cents — from default group
+  defaultIsEarlyBird: boolean;
+  defaultMealFeeCategories: MealFeeCategory[]; // from default group
+  defaultManualPaymentDiscountPerPerson: number; // from default group
 }
 
 export function calculateEstimate(input: PricingInput): PriceEstimate {
@@ -53,17 +61,50 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
       ? input.earlyBirdFeePerPerson
       : input.registrationFeePerPerson;
 
-  if (feePerPerson > 0) {
-    registrationFee = feePerPerson * totalParticipants;
-    breakdown.push({
-      description: input.isEarlyBird
-        ? "Registration Fee (Early Bird)"
-        : "Registration Fee",
-      descriptionKo: input.isEarlyBird ? "등록비 (얼리버드)" : "등록비",
-      quantity: totalParticipants,
-      unitPrice: feePerPerson,
-      amount: registrationFee,
-    });
+  if (input.applyGeneralFeesToMembers) {
+    // All participants pay the group's registration fee
+    if (feePerPerson > 0) {
+      registrationFee = feePerPerson * totalParticipants;
+      breakdown.push({
+        description: input.isEarlyBird ? "Registration Fee (Early Bird)" : "Registration Fee",
+        descriptionKo: input.isEarlyBird ? "등록비 (얼리버드)" : "등록비",
+        quantity: totalParticipants,
+        unitPrice: feePerPerson,
+        amount: registrationFee,
+      });
+    }
+  } else {
+    // Representative pays group fee, others pay default group fee
+    const repCount = 1;
+    const otherCount = totalParticipants - 1;
+
+    if (feePerPerson > 0) {
+      registrationFee += feePerPerson * repCount;
+      breakdown.push({
+        description: input.isEarlyBird ? "Registration Fee (Early Bird)" : "Registration Fee",
+        descriptionKo: input.isEarlyBird ? "등록비 (얼리버드)" : "등록비",
+        quantity: repCount,
+        unitPrice: feePerPerson,
+        amount: feePerPerson * repCount,
+      });
+    }
+
+    if (otherCount > 0) {
+      const defaultFee =
+        input.defaultIsEarlyBird && input.defaultEarlyBirdFeePerPerson != null
+          ? input.defaultEarlyBirdFeePerPerson
+          : input.defaultRegistrationFeePerPerson;
+      if (defaultFee > 0) {
+        registrationFee += defaultFee * otherCount;
+        breakdown.push({
+          description: input.defaultIsEarlyBird ? "Registration Fee (Early Bird)" : "Registration Fee",
+          descriptionKo: input.defaultIsEarlyBird ? "등록비 (얼리버드)" : "등록비",
+          quantity: otherCount,
+          unitPrice: defaultFee,
+          amount: defaultFee * otherCount,
+        });
+      }
+    }
   }
 
   // 2. Lodging fee per room group
@@ -138,14 +179,25 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
   }
 
   // 5. Meal fees per participant (matched by fee category age_min/age_max)
+  //    When applyMealFeesToMembers=false, only representative uses group meal fees;
+  //    other members use default group's meal fees.
   let mealFee = 0;
-  if (input.mealFeeCategories.length > 0) {
+  const groupMealCats = input.mealFeeCategories;
+  const defaultMealCats = input.defaultMealFeeCategories;
+  const hasAnyMealCats = groupMealCats.length > 0 || defaultMealCats.length > 0;
+
+  if (hasAnyMealCats) {
     const matchAge = (cat: MealFeeCategory, age: number) =>
       (cat.age_min == null || age >= cat.age_min) &&
       (cat.age_max == null || age <= cat.age_max);
 
     for (const group of input.roomGroups) {
       for (const participant of group.participants) {
+        // Choose meal categories: representative uses group's, others use default's (if toggle OFF)
+        const mealCats = input.applyMealFeesToMembers || participant.isRepresentative
+          ? groupMealCats
+          : defaultMealCats;
+        if (mealCats.length === 0) continue;
         const birthDate = new Date(
           participant.birthYear ?? 2000,
           (participant.birthMonth ?? 1) - 1,
@@ -154,11 +206,11 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
         const age = calculateAge(birthDate, eventStart);
 
         // Find matching PER_MEAL category for this age
-        const perMealCat = input.mealFeeCategories.find(
+        const perMealCat = mealCats.find(
           (c) => c.pricing_type === "PER_MEAL" && matchAge(c, age)
         );
         // Find matching FLAT (full-day) category for this age
-        const fullDayCat = input.mealFeeCategories.find(
+        const fullDayCat = mealCats.find(
           (c) => c.pricing_type === "FLAT" && matchAge(c, age)
         );
 

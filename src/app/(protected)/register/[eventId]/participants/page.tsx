@@ -196,7 +196,7 @@ export default function ParticipantsStep() {
   } | null>(null);
   const [allowAddGroup, setAllowAddGroup] = useState(true);
   const [regGroups, setRegGroups] = useState<
-    { id: string; department_id: string | null; is_default: boolean; only_one_person: boolean; show_tshirt_size: boolean }[]
+    { id: string; department_id: string | null; is_default: boolean; only_one_person: boolean; show_tshirt_size: boolean; require_tshirt_size: boolean; access_code: string | null; name_en: string }[]
   >([]);
 
   // Track which participants are open (accordion state)
@@ -234,8 +234,8 @@ export default function ParticipantsStep() {
   // App config: allow duplicate email for testing
   const [allowDuplicateEmail, setAllowDuplicateEmail] = useState(false);
 
-  // HANSAMO policy: representative-only registration unless general lodging opted
-  const [hansamoGeneralLodging, setHansamoGeneralLodging] = useState(false);
+  // Opt-in to switch from department-linked group to default group (general lodging)
+  const [generalLodgingOptIn, setGeneralLodgingOptIn] = useState(false);
 
   // Meal fee categories for real-time pricing
   const [mealFeeCategories, setMealFeeCategories] = useState<MealFeeCat[]>([]);
@@ -244,19 +244,12 @@ export default function ParticipantsStep() {
   const [savedPersons, setSavedPersons] = useState<SavedPerson[]>([]);
   const [removeSavedPersonTarget, setRemoveSavedPersonTarget] = useState<SavedPerson | null>(null);
 
-  const isHansamoDept = (deptId: string | undefined) => {
-    if (!deptId) return false;
-    return departments.find((d) => d.id === deptId)?.name_en?.includes("HANSAMO") ?? false;
-  };
-
-  // True when Group 1 Representative selected HANSAMO and did NOT opt for general lodging
-  const representativeDeptId = state.roomGroups[0]?.participants[0]?.departmentId;
-  const isHansamoRestricted = isHansamoDept(representativeDeptId) && !hansamoGeneralLodging;
-
-  // True when current registration group enforces single-person registration
+  // Registration group controls single-person restriction via only_one_person flag
+  // (replaces old hardcoded HANSAMO department check)
   const currentRegGroup = regGroups.find((g) => g.id === state.registrationGroupId);
   const isOnlyOnePerson = currentRegGroup?.only_one_person ?? false;
   const showTshirtSize = currentRegGroup?.show_tshirt_size ?? false;
+  const requireTshirtSize = currentRegGroup?.require_tshirt_size ?? false;
 
   const togglePanel = (key: string) => {
     setOpenPanels((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -281,7 +274,7 @@ export default function ParticipantsStep() {
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      const [{ data: deps }, { data: chs }, { data: ev }, { data: rgs }, { data: mealFees }, { data: sp }] = await Promise.all([
+      const [{ data: deps }, { data: chs }, { data: ev }, { data: rgs }, { data: mealFeesRaw }, { data: sp }] = await Promise.all([
         supabase
           .from("eckcm_departments")
           .select("id, name_en, name_ko")
@@ -300,12 +293,18 @@ export default function ParticipantsStep() {
           .single(),
         supabase
           .from("eckcm_registration_groups")
-          .select("id, department_id, is_default, only_one_person, show_tshirt_size")
+          .select("id, department_id, is_default, only_one_person, show_tshirt_size, require_tshirt_size, access_code, name_en")
           .eq("is_active", true),
-        supabase
-          .from("eckcm_fee_categories")
-          .select("code, name_en, pricing_type, amount_cents, age_min, age_max")
-          .like("code", "MEAL_%"),
+        state.registrationGroupId
+          ? supabase
+              .from("eckcm_registration_group_fee_categories")
+              .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
+              .eq("registration_group_id", state.registrationGroupId)
+              .like("eckcm_fee_categories.code", "MEAL_%")
+          : supabase
+              .from("eckcm_fee_categories")
+              .select("code, name_en, pricing_type, amount_cents, age_min, age_max")
+              .like("code", "MEAL_%"),
         supabase
           .from("eckcm_saved_persons")
           .select("id, first_name, last_name, display_name_ko, gender, birth_year, birth_month, birth_day, church_id, updated_at")
@@ -315,7 +314,11 @@ export default function ParticipantsStep() {
       setDepartments(deps ?? []);
       setChurches(chs ?? []);
       setRegGroups(rgs ?? []);
-      setMealFeeCategories(mealFees ?? []);
+      // Flatten meal fees: group-filtered returns nested objects, global returns flat
+      const flatMealFees: MealFeeCat[] = state.registrationGroupId
+        ? (mealFeesRaw ?? []).map((row: any) => row.eckcm_fee_categories as MealFeeCat)
+        : (mealFeesRaw ?? []) as MealFeeCat[];
+      setMealFeeCategories(flatMealFees);
       setSavedPersons(sp ?? []);
       if (ev) {
         setEventDates({
@@ -518,7 +521,8 @@ export default function ParticipantsStep() {
     }
 
     // Auto-switch registration group when Group 1 representative changes department
-    if (groupIndex === 0 && pIndex === 0 && field === "departmentId") {
+    // BUT: skip if an access code was explicitly applied (access code has priority)
+    if (groupIndex === 0 && pIndex === 0 && field === "departmentId" && !state.accessCode) {
       const deptGroup = regGroups.find((g) => g.department_id === value);
       if (deptGroup) {
         dispatch({ type: "SET_REGISTRATION_GROUP", groupId: deptGroup.id });
@@ -704,8 +708,8 @@ export default function ParticipantsStep() {
     if (p.isK12 && !p.grade) errs.grade = "Required";
     if (!p.churchId) errs.churchId = "Required";
     if (isChurchOther(p.churchId) && !p.churchOther?.trim()) errs.churchOther = "Required";
-    // T-Shirt size: required for HANSAMO dept, optional otherwise
-    if (showTshirtSize && isHansamoDept(p.departmentId) && !p.tshirtSize) {
+    // T-Shirt size: required when group has require_tshirt_size=true
+    if (showTshirtSize && requireTshirtSize && !p.tshirtSize) {
       errs.tshirtSize = "Required";
     }
     // Birth date required
@@ -976,7 +980,7 @@ export default function ParticipantsStep() {
 
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Room Groups & Participants</h2>
-        {!isHansamoRestricted && !isOnlyOnePerson && allowAddGroup && (
+        {!isOnlyOnePerson && allowAddGroup && (
           <Button variant="outline" size="sm" onClick={addGroup}>
             <Plus className="mr-1 size-4" />
             Add Group
@@ -1114,6 +1118,67 @@ export default function ParticipantsStep() {
                                 })}
                               </PopoverContent>
                             </Popover>
+                          </div>
+                        )}
+
+                        {/* Per-member Access Code — only if "other volunteers" and not representative */}
+                        {state.hasOtherVolunteers && !p.isRepresentative && (
+                          <div className="space-y-1 rounded-md border border-blue-200 bg-blue-50 p-3">
+                            <Label className="text-xs font-medium text-blue-900">
+                              Volunteer Access Code (optional)
+                            </Label>
+                            <div className="flex gap-2">
+                              <Input
+                                value={p.memberAccessCode ?? ""}
+                                onChange={(e) =>
+                                  updateParticipant(gi, pi, "memberAccessCode",
+                                    e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+                                }
+                                placeholder="Enter access code"
+                                className="bg-white h-8 text-xs"
+                                disabled={!!p.memberRegistrationGroupId}
+                              />
+                              {!p.memberRegistrationGroupId ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 shrink-0 text-xs"
+                                  disabled={!p.memberAccessCode?.trim()}
+                                  onClick={() => {
+                                    const code = p.memberAccessCode?.trim();
+                                    if (!code) return;
+                                    const matched = regGroups.find(
+                                      (g) => g.access_code && g.access_code === code
+                                    );
+                                    if (!matched) {
+                                      toast.error("Invalid access code");
+                                      return;
+                                    }
+                                    updateParticipant(gi, pi, "memberRegistrationGroupId", matched.id);
+                                    toast.success(`Applied: ${matched.name_en}`);
+                                  }}
+                                >
+                                  Apply
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 shrink-0 text-xs text-muted-foreground"
+                                  onClick={() => {
+                                    updateParticipant(gi, pi, "memberRegistrationGroupId", undefined);
+                                    updateParticipant(gi, pi, "memberAccessCode", "");
+                                  }}
+                                >
+                                  Clear
+                                </Button>
+                              )}
+                            </div>
+                            {p.memberRegistrationGroupId && (
+                              <p className="text-xs text-green-700">
+                                ✓ Applied — fees will use this member&apos;s group
+                              </p>
+                            )}
                           </div>
                         )}
 
@@ -1298,23 +1363,25 @@ export default function ParticipantsStep() {
                           {errs.departmentId && <p className="text-xs text-destructive">{errs.departmentId}</p>}
                         </div>
 
-                        {/* HANSAMO general lodging opt-in — only for Group 1 Representative */}
-                        {gi === 0 && pi === 0 && isHansamoDept(p.departmentId) && (
+                        {/* General lodging opt-in — shown when representative's department
+                            auto-assigned a group with only_one_person=true */}
+                        {gi === 0 && pi === 0 && (() => {
+                          const deptGroup = regGroups.find((g) => g.department_id === p.departmentId);
+                          return deptGroup && deptGroup.only_one_person && !deptGroup.is_default;
+                        })() && (
                           <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2.5">
                             <input
                               type="checkbox"
-                              checked={hansamoGeneralLodging}
+                              checked={generalLodgingOptIn}
                               onChange={(e) => {
                                 const checked = e.target.checked;
-                                setHansamoGeneralLodging(checked);
+                                setGeneralLodgingOptIn(checked);
                                 if (checked) {
-                                  // Switch to default registration group
                                   const defaultGroup = regGroups.find((g) => g.is_default);
                                   if (defaultGroup) {
                                     dispatch({ type: "SET_REGISTRATION_GROUP", groupId: defaultGroup.id });
                                   }
                                 } else {
-                                  // Switch back to HANSAMO department group
                                   const deptGroup = regGroups.find((g) => g.department_id === p.departmentId);
                                   if (deptGroup) {
                                     dispatch({ type: "SET_REGISTRATION_GROUP", groupId: deptGroup.id });
@@ -1324,7 +1391,7 @@ export default function ParticipantsStep() {
                               className="mt-0.5"
                             />
                             <Label className="text-xs font-normal leading-snug text-amber-900">
-                              본인은 이 등록 그룹의 대표 등록자로서, 한사모는 개별 등록이 필수이지만 한사모 지정 숙소가 아닌 개인 혹은 가족/지인과 함께 등록하는 <strong className="font-bold">일반 숙소</strong>를 희망합니다.
+                              본인은 이 등록 그룹의 대표 등록자로서, 해당 부서는 개별 등록이 필수이지만 지정 숙소가 아닌 개인 혹은 가족/지인과 함께 등록하는 <strong className="font-bold">일반 숙소</strong>를 희망합니다.
                             </Label>
                           </div>
                         )}
@@ -1484,8 +1551,8 @@ export default function ParticipantsStep() {
                           </div>
                         )}
 
-                        {/* Individual Stay Dates (hidden for HANSAMO participants) */}
-                        {eventDates && !isHansamoDept(p.departmentId) && (
+                        {/* Individual Stay Dates */}
+                        {eventDates && (
                           <div className="space-y-1">
                             <Label className="text-xs">
                               Stay Dates
@@ -1526,7 +1593,7 @@ export default function ParticipantsStep() {
                           <div className="space-y-1">
                             <Label className="text-xs">
                               T-Shirt Size
-                              {isHansamoDept(p.departmentId) ? (
+                              {requireTshirtSize ? (
                                 <span className="text-destructive"> *</span>
                               ) : (
                                 <span className="text-muted-foreground font-normal"> (Optional)</span>
@@ -1673,7 +1740,7 @@ export default function ParticipantsStep() {
                 </Collapsible>
               );
             })}
-            {!isHansamoRestricted && !isOnlyOnePerson && group.participants.length < MAX_PARTICIPANTS_PER_GROUP && (
+            {!isOnlyOnePerson && group.participants.length < MAX_PARTICIPANTS_PER_GROUP && (
               <Button
                 variant="outline"
                 size="sm"
