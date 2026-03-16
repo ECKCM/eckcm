@@ -78,8 +78,8 @@ export default function LodgingStep() {
       setHasExtraFee(!!extra);
       setExtraFeeAmount(extra?.amount_cents ?? 0);
 
-      // Auto-select if only one option
-      if (selectable.length === 1) {
+      // Auto-select first (top) option as default if rooms exist
+      if (selectable.length >= 1) {
         state.roomGroups.forEach((group, gi) => {
           if (!group.lodgingType) {
             const updated = { ...group, lodgingType: selectable[0].code };

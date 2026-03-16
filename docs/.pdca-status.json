@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-15T13:36:24.758Z",
+  "lastUpdated": "2026-03-16T09:36:25.852Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -228,7 +228,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:18.153Z",
-        "lastUpdated": "2026-03-13T20:48:14.068Z"
+        "lastUpdated": "2026-03-16T09:36:25.852Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/create-intent/route.ts"
     },
@@ -553,7 +553,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T23:03:24.266Z",
-        "lastUpdated": "2026-03-15T13:34:16.923Z"
+        "lastUpdated": "2026-03-15T14:47:14.516Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
     },
@@ -683,9 +683,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:44:39.025Z",
-        "lastUpdated": "2026-03-12T18:47:57.107Z"
+        "lastUpdated": "2026-03-15T19:43:11.821Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/lodging/lodging-manager.tsx"
+      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/lodging/page.tsx"
     },
     "pending": {
       "phase": "do",
@@ -1151,7 +1151,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-03T07:15:45.932Z",
-        "lastUpdated": "2026-03-13T02:30:30.188Z"
+        "lastUpdated": "2026-03-15T20:18:55.346Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
     },
@@ -1385,7 +1385,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-06T00:49:50.415Z",
-        "lastUpdated": "2026-03-06T02:57:35.076Z"
+        "lastUpdated": "2026-03-15T19:48:32.703Z"
       },
       "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/airport-pickup/page.tsx"
     },
@@ -10771,6 +10771,156 @@
     {
       "timestamp": "2026-03-15T13:36:24.758Z",
       "feature": "apple-pay-domain",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T14:11:38.503Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T14:16:54.188Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T14:17:02.748Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T14:17:06.927Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T14:17:12.397Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T14:17:17.052Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T14:21:57.376Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T14:22:15.489Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T14:42:32.877Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T14:42:48.769Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T14:47:14.516Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T19:43:11.821Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T19:46:38.374Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T19:46:45.956Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T19:46:51.995Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T19:47:01.034Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T19:48:32.703Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T20:10:26.888Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T20:10:30.810Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T20:10:35.561Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T20:10:46.251Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-15T20:18:55.346Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T09:35:01.743Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T09:36:11.944Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T09:36:25.852Z",
+      "feature": "create-intent",
       "phase": "do",
       "action": "updated"
     }

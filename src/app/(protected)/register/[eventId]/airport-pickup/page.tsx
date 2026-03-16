@@ -145,12 +145,18 @@ export default function AirportPickupStep() {
     });
   };
 
-  const formatDateTime = (iso: string) => {
+  const formatDate = (iso: string) => {
     const dt = new Date(iso);
-    return dt.toLocaleString("en-US", {
+    return dt.toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
       day: "numeric",
+    });
+  };
+
+  const formatTime = (iso: string) => {
+    const dt = new Date(iso);
+    return dt.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
@@ -291,7 +297,8 @@ export default function AirportPickupStep() {
                               participants={allParticipants}
                               onToggleParticipant={(pid) => toggleParticipant(ride.id, pid)}
                               onUpdateFlightInfo={(value) => updateFlightInfo(ride.id, value)}
-                              formatDateTime={formatDateTime}
+                              formatDate={formatDate}
+                              formatTime={formatTime}
                             />
                           ))}
                         </div>
@@ -326,7 +333,8 @@ export default function AirportPickupStep() {
                               participants={allParticipants}
                               onToggleParticipant={(pid) => toggleParticipant(ride.id, pid)}
                               onUpdateFlightInfo={(value) => updateFlightInfo(ride.id, value)}
-                              formatDateTime={formatDateTime}
+                              formatDate={formatDate}
+                              formatTime={formatTime}
                             />
                           ))}
                         </div>
@@ -366,22 +374,29 @@ function RideCard({
   participants,
   onToggleParticipant,
   onUpdateFlightInfo,
-  formatDateTime,
+  formatDate,
+  formatTime,
 }: {
   ride: RideOption;
   selection?: AirportRideSelection;
   participants: (ParticipantInput & { groupIndex: number })[];
   onToggleParticipant: (participantId: string) => void;
   onUpdateFlightInfo: (value: string) => void;
-  formatDateTime: (iso: string) => string;
+  formatDate: (iso: string) => string;
+  formatTime: (iso: string) => string;
 }) {
   const selectedCount = selection?.selectedParticipantIds?.length ?? 0;
 
   return (
     <div className="rounded-lg border border-primary bg-primary/5 p-4 space-y-3">
-      <p className="text-sm font-medium">
-        {formatDateTime(ride.scheduled_at)}
-      </p>
+      <div className="flex items-center gap-2">
+        <span className="rounded-md bg-primary px-2.5 py-1 text-sm font-bold text-primary-foreground">
+          {formatDate(ride.scheduled_at)}
+        </span>
+        <span className="rounded-md bg-primary px-2.5 py-1 text-sm font-bold text-primary-foreground">
+          {formatTime(ride.scheduled_at)}
+        </span>
+      </div>
 
       {/* Participant toggles */}
       <div className="space-y-1">

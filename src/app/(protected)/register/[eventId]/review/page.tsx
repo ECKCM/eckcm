@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
 import type { PriceEstimate } from "@/lib/types/registration";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ReviewStep() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function ReviewStep() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const submitCalledRef = useRef(false);
+  const [deptMap, setDeptMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!hydrated) return;
@@ -41,6 +43,18 @@ export default function ReviewStep() {
       router.push(`/register/${eventId}`);
       return;
     }
+
+    // Fetch department names for display
+    const fetchDepts = async () => {
+      const supabase = createClient();
+      const { data } = await supabase.from("eckcm_departments").select("id, name_en");
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach((d) => { map[d.id] = d.name_en; });
+        setDeptMap(map);
+      }
+    };
+    fetchDepts();
 
     const fetchEstimate = async () => {
       try {
@@ -204,13 +218,12 @@ export default function ReviewStep() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Age</TableHead>
-                  <TableHead>T-Shirt</TableHead>
+                  <TableHead>Age (as of {formatDate(state.startDate)})</TableHead>
+                  <TableHead>Department</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {group.participants.map((p, pi) => (
+                {group.participants.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>
                       <div>
@@ -223,9 +236,8 @@ export default function ReviewStep() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>{p.isRepresentative ? `Representative (${pi + 1})` : `Member (${pi + 1})`}</TableCell>
                     <TableCell>{p.birthYear ? calcAge(p.birthYear, p.birthMonth ?? 1, p.birthDay ?? 1) : "-"}</TableCell>
-                    <TableCell>{p.tshirtSize ?? "-"}</TableCell>
+                    <TableCell>{p.departmentId ? (deptMap[p.departmentId] ?? "-") : "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
