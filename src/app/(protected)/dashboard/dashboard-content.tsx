@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, QrCode, Receipt, ClipboardList, Settings, Check } from "lucide-react";
+import { Loader2, QrCode, Receipt, ClipboardList, Check } from "lucide-react";
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -215,15 +215,6 @@ export function DashboardContent({
           <ClipboardList className="h-5 w-5" />
           <span className="text-lg">Registrations</span>
           <span className="text-xs text-muted-foreground">View history</span>
-        </Button>
-        <Button
-          variant="outline"
-          className="h-auto py-4 flex-col"
-          onClick={() => router.push("/dashboard/settings")}
-        >
-          <Settings className="h-5 w-5" />
-          <span className="text-lg">Settings</span>
-          <span className="text-xs text-muted-foreground">Edit profile</span>
         </Button>
       </div>
 
