@@ -123,6 +123,7 @@ export default function ReviewStep() {
         return;
       }
       const data = await res.json();
+      dispatch({ type: "SET_STEP", step: 8 });
       sessionStorage.removeItem("eckcm_registration");
       router.push(
         `/register/${eventId}/payment?registrationId=${data.registrationId}&code=${data.confirmationCode}`
@@ -260,14 +261,14 @@ export default function ReviewStep() {
           ) : estimate ? (
             <div className="space-y-2">
               {estimate.breakdown.map((item, i) => (
-                <div key={i} className="flex justify-between text-sm">
+                <div key={i} className={`flex justify-between text-sm ${item.amount === 0 ? "text-green-600" : ""}`}>
                   <span>
                     {item.description}
-                    {item.quantity > 1
+                    {item.quantity > 1 && item.unitPrice > 0
                       ? ` (${formatDollars(item.unitPrice)} × ${item.quantity})`
                       : ""}
                   </span>
-                  <span>{formatDollars(item.amount)}</span>
+                  <span>{item.amount === 0 ? "Free" : formatDollars(item.amount)}</span>
                 </div>
               ))}
               <Separator />

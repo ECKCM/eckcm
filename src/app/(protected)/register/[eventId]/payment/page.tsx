@@ -604,7 +604,7 @@ export default function PaymentStep() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium leading-tight">Online Payment</p>
                   <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                    Card, Bank, Amazon Pay, Klarna
+                    Card, Bank, Amazon Pay
                   </p>
                 </div>
               </button>
@@ -812,7 +812,7 @@ function StripePaymentForm({
 
       const returnUrl = `${window.location.origin}/register/payment-complete`;
 
-      // Suppress "Leave site?" dialog during redirect (Amazon Pay, Klarna, etc.)
+      // Suppress "Leave site?" dialog during redirect (Amazon Pay, etc.)
       suppressUnloadWarning.current = true;
       if (beforeUnloadHandlerRef.current) {
         window.removeEventListener("beforeunload", beforeUnloadHandlerRef.current);
@@ -973,7 +973,6 @@ function StripePaymentForm({
                 "card",
                 "us_bank_account",
                 "amazon_pay",
-                "klarna",
               ],
               wallets: { applePay: "never", googlePay: "never" },
             }}

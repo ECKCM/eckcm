@@ -1,4 +1,5 @@
 import type { PriceEstimate, PriceLineItem, RoomGroupInput } from "@/lib/types/registration";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { calculateAge } from "@/lib/utils/validators";
 import { INFANT_AGE_THRESHOLD } from "@/lib/utils/constants";
 
@@ -41,6 +42,17 @@ interface PricingInput {
   defaultIsEarlyBird: boolean;
   defaultMealFeeCategories: MealFeeCategory[]; // from default group
   defaultManualPaymentDiscountPerPerson: number; // from default group
+  // Per-member group fees: when a member has their own access code (memberRegistrationGroupId),
+  // use that group's fees instead of the default group's fees
+  memberGroupFees?: Record<string, MemberGroupFees>;
+}
+
+export interface MemberGroupFees {
+  registrationFee: number; // cents
+  earlyBirdFee: number | null; // cents
+  isEarlyBird: boolean;
+  mealFeeCategories: MealFeeCategory[];
+  manualPaymentDiscountPerPerson: number;
 }
 
 export function calculateEstimate(input: PricingInput): PriceEstimate {
@@ -74,34 +86,65 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
       });
     }
   } else {
-    // Representative pays group fee, others pay default group fee
-    const repCount = 1;
-    const otherCount = totalParticipants - 1;
+    // Representative pays group fee, others pay default OR their own member-group fee
+    const mgf = input.memberGroupFees ?? {};
 
+    // Collect non-representative participants by fee source
+    const defaultFee =
+      input.defaultIsEarlyBird && input.defaultEarlyBirdFeePerPerson != null
+        ? input.defaultEarlyBirdFeePerPerson
+        : input.defaultRegistrationFeePerPerson;
+
+    // Representative always pays main group fee
     if (feePerPerson > 0) {
-      registrationFee += feePerPerson * repCount;
+      registrationFee += feePerPerson;
       breakdown.push({
         description: input.isEarlyBird ? "Registration Fee (Early Bird)" : "Registration Fee",
         descriptionKo: input.isEarlyBird ? "등록비 (얼리버드)" : "등록비",
-        quantity: repCount,
+        quantity: 1,
         unitPrice: feePerPerson,
-        amount: feePerPerson * repCount,
+        amount: feePerPerson,
       });
     }
 
-    if (otherCount > 0) {
-      const defaultFee =
-        input.defaultIsEarlyBird && input.defaultEarlyBirdFeePerPerson != null
-          ? input.defaultEarlyBirdFeePerPerson
-          : input.defaultRegistrationFeePerPerson;
-      if (defaultFee > 0) {
-        registrationFee += defaultFee * otherCount;
+    // Group non-representative members by their fee source (member group or default)
+    const feeGroups = new Map<string, { fee: number; isEB: boolean; count: number }>();
+    for (const group of input.roomGroups) {
+      for (const p of group.participants) {
+        if (p.isRepresentative) continue;
+        const mGroupId = p.memberRegistrationGroupId;
+        if (mGroupId && mgf[mGroupId]) {
+          const mg = mgf[mGroupId];
+          const mFee = mg.isEarlyBird && mg.earlyBirdFee != null ? mg.earlyBirdFee : mg.registrationFee;
+          const key = `mg:${mGroupId}`;
+          const entry = feeGroups.get(key);
+          if (entry) { entry.count++; } else { feeGroups.set(key, { fee: mFee, isEB: mg.isEarlyBird, count: 1 }); }
+        } else {
+          const key = "default";
+          const entry = feeGroups.get(key);
+          if (entry) { entry.count++; } else { feeGroups.set(key, { fee: defaultFee, isEB: input.defaultIsEarlyBird, count: 1 }); }
+        }
+      }
+    }
+
+    for (const [key, { fee, isEB, count }] of feeGroups) {
+      if (fee > 0) {
+        registrationFee += fee * count;
         breakdown.push({
-          description: input.defaultIsEarlyBird ? "Registration Fee (Early Bird)" : "Registration Fee",
-          descriptionKo: input.defaultIsEarlyBird ? "등록비 (얼리버드)" : "등록비",
-          quantity: otherCount,
-          unitPrice: defaultFee,
-          amount: defaultFee * otherCount,
+          description: isEB ? "Registration Fee (Early Bird)" : "Registration Fee",
+          descriptionKo: isEB ? "등록비 (얼리버드)" : "등록비",
+          quantity: count,
+          unitPrice: fee,
+          amount: fee * count,
+        });
+      } else if (key.startsWith("mg:")) {
+        // Access code member with $0 registration fee — show as waived
+        breakdown.push({
+          description: "Registration Fee (Waived)",
+          descriptionKo: "등록비 (면제)",
+          quantity: count,
+          unitPrice: 0,
+          amount: 0,
         });
       }
     }
@@ -193,10 +236,15 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
 
     for (const group of input.roomGroups) {
       for (const participant of group.participants) {
-        // Choose meal categories: representative uses group's, others use default's (if toggle OFF)
-        const mealCats = input.applyMealFeesToMembers || participant.isRepresentative
-          ? groupMealCats
-          : defaultMealCats;
+        // Choose meal categories: representative uses group's, others use member-group or default's (if toggle OFF)
+        let mealCats: MealFeeCategory[];
+        if (input.applyMealFeesToMembers || participant.isRepresentative) {
+          mealCats = groupMealCats;
+        } else {
+          const mGroupId = participant.memberRegistrationGroupId;
+          const mgf = input.memberGroupFees ?? {};
+          mealCats = (mGroupId && mgf[mGroupId]) ? mgf[mGroupId].mealFeeCategories : defaultMealCats;
+        }
         if (mealCats.length === 0) continue;
         const birthDate = new Date(
           participant.birthYear ?? 2000,
@@ -215,7 +263,24 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
         );
 
         if (!perMealCat) continue; // no matching category
-        if (perMealCat.amount_cents === 0) continue; // free tier
+        if (perMealCat.amount_cents === 0) {
+          // Access code member with $0 meal fee — show waived meals
+          if (participant.memberRegistrationGroupId) {
+            const selectedCount = participant.mealSelections.filter((s) => s.selected).length;
+            if (selectedCount > 0) {
+              const name = `${participant.firstName} ${participant.lastName}`;
+              const tierLabel = perMealCat.name_en.replace("Meal - ", "");
+              breakdown.push({
+                description: `Meals - ${name} (${tierLabel}, Waived)`,
+                descriptionKo: `식사 - ${name} (${tierLabel}, 면제)`,
+                quantity: selectedCount,
+                unitPrice: 0,
+                amount: 0,
+              });
+            }
+          }
+          continue;
+        }
 
         const priceEach = perMealCat.amount_cents;
         const priceDay = fullDayCat?.amount_cents ?? priceEach * 3;
@@ -321,4 +386,57 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     breakdown,
     manualPaymentDiscount,
   };
+}
+
+/**
+ * Load fee data for each unique memberRegistrationGroupId found in participants.
+ * Returns a map of groupId → MemberGroupFees for use in calculateEstimate.
+ */
+export async function loadMemberGroupFees(
+  supabase: SupabaseClient,
+  roomGroups: RoomGroupInput[],
+): Promise<Record<string, MemberGroupFees>> {
+  const memberGroupIds = new Set<string>();
+  for (const g of roomGroups) {
+    for (const p of g.participants) {
+      if (!p.isRepresentative && p.memberRegistrationGroupId) {
+        memberGroupIds.add(p.memberRegistrationGroupId);
+      }
+    }
+  }
+
+  if (memberGroupIds.size === 0) return {};
+
+  const result: Record<string, MemberGroupFees> = {};
+
+  for (const groupId of memberGroupIds) {
+    const [{ data: grp }, { data: feeLinks }] = await Promise.all([
+      supabase
+        .from("eckcm_registration_groups")
+        .select("global_registration_fee_cents, global_early_bird_fee_cents, early_bird_deadline")
+        .eq("id", groupId)
+        .single(),
+      supabase
+        .from("eckcm_registration_group_fee_categories")
+        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
+        .eq("registration_group_id", groupId),
+    ]);
+
+    if (!grp) continue;
+
+    const linked = (feeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
+    const regFeeCat = linked.find((f: any) => f.code === "REG_FEE");
+    const earlyBirdCat = linked.find((f: any) => f.code === "EARLY_BIRD");
+    const manualDiscount = linked.find((f: any) => f.code === "MANUAL_PAYMENT_DISCOUNT");
+
+    result[groupId] = {
+      registrationFee: grp.global_registration_fee_cents ?? regFeeCat?.amount_cents ?? 0,
+      earlyBirdFee: grp.global_early_bird_fee_cents ?? earlyBirdCat?.amount_cents ?? null,
+      isEarlyBird: grp.early_bird_deadline != null && new Date() < new Date(grp.early_bird_deadline),
+      mealFeeCategories: linked.filter((f: any) => f.code.startsWith("MEAL_")),
+      manualPaymentDiscountPerPerson: manualDiscount?.amount_cents ?? 0,
+    };
+  }
+
+  return result;
 }

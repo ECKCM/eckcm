@@ -54,6 +54,8 @@ const participantSchema = z
     guardianPhoneCountry: z.string().max(5).optional(),
     guardianConsent: z.boolean().optional(),
     guardianSignature: z.string().max(200000).optional(),
+    memberAccessCode: z.string().max(20).optional(),
+    memberRegistrationGroupId: uuid.optional(),
     mealSelections: z.array(mealSelectionSchema).max(100).default([]),
   })
   .superRefine((participant, ctx) => {

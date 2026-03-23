@@ -234,6 +234,7 @@ export default function AirportPickupStep() {
   };
 
   const handleNext = () => {
+    dispatch({ type: "SET_STEP", step: 7 });
     router.push(`/register/${eventId}/review`);
   };
 

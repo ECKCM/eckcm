@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-16T13:09:53.263Z",
+  "lastUpdated": "2026-03-23T20:43:05.410Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -215,9 +215,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:13.807Z",
-        "lastUpdated": "2026-03-16T13:09:53.263Z"
+        "lastUpdated": "2026-03-20T01:42:30.484Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/submit/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/registration/submit/route.ts"
     },
     "create-intent": {
       "phase": "do",
@@ -228,9 +228,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:18.153Z",
-        "lastUpdated": "2026-03-16T09:36:25.852Z"
+        "lastUpdated": "2026-03-20T11:41:07.074Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/create-intent/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/create-intent/route.ts"
     },
     "confirmation": {
       "phase": "do",
@@ -371,9 +371,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:32:20.959Z",
-        "lastUpdated": "2026-03-16T13:07:57.434Z"
+        "lastUpdated": "2026-03-20T01:42:03.217Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/registration/estimate/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/registration/estimate/route.ts"
     },
     "zelle-submit": {
       "phase": "do",
@@ -397,9 +397,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:33:55.200Z",
-        "lastUpdated": "2026-03-16T13:09:01.066Z"
+        "lastUpdated": "2026-03-20T01:08:59.853Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/admin/registration/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/registration/registration-guard.tsx"
     },
     "refund": {
       "phase": "do",
@@ -514,9 +514,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T23:00:43.454Z",
-        "lastUpdated": "2026-03-16T12:30:41.677Z"
+        "lastUpdated": "2026-03-18T21:55:00.538Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/layout.tsx"
     },
     "app-config": {
       "phase": "do",
@@ -553,9 +553,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T23:03:24.266Z",
-        "lastUpdated": "2026-03-15T14:47:14.516Z"
+        "lastUpdated": "2026-03-20T02:12:43.458Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
     },
     "verify": {
       "phase": "do",
@@ -878,9 +878,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T06:51:08.256Z",
-        "lastUpdated": "2026-03-13T20:20:32.562Z"
+        "lastUpdated": "2026-03-23T20:43:05.409Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/receipts/receipt-list.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/dashboard/receipts/receipt-list.tsx"
     },
     "ui": {
       "phase": "do",
@@ -1138,9 +1138,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-03T05:42:10.477Z",
-        "lastUpdated": "2026-03-16T13:07:18.581Z"
+        "lastUpdated": "2026-03-23T20:39:57.828Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/lib/services/pricing.service.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/pricing.service.ts"
     },
     "review": {
       "phase": "do",
@@ -1151,9 +1151,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-03T07:15:45.932Z",
-        "lastUpdated": "2026-03-15T20:18:55.346Z"
+        "lastUpdated": "2026-03-23T20:40:14.690Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
     },
     "audit": {
       "phase": "do",
@@ -1385,9 +1385,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-06T00:49:50.415Z",
-        "lastUpdated": "2026-03-15T19:48:32.703Z"
+        "lastUpdated": "2026-03-20T01:13:27.391Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/airport-pickup/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/airport-pickup/page.tsx"
     },
     "reset-password": {
       "phase": "do",
@@ -1411,9 +1411,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-06T05:30:10.790Z",
-        "lastUpdated": "2026-03-15T02:52:18.308Z"
+        "lastUpdated": "2026-03-20T01:42:58.812Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/__tests__/unit/schemas/api.test.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/schemas/api.ts"
     },
     "(auth)": {
       "phase": "do",
@@ -1489,9 +1489,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-12T07:03:59.899Z",
-        "lastUpdated": "2026-03-12T07:03:59.899Z"
+        "lastUpdated": "2026-03-20T11:41:16.392Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/api/payment/update-method-discount/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/update-method-discount/route.ts"
     },
     "webhook": {
       "phase": "do",
@@ -11329,6 +11329,156 @@
     {
       "timestamp": "2026-03-16T13:09:53.263Z",
       "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-18T21:51:57.198Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-18T21:52:05.091Z",
+      "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-18T21:55:00.538Z",
+      "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:08:59.853Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:13:27.391Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:23:19.635Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:40:21.778Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:40:43.846Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:40:54.199Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:41:18.811Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:41:33.549Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:41:38.685Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:42:03.217Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:42:13.432Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:42:30.484Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T01:42:58.812Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T02:12:31.886Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T02:12:39.084Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T02:12:43.458Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T11:41:07.074Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T11:41:16.392Z",
+      "feature": "update-method-discount",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-23T20:39:46.461Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-23T20:39:57.828Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-23T20:40:14.690Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-23T20:43:05.409Z",
+      "feature": "receipts",
       "phase": "do",
       "action": "updated"
     }

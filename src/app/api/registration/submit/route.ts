@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateSafeConfirmationCode } from "@/lib/services/confirmation-code.service";
-import { calculateEstimate } from "@/lib/services/pricing.service";
+import { calculateEstimate, loadMemberGroupFees } from "@/lib/services/pricing.service";
 import type { MealFeeCategory } from "@/lib/services/pricing.service";
 import { createInvoice } from "@/lib/services/invoice.service";
 import type { RoomGroupInput, AirportPickupInput } from "@/lib/types/registration";
@@ -272,6 +272,11 @@ export async function POST(request: Request) {
     evEndDate
   );
 
+  // Load per-member group fees when members have their own access codes
+  const memberGroupFees = (!applyGeneralFeesToMembers || !applyMealFeesToMembers)
+    ? await loadMemberGroupFees(admin, processedRoomGroups)
+    : {};
+
   const estimate = calculateEstimate({
     nightsCount,
     roomGroups: processedRoomGroups,
@@ -294,6 +299,7 @@ export async function POST(request: Request) {
     defaultIsEarlyBird,
     defaultMealFeeCategories,
     defaultManualPaymentDiscountPerPerson,
+    memberGroupFees,
   });
 
   // 4. Generate registration confirmation code: R{YY}{NAME3}{4-digit-seq}

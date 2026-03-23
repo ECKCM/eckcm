@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { calculateEstimate } from "@/lib/services/pricing.service";
+import { calculateEstimate, loadMemberGroupFees } from "@/lib/services/pricing.service";
 import type { MealFeeCategory } from "@/lib/services/pricing.service";
 import { estimateSchema } from "@/lib/schemas/api";
 import { logger } from "@/lib/logger";
@@ -163,6 +163,11 @@ export async function POST(request: Request) {
     evEndDate
   );
 
+  // Load per-member group fees when members have their own access codes
+  const memberGroupFees = (!applyGeneralFeesToMembers || !applyMealFeesToMembers)
+    ? await loadMemberGroupFees(supabase, processedRoomGroups)
+    : {};
+
   const estimate = calculateEstimate({
     nightsCount,
     roomGroups: processedRoomGroups,
@@ -185,6 +190,7 @@ export async function POST(request: Request) {
     defaultIsEarlyBird,
     defaultMealFeeCategories,
     defaultManualPaymentDiscountPerPerson,
+    memberGroupFees,
   });
 
   return NextResponse.json(estimate);

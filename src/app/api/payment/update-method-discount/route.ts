@@ -15,7 +15,7 @@ function calcAmountWithFees(baseCents: number): number {
 /**
  * Update PaymentIntent amount when user switches payment method inside PaymentElement.
  * - us_bank_account: apply manual payment discount
- * - card/klarna/amazon_pay: restore original amount (with optional coversFees)
+ * - card/amazon_pay: restore original amount (with optional coversFees)
  */
 export async function POST(request: Request) {
   const supabase = await createClient();

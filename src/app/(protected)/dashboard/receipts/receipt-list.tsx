@@ -143,15 +143,15 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
                       {lineItems.map((li, i) => (
                         <div
                           key={i}
-                          className="grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 border-t"
+                          className={`grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 border-t ${li.total_cents === 0 ? "text-green-600" : ""}`}
                         >
                           <span className="truncate">{li.description_en}</span>
                           <span className="text-right">{li.quantity}</span>
                           <span className="text-right">
-                            ${(li.unit_price_cents / 100).toFixed(2)}
+                            {li.total_cents === 0 ? "Free" : `$${(li.unit_price_cents / 100).toFixed(2)}`}
                           </span>
                           <span className="text-right">
-                            ${(li.total_cents / 100).toFixed(2)}
+                            {li.total_cents === 0 ? "Free" : `$${(li.total_cents / 100).toFixed(2)}`}
                           </span>
                         </div>
                       ))}
