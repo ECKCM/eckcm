@@ -350,7 +350,6 @@ export default function ParticipantsStep() {
               participant: {
                 ...createEmptyParticipant(true),
                 id: representative.id,
-                email: user.email ?? "",
               },
             });
             representativeFilledRef.current = "others";
