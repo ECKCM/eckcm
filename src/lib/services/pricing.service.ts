@@ -386,16 +386,18 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     }
     if (vbsFee > 0) chargedCodes.add("VBS_MATERIALS");
 
+    // Skip conditional fees (meals depend on age/selection, VBS on department)
+    const conditionalPrefixes = ["MEAL_", "VBS_", "MANUAL_PAYMENT"];
     for (const fee of input.discountDisplayFees) {
-      if (!chargedCodes.has(fee.code)) {
-        breakdown.push({
-          description: `${fee.name_en} (Waived)`,
-          descriptionKo: `${fee.name_en} (면제)`,
-          quantity: 1,
-          unitPrice: 0,
-          amount: 0,
-        });
-      }
+      if (chargedCodes.has(fee.code)) continue;
+      if (conditionalPrefixes.some((p) => fee.code.startsWith(p))) continue;
+      breakdown.push({
+        description: `${fee.name_en} (Waived)`,
+        descriptionKo: `${fee.name_en} (면제)`,
+        quantity: 1,
+        unitPrice: 0,
+        amount: 0,
+      });
     }
   }
 
