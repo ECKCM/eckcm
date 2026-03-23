@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, QrCode, Copy, Check, AlertTriangle, MessageSquare, Share2 } from "lucide-react";
 
 interface EPassToken {
@@ -154,6 +155,117 @@ function ShareButtons({ slug, personName, phone, eventYear }: { slug: string; pe
   );
 }
 
+function EPassCardList({
+  tokens,
+  myPersonIds,
+  isMyPass,
+  getCardStyle,
+  onCardClick,
+}: {
+  tokens: EPassToken[];
+  myPersonIds: string[];
+  isMyPass: (t: EPassToken) => boolean;
+  getCardStyle: (t: EPassToken) => string;
+  onCardClick: (t: EPassToken, e: React.MouseEvent) => void;
+}) {
+  if (tokens.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          No E-Pass available yet.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Sort: my passes first, then others
+  const sorted = [...tokens].sort((a, b) => {
+    const aIsMine = isMyPass(a) ? 0 : 1;
+    const bIsMine = isMyPass(b) ? 0 : 1;
+    return aIsMine - bIsMine;
+  });
+
+  return (
+    <div className="space-y-4">
+      {sorted.map((token) => {
+        const person = token.eckcm_people;
+        const reg = token.eckcm_registrations;
+        const event = reg.eckcm_events;
+        const displayName =
+          person.display_name_ko ??
+          `${person.first_name_en} ${person.last_name_en}`;
+        const meal = getMealCategory(person.birth_date, reg.start_date);
+        const slug = buildEPassSlug(
+          person.first_name_en,
+          person.last_name_en,
+          token.token
+        );
+
+        return (
+          <Card key={token.id} className={`hover:bg-accent/50 transition-colors ${getCardStyle(token)}`}>
+            <Link
+              href={`/dashboard/epass/${token.id}`}
+              onClick={(e) => onCardClick(token, e)}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">{displayName}</CardTitle>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant={token.is_active ? "default" : "secondary"}>
+                      {token.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                    {(person.gender === "MALE" || person.gender === "FEMALE") && (
+                      <Badge
+                        variant="outline"
+                        className={
+                          person.gender === "MALE"
+                            ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                            : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                        }
+                      >
+                        {person.gender === "MALE" ? "Male" : "Female"}
+                      </Badge>
+                    )}
+                    <Badge
+                      variant="outline"
+                      className={
+                        meal === "Adult"
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                          : meal === "Youth"
+                            ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                            : "border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
+                      }
+                    >
+                      {meal}
+                    </Badge>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    <p>{event.name_en}</p>
+                    {token.participant_code && (
+                      <p className="font-mono font-medium text-foreground">
+                        {token.participant_code}
+                      </p>
+                    )}
+                  </div>
+                  <QrCode className="h-10 w-10 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Link>
+            <div className="px-6 pb-3 flex items-center justify-end flex-wrap gap-2 border-t pt-2">
+              <CopyLinkButton slug={slug} />
+              <ShareButtons slug={slug} personName={`${person.first_name_en} ${person.last_name_en}`} phone={person.phone} eventYear={event.year} />
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
 export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPersonIds: string[] }) {
   const router = useRouter();
   const [warningToken, setWarningToken] = useState<EPassToken | null>(null);
@@ -163,19 +275,9 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
     return myPersonIds.includes(token.person_id);
   }
 
-  // Sort: my passes first, then others (preserve original order within each group)
-  const sortedTokens = [...tokens].sort((a, b) => {
-    const aIsMine = isMyPass(a) ? 0 : 1;
-    const bIsMine = isMyPass(b) ? 0 : 1;
-    return aIsMine - bIsMine;
-  });
-
-  // Determine card style: my pass = normal, group member = gray, someone else reg = dark gray
   function getCardStyle(token: EPassToken): string {
-    if (isMyPass(token)) return ""; // normal
-    const regType = token.eckcm_registrations.registration_type;
-    if (regType === "others") return "opacity-40"; // dark gray for "someone else" registrations
-    return "opacity-60"; // gray for group members (not me)
+    if (isMyPass(token)) return "";
+    return "opacity-60";
   }
 
   function handleCardClick(token: EPassToken, e: React.MouseEvent) {
@@ -205,6 +307,16 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
     }, 1000);
   }
 
+  const myTokens = tokens.filter(
+    (t) => t.eckcm_registrations.registration_type !== "others"
+  );
+  const othersTokens = tokens.filter(
+    (t) => t.eckcm_registrations.registration_type === "others"
+  );
+  const hasBothTabs = othersTokens.length > 0;
+
+  const cardListProps = { myPersonIds, isMyPass, getCardStyle, onCardClick: handleCardClick };
+
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
       <div className="flex items-center gap-3">
@@ -222,82 +334,25 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
             No E-Pass available yet. Complete payment to receive your E-Pass.
           </CardContent>
         </Card>
+      ) : !hasBothTabs ? (
+        <EPassCardList tokens={tokens} {...cardListProps} />
       ) : (
-        sortedTokens.map((token) => {
-          const person = token.eckcm_people;
-          const reg = token.eckcm_registrations;
-          const event = reg.eckcm_events;
-          const displayName =
-            person.display_name_ko ??
-            `${person.first_name_en} ${person.last_name_en}`;
-          const meal = getMealCategory(person.birth_date, reg.start_date);
-          const slug = buildEPassSlug(
-            person.first_name_en,
-            person.last_name_en,
-            token.token
-          );
-
-          return (
-            <Card key={token.id} className={`hover:bg-accent/50 transition-colors ${getCardStyle(token)}`}>
-              <Link
-                href={`/dashboard/epass/${token.id}`}
-                onClick={(e) => handleCardClick(token, e)}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{displayName}</CardTitle>
-                    <div className="flex items-center gap-1.5">
-                      <Badge variant={token.is_active ? "default" : "secondary"}>
-                        {token.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                      {(person.gender === "MALE" || person.gender === "FEMALE") && (
-                        <Badge
-                          variant="outline"
-                          className={
-                            person.gender === "MALE"
-                              ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300"
-                              : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
-                          }
-                        >
-                          {person.gender === "MALE" ? "Male" : "Female"}
-                        </Badge>
-                      )}
-                      <Badge
-                        variant="outline"
-                        className={
-                          meal === "Adult"
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                            : meal === "Youth"
-                              ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300"
-                              : "border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
-                        }
-                      >
-                        {meal}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <p>{event.name_en}</p>
-                      {token.participant_code && (
-                        <p className="font-mono font-medium text-foreground">
-                          {token.participant_code}
-                        </p>
-                      )}
-                    </div>
-                    <QrCode className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                </CardContent>
-              </Link>
-              <div className="px-6 pb-3 flex items-center justify-end flex-wrap gap-2 border-t pt-2">
-                <CopyLinkButton slug={slug} />
-                <ShareButtons slug={slug} personName={`${person.first_name_en} ${person.last_name_en}`} phone={person.phone} eventYear={event.year} />
-              </div>
-            </Card>
-          );
-        })
+        <Tabs defaultValue="my">
+          <TabsList className="w-full">
+            <TabsTrigger value="my" className="flex-1">
+              My Registration ({myTokens.length})
+            </TabsTrigger>
+            <TabsTrigger value="others" className="flex-1">
+              Registered for Others ({othersTokens.length})
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="my" className="mt-4">
+            <EPassCardList tokens={myTokens} {...cardListProps} />
+          </TabsContent>
+          <TabsContent value="others" className="mt-4">
+            <EPassCardList tokens={othersTokens} {...cardListProps} />
+          </TabsContent>
+        </Tabs>
       )}
 
       {/* Warning dialog for viewing another person's E-Pass */}

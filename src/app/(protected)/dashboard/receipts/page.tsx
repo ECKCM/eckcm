@@ -41,6 +41,7 @@ export default async function ReceiptsPage() {
       eckcm_payments(payment_method, status),
       eckcm_registrations!inner(
         confirmation_code,
+        registration_type,
         eckcm_events!inner(name_en)
       )
     `)

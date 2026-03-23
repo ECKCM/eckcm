@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, FileText, Receipt } from "lucide-react";
 
 interface LineItem {
@@ -24,6 +25,7 @@ interface Invoice {
   eckcm_invoice_line_items: LineItem[];
   eckcm_registrations: {
     confirmation_code: string | null;
+    registration_type: string | null;
     eckcm_events: {
       name_en: string;
     };
@@ -45,7 +47,163 @@ function statusLabel(status: string) {
   return status;
 }
 
+function InvoiceCard({ inv }: { inv: Invoice }) {
+  const reg = inv.eckcm_registrations;
+  const event = reg.eckcm_events;
+  const isPaid = inv.status === "SUCCEEDED";
+  const docType = isPaid ? "Receipt" : "Invoice";
+  const payment = inv.eckcm_payments?.find(
+    (p) => p.status === "SUCCEEDED" || p.status === "PARTIALLY_REFUNDED"
+  );
+  const lineItems = inv.eckcm_invoice_line_items ?? [];
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {isPaid ? (
+              <Receipt className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            )}
+            <CardTitle className="text-base">{docType}</CardTitle>
+          </div>
+          <Badge variant={statusVariant[inv.status] ?? "secondary"}>
+            {statusLabel(inv.status)}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Summary */}
+        <div className="grid grid-cols-2 gap-2 text-sm overflow-x-auto">
+          <span className="text-muted-foreground">Invoice #</span>
+          <span className="font-mono">{inv.invoice_number}</span>
+          {isPaid && (
+            <>
+              <span className="text-muted-foreground">Receipt #</span>
+              <span className="font-mono">{inv.invoice_number.replace(/^INV-/, "RCT-")}</span>
+            </>
+          )}
+          <span className="text-muted-foreground">Event</span>
+          <span>{event.name_en}</span>
+          {reg.confirmation_code && (
+            <>
+              <span className="text-muted-foreground">Code</span>
+              <span className="font-mono">{reg.confirmation_code}</span>
+            </>
+          )}
+          <span className="text-muted-foreground">Issued</span>
+          <span>
+            {new Date(inv.issued_at).toLocaleDateString("en-US")}
+          </span>
+          {inv.paid_at && (
+            <>
+              <span className="text-muted-foreground">Paid</span>
+              <span>
+                {new Date(inv.paid_at).toLocaleDateString("en-US")}
+              </span>
+            </>
+          )}
+          {payment && (
+            <>
+              <span className="text-muted-foreground">Method</span>
+              <span>{payment.payment_method}</span>
+            </>
+          )}
+        </div>
+
+        {/* Line items */}
+        {lineItems.length > 0 && (
+          <div className="overflow-x-auto">
+            <div className="min-w-[24rem] rounded-md border text-sm">
+              <div className="grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 bg-muted/50 text-xs text-muted-foreground font-medium">
+                <span>Description</span>
+                <span className="text-right">Qty</span>
+                <span className="text-right">Unit</span>
+                <span className="text-right">Amount</span>
+              </div>
+              {lineItems.map((li, i) => (
+                <div
+                  key={i}
+                  className={`grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 border-t ${li.total_cents === 0 ? "text-green-600" : ""}`}
+                >
+                  <span className="truncate">{li.description_en}</span>
+                  <span className="text-right">{li.quantity}</span>
+                  <span className="text-right">
+                    {li.total_cents === 0 ? "Free" : `$${(li.unit_price_cents / 100).toFixed(2)}`}
+                  </span>
+                  <span className="text-right">
+                    {li.total_cents === 0 ? "Free" : `$${(li.total_cents / 100).toFixed(2)}`}
+                  </span>
+                </div>
+              ))}
+              <div className="grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 border-t font-medium">
+                <span />
+                <span />
+                <span className="text-right">Total</span>
+                <span className="text-right">${(inv.total_cents / 100).toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Download */}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <a
+              href={`/api/invoice/${inv.id}/pdf?type=invoice`}
+              download={`eckcm-invoice-${inv.invoice_number}.pdf`}
+            >
+              <FileText className="mr-1.5 h-3.5 w-3.5" />
+              Invoice PDF
+            </a>
+          </Button>
+          {isPaid && (
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href={`/api/invoice/${inv.id}/pdf?type=receipt`}
+                download={`eckcm-receipt-${inv.invoice_number}.pdf`}
+              >
+                <Receipt className="mr-1.5 h-3.5 w-3.5" />
+                Receipt PDF
+              </a>
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function InvoiceList({ invoices }: { invoices: Invoice[] }) {
+  if (invoices.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          No receipts yet.
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      {invoices.map((inv) => (
+        <InvoiceCard key={inv.id} inv={inv} />
+      ))}
+    </div>
+  );
+}
+
 export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
+  const myInvoices = invoices.filter(
+    (inv) => inv.eckcm_registrations.registration_type !== "others"
+  );
+  const othersInvoices = invoices.filter(
+    (inv) => inv.eckcm_registrations.registration_type === "others"
+  );
+  const hasBothTabs = othersInvoices.length > 0;
+
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
       <div className="flex items-center gap-3">
@@ -57,141 +215,25 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
         <h1 className="text-2xl font-bold">Receipts & Invoices</h1>
       </div>
 
-      {invoices.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            No receipts yet.
-          </CardContent>
-        </Card>
+      {!hasBothTabs ? (
+        <InvoiceList invoices={invoices} />
       ) : (
-        invoices.map((inv) => {
-          const reg = inv.eckcm_registrations;
-          const event = reg.eckcm_events;
-          const isPaid = inv.status === "SUCCEEDED";
-          const docType = isPaid ? "Receipt" : "Invoice";
-          const payment = inv.eckcm_payments?.find(
-            (p) => p.status === "SUCCEEDED" || p.status === "PARTIALLY_REFUNDED"
-          );
-          const lineItems = inv.eckcm_invoice_line_items ?? [];
-
-          return (
-            <Card key={inv.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {isPaid ? (
-                      <Receipt className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <CardTitle className="text-base">{docType}</CardTitle>
-                  </div>
-                  <Badge variant={statusVariant[inv.status] ?? "secondary"}>
-                    {statusLabel(inv.status)}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Summary */}
-                <div className="grid grid-cols-2 gap-2 text-sm overflow-x-auto">
-                  <span className="text-muted-foreground">Invoice #</span>
-                  <span className="font-mono">{inv.invoice_number}</span>
-                  {isPaid && (
-                    <>
-                      <span className="text-muted-foreground">Receipt #</span>
-                      <span className="font-mono">{inv.invoice_number.replace(/^INV-/, "RCT-")}</span>
-                    </>
-                  )}
-                  <span className="text-muted-foreground">Event</span>
-                  <span>{event.name_en}</span>
-                  {reg.confirmation_code && (
-                    <>
-                      <span className="text-muted-foreground">Code</span>
-                      <span className="font-mono">{reg.confirmation_code}</span>
-                    </>
-                  )}
-                  <span className="text-muted-foreground">Issued</span>
-                  <span>
-                    {new Date(inv.issued_at).toLocaleDateString("en-US")}
-                  </span>
-                  {inv.paid_at && (
-                    <>
-                      <span className="text-muted-foreground">Paid</span>
-                      <span>
-                        {new Date(inv.paid_at).toLocaleDateString("en-US")}
-                      </span>
-                    </>
-                  )}
-                  {payment && (
-                    <>
-                      <span className="text-muted-foreground">Method</span>
-                      <span>{payment.payment_method}</span>
-                    </>
-                  )}
-                </div>
-
-                {/* Line items */}
-                {lineItems.length > 0 && (
-                  <div className="overflow-x-auto">
-                    <div className="min-w-[24rem] rounded-md border text-sm">
-                      <div className="grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 bg-muted/50 text-xs text-muted-foreground font-medium">
-                        <span>Description</span>
-                        <span className="text-right">Qty</span>
-                        <span className="text-right">Unit</span>
-                        <span className="text-right">Amount</span>
-                      </div>
-                      {lineItems.map((li, i) => (
-                        <div
-                          key={i}
-                          className={`grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 border-t ${li.total_cents === 0 ? "text-green-600" : ""}`}
-                        >
-                          <span className="truncate">{li.description_en}</span>
-                          <span className="text-right">{li.quantity}</span>
-                          <span className="text-right">
-                            {li.total_cents === 0 ? "Free" : `$${(li.unit_price_cents / 100).toFixed(2)}`}
-                          </span>
-                          <span className="text-right">
-                            {li.total_cents === 0 ? "Free" : `$${(li.total_cents / 100).toFixed(2)}`}
-                          </span>
-                        </div>
-                      ))}
-                      <div className="grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 border-t font-medium">
-                        <span />
-                        <span />
-                        <span className="text-right">Total</span>
-                        <span className="text-right">${(inv.total_cents / 100).toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Download */}
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" size="sm" asChild>
-                    <a
-                      href={`/api/invoice/${inv.id}/pdf?type=invoice`}
-                      download={`eckcm-invoice-${inv.invoice_number}.pdf`}
-                    >
-                      <FileText className="mr-1.5 h-3.5 w-3.5" />
-                      Invoice PDF
-                    </a>
-                  </Button>
-                  {isPaid && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a
-                        href={`/api/invoice/${inv.id}/pdf?type=receipt`}
-                        download={`eckcm-receipt-${inv.invoice_number}.pdf`}
-                      >
-                        <Receipt className="mr-1.5 h-3.5 w-3.5" />
-                        Receipt PDF
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })
+        <Tabs defaultValue="my">
+          <TabsList className="w-full">
+            <TabsTrigger value="my" className="flex-1">
+              My Registration ({myInvoices.length})
+            </TabsTrigger>
+            <TabsTrigger value="others" className="flex-1">
+              Registered for Others ({othersInvoices.length})
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="my" className="mt-4">
+            <InvoiceList invoices={myInvoices} />
+          </TabsContent>
+          <TabsContent value="others" className="mt-4">
+            <InvoiceList invoices={othersInvoices} />
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );
