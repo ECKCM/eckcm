@@ -45,8 +45,6 @@ interface PricingInput {
   // Per-member group fees: when a member has their own access code (memberRegistrationGroupId),
   // use that group's fees instead of the default group's fees
   memberGroupFees?: Record<string, MemberGroupFees>;
-  // Fee categories to show as "Waived" ($0) on breakdown when not linked to this group
-  discountDisplayFees?: { code: string; name_en: string; amount_cents: number }[];
 }
 
 export interface MemberGroupFees {
@@ -85,6 +83,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
         quantity: totalParticipants,
         unitPrice: feePerPerson,
         amount: registrationFee,
+        category: "registration",
       });
     }
   } else {
@@ -106,6 +105,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
         quantity: 1,
         unitPrice: feePerPerson,
         amount: feePerPerson,
+        category: "registration",
       });
     }
 
@@ -138,6 +138,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
           quantity: count,
           unitPrice: fee,
           amount: fee * count,
+          category: "registration",
         });
       } else if (key.startsWith("mg:")) {
         // Access code member with $0 registration fee — show as waived
@@ -147,6 +148,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
           quantity: count,
           unitPrice: 0,
           amount: 0,
+          category: "registration",
         });
       }
     }
@@ -171,6 +173,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
         quantity: rate.pricing_type === "PER_NIGHT" ? input.nightsCount : 1,
         unitPrice: rate.amount_cents,
         amount: groupLodging,
+        category: "lodging",
       });
     }
   }
@@ -203,6 +206,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
         quantity: extraPeople * input.nightsCount,
         unitPrice: input.additionalLodgingFeePerNight,
         amount: extraFee,
+        category: "additional_lodging",
       });
     }
   }
@@ -220,6 +224,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
       quantity: totalKeys,
       unitPrice: input.keyDepositPerKey,
       amount: keyDeposit,
+      category: "key_deposit",
     });
   }
 
@@ -266,20 +271,19 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
 
         if (!perMealCat) continue; // no matching category
         if (perMealCat.amount_cents === 0) {
-          // Access code member with $0 meal fee — show waived meals
-          if (participant.memberRegistrationGroupId) {
-            const selectedCount = participant.mealSelections.filter((s) => s.selected).length;
-            if (selectedCount > 0) {
-              const name = `${participant.firstName} ${participant.lastName}`;
-              const tierLabel = perMealCat.name_en.replace("Meal - ", "");
-              breakdown.push({
-                description: `Meals - ${name} (${tierLabel}, Waived)`,
-                descriptionKo: `식사 - ${name} (${tierLabel}, 면제)`,
-                quantity: selectedCount,
-                unitPrice: 0,
-                amount: 0,
-              });
-            }
+          // $0 meal fee — show as Free (e.g., infants matched to MEAL_FREE)
+          const selectedCount = participant.mealSelections.filter((s) => s.selected).length;
+          if (selectedCount > 0) {
+            const name = `${participant.firstName} ${participant.lastName}`;
+            const tierLabel = perMealCat.name_en.replace("Meal - ", "");
+            breakdown.push({
+              description: `Meals - ${name} (${tierLabel}, Free)`,
+              descriptionKo: `식사 - ${name} (${tierLabel}, 무료)`,
+              quantity: selectedCount,
+              unitPrice: 0,
+              amount: 0,
+              category: "meal",
+            });
           }
           continue;
         }
@@ -326,6 +330,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
               quantity: fullDayCount,
               unitPrice: dayCost,
               amount: fullDayCount * dayCost,
+              category: "meal",
             });
           }
 
@@ -337,6 +342,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
               quantity: totalMealCount,
               unitPrice: priceEach,
               amount: totalMealCount * priceEach,
+              category: "meal",
             });
           }
         }
@@ -363,6 +369,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
         quantity: vbsCount,
         unitPrice: input.vbsMaterialsFeeCents,
         amount: vbsFee,
+        category: "vbs",
       });
     }
   }
@@ -370,38 +377,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
   const subtotal = registrationFee + lodgingFee + additionalLodgingFee + mealFee + vbsFee;
   const total = subtotal + keyDeposit;
 
-  // 7. Discount display: show waived fees as $0 line items
-  if (input.discountDisplayFees && input.discountDisplayFees.length > 0) {
-    // Collect codes already charged in breakdown (non-zero) to avoid duplicates
-    const chargedCodes = new Set<string>();
-    // Registration fee codes
-    if (registrationFee > 0) { chargedCodes.add("REG_FEE"); chargedCodes.add("EARLY_BIRD"); }
-    for (const rate of input.lodgingRates) {
-      if (breakdown.some((b) => b.description.includes(rate.name_en))) chargedCodes.add(rate.code);
-    }
-    if (additionalLodgingFee > 0) chargedCodes.add("LODGING_EXTRA");
-    if (keyDeposit > 0) chargedCodes.add("KEY_DEPOSIT");
-    if (mealFee > 0) {
-      for (const mc of input.mealFeeCategories) chargedCodes.add(mc.code);
-    }
-    if (vbsFee > 0) chargedCodes.add("VBS_MATERIALS");
-
-    // Skip conditional fees (meals depend on age/selection, VBS on department)
-    const conditionalPrefixes = ["MEAL_", "VBS_", "MANUAL_PAYMENT"];
-    for (const fee of input.discountDisplayFees) {
-      if (chargedCodes.has(fee.code)) continue;
-      if (conditionalPrefixes.some((p) => fee.code.startsWith(p))) continue;
-      breakdown.push({
-        description: `${fee.name_en} (Waived)`,
-        descriptionKo: `${fee.name_en} (면제)`,
-        quantity: 1,
-        unitPrice: 0,
-        amount: 0,
-      });
-    }
-  }
-
-  // 8. Manual payment discount (informational — not subtracted from total)
+  // 7. Manual payment discount (informational — not subtracted from total)
   const manualPaymentDiscount =
     input.manualPaymentDiscountPerPerson > 0
       ? input.manualPaymentDiscountPerPerson * totalParticipants
@@ -419,6 +395,67 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     breakdown,
     manualPaymentDiscount,
   };
+}
+
+/**
+ * Remap room groups' lodging types to match the default group's available lodging codes.
+ * E.g., LODGING_AC_VIP → LODGING_AC (longest prefix match in default rates).
+ */
+export function remapLodgingForDefault(
+  roomGroups: RoomGroupInput[],
+  defaultLodgingRates: LodgingRate[],
+): RoomGroupInput[] {
+  if (defaultLodgingRates.length === 0) return roomGroups;
+  const sorted = [...defaultLodgingRates].sort((a, b) => b.code.length - a.code.length);
+  return roomGroups.map((g) => {
+    if (!g.lodgingType) return g;
+    // Exact match — no remapping needed
+    if (defaultLodgingRates.some((r) => r.code === g.lodgingType)) return g;
+    // Find longest prefix match
+    for (const rate of sorted) {
+      if (g.lodgingType.startsWith(rate.code)) {
+        return { ...g, lodgingType: rate.code };
+      }
+    }
+    return g;
+  });
+}
+
+/**
+ * Compare current estimate vs what the default group would charge.
+ * For each category where current = $0 but default > $0, return the
+ * default's breakdown items as "(Waived)" line items.
+ */
+export function computeWaivedBenefits(
+  current: PriceEstimate,
+  defaultEst: PriceEstimate,
+): PriceLineItem[] {
+  const waived: PriceLineItem[] = [];
+  const categories: { cat: NonNullable<PriceLineItem["category"]>; ct: number; dt: number }[] = [
+    { cat: "registration", ct: current.registrationFee, dt: defaultEst.registrationFee },
+    { cat: "lodging", ct: current.lodgingFee, dt: defaultEst.lodgingFee },
+    { cat: "additional_lodging", ct: current.additionalLodgingFee, dt: defaultEst.additionalLodgingFee },
+    { cat: "key_deposit", ct: current.keyDeposit, dt: defaultEst.keyDeposit },
+    { cat: "meal", ct: current.mealFee, dt: defaultEst.mealFee },
+    { cat: "vbs", ct: current.vbsFee, dt: defaultEst.vbsFee },
+  ];
+
+  for (const { cat, ct, dt } of categories) {
+    if (ct === 0 && dt > 0) {
+      for (const item of defaultEst.breakdown) {
+        if (item.category !== cat) continue;
+        waived.push({
+          description: `${item.description} (Waived)`,
+          descriptionKo: `${item.descriptionKo} (면제)`,
+          quantity: item.quantity,
+          unitPrice: 0,
+          amount: 0,
+        });
+      }
+    }
+  }
+
+  return waived;
 }
 
 /**

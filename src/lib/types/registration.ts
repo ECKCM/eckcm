@@ -109,4 +109,5 @@ export interface PriceLineItem {
   quantity: number;
   unitPrice: number; // cents
   amount: number; // cents
+  category?: "registration" | "lodging" | "additional_lodging" | "key_deposit" | "meal" | "vbs";
 }

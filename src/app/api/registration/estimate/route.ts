@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { calculateEstimate, loadMemberGroupFees } from "@/lib/services/pricing.service";
-import type { MealFeeCategory } from "@/lib/services/pricing.service";
+import { calculateEstimate, loadMemberGroupFees, computeWaivedBenefits, remapLodgingForDefault } from "@/lib/services/pricing.service";
+import type { MealFeeCategory, LodgingRate } from "@/lib/services/pricing.service";
 import { estimateSchema } from "@/lib/schemas/api";
 import { logger } from "@/lib/logger";
 import { populateDefaultMeals } from "@/lib/services/meal.service";
@@ -56,19 +56,6 @@ export async function POST(request: Request) {
     .eq("registration_group_id", registrationGroupId);
 
   const allLinkedFees = (allFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
-  const linkedFeeCodes = new Set(allLinkedFees.map((f: any) => f.code));
-
-  // Load discount display fees (fees to show as "Waived" when not linked)
-  const discountFeeIds: string[] = regGroup.discount_display_fee_ids ?? [];
-  let discountDisplayFees: { code: string; name_en: string; amount_cents: number }[] = [];
-  if (discountFeeIds.length > 0) {
-    const { data: discountFees } = await supabase
-      .from("eckcm_fee_categories")
-      .select("code, name_en, amount_cents")
-      .in("id", discountFeeIds);
-    discountDisplayFees = (discountFees ?? [])
-      .filter((f: any) => !linkedFeeCodes.has(f.code));
-  }
 
   // Extract registration fees from linked fee categories
   const regFeeCat = allLinkedFees.find((f: any) => f.code === "REG_FEE");
@@ -105,14 +92,19 @@ export async function POST(request: Request) {
   const applyGeneralFeesToMembers = regGroup.apply_general_fees_to_members ?? true;
   const applyMealFeesToMembers = regGroup.apply_meal_fees_to_members ?? true;
 
-  // Load default group fees when scope toggles are OFF
-  let defaultRegistrationFeePerPerson = 0;
-  let defaultEarlyBirdFeePerPerson: number | null = null;
-  let defaultIsEarlyBird = false;
-  let defaultMealFeeCategories: MealFeeCategory[] = [];
-  let defaultManualPaymentDiscountPerPerson = 0;
+  // Load default group for dual-estimate comparison + scope toggle defaults
+  let hasDefaultGroup = false;
+  let defRegistrationFeePerPerson = 0;
+  let defEarlyBirdFeePerPerson: number | null = null;
+  let defIsEarlyBird = false;
+  let defMealFeeCategories: MealFeeCategory[] = [];
+  let defManualPaymentDiscountPerPerson = 0;
+  let defLodgingRates: LodgingRate[] = [];
+  let defKeyDepositPerKey = 0;
+  let defHasLodgingExtra = false;
+  let defVbsMaterialsFeeCents = 0;
 
-  if (!applyGeneralFeesToMembers || !applyMealFeesToMembers) {
+  if (!regGroup.is_default) {
     const { data: defaultGroup } = await supabase
       .from("eckcm_registration_groups")
       .select("*")
@@ -121,6 +113,7 @@ export async function POST(request: Request) {
       .single();
 
     if (defaultGroup) {
+      hasDefaultGroup = true;
       const { data: defaultFeeLinks } = await supabase
         .from("eckcm_registration_group_fee_categories")
         .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
@@ -128,25 +121,25 @@ export async function POST(request: Request) {
 
       const defaultLinkedFees = (defaultFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
 
-      if (!applyGeneralFeesToMembers) {
-        const defRegFeeCat = defaultLinkedFees.find((f: any) => f.code === "REG_FEE");
-        const defEarlyBirdCat = defaultLinkedFees.find((f: any) => f.code === "EARLY_BIRD");
-        defaultRegistrationFeePerPerson =
-          defaultGroup.global_registration_fee_cents ?? defRegFeeCat?.amount_cents ?? 0;
-        defaultEarlyBirdFeePerPerson =
-          defaultGroup.global_early_bird_fee_cents ?? defEarlyBirdCat?.amount_cents ?? null;
-        defaultIsEarlyBird =
-          defaultGroup.early_bird_deadline != null &&
-          new Date() < new Date(defaultGroup.early_bird_deadline);
-        const defManualDiscount = defaultLinkedFees.find((f: any) => f.code === "MANUAL_PAYMENT_DISCOUNT");
-        defaultManualPaymentDiscountPerPerson = defManualDiscount?.amount_cents ?? 0;
-      }
-
-      if (!applyMealFeesToMembers) {
-        defaultMealFeeCategories = defaultLinkedFees.filter(
-          (f: any) => f.code.startsWith("MEAL_")
-        );
-      }
+      // Extract ALL default group fee parameters (for dual estimate + scope toggles)
+      const defRegFeeCat = defaultLinkedFees.find((f: any) => f.code === "REG_FEE");
+      const defEarlyBirdCat = defaultLinkedFees.find((f: any) => f.code === "EARLY_BIRD");
+      defRegistrationFeePerPerson =
+        defaultGroup.global_registration_fee_cents ?? defRegFeeCat?.amount_cents ?? 0;
+      defEarlyBirdFeePerPerson =
+        defaultGroup.global_early_bird_fee_cents ?? defEarlyBirdCat?.amount_cents ?? null;
+      defIsEarlyBird =
+        defaultGroup.early_bird_deadline != null &&
+        new Date() < new Date(defaultGroup.early_bird_deadline);
+      const defManualDiscount = defaultLinkedFees.find((f: any) => f.code === "MANUAL_PAYMENT_DISCOUNT");
+      defManualPaymentDiscountPerPerson = defManualDiscount?.amount_cents ?? 0;
+      defMealFeeCategories = defaultLinkedFees.filter((f: any) => f.code.startsWith("MEAL_"));
+      defLodgingRates = defaultLinkedFees.filter((f: any) => f.code.startsWith("LODGING_"));
+      const defKeyDepositCat = defaultLinkedFees.find((f: any) => f.code === "KEY_DEPOSIT");
+      defKeyDepositPerKey = defKeyDepositCat?.amount_cents ?? 0;
+      defHasLodgingExtra = defaultLinkedFees.some((f: any) => f.code === "LODGING_EXTRA");
+      const defVbsCat = defaultLinkedFees.find((f: any) => f.code === "VBS_MATERIALS");
+      defVbsMaterialsFeeCents = defVbsCat?.amount_cents ?? 0;
     }
   }
 
@@ -201,14 +194,42 @@ export async function POST(request: Request) {
     manualPaymentDiscountPerPerson,
     applyGeneralFeesToMembers,
     applyMealFeesToMembers,
-    defaultRegistrationFeePerPerson,
-    defaultEarlyBirdFeePerPerson,
-    defaultIsEarlyBird,
-    defaultMealFeeCategories,
-    defaultManualPaymentDiscountPerPerson,
+    defaultRegistrationFeePerPerson: defRegistrationFeePerPerson,
+    defaultEarlyBirdFeePerPerson: defEarlyBirdFeePerPerson,
+    defaultIsEarlyBird: defIsEarlyBird,
+    defaultMealFeeCategories: defMealFeeCategories,
+    defaultManualPaymentDiscountPerPerson: defManualPaymentDiscountPerPerson,
     memberGroupFees,
-    discountDisplayFees,
   });
+
+  // Dual estimate: compute what default group would charge, then list waived benefits
+  if (hasDefaultGroup) {
+    const remappedRoomGroups = remapLodgingForDefault(processedRoomGroups, defLodgingRates);
+    const defaultEstimate = calculateEstimate({
+      nightsCount,
+      roomGroups: remappedRoomGroups,
+      registrationFeePerPerson: defRegistrationFeePerPerson,
+      earlyBirdFeePerPerson: defEarlyBirdFeePerPerson,
+      isEarlyBird: defIsEarlyBird,
+      keyDepositPerKey: defKeyDepositPerKey,
+      additionalLodgingThreshold: settings?.additional_lodging_threshold ?? 2,
+      additionalLodgingFeePerNight: defHasLodgingExtra ? (settings?.additional_lodging_fee_cents ?? 400) : 0,
+      lodgingRates: defLodgingRates,
+      mealFeeCategories: defMealFeeCategories,
+      eventStartDate: event?.event_start_date ?? startDate,
+      vbsMaterialsFeeCents: defVbsMaterialsFeeCents,
+      vbsDepartmentIds,
+      manualPaymentDiscountPerPerson: defManualPaymentDiscountPerPerson,
+      applyGeneralFeesToMembers: true,
+      applyMealFeesToMembers: true,
+      defaultRegistrationFeePerPerson: defRegistrationFeePerPerson,
+      defaultEarlyBirdFeePerPerson: defEarlyBirdFeePerPerson,
+      defaultIsEarlyBird: defIsEarlyBird,
+      defaultMealFeeCategories: defMealFeeCategories,
+      defaultManualPaymentDiscountPerPerson: defManualPaymentDiscountPerPerson,
+    });
+    estimate.breakdown.push(...computeWaivedBenefits(estimate, defaultEstimate));
+  }
 
   return NextResponse.json(estimate);
   } catch (err) {

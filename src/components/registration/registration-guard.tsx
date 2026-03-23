@@ -47,15 +47,21 @@ export function RegistrationGuard({
     : "";
   const urlStep = STEP_ROUTES[subPath];
 
-  // Redirect to dashboard on page reload (refresh)
+  // Redirect to dashboard on actual page reload (refresh / F5).
+  // beforeunload fires only on real page unloads, never on SPA navigations.
   useEffect(() => {
-    const navEntries = performance.getEntriesByType("navigation");
-    const isReload =
-      navEntries.length > 0 &&
-      (navEntries[0] as PerformanceNavigationTiming).type === "reload";
-    if (isReload) {
+    const flag = sessionStorage.getItem("registration_refreshed");
+    if (flag) {
+      sessionStorage.removeItem("registration_refreshed");
       router.replace("/dashboard");
+      return;
     }
+
+    const handleBeforeUnload = () => {
+      sessionStorage.setItem("registration_refreshed", "1");
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [router]);
 
   useEffect(() => {

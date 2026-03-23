@@ -72,7 +72,6 @@ interface RegistrationGroup {
   only_one_person: boolean;
   apply_general_fees_to_members: boolean;
   apply_meal_fees_to_members: boolean;
-  discount_display_fee_ids: string[];
   is_default: boolean;
   is_active: boolean;
 }
@@ -204,7 +203,6 @@ export function RegistrationGroupsManager() {
   // Fee category linking
   const [allFees, setAllFees] = useState<FeeCategory[]>([]);
   const [selectedFeeIds, setSelectedFeeIds] = useState<Set<string>>(new Set());
-  const [discountDisplayFeeIds, setDiscountDisplayFeeIds] = useState<Set<string>>(new Set());
   const [groupFeeMap, setGroupFeeMap] = useState<
     Map<string, string[]>
   >(new Map());
@@ -273,7 +271,6 @@ export function RegistrationGroupsManager() {
     setEditingId(null);
     setForm(emptyForm);
     setSelectedFeeIds(new Set());
-    setDiscountDisplayFeeIds(new Set());
     setDialogOpen(true);
   };
 
@@ -302,24 +299,11 @@ export function RegistrationGroupsManager() {
       is_active: group.is_active,
     });
     setSelectedFeeIds(new Set(groupFeeMap.get(group.id) ?? []));
-    setDiscountDisplayFeeIds(new Set(group.discount_display_fee_ids ?? []));
     setDialogOpen(true);
   };
 
   const toggleFee = (feeId: string) => {
     setSelectedFeeIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(feeId)) {
-        next.delete(feeId);
-      } else {
-        next.add(feeId);
-      }
-      return next;
-    });
-  };
-
-  const toggleDiscountDisplayFee = (feeId: string) => {
-    setDiscountDisplayFeeIds((prev) => {
       const next = new Set(prev);
       if (next.has(feeId)) {
         next.delete(feeId);
@@ -361,7 +345,6 @@ export function RegistrationGroupsManager() {
       only_one_person: form.only_one_person,
       apply_general_fees_to_members: form.apply_general_fees_to_members,
       apply_meal_fees_to_members: form.apply_meal_fees_to_members,
-      discount_display_fee_ids: Array.from(discountDisplayFeeIds),
       is_default: form.is_default,
       is_active: form.is_active,
     };
@@ -782,55 +765,6 @@ export function RegistrationGroupsManager() {
                   </div>
                 </>
               )}
-
-              {/* Show Discount Fee Categories — show waived fees on review/invoice/receipt */}
-              <Separator />
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Show Discount Fee Categories</Label>
-                <p className="text-xs text-muted-foreground">
-                  Select fee categories to display as &quot;Waived&quot; on review, invoice, and receipt
-                  when they are not linked above. This helps registrants see what benefits their group provides.
-                </p>
-                <div className="space-y-1 rounded-md border p-3">
-                  {allFees.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No fee categories available</p>
-                  ) : (
-                    allFees.map((fee) => {
-                      const isLinked = selectedFeeIds.has(fee.id);
-                      const isChecked = discountDisplayFeeIds.has(fee.id);
-                      return (
-                        <div
-                          key={fee.id}
-                          className="flex items-center justify-between pl-1"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={isChecked}
-                              onCheckedChange={() => toggleDiscountDisplayFee(fee.id)}
-                            />
-                            <span className={`text-sm ${isChecked && !isLinked ? "text-green-600 font-medium" : ""}`}>
-                              {fee.name_en}
-                            </span>
-                            {isChecked && !isLinked && (
-                              <Badge variant="outline" className="text-xs border-green-300 bg-green-50 text-green-700">
-                                Waived
-                              </Badge>
-                            )}
-                            {isChecked && isLinked && (
-                              <Badge variant="outline" className="text-xs">
-                                Linked — will show normally
-                              </Badge>
-                            )}
-                          </div>
-                          <span className="text-xs text-muted-foreground tabular-nums">
-                            ${(fee.amount_cents / 100).toFixed(2)}
-                          </span>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
 
               <Button
                 onClick={handleSave}
