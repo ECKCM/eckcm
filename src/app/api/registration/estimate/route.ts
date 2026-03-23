@@ -56,6 +56,19 @@ export async function POST(request: Request) {
     .eq("registration_group_id", registrationGroupId);
 
   const allLinkedFees = (allFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
+  const linkedFeeCodes = new Set(allLinkedFees.map((f: any) => f.code));
+
+  // Load discount display fees (fees to show as "Waived" when not linked)
+  const discountFeeIds: string[] = regGroup.discount_display_fee_ids ?? [];
+  let discountDisplayFees: { code: string; name_en: string; amount_cents: number }[] = [];
+  if (discountFeeIds.length > 0) {
+    const { data: discountFees } = await supabase
+      .from("eckcm_fee_categories")
+      .select("code, name_en, amount_cents")
+      .in("id", discountFeeIds);
+    discountDisplayFees = (discountFees ?? [])
+      .filter((f: any) => !linkedFeeCodes.has(f.code));
+  }
 
   // Extract registration fees from linked fee categories
   const regFeeCat = allLinkedFees.find((f: any) => f.code === "REG_FEE");
@@ -194,6 +207,7 @@ export async function POST(request: Request) {
     defaultMealFeeCategories,
     defaultManualPaymentDiscountPerPerson,
     memberGroupFees,
+    discountDisplayFees,
   });
 
   return NextResponse.json(estimate);

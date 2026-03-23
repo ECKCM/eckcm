@@ -45,6 +45,8 @@ interface PricingInput {
   // Per-member group fees: when a member has their own access code (memberRegistrationGroupId),
   // use that group's fees instead of the default group's fees
   memberGroupFees?: Record<string, MemberGroupFees>;
+  // Fee categories to show as "Waived" ($0) on breakdown when not linked to this group
+  discountDisplayFees?: { code: string; name_en: string; amount_cents: number }[];
 }
 
 export interface MemberGroupFees {
@@ -368,7 +370,36 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
   const subtotal = registrationFee + lodgingFee + additionalLodgingFee + mealFee + vbsFee;
   const total = subtotal + keyDeposit;
 
-  // 7. Manual payment discount (informational — not subtracted from total)
+  // 7. Discount display: show waived fees as $0 line items
+  if (input.discountDisplayFees && input.discountDisplayFees.length > 0) {
+    // Collect codes already charged in breakdown (non-zero) to avoid duplicates
+    const chargedCodes = new Set<string>();
+    // Registration fee codes
+    if (registrationFee > 0) { chargedCodes.add("REG_FEE"); chargedCodes.add("EARLY_BIRD"); }
+    for (const rate of input.lodgingRates) {
+      if (breakdown.some((b) => b.description.includes(rate.name_en))) chargedCodes.add(rate.code);
+    }
+    if (additionalLodgingFee > 0) chargedCodes.add("LODGING_EXTRA");
+    if (keyDeposit > 0) chargedCodes.add("KEY_DEPOSIT");
+    if (mealFee > 0) {
+      for (const mc of input.mealFeeCategories) chargedCodes.add(mc.code);
+    }
+    if (vbsFee > 0) chargedCodes.add("VBS_MATERIALS");
+
+    for (const fee of input.discountDisplayFees) {
+      if (!chargedCodes.has(fee.code)) {
+        breakdown.push({
+          description: `${fee.name_en} (Waived)`,
+          descriptionKo: `${fee.name_en} (면제)`,
+          quantity: 1,
+          unitPrice: 0,
+          amount: 0,
+        });
+      }
+    }
+  }
+
+  // 8. Manual payment discount (informational — not subtracted from total)
   const manualPaymentDiscount =
     input.manualPaymentDiscountPerPerson > 0
       ? input.manualPaymentDiscountPerPerson * totalParticipants

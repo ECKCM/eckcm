@@ -131,6 +131,19 @@ export async function POST(request: Request) {
       .eq("registration_group_id", registrationGroupId);
 
     const allLinkedFees = (allFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
+    const linkedFeeCodes = new Set(allLinkedFees.map((f: any) => f.code));
+
+    // Load discount display fees
+    const discountFeeIds: string[] = regGroup.discount_display_fee_ids ?? [];
+    let discountDisplayFees: { code: string; name_en: string; amount_cents: number }[] = [];
+    if (discountFeeIds.length > 0) {
+      const { data: discountFees } = await admin
+        .from("eckcm_fee_categories")
+        .select("code, name_en, amount_cents")
+        .in("id", discountFeeIds);
+      discountDisplayFees = (discountFees ?? [])
+        .filter((f: any) => !linkedFeeCodes.has(f.code));
+    }
 
     const regFeeCat = allLinkedFees.find((f: any) => f.code === "REG_FEE");
     const earlyBirdCat = allLinkedFees.find((f: any) => f.code === "EARLY_BIRD");
@@ -210,6 +223,7 @@ export async function POST(request: Request) {
       defaultIsEarlyBird: isEarlyBird,
       defaultMealFeeCategories: mealFeeCategories,
       defaultManualPaymentDiscountPerPerson: manualPaymentDiscountPerPerson,
+      discountDisplayFees,
     });
 
     // 9. Generate confirmation code
