@@ -47,6 +47,17 @@ export function RegistrationGuard({
     : "";
   const urlStep = STEP_ROUTES[subPath];
 
+  // Redirect to dashboard on page reload (refresh)
+  useEffect(() => {
+    const navEntries = performance.getEntriesByType("navigation");
+    const isReload =
+      navEntries.length > 0 &&
+      (navEntries[0] as PerformanceNavigationTiming).type === "reload";
+    if (isReload) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
+
   useEffect(() => {
     if (!hydrated || urlStep === undefined) return;
 
