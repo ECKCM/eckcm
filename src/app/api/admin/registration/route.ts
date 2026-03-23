@@ -141,6 +141,7 @@ export async function POST(request: Request) {
       regGroup.global_early_bird_fee_cents ?? earlyBirdCat?.amount_cents ?? null;
 
     const lodgingRates = allLinkedFees.filter((f: any) => f.code.startsWith("LODGING_"));
+    const hasLodgingExtra = allLinkedFees.some((f: any) => f.code === "LODGING_EXTRA");
     const keyDepositCat = allLinkedFees.find((f: any) => f.code === "KEY_DEPOSIT");
     const keyDepositPerKey = keyDepositCat?.amount_cents ?? 0;
     const mealFeeCategories: MealFeeCategory[] = allLinkedFees.filter(
@@ -194,7 +195,7 @@ export async function POST(request: Request) {
       isEarlyBird,
       keyDepositPerKey,
       additionalLodgingThreshold: settings?.additional_lodging_threshold ?? 2,
-      additionalLodgingFeePerNight: settings?.additional_lodging_fee_cents ?? 400,
+      additionalLodgingFeePerNight: hasLodgingExtra ? (settings?.additional_lodging_fee_cents ?? 400) : 0,
       lodgingRates,
       mealFeeCategories,
       eventStartDate: event?.event_start_date ?? startDate,
