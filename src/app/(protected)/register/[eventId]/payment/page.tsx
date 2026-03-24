@@ -47,7 +47,7 @@ function ZelleIcon({ className }: { className?: string }) {
 /*  Page component                                                     */
 /* ------------------------------------------------------------------ */
 
-type PayMode = "stripe" | "zelle" | null;
+type PayMode = "stripe" | "zelle" | "check" | null;
 
 export default function PaymentStep() {
   const searchParams = useSearchParams();
@@ -79,7 +79,7 @@ export default function PaymentStep() {
 
   /* ---- payment methods & fees ---- */
   const [enabledMethods, setEnabledMethods] = useState<string[]>([
-    "card", "ach", "zelle", "check", "wallet",
+    "card", "ach", "zelle", "wallet",
   ]);
   const [donorCoversFees, setDonorCoversFees] = useState(false);
   const [coversFees, setCoversFees] = useState(false);
@@ -276,7 +276,7 @@ export default function PaymentStep() {
 
   // Derive which modes are available
   const stripeEnabled = enabledMethods.some((m) =>
-    ["card", "ach", "check"].includes(m)
+    ["card", "ach"].includes(m)
   );
   const zelleEnabled = enabledMethods.includes("zelle");
   // Auto-select payMode when only one option is available
@@ -339,7 +339,7 @@ export default function PaymentStep() {
       registrationId: registrationId!,
       code: confirmationCode || "",
     });
-    if (!paymentIntentId) params.set("method", "zelle");
+    if (!paymentIntentId) params.set("method", payMode === "check" ? "check" : "zelle");
     if (achProcessing) params.set("method", "ach");
     router.push(`/register/${eventId}/confirmation?${params.toString()}`);
   };
@@ -612,7 +612,7 @@ export default function PaymentStep() {
                 type="button"
                 onClick={() => setPayMode("zelle")}
                 className={`relative flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${
-                  payMode === "zelle"
+                  payMode === "zelle" || payMode === "check"
                     ? "border-primary bg-primary/5 shadow-sm"
                     : "border-transparent bg-muted/40 hover:bg-muted/60"
                 }`}
@@ -623,7 +623,7 @@ export default function PaymentStep() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium leading-tight">Manual Payment</p>
                   <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                    Zelle
+                    Zelle, Check
                   </p>
                 </div>
               </button>
@@ -677,15 +677,17 @@ export default function PaymentStep() {
             )
           )}
 
-          {/* === Zelle Payment Form (standalone, no Stripe Elements needed) === */}
-          {payMode === "zelle" && zelleEnabled && (
-            <ZellePaymentForm
-              registrationId={registrationId}
+          {/* === Manual Payment Form (standalone, no Stripe Elements needed) === */}
+          {(payMode === "zelle" || payMode === "check") && zelleEnabled && (
+            <ManualPaymentForm
+              payMode={payMode as "zelle" | "check"}
+              setPayMode={setPayMode}
+              registrationId={registrationId!}
               confirmationCode={confirmationCode || ""}
               registrantName={registrantName}
               registrantPhone={registrantPhone}
               registrantEmail={registrantEmail}
-              zelleAmount={zelleAmount}
+              manualAmount={zelleAmount}
               processing={processing}
               setProcessing={setProcessing}
               onSuccess={() => goToConfirmation()}
@@ -1015,39 +1017,52 @@ function StripePaymentForm({
 }
 
 /* ------------------------------------------------------------------ */
-/*  ZellePaymentForm — standalone, no Stripe Elements needed           */
+/*  ManualPaymentForm — Zelle & Check, radio-selectable in one Card    */
 /* ------------------------------------------------------------------ */
 
-function ZellePaymentForm({
+function ManualPaymentForm({
+  payMode,
+  setPayMode,
   registrationId,
   confirmationCode,
   registrantName,
   registrantPhone,
   registrantEmail,
-  zelleAmount,
+  manualAmount,
   processing,
   setProcessing,
   onSuccess,
   onCancel,
 }: {
+  payMode: "zelle" | "check";
+  setPayMode: (mode: PayMode) => void;
   registrationId: string;
   confirmationCode: string;
   registrantName: string;
   registrantPhone: string;
   registrantEmail: string;
-  zelleAmount: number;
+  manualAmount: number;
   processing: boolean;
   setProcessing: (v: boolean) => void;
   onSuccess: () => void;
   onCancel: () => void;
 }) {
-  const [zelleAgreed, setZelleAgreed] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+
+  const handleMethodChange = (method: "zelle" | "check") => {
+    setAgreed(false);
+    setPayMode(method);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setProcessing(true);
     try {
-      const res = await fetch("/api/payment/zelle-submit", {
+      const endpoint =
+        payMode === "check"
+          ? "/api/payment/check-submit"
+          : "/api/payment/zelle-submit";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ registrationId }),
@@ -1060,7 +1075,11 @@ function ZellePaymentForm({
         return;
       }
 
-      toast.success("Registration submitted! Please send your Zelle payment.");
+      toast.success(
+        payMode === "check"
+          ? "Registration submitted! Please mail your check."
+          : "Registration submitted! Please send your Zelle payment."
+      );
       onSuccess();
     } catch (err) {
       console.error("[Payment] Unexpected error:", err);
@@ -1078,79 +1097,148 @@ function ZellePaymentForm({
             Manual Payment
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Zelle accordion-style container */}
+        <CardContent className="space-y-3">
+          {/* Zelle option */}
           <div className="rounded-lg border overflow-hidden">
-            {/* Radio header */}
-            <div className="flex items-center gap-3 p-4 bg-background">
-              <div className="h-4 w-4 rounded-full border-2 border-primary flex items-center justify-center shrink-0">
-                <div className="h-2 w-2 rounded-full bg-primary" />
+            <button
+              type="button"
+              onClick={() => handleMethodChange("zelle")}
+              className="w-full flex items-center gap-3 p-4 bg-background text-left"
+            >
+              <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                payMode === "zelle" ? "border-primary" : "border-muted-foreground/40"
+              }`}>
+                {payMode === "zelle" && <div className="h-2 w-2 rounded-full bg-primary" />}
               </div>
               <ZelleIcon className="h-5 w-5 shrink-0" />
               <p className="text-sm font-medium">Zelle</p>
-            </div>
-            {/* Expanded content */}
-            <div className="border-t px-4 pb-4 pt-3 space-y-3 bg-muted/20">
-              <div className="flex items-start gap-2">
-                <Clock className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
-                <p className="text-sm text-purple-800">
-                  Zelle payments are processed manually. Your registration will be held
-                  until payment is confirmed by our team.
-                </p>
-              </div>
-              <div className="space-y-2 text-sm text-purple-900 pl-1">
-                <p>1. Open your banking app and select <strong>Send with Zelle</strong></p>
-                <p className="flex items-center gap-1 flex-wrap">
-                  <span>2. Send with Zelle to:</span>
-                  <CopyButton text="kimdani1@icloud.com" />
-                </p>
-                <p>3. Account Holder: <strong>EMPOWER MINISTRY GROUP, INC</strong></p>
-                <p>4. Amount: <strong className="font-mono">${(zelleAmount / 100).toFixed(2)}</strong></p>
-                <div className="space-y-1">
+            </button>
+            {payMode === "zelle" && (
+              <div className="border-t px-4 pb-4 pt-3 space-y-3 bg-muted/20">
+                <div className="flex items-start gap-2">
+                  <Clock className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-purple-800">
+                    Zelle payments are processed manually. Your registration will be held
+                    until payment is confirmed by our team.
+                  </p>
+                </div>
+                <div className="space-y-2 text-sm text-purple-900 pl-1">
+                  <p>1. Open your banking app and select <strong>Send with Zelle</strong></p>
                   <p className="flex items-center gap-1 flex-wrap">
-                    <span>5. Memo/Note <strong className="text-red-600">(Required)</strong>:</span>
+                    <span>2. Send with Zelle to:</span>
+                    <CopyButton text="kimdani1@icloud.com" />
                   </p>
-                  <div className="pl-5">
-                    <CopyButton text={`${confirmationCode}-${registrantName.replace(/\s+/g, "")}-${registrantPhone.replace(/\D/g, "")}-${registrantEmail.replace(/[@.]/g, "")}`} />
+                  <p>3. Account Holder: <strong>EMPOWER MINISTRY GROUP, INC</strong></p>
+                  <p>4. Amount: <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong></p>
+                  <div className="space-y-1">
+                    <p className="flex items-center gap-1 flex-wrap">
+                      <span>5. Memo/Note <strong className="text-red-600">(Required)</strong>:</span>
+                    </p>
+                    <div className="pl-5">
+                      <CopyButton text={`${confirmationCode}-${registrantName.replace(/\s+/g, "")}-${registrantPhone.replace(/\D/g, "")}-${registrantEmail.replace(/[@.]/g, "")}`} />
+                    </div>
+                    <p className="text-xs text-purple-700 pl-5">
+                      Please copy and paste the memo exactly as shown so we can match your payment.
+                    </p>
                   </div>
-                  <p className="text-xs text-purple-700 pl-5">
-                    Please copy and paste the memo exactly as shown so we can match your payment.
-                  </p>
+                </div>
+                <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Important</p>
+                    <p className="mt-0.5 text-amber-700">
+                      Your registration will remain in &ldquo;Pending Payment&rdquo; status until
+                      your Zelle payment is received and verified. This may take 1-3 business days.
+                      Room assignments will not be made until payment is confirmed.
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold">Important</p>
-                  <p className="mt-0.5 text-amber-700">
-                    Your registration will remain in &ldquo;Pending Payment&rdquo; status until
-                    your Zelle payment is received and verified. This may take 1-3 business days.
-                    Room assignments will not be made until payment is confirmed.
-                  </p>
-                </div>
-              </div>
-              <label className="flex items-start gap-3 cursor-pointer rounded-lg border bg-background p-3">
-                <input
-                  type="checkbox"
-                  checked={zelleAgreed}
-                  onChange={(e) => setZelleAgreed(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300"
-                />
-                <span className="text-sm">
-                  I agree to send the Zelle payment of{" "}
-                  <strong className="font-mono">${(zelleAmount / 100).toFixed(2)}</strong>{" "}
-                  with the memo/note shown above.
-                </span>
-              </label>
-            </div>
+            )}
           </div>
+
+          {/* Check option */}
+          <div className="rounded-lg border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => handleMethodChange("check")}
+              className="w-full flex items-center gap-3 p-4 bg-background text-left"
+            >
+              <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                payMode === "check" ? "border-primary" : "border-muted-foreground/40"
+              }`}>
+                {payMode === "check" && <div className="h-2 w-2 rounded-full bg-primary" />}
+              </div>
+              <Banknote className="h-5 w-5 shrink-0 text-emerald-700" />
+              <p className="text-sm font-medium">Check</p>
+            </button>
+            {payMode === "check" && (
+              <div className="border-t px-4 pb-4 pt-3 space-y-3 bg-muted/20">
+                <div className="flex items-start gap-2">
+                  <Clock className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-emerald-800">
+                    Check payments are processed manually. Your registration will be held
+                    until payment is received and confirmed by our team.
+                  </p>
+                </div>
+                <div className="space-y-2 text-sm text-emerald-900 pl-1">
+                  <p>1. Make check payable to: <strong>ECKCM</strong></p>
+                  <p>2. Amount: <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong></p>
+                  <p>3. On the memo line, write: <strong>{confirmationCode}</strong></p>
+                  <p>4. Mail to:</p>
+                  <div className="pl-5 text-sm font-medium">
+                    <p>ECKCM</p>
+                    <p>574 Mountain Shadow Ln</p>
+                    <p>Maryville, TN 37803</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Important</p>
+                    <p className="mt-0.5 text-amber-700">
+                      Your registration will remain in &ldquo;Pending Payment&rdquo; status until
+                      your check is received and verified. This may take 5-10 business days.
+                      Room assignments will not be made until payment is confirmed.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Agreement checkbox */}
+          <label className="flex items-start gap-3 cursor-pointer rounded-lg border bg-background p-3">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300"
+            />
+            <span className="text-sm">
+              {payMode === "check" ? (
+                <>
+                  I agree to mail a check for{" "}
+                  <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong>{" "}
+                  payable to ECKCM with confirmation code{" "}
+                  <strong>{confirmationCode}</strong> on the memo line.
+                </>
+              ) : (
+                <>
+                  I agree to send the Zelle payment of{" "}
+                  <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong>{" "}
+                  with the memo/note shown above.
+                </>
+              )}
+            </span>
+          </label>
         </CardContent>
       </Card>
 
       {/* Submit button */}
       <Button
         type="submit"
-        disabled={!zelleAgreed || processing}
+        disabled={!agreed || processing}
         className="w-full"
         size="lg"
       >

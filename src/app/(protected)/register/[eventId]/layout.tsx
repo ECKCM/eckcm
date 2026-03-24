@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { RegistrationProvider } from "@/lib/context/registration-context";
 import { RegistrationGuard } from "@/components/registration/registration-guard";
 import { ForceLightMode } from "@/components/registration/force-light-mode";
+import { RegistrationDateGate } from "@/components/registration/registration-date-gate";
 
 export default async function RegisterLayout({
   children,
@@ -16,7 +17,7 @@ export default async function RegisterLayout({
 
   const { data: event } = await supabase
     .from("eckcm_events")
-    .select("id, name_en, is_active")
+    .select("id, name_en, is_active, registration_start_date, registration_end_date")
     .eq("id", eventId)
     .eq("is_active", true)
     .single();
@@ -28,9 +29,15 @@ export default async function RegisterLayout({
   return (
     <RegistrationProvider eventId={eventId}>
       <ForceLightMode />
-      <RegistrationGuard eventId={eventId}>
-        {children}
-      </RegistrationGuard>
+      <RegistrationDateGate
+        registrationStartDate={event.registration_start_date}
+        registrationEndDate={event.registration_end_date}
+        eventName={event.name_en}
+      >
+        <RegistrationGuard eventId={eventId}>
+          {children}
+        </RegistrationGuard>
+      </RegistrationDateGate>
     </RegistrationProvider>
   );
 }

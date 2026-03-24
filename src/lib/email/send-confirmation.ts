@@ -183,8 +183,11 @@ export async function sendConfirmationEmail(
     null;
 
   const isZelle = paymentMethod === "ZELLE";
+  const isCheck = paymentMethod === "CHECK";
+  const isManualPayment = isZelle || isCheck;
   const invoicePaid = invoiceData?.status === "SUCCEEDED";
   const isZellePending = isZelle && !invoicePaid;
+  const isManualPending = isManualPayment && !invoicePaid;
 
   // Build Zelle info only for pending Zelle (not yet confirmed by admin)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -236,7 +239,7 @@ export async function sendConfirmationEmail(
     zelleInfo,
     invoiceInfo: includeInvoice,
   });
-  const subject = isZellePending
+  const subject = isManualPending
     ? `ECKCM Registration Submitted - ${reg.confirmation_code}`
     : `ECKCM Registration Confirmed - ${reg.confirmation_code}`;
 
@@ -326,7 +329,7 @@ export async function sendConfirmationEmail(
   // Plain text fallback improves deliverability (avoids spam filters)
   const participantNames = participants.map((p, i) => `  ${i + 1}. ${p.name}`).join("\n");
   const text = [
-    isZellePending ? "Your registration has been submitted!" : "Your registration has been confirmed!",
+    isManualPending ? "Your registration has been submitted!" : "Your registration has been confirmed!",
     "",
     `Confirmation Code: ${reg.confirmation_code}`,
     "",
@@ -334,7 +337,7 @@ export async function sendConfirmationEmail(
     `  Event: ${reg.eckcm_events.name_en}`,
     `  Location: ${reg.eckcm_events.location || "TBD"}`,
     `  Dates: ${eventDates}`,
-    `  ${isZellePending ? "Amount Due" : "Amount Paid"}: ${totalAmount}`,
+    `  ${isManualPending ? "Amount Due" : "Amount Paid"}: ${totalAmount}`,
     "",
     "Participants:",
     participantNames,

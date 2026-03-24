@@ -40,8 +40,9 @@ export function buildConfirmationEmail({
   invoiceInfo,
 }: ConfirmationEmailProps): string {
   const isZellePending = paymentMethod === "ZELLE" && !!zelleInfo;
+  const isManualPending = (paymentMethod === "ZELLE" || paymentMethod === "CHECK") && !invoiceInfo;
   const isPaid = !!invoiceInfo;
-  const showEPass = !isZellePending;
+  const showEPass = !isManualPending;
   const participantRows = participants
     .map(
       (p, i) => `
@@ -71,7 +72,7 @@ export function buildConfirmationEmail({
           <tr>
             <td>
               <h1 style="color: #ffffff; margin: 0; font-size: 24px;">ECKCM</h1>
-              <p style="color: #94a3b8; margin: 8px 0 0; font-size: 14px;">${isZellePending ? "Registration Submitted" : "Registration Confirmation"}</p>
+              <p style="color: #94a3b8; margin: 8px 0 0; font-size: 14px;">${isManualPending ? "Registration Submitted" : "Registration Confirmation"}</p>
             </td>
           </tr>
         </table>
@@ -80,7 +81,7 @@ export function buildConfirmationEmail({
         <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb;">
           <tr>
             <td>
-              <p style="font-size: 16px; color: #111827; margin: 0 0 16px;">${isZellePending ? "Your registration has been submitted!" : "Your registration has been confirmed!"}</p>
+              <p style="font-size: 16px; color: #111827; margin: 0 0 16px;">${isManualPending ? "Your registration has been submitted!" : "Your registration has been confirmed!"}</p>
 
               <!-- Confirmation Code -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 24px;">
@@ -108,7 +109,7 @@ export function buildConfirmationEmail({
                   <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${eventDates}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">${isZellePending ? "Amount Due" : "Amount Paid"}</td>
+                  <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">${isManualPending ? "Amount Due" : "Amount Paid"}</td>
                   <td style="padding: 4px 0; color: #111827; font-size: 14px; font-weight: bold; text-align: right;">${totalAmount}</td>
                 </tr>
               </table>
@@ -201,7 +202,7 @@ export function buildConfirmationEmail({
               </table>
 
               <p style="font-size: 13px; color: #6b7280; margin: 0;">
-                ${isZellePending
+                ${isManualPending
                   ? "E-Pass links will be sent in a separate email once your payment is confirmed."
                   : "Each participant can use their E-Pass link for check-in at the event. You can also view all E-Passes from your dashboard."}
               </p>

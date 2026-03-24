@@ -16,7 +16,7 @@ export default function ConfirmationPage() {
   const code = searchParams.get("code");
   const registrationId = searchParams.get("registrationId");
   const method = searchParams.get("method");
-  const isManualOrACH = method === "zelle" || method === "ach";
+  const isManualOrACH = method === "zelle" || method === "ach" || method === "check";
   const [status, setStatus] = useState<PaymentStatus>(isManualOrACH ? "pending" : "loading");
 
   useEffect(() => {

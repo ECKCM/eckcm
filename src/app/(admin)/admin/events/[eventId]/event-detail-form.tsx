@@ -32,6 +32,8 @@ interface EventDetailFormProps {
     event_end_date: string;
     registration_start_date: string | null;
     registration_end_date: string | null;
+    early_registration_start: string | null;
+    early_registration_end: string | null;
     location: string | null;
     is_active: boolean;
     stripe_mode: string;
@@ -62,6 +64,8 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
     event_end_date: event.event_end_date,
     registration_start_date: toDatetimeLocal(event.registration_start_date),
     registration_end_date: toDatetimeLocal(event.registration_end_date),
+    early_registration_start: toDatetimeLocal(event.early_registration_start),
+    early_registration_end: toDatetimeLocal(event.early_registration_end),
     location: event.location ?? "",
     is_active: event.is_active,
     stripe_mode: event.stripe_mode ?? "test",
@@ -92,6 +96,8 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
         event_end_date: form.event_end_date,
         registration_start_date: form.registration_start_date || null,
         registration_end_date: form.registration_end_date || null,
+        early_registration_start: form.early_registration_start || null,
+        early_registration_end: form.early_registration_end || null,
         location: form.location || null,
         is_active: form.is_active,
         is_default: form.is_default,
@@ -186,6 +192,29 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
               value={form.registration_end_date}
               onChange={(e) =>
                 setForm({ ...form, registration_end_date: e.target.value })
+              }
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label>Early Registration Start</Label>
+            <Input
+              type="datetime-local"
+              value={form.early_registration_start}
+              onChange={(e) =>
+                setForm({ ...form, early_registration_start: e.target.value })
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Early Registration End</Label>
+            <Input
+              type="datetime-local"
+              value={form.early_registration_end}
+              onChange={(e) =>
+                setForm({ ...form, early_registration_end: e.target.value })
               }
             />
           </div>

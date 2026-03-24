@@ -64,6 +64,7 @@ interface RegistrationGroup {
   global_registration_fee_cents: number | null;
   global_early_bird_fee_cents: number | null;
   early_bird_deadline: string | null;
+  early_bird_fee_category_id: string | null;
   department_id: string | null;
   show_special_preferences: boolean;
   show_key_deposit: boolean;
@@ -99,6 +100,7 @@ const emptyForm = {
   global_registration_fee_cents: "",
   global_early_bird_fee_cents: "",
   early_bird_deadline: "",
+  early_bird_fee_category_id: "",
   department_id: "",
   show_special_preferences: true,
   show_key_deposit: true,
@@ -287,6 +289,7 @@ export function RegistrationGroupsManager() {
       global_early_bird_fee_cents:
         group.global_early_bird_fee_cents?.toString() ?? "",
       early_bird_deadline: toDatetimeLocal(group.early_bird_deadline),
+      early_bird_fee_category_id: group.early_bird_fee_category_id ?? "",
       department_id: group.department_id ?? "",
       show_special_preferences: group.show_special_preferences,
       show_key_deposit: group.show_key_deposit,
@@ -337,6 +340,7 @@ export function RegistrationGroupsManager() {
       early_bird_deadline: form.early_bird_deadline
         ? new Date(form.early_bird_deadline).toISOString()
         : null,
+      early_bird_fee_category_id: form.early_bird_fee_category_id || null,
       department_id: form.department_id || null,
       show_special_preferences: form.show_special_preferences,
       show_key_deposit: form.show_key_deposit,
@@ -568,18 +572,36 @@ export function RegistrationGroupsManager() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label>Early Bird Fee (cents)</Label>
-                  <Input
-                    type="number"
-                    value={form.global_early_bird_fee_cents}
-                    onChange={(e) =>
+                  <Label>Early Bird Fee</Label>
+                  <Select
+                    value={form.early_bird_fee_category_id}
+                    onValueChange={(value) => {
+                      const fee = allFees.find((f) => f.id === value);
                       setForm({
                         ...form,
-                        global_early_bird_fee_cents: e.target.value,
-                      })
-                    }
-                    placeholder="e.g., 12000 = $120"
-                  />
+                        early_bird_fee_category_id: value,
+                        global_early_bird_fee_cents: fee ? fee.amount_cents.toString() : "",
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select fee category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allFees
+                        .filter((f) => f.category === "GENERAL")
+                        .map((fee) => (
+                          <SelectItem key={fee.id} value={fee.id}>
+                            {fee.name_en} (${(fee.amount_cents / 100).toFixed(0)})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  {form.global_early_bird_fee_cents && (
+                    <p className="text-xs text-muted-foreground">
+                      = ${(parseInt(form.global_early_bird_fee_cents) / 100).toFixed(2)}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="space-y-1">
@@ -854,7 +876,12 @@ export function RegistrationGroupsManager() {
                       </span>
                       <span>
                         Early Bird:{" "}
-                        {formatCents(group.global_early_bird_fee_cents)}
+                        {group.early_bird_fee_category_id
+                          ? (() => {
+                              const cat = allFees.find((f) => f.id === group.early_bird_fee_category_id);
+                              return cat ? `${cat.name_en} (${formatCents(cat.amount_cents)})` : formatCents(group.global_early_bird_fee_cents);
+                            })()
+                          : formatCents(group.global_early_bird_fee_cents)}
                       </span>
                       {group.early_bird_deadline && (
                         <span>

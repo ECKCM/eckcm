@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     admin.from("eckcm_registration_group_fee_categories")
       .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
       .eq("registration_group_id", registrationGroupId),
-    admin.from("eckcm_events").select("event_start_date, event_end_date").eq("id", eventId).single(),
+    admin.from("eckcm_events").select("event_start_date, event_end_date, early_registration_start, early_registration_end").eq("id", eventId).single(),
   ]);
 
   const appConfig = appConfigRes.data;
@@ -240,9 +240,13 @@ export async function POST(request: Request) {
         defaultGroup.global_registration_fee_cents ?? defRegFeeCat?.amount_cents ?? 0;
       defEarlyBirdFeePerPerson =
         defaultGroup.global_early_bird_fee_cents ?? defEarlyBirdCat?.amount_cents ?? null;
+      const defEffectiveDeadline =
+        defaultGroup.early_bird_deadline ?? event?.early_registration_end ?? null;
+      const defNow = new Date();
       defIsEarlyBird =
-        defaultGroup.early_bird_deadline != null &&
-        new Date() < new Date(defaultGroup.early_bird_deadline);
+        defEffectiveDeadline != null &&
+        defNow < new Date(defEffectiveDeadline) &&
+        (event?.early_registration_start == null || defNow >= new Date(event.early_registration_start));
       const defManualDiscount = defaultLinkedFees.find((f: any) => f.code === "MANUAL_PAYMENT_DISCOUNT");
       defManualPaymentDiscountPerPerson = defManualDiscount?.amount_cents ?? 0;
       defMealFeeCategories = defaultLinkedFees.filter((f: any) => f.code.startsWith("MEAL_"));
@@ -266,9 +270,15 @@ export async function POST(request: Request) {
   }
 
   // 4. Calculate pricing
+  const effectiveEarlyBirdDeadline =
+    regGroup.early_bird_deadline ?? event?.early_registration_end ?? null;
+  const effectiveEarlyBirdStart =
+    event?.early_registration_start ?? null;
+  const now = new Date();
   const isEarlyBird =
-    regGroup.early_bird_deadline != null &&
-    new Date() < new Date(regGroup.early_bird_deadline);
+    effectiveEarlyBirdDeadline != null &&
+    now < new Date(effectiveEarlyBirdDeadline) &&
+    (effectiveEarlyBirdStart == null || now >= new Date(effectiveEarlyBirdStart));
 
   const evStartDate = event?.event_start_date ?? startDate;
   const evEndDate = event?.event_end_date ?? endDate;
@@ -282,7 +292,7 @@ export async function POST(request: Request) {
 
   // Load per-member group fees when members have their own access codes
   const memberGroupFees = (!applyGeneralFeesToMembers || !applyMealFeesToMembers)
-    ? await loadMemberGroupFees(admin, processedRoomGroups)
+    ? await loadMemberGroupFees(admin, processedRoomGroups, event)
     : {};
 
   const estimate = calculateEstimate({

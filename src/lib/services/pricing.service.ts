@@ -465,6 +465,7 @@ export function computeWaivedBenefits(
 export async function loadMemberGroupFees(
   supabase: SupabaseClient,
   roomGroups: RoomGroupInput[],
+  eventEarlyDates?: { early_registration_start: string | null; early_registration_end: string | null } | null,
 ): Promise<Record<string, MemberGroupFees>> {
   const memberGroupIds = new Set<string>();
   for (const g of roomGroups) {
@@ -499,10 +500,14 @@ export async function loadMemberGroupFees(
     const earlyBirdCat = linked.find((f: any) => f.code === "EARLY_BIRD");
     const manualDiscount = linked.find((f: any) => f.code === "MANUAL_PAYMENT_DISCOUNT");
 
+    const effDeadline = grp.early_bird_deadline ?? eventEarlyDates?.early_registration_end ?? null;
+    const effStart = eventEarlyDates?.early_registration_start ?? null;
+    const now = new Date();
+
     result[groupId] = {
       registrationFee: grp.global_registration_fee_cents ?? regFeeCat?.amount_cents ?? 0,
       earlyBirdFee: grp.global_early_bird_fee_cents ?? earlyBirdCat?.amount_cents ?? null,
-      isEarlyBird: grp.early_bird_deadline != null && new Date() < new Date(grp.early_bird_deadline),
+      isEarlyBird: effDeadline != null && now < new Date(effDeadline) && (effStart == null || now >= new Date(effStart)),
       mealFeeCategories: linked.filter((f: any) => f.code.startsWith("MEAL_")),
       manualPaymentDiscountPerPerson: manualDiscount?.amount_cents ?? 0,
     };

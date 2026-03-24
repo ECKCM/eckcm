@@ -37,10 +37,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Registration group not found" }, { status: 404 });
   }
 
-  // Check early bird
+  // Load event-level early registration dates for fallback
+  const { data: eventEarlyDates } = await supabase
+    .from("eckcm_events")
+    .select("early_registration_start, early_registration_end")
+    .eq("id", eventId)
+    .single();
+
+  // Check early bird: group-level deadline takes priority, fall back to event-level
+  const effectiveEarlyBirdDeadline =
+    regGroup.early_bird_deadline ?? eventEarlyDates?.early_registration_end ?? null;
+  const effectiveEarlyBirdStart =
+    eventEarlyDates?.early_registration_start ?? null;
+  const now = new Date();
   const isEarlyBird =
-    regGroup.early_bird_deadline != null &&
-    new Date() < new Date(regGroup.early_bird_deadline);
+    effectiveEarlyBirdDeadline != null &&
+    now < new Date(effectiveEarlyBirdDeadline) &&
+    (effectiveEarlyBirdStart == null || now >= new Date(effectiveEarlyBirdStart));
 
   // Load system settings for the event
   const { data: settings } = await supabase
@@ -128,9 +141,12 @@ export async function POST(request: Request) {
         defaultGroup.global_registration_fee_cents ?? defRegFeeCat?.amount_cents ?? 0;
       defEarlyBirdFeePerPerson =
         defaultGroup.global_early_bird_fee_cents ?? defEarlyBirdCat?.amount_cents ?? null;
+      const defEffectiveDeadline =
+        defaultGroup.early_bird_deadline ?? eventEarlyDates?.early_registration_end ?? null;
       defIsEarlyBird =
-        defaultGroup.early_bird_deadline != null &&
-        new Date() < new Date(defaultGroup.early_bird_deadline);
+        defEffectiveDeadline != null &&
+        now < new Date(defEffectiveDeadline) &&
+        (effectiveEarlyBirdStart == null || now >= new Date(effectiveEarlyBirdStart));
       const defManualDiscount = defaultLinkedFees.find((f: any) => f.code === "MANUAL_PAYMENT_DISCOUNT");
       defManualPaymentDiscountPerPerson = defManualDiscount?.amount_cents ?? 0;
       defMealFeeCategories = defaultLinkedFees.filter((f: any) => f.code.startsWith("MEAL_"));
@@ -157,7 +173,7 @@ export async function POST(request: Request) {
   // Load event dates for age calculation and meal day filtering
   const { data: event } = await supabase
     .from("eckcm_events")
-    .select("event_start_date, event_end_date")
+    .select("event_start_date, event_end_date, early_registration_start, early_registration_end")
     .eq("id", eventId)
     .single();
 
@@ -174,7 +190,7 @@ export async function POST(request: Request) {
 
   // Load per-member group fees when members have their own access codes
   const memberGroupFees = (!applyGeneralFeesToMembers || !applyMealFeesToMembers)
-    ? await loadMemberGroupFees(supabase, processedRoomGroups)
+    ? await loadMemberGroupFees(supabase, processedRoomGroups, eventEarlyDates)
     : {};
 
   const estimate = calculateEstimate({
