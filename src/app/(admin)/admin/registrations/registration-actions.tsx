@@ -213,7 +213,7 @@ export function RegistrationActions({
               <AlertDialogAction
                 className={
                   isDestructive
-                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/70 active:scale-[0.97]"
                     : ""
                 }
                 onClick={confirmAction}

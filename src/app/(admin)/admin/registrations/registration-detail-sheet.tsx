@@ -217,7 +217,7 @@ export function RegistrationDetailSheet({
                     onClick={() =>
                       copyToClipboard(reg.confirmation_code, "Code")
                     }
-                    className="text-muted-foreground hover:text-foreground"
+                    className="text-muted-foreground hover:text-foreground active:scale-90 active:opacity-70 transition-all"
                   >
                     <Copy className="size-3" />
                   </button>
@@ -473,7 +473,7 @@ export function RegistrationDetailSheet({
                   {/* Compact table view toggle */}
                   <Separator />
                   <details className="text-sm">
-                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground text-xs">
+                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground active:opacity-70 text-xs transition-colors">
                       Show full table view
                     </summary>
                     <div className="overflow-auto mt-2 rounded border">
@@ -597,7 +597,7 @@ export function RegistrationDetailSheet({
               <AlertDialogAction
                 className={
                   confirmAction.status === "CANCELLED" || confirmAction.status === "REFUNDED"
-                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/70 active:scale-[0.97]"
                     : ""
                 }
                 onClick={() => executeStatusChange(confirmAction.status)}

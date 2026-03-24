@@ -230,7 +230,7 @@ export function ConfigurationManager() {
                 handleHardReset();
               }}
               disabled={!canConfirm || resetting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/70 active:scale-[0.97]"
             >
               {resetting ? (
                 <>
@@ -593,10 +593,10 @@ function ThemeSection() {
               <button
                 key={id}
                 onClick={() => setPendingTheme(id)}
-                className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-md ${
+                className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-md active:scale-[0.97] ${
                   isSelected
                     ? "border-primary bg-primary/5 shadow-sm"
-                    : "border-border hover:border-primary/40"
+                    : "border-border hover:border-primary/40 active:bg-muted/50"
                 }`}
               >
                 {isSelected && (

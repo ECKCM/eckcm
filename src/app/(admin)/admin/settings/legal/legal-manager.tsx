@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/audit-client";
 import { ExternalLink } from "lucide-react";
@@ -20,6 +21,12 @@ interface LegalPage {
   updated_at: string;
 }
 
+const INSTRUCTION_SLUGS = ["registration-instructions-en", "registration-instructions-ko"];
+
+function isInstructionSlug(slug: string) {
+  return INSTRUCTION_SLUGS.includes(slug);
+}
+
 export function LegalManager({ initialPages }: { initialPages: LegalPage[] }) {
   const router = useRouter();
   const [pages, setPages] = useState(initialPages);
@@ -31,6 +38,7 @@ export function LegalManager({ initialPages }: { initialPages: LegalPage[] }) {
     _reloadTimer.current = setTimeout(() => router.refresh(), 500);
   });
   useChangeDetector("eckcm_legal_content", () => router.refresh(), 5000);
+
   const [saving, setSaving] = useState<string | null>(null);
   const [contents, setContents] = useState<Record<string, string>>(
     Object.fromEntries(initialPages.map((p) => [p.slug, p.content]))
@@ -71,13 +79,26 @@ export function LegalManager({ initialPages }: { initialPages: LegalPage[] }) {
     if (data) setPages(data);
   };
 
+  // Split pages into regular legal pages and instruction pages
+  const regularPages = pages.filter((p) => !isInstructionSlug(p.slug));
+  const instructionPages = pages.filter((p) => isInstructionSlug(p.slug));
+  const instructionEn = instructionPages.find((p) => p.slug === "registration-instructions-en");
+  const instructionKo = instructionPages.find((p) => p.slug === "registration-instructions-ko");
+
+  const previewHref = (slug: string) => {
+    if (slug === "terms") return "/terms";
+    if (slug === "privacy") return "/privacy";
+    return null;
+  };
+
   return (
     <div className="space-y-8">
       <p className="text-sm text-muted-foreground">
-        Edit the Terms of Service and Privacy Policy content displayed on public pages. Content supports HTML.
+        Edit legal content displayed on public pages. Content supports Markdown formatting.
       </p>
 
-      {pages.map((page) => (
+      {/* Regular legal pages (Terms, Privacy) */}
+      {regularPages.map((page) => (
         <div key={page.id} className="space-y-3 rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -86,22 +107,23 @@ export function LegalManager({ initialPages }: { initialPages: LegalPage[] }) {
                 Last updated: {page.updated_at ? new Date(page.updated_at).toISOString().slice(0, 10) : "Never"}
               </p>
             </div>
-            <Link
-              href={`/${page.slug}`}
-              target="_blank"
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Preview <ExternalLink className="size-3" />
-            </Link>
+            {previewHref(page.slug) && (
+              <Link
+                href={previewHref(page.slug)!}
+                target="_blank"
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground active:opacity-70 transition-all"
+              >
+                Preview <ExternalLink className="size-3" />
+              </Link>
+            )}
           </div>
-          <Textarea
+          <MarkdownEditor
             value={contents[page.slug] ?? ""}
-            onChange={(e) =>
-              setContents((prev) => ({ ...prev, [page.slug]: e.target.value }))
+            onChange={(val) =>
+              setContents((prev) => ({ ...prev, [page.slug]: val }))
             }
-            rows={16}
-            className="font-mono text-sm"
-            placeholder={`Enter ${page.title} content (HTML supported)...`}
+            height={400}
+            placeholder={`Enter ${page.title} content (Markdown supported)...`}
           />
           <div className="flex justify-end">
             <Button
@@ -113,6 +135,73 @@ export function LegalManager({ initialPages }: { initialPages: LegalPage[] }) {
           </div>
         </div>
       ))}
+
+      {/* Registration Instructions (EN / KO) */}
+      {(instructionEn || instructionKo) && (
+        <div className="space-y-3 rounded-lg border p-4">
+          <div>
+            <Label className="text-base font-semibold">Registration Instructions</Label>
+            <p className="text-xs text-muted-foreground">
+              Displayed on Step 2 of the registration flow. Manage separate templates for English and Korean.
+            </p>
+          </div>
+
+          <Tabs defaultValue="en" className="w-full">
+            <TabsList>
+              <TabsTrigger value="en">English</TabsTrigger>
+              <TabsTrigger value="ko">Korean</TabsTrigger>
+            </TabsList>
+
+            {instructionEn && (
+              <TabsContent value="en" className="space-y-3 mt-3">
+                <p className="text-xs text-muted-foreground">
+                  Last updated: {instructionEn.updated_at ? new Date(instructionEn.updated_at).toISOString().slice(0, 10) : "Never"}
+                </p>
+                <MarkdownEditor
+                  value={contents[instructionEn.slug] ?? ""}
+                  onChange={(val) =>
+                    setContents((prev) => ({ ...prev, [instructionEn.slug]: val }))
+                  }
+                  height={400}
+                  placeholder="Enter English registration instructions (Markdown supported)..."
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => handleSave(instructionEn)}
+                    disabled={saving === instructionEn.slug}
+                  >
+                    {saving === instructionEn.slug ? "Saving..." : "Save English"}
+                  </Button>
+                </div>
+              </TabsContent>
+            )}
+
+            {instructionKo && (
+              <TabsContent value="ko" className="space-y-3 mt-3">
+                <p className="text-xs text-muted-foreground">
+                  Last updated: {instructionKo.updated_at ? new Date(instructionKo.updated_at).toISOString().slice(0, 10) : "Never"}
+                </p>
+                <MarkdownEditor
+                  value={contents[instructionKo.slug] ?? ""}
+                  onChange={(val) =>
+                    setContents((prev) => ({ ...prev, [instructionKo.slug]: val }))
+                  }
+                  height={400}
+                  placeholder="Enter Korean registration instructions (Markdown supported)..."
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => handleSave(instructionKo)}
+                    disabled={saving === instructionKo.slug}
+                  >
+                    {saving === instructionKo.slug ? "Saving..." : "Save Korean"}
+                  </Button>
+                </div>
+              </TabsContent>
+            )}
+          </Tabs>
+        </div>
+      )}
     </div>
   );
 }

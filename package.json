@@ -33,6 +33,7 @@
     "@stripe/stripe-js": "^5.5.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.1",
+    "@uiw/react-md-editor": "^4.0.11",
     "@vercel/analytics": "^1.6.1",
     "@yudiel/react-qr-scanner": "^2.5.1",
     "class-variance-authority": "^0.7.1",

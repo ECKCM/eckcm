@@ -207,7 +207,7 @@ function SettingsTab() {
                   />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground active:scale-90 active:opacity-70 transition-all"
                     onClick={() => setShowApiKey(!showApiKey)}
                   >
                     {showApiKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -422,10 +422,10 @@ function TestEmailTab() {
                 key={s.id}
                 type="button"
                 onClick={() => setScenario(s.id)}
-                className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
+                className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-left transition-all ${
                   scenario === s.id
                     ? "border-primary bg-primary/5"
-                    : "border-border hover:bg-muted/50"
+                    : "border-border hover:bg-muted/50 active:bg-muted active:scale-[0.98]"
                 }`}
               >
                 <div

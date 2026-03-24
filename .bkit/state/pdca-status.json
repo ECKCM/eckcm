@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-24T09:49:54.359Z",
+  "lastUpdated": "2026-03-24T10:34:28.377Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -126,7 +126,8 @@
     "apple-developer-merchantid-domain-association",
     "apple-pay-domain",
     "check-submit",
-    "checkin.service.ts"
+    "checkin.service.ts",
+    "links"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -152,9 +153,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:03:38.722Z",
-        "lastUpdated": "2026-03-24T08:34:55.370Z"
+        "lastUpdated": "2026-03-24T10:03:24.398Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/hooks/use-registration-lock.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/shared/markdown-renderer.tsx"
     },
     "stripe-config": {
       "phase": "do",
@@ -178,9 +179,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:03:59.373Z",
-        "lastUpdated": "2026-03-12T00:36:20.892Z"
+        "lastUpdated": "2026-03-24T10:05:19.303Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/instructions/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/instructions/page.tsx"
     },
     "terms": {
       "phase": "do",
@@ -191,9 +192,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:02.883Z",
-        "lastUpdated": "2026-02-26T20:04:04.597Z"
+        "lastUpdated": "2026-03-24T10:05:34.937Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(public)/terms/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/terms/page.tsx"
     },
     "privacy": {
       "phase": "do",
@@ -204,9 +205,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T20:04:05.450Z",
-        "lastUpdated": "2026-02-26T20:04:07.161Z"
+        "lastUpdated": "2026-03-24T10:05:37.766Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(public)/privacy/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/privacy/page.tsx"
     },
     "submit": {
       "phase": "do",
@@ -347,7 +348,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:29:03.785Z",
-        "lastUpdated": "2026-03-24T09:49:54.359Z"
+        "lastUpdated": "2026-03-24T10:30:15.947Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/registration-detail-sheet.tsx"
     },
@@ -607,9 +608,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T00:17:53.123Z",
-        "lastUpdated": "2026-03-11T04:19:30.466Z"
+        "lastUpdated": "2026-03-24T10:30:17.058Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/configuration/configuration-manager.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/configuration/configuration-manager.tsx"
     },
     "status": {
       "phase": "do",
@@ -633,9 +634,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:43:46.655Z",
-        "lastUpdated": "2026-03-08T20:24:08.459Z"
+        "lastUpdated": "2026-03-24T10:29:39.964Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/dashboard/settings/profile-settings.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/page.tsx"
     },
     "form-fields": {
       "phase": "do",
@@ -659,9 +660,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:44:12.622Z",
-        "lastUpdated": "2026-03-24T04:30:45.060Z"
+        "lastUpdated": "2026-03-24T10:29:34.560Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/email/send-confirmation.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/email/page.tsx"
     },
     "google-sheets": {
       "phase": "do",
@@ -685,9 +686,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T04:44:39.025Z",
-        "lastUpdated": "2026-03-15T19:43:11.821Z"
+        "lastUpdated": "2026-03-24T10:29:41.306Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(protected)/register/[eventId]/lodging/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/lodging/page.tsx"
     },
     "pending": {
       "phase": "do",
@@ -893,9 +894,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T06:55:57.775Z",
-        "lastUpdated": "2026-02-27T07:27:22.520Z"
+        "lastUpdated": "2026-03-24T10:11:11.071Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/components/ui/sidebar.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/ui/markdown-editor.tsx"
     },
     "airport": {
       "phase": "do",
@@ -906,9 +907,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-27T07:17:29.506Z",
-        "lastUpdated": "2026-03-05T13:55:56.776Z"
+        "lastUpdated": "2026-03-24T10:29:47.059Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/airport/airport-checklist.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/airport/airport-checklist.tsx"
     },
     "context": {
       "phase": "do",
@@ -932,7 +933,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-28T01:28:21.919Z",
-        "lastUpdated": "2026-03-24T06:07:36.396Z"
+        "lastUpdated": "2026-03-24T10:11:32.592Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/admin-sidebar.tsx"
     },
@@ -1283,9 +1284,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-03T22:09:36.876Z",
-        "lastUpdated": "2026-03-12T18:47:55.328Z"
+        "lastUpdated": "2026-03-24T10:29:44.419Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/settings/legal/legal-manager.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/legal/legal-manager.tsx"
     },
     "contexts": {
       "phase": "do",
@@ -1374,9 +1375,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-04T22:06:48.962Z",
-        "lastUpdated": "2026-03-12T18:47:41.714Z"
+        "lastUpdated": "2026-03-24T10:27:55.962Z"
       },
-      "lastFile": "/Users/scottkim/development/eckcm/src/app/(admin)/admin/inventory/inventory-manager.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/inventory/inventory-manager.tsx"
     },
     "airport-pickup": {
       "phase": "do",
@@ -1754,6 +1755,19 @@
         "lastUpdated": "2026-03-24T04:30:22.304Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/checkin.service.ts"
+    },
+    "links": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-24T10:10:44.645Z",
+        "lastUpdated": "2026-03-24T10:34:28.377Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/links/links-manager.tsx"
     }
   },
   "history": [
@@ -12575,6 +12589,246 @@
     {
       "timestamp": "2026-03-24T09:49:54.359Z",
       "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:03:16.221Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:03:24.398Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:04:07.034Z",
+      "feature": "legal",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:04:53.727Z",
+      "feature": "instructions",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:05:10.074Z",
+      "feature": "instructions",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:05:19.303Z",
+      "feature": "instructions",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:05:33.130Z",
+      "feature": "terms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:05:34.937Z",
+      "feature": "terms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:05:36.321Z",
+      "feature": "privacy",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:05:37.766Z",
+      "feature": "privacy",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:06:09.318Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:10:44.645Z",
+      "feature": "links",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:11:11.071Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:11:21.313Z",
+      "feature": "links",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:11:26.777Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:11:32.592Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:24:28.156Z",
+      "feature": "links",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:24:32.914Z",
+      "feature": "links",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:24:37.939Z",
+      "feature": "links",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:24:42.208Z",
+      "feature": "links",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:24:51.617Z",
+      "feature": "links",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:25:03.655Z",
+      "feature": "links",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:25:21.763Z",
+      "feature": "links",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:27:55.962Z",
+      "feature": "inventory",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:29:34.306Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:29:34.389Z",
+      "feature": "configuration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:29:34.485Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:29:34.560Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:29:34.647Z",
+      "feature": "links",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:29:39.964Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:29:41.306Z",
+      "feature": "lodging",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:29:42.662Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:29:44.419Z",
+      "feature": "legal",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:29:47.059Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:29:57.694Z",
+      "feature": "links",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:30:03.393Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:30:05.162Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:30:15.947Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:30:17.058Z",
+      "feature": "configuration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T10:34:28.377Z",
+      "feature": "links",
       "phase": "do",
       "action": "updated"
     }

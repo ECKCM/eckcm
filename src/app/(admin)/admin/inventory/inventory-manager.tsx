@@ -296,7 +296,7 @@ export function InventoryManager() {
                         <button
                           type="button"
                           onClick={() => handleStartEdit(row)}
-                          className="cursor-pointer hover:bg-muted rounded px-2 py-1 transition-colors"
+                          className="cursor-pointer hover:bg-muted active:bg-muted/70 active:scale-95 rounded px-2 py-1 transition-colors"
                           title="Click to edit"
                         >
                           {row.total_quantity}

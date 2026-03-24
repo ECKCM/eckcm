@@ -396,10 +396,10 @@ function RideCard({
             {ride.passengers.map((p) => (
               <label
                 key={p.registrationRideId}
-                className={`flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-colors ${
+                className={`flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-all ${
                   checked.has(p.registrationRideId)
                     ? "bg-muted/50 border-primary/30"
-                    : "hover:bg-muted/30"
+                    : "hover:bg-muted/30 active:bg-muted/60 active:scale-[0.99]"
                 }`}
               >
                 <Checkbox

@@ -15,7 +15,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { SanitizedHtml } from "@/components/shared/sanitized-html";
+import { MarkdownRenderer } from "@/components/shared/markdown-renderer";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface FeeCategory {
   code: string;
@@ -50,7 +51,8 @@ export default function InstructionsStep() {
   const router = useRouter();
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
-  const [content, setContent] = useState("");
+  const [contentEn, setContentEn] = useState("");
+  const [contentKo, setContentKo] = useState("");
   const [feeCategories, setFeeCategories] = useState<FeeCategory[]>([]);
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -64,11 +66,16 @@ export default function InstructionsStep() {
     const fetchData = async () => {
       const supabase = createClient();
 
-      const [contentRes, feesRes] = await Promise.all([
+      const [enRes, koRes, feesRes] = await Promise.all([
         supabase
           .from("eckcm_legal_content")
           .select("content")
-          .eq("slug", "registration-instructions")
+          .eq("slug", "registration-instructions-en")
+          .single(),
+        supabase
+          .from("eckcm_legal_content")
+          .select("content")
+          .eq("slug", "registration-instructions-ko")
           .single(),
         state.registrationGroupId
           ? supabase
@@ -78,7 +85,8 @@ export default function InstructionsStep() {
           : Promise.resolve({ data: null }),
       ]);
 
-      setContent(contentRes.data?.content ?? "");
+      setContentEn(enRes.data?.content ?? "");
+      setContentKo(koRes.data?.content ?? "");
       const fees = (feesRes.data ?? []).map((row: any) => row.eckcm_fee_categories as FeeCategory);
       setFeeCategories(fees);
       setLoading(false);
@@ -134,10 +142,18 @@ export default function InstructionsStep() {
             </div>
           )}
 
-          <SanitizedHtml
-            html={content}
-            className="prose prose-sm max-w-none dark:prose-invert"
-          />
+          <Tabs defaultValue="en" className="w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="en" className="flex-1">English</TabsTrigger>
+              <TabsTrigger value="ko" className="flex-1">한국어</TabsTrigger>
+            </TabsList>
+            <TabsContent value="en">
+              <MarkdownRenderer content={contentEn} />
+            </TabsContent>
+            <TabsContent value="ko">
+              <MarkdownRenderer content={contentKo} />
+            </TabsContent>
+          </Tabs>
 
           <div className="flex items-center gap-3 rounded-lg border p-4">
             <Checkbox

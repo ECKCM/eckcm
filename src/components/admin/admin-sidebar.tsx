@@ -27,6 +27,7 @@ import {
   ClipboardPlus,
   Star,
   Mail,
+  Link2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -79,6 +80,7 @@ const settingsLinks = [
   { href: "/admin/settings/lodging", label: "Lodging", icon: BedDouble },
   { href: "/admin/settings/sessions", label: "Sessions", icon: Presentation },
   { href: "/admin/settings/airport-rides", label: "Airport Rides", icon: Plane },
+  { href: "/admin/settings/links", label: "Links", icon: Link2 },
   { href: "/admin/settings/email", label: "Email", icon: Mail },
   { href: "/admin/settings/configuration", label: "Configuration", icon: Settings2 },
 ];

@@ -43,7 +43,7 @@ export default function SettingsOverviewPage() {
             <Link
               key={card.href}
               href={card.href}
-              className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
+              className="flex items-start gap-4 rounded-lg border p-4 transition-all hover:bg-muted/50 active:bg-muted active:scale-[0.98]"
             >
               <card.icon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
               <div>

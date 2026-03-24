@@ -437,7 +437,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                   {filtered.map((r) => (
                     <TableRow
                       key={r.id}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className="cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors"
                       onClick={() => openDetail(r)}
                     >
                       {/* Actions */}
