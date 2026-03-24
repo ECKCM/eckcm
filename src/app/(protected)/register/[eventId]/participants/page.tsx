@@ -1165,8 +1165,15 @@ export default function ParticipantsStep() {
                                   size="sm"
                                   className="h-8 shrink-0 text-xs text-muted-foreground"
                                   onClick={() => {
-                                    updateParticipant(gi, pi, "memberRegistrationGroupId", undefined);
-                                    updateParticipant(gi, pi, "memberAccessCode", "");
+                                    const cleared = { ...state.roomGroups[gi].participants[pi] };
+                                    delete (cleared as Record<string, unknown>).memberRegistrationGroupId;
+                                    cleared.memberAccessCode = undefined;
+                                    dispatch({
+                                      type: "UPDATE_PARTICIPANT",
+                                      groupIndex: gi,
+                                      participantIndex: pi,
+                                      participant: cleared,
+                                    });
                                   }}
                                 >
                                   Clear

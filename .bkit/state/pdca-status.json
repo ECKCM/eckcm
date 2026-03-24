@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-24T01:43:31.030Z",
+  "lastUpdated": "2026-03-24T02:26:23.577Z",
   "activeFeatures": [
     "online-registration",
     "eckcm",
@@ -359,7 +359,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-02-26T21:31:41.703Z",
-        "lastUpdated": "2026-03-23T21:31:06.364Z"
+        "lastUpdated": "2026-03-24T02:26:23.577Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
@@ -12153,6 +12153,12 @@
     {
       "timestamp": "2026-03-24T01:43:31.030Z",
       "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-24T02:26:23.577Z",
+      "feature": "participants",
       "phase": "do",
       "action": "updated"
     }
