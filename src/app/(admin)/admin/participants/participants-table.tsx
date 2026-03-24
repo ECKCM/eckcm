@@ -64,31 +64,16 @@ interface ParticipantRow {
   lodging_type: string | null;
 }
 
-const PAGE_SIZE = 7;
-
 export function ParticipantsTable({ events }: { events: Event[] }) {
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
   const [search, setSearch] = useState("");
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
 
   const loadParticipants = useCallback(async () => {
     if (!eventId) return;
     setLoading(true);
     const supabase = createClient();
-
-    // Get total count for pagination (must include join for filter to work)
-    const { count } = await supabase
-      .from("eckcm_group_memberships")
-      .select("person_id, eckcm_groups!inner(event_id, eckcm_registrations!inner(status))", { count: "exact", head: true })
-      .eq("eckcm_groups.event_id", eventId)
-      .in("eckcm_groups.eckcm_registrations.status", ["SUBMITTED", "PAID"]);
-    setTotalCount(count ?? 0);
-
-    const from = page * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
 
     const { data } = await supabase
       .from("eckcm_group_memberships")
@@ -119,8 +104,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
         )
       `)
       .eq("eckcm_groups.event_id", eventId)
-      .in("eckcm_groups.eckcm_registrations.status", ["SUBMITTED", "PAID"])
-      .range(from, to);
+      .in("eckcm_groups.eckcm_registrations.status", ["SUBMITTED", "APPROVED", "PAID"]);
 
     if (data) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -170,7 +154,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
       setParticipants(rows);
     }
     setLoading(false);
-  }, [eventId, page]);
+  }, [eventId]);
 
   useEffect(() => {
     loadParticipants();
@@ -260,7 +244,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
         <Input
           placeholder="Search name, email, phone, church, code..."
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+          onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
       </div>
@@ -411,31 +395,6 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
               </Table>
             </div>
 
-            {totalCount > PAGE_SIZE && (
-              <div className="flex items-center justify-between pt-4">
-                <p className="text-sm text-muted-foreground">
-                  Showing {page * PAGE_SIZE + 1}{"-"}{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={(page + 1) * PAGE_SIZE >= totalCount}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
             </>
           )}
         </CardContent>

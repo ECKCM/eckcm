@@ -24,7 +24,7 @@ export default async function RegistrationsPage() {
       eckcm_events!inner(name_en, name_ko)
     `)
     .eq("created_by_user_id", user.id)
-    .in("status", ["SUBMITTED", "PAID", "CANCELLED", "REFUNDED"])
+    .in("status", ["SUBMITTED", "APPROVED", "PAID", "CANCELLED", "REFUNDED"])
     .order("created_at", { ascending: false });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

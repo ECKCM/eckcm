@@ -110,7 +110,7 @@ export async function sendConfirmationEmail(
 
   // Recovery: PAID registration with missing tokens — generate them now.
   // This handles cases where token insertion failed during payment confirmation.
-  if (reg.status === "PAID" && (membershipsResult.data ?? []).length > 0) {
+  if ((reg.status === "PAID" || reg.status === "APPROVED") && (membershipsResult.data ?? []).length > 0) {
     const missingPersonIds = (membershipsResult.data as { person_id: string }[])
       .map((m) => m.person_id)
       .filter((id) => !tokenMap.has(id));

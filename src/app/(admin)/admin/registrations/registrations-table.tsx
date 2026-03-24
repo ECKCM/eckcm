@@ -21,111 +21,37 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Eye, Users, RefreshCw, ExternalLink } from "lucide-react";
+import { Users, RefreshCw, ExternalLink, DollarSign, UserCheck, ShieldCheck } from "lucide-react";
 
-// Fetched from eckcm_app_config via /api/admin/stripe-config
-// Falls back to empty string (links won't render without it)
+import {
+  type Event,
+  type RegistrationRow,
+  STATUS_OPTIONS,
+  statusVariant,
+  paymentStatusVariant,
+  formatMoney,
+  formatTimestamp,
+  extractSeqNumber,
+} from "./registrations-types";
+import { RegistrationDetailSheet } from "./registration-detail-sheet";
+import { RegistrationActions } from "./registration-actions";
+import { useRegistrationLock } from "@/lib/hooks/use-registration-lock";
 
-interface Event {
-  id: string;
-  name_en: string;
-  year: number;
-  stripe_mode: string | null;
+interface RegistrationsTableProps {
+  events: Event[];
+  currentUserId: string;
+  currentUserName: string;
 }
 
-interface RegistrationRow {
-  id: string;
-  confirmation_code: string;
-  status: string;
-  registration_type: string;
-  start_date: string;
-  end_date: string;
-  nights_count: number;
-  total_amount_cents: number;
-  notes: string | null;
-  additional_requests: string | null;
-  created_at: string;
-  updated_at: string;
-  group_count: number;
-  people_count: number;
-  registrant_name: string;
-  registrant_name_ko: string | null;
-  registrant_email: string | null;
-  registrant_phone: string | null;
-  registrant_church: string | null;
-  registrant_department: string | null;
-  registrant_guardian_name: string | null;
-  registrant_guardian_phone: string | null;
-  registration_group_name: string | null;
-  invoice_number: string | null;
-  payment_status: string | null;
-  payment_method: string | null;
-  stripe_payment_intent_id: string | null;
-  paid_at: string | null;
-  // On-site check-in/out (Yes/No)
-  checked_in: boolean;
-  checked_out: boolean;
-  // Room info
-  room_numbers: string[];
-}
-
-interface PersonDetail {
-  first_name_en: string;
-  last_name_en: string;
-  display_name_ko: string | null;
-  gender: string;
-  birth_date: string | null;
-  age_at_event: number | null;
-  is_k12: boolean;
-  grade: string | null;
-  email: string | null;
-  phone: string | null;
-  phone_country: string | null;
-  church_name: string | null;
-  department_name: string | null;
-  guardian_name: string | null;
-  guardian_phone: string | null;
-  group_code: string;
-  role: string;
-  participant_code: string | null;
-}
-
-const PAGE_SIZE = 7;
-const STATUS_OPTIONS = ["ALL", "PAID", "SUBMITTED", "DRAFT", "CANCELLED", "REFUNDED"];
-
-const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  PAID: "default",
-  SUBMITTED: "outline",
-  DRAFT: "secondary",
-  CANCELLED: "destructive",
-  REFUNDED: "destructive",
-};
-
-const paymentStatusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  SUCCEEDED: "default",
-  PENDING: "outline",
-  FAILED: "destructive",
-  REFUNDED: "destructive",
-  PARTIALLY_REFUNDED: "destructive",
-};
-
-export function RegistrationsTable({ events }: { events: Event[] }) {
+export function RegistrationsTable({ events, currentUserId, currentUserName }: RegistrationsTableProps) {
   const [mounted, setMounted] = useState(false);
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [registrations, setRegistrations] = useState<RegistrationRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
 
   const [stripeAccountId, setStripeAccountId] = useState("");
 
@@ -140,10 +66,26 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
       .catch(() => {});
   }, []);
 
-  // Detail dialog
+  // Pessimistic locking
+  const { acquire, release, isLockedByOther } = useRegistrationLock(currentUserId, currentUserName);
+
+  // Detail sheet
   const [detailReg, setDetailReg] = useState<RegistrationRow | null>(null);
-  const [detailPeople, setDetailPeople] = useState<PersonDetail[]>([]);
-  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  const openDetail = (reg: RegistrationRow) => {
+    const lock = isLockedByOther(reg.id);
+    if (lock) {
+      toast.error(`This registration is being viewed by ${lock.userName}`);
+      return;
+    }
+    setDetailReg(reg);
+    acquire(reg.id);
+  };
+
+  const closeDetail = () => {
+    setDetailReg(null);
+    release();
+  };
 
   // Status update
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -153,16 +95,6 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
     setLoading(true);
     const supabase = createClient();
 
-    // Get total count for pagination
-    const { count } = await supabase
-      .from("eckcm_registrations")
-      .select("id", { count: "exact", head: true })
-      .eq("event_id", eventId);
-    setTotalCount(count ?? 0);
-
-    // Main registration query with pagination
-    const from = page * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
     const { data } = await supabase
       .from("eckcm_registrations")
       .select(`
@@ -205,8 +137,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         )
       `)
       .eq("event_id", eventId)
-      .order("created_at", { ascending: false })
-      .range(from, to);
+      .order("created_at", { ascending: false });
 
     // Fetch all MAIN check-ins for this event (arrival check-in)
     const { data: checkins } = await supabase
@@ -310,14 +241,14 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
           stripe_payment_intent_id: stripePaymentIntentId,
           paid_at: invoice?.paid_at ?? null,
           checked_in: checkedIn,
-          checked_out: false, // Not tracked yet
+          checked_out: false,
           room_numbers: roomNumbers,
         };
       });
       setRegistrations(rows);
     }
     setLoading(false);
-  }, [eventId, page]);
+  }, [eventId]);
 
   useEffect(() => {
     loadRegistrations();
@@ -337,57 +268,6 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
   // Smart polling: only reloads when data actually changed (no UI flicker)
   useChangeDetector("eckcm_registrations", loadRegistrations, 5000, { column: "event_id", value: eventId });
   useChangeDetector("eckcm_payments", loadRegistrations, 5000);
-
-  // ─── Detail dialog ─────────────────────────────────────────────
-
-  const openDetail = async (reg: RegistrationRow) => {
-    setDetailReg(reg);
-    setLoadingDetail(true);
-    const supabase = createClient();
-
-    const { data } = await supabase
-      .from("eckcm_group_memberships")
-      .select(`
-        role,
-        participant_code,
-        eckcm_people!inner(
-          first_name_en, last_name_en, display_name_ko,
-          gender, birth_date, age_at_event, is_k12, grade,
-          email, phone, phone_country, church_other,
-          guardian_name, guardian_phone,
-          eckcm_churches(name_en),
-          eckcm_departments(name_en)
-        ),
-        eckcm_groups!inner(display_group_code, registration_id)
-      `)
-      .eq("eckcm_groups.registration_id", reg.id);
-
-    if (data) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const people: PersonDetail[] = data.map((m: any) => ({
-        first_name_en: m.eckcm_people.first_name_en,
-        last_name_en: m.eckcm_people.last_name_en,
-        display_name_ko: m.eckcm_people.display_name_ko,
-        gender: m.eckcm_people.gender,
-        birth_date: m.eckcm_people.birth_date,
-        age_at_event: m.eckcm_people.age_at_event,
-        is_k12: m.eckcm_people.is_k12 ?? false,
-        grade: m.eckcm_people.grade,
-        email: m.eckcm_people.email,
-        phone: m.eckcm_people.phone,
-        phone_country: m.eckcm_people.phone_country,
-        church_name: m.eckcm_people.church_other || m.eckcm_people.eckcm_churches?.name_en || null,
-        department_name: m.eckcm_people.eckcm_departments?.name_en ?? null,
-        guardian_name: m.eckcm_people.guardian_name,
-        guardian_phone: m.eckcm_people.guardian_phone,
-        group_code: m.eckcm_groups.display_group_code,
-        role: m.role,
-        participant_code: m.participant_code,
-      }));
-      setDetailPeople(people);
-    }
-    setLoadingDetail(false);
-  };
 
   // ─── Status update ─────────────────────────────────────────────
 
@@ -436,29 +316,15 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
     );
   });
 
-  // ─── Helpers ───────────────────────────────────────────────────
-
-  function formatMoney(cents: number) {
-    return `$${(cents / 100).toFixed(2)}`;
-  }
-
-  function formatTimestamp(ts: string) {
-    return new Date(ts).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
   // ─── Summary stats ─────────────────────────────────────────────
 
   const totalPaid = registrations.filter((r) => r.status === "PAID").length;
+  const totalApproved = registrations.filter((r) => r.status === "APPROVED").length;
   const totalAmount = registrations
     .filter((r) => r.status === "PAID")
     .reduce((sum, r) => sum + r.total_amount_cents, 0);
   const totalPeople = registrations
-    .filter((r) => r.status === "PAID")
+    .filter((r) => r.status === "PAID" || r.status === "APPROVED")
     .reduce((sum, r) => sum + r.people_count, 0);
 
   if (!mounted) return null;
@@ -480,7 +346,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
           </SelectContent>
         </Select>
 
-        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[160px]">
             <SelectValue />
           </SelectTrigger>
@@ -496,7 +362,7 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         <Input
           placeholder="Search code, name, room..."
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+          onChange={(e) => setSearch(e.target.value)}
           className="max-w-[250px]"
         />
 
@@ -505,12 +371,33 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
         </Button>
       </div>
 
-      {/* Summary */}
-      <div className="flex gap-6 text-sm text-muted-foreground">
-        <span>{registrations.length} total registration(s)</span>
-        <span>{totalPaid} paid</span>
-        <span>{totalPeople} people (paid)</span>
-        <span>{formatMoney(totalAmount)} collected</span>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-5 gap-3">
+        <SummaryCard
+          icon={<Users className="size-4 text-muted-foreground" />}
+          label="Total Registrations"
+          value={registrations.length}
+        />
+        <SummaryCard
+          icon={<UserCheck className="size-4 text-green-600" />}
+          label="Paid"
+          value={totalPaid}
+        />
+        <SummaryCard
+          icon={<ShieldCheck className="size-4 text-emerald-600" />}
+          label="Approved"
+          value={totalApproved}
+        />
+        <SummaryCard
+          icon={<Users className="size-4 text-blue-600" />}
+          label="People (Confirmed)"
+          value={totalPeople}
+        />
+        <SummaryCard
+          icon={<DollarSign className="size-4 text-green-600" />}
+          label="Collected"
+          value={formatMoney(totalAmount)}
+        />
       </div>
 
       {/* Table */}
@@ -529,59 +416,43 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {/* User-specified order first */}
-                    <TableHead className="whitespace-nowrap">Actions</TableHead>
+                    <TableHead className="whitespace-nowrap w-[120px]">Actions</TableHead>
                     <TableHead className="whitespace-nowrap">No.</TableHead>
                     <TableHead className="whitespace-nowrap">Code</TableHead>
                     <TableHead className="whitespace-nowrap">Name</TableHead>
-                    <TableHead className="whitespace-nowrap">Reg Status</TableHead>
-                    <TableHead className="whitespace-nowrap">Pay Status</TableHead>
-                    <TableHead className="whitespace-nowrap">C-IN</TableHead>
-                    <TableHead className="whitespace-nowrap">C-OUT</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Payment</TableHead>
+                    <TableHead className="whitespace-nowrap text-center">C-IN</TableHead>
                     <TableHead className="whitespace-nowrap">Room</TableHead>
-                    <TableHead className="whitespace-nowrap">Pay Method</TableHead>
-                    <TableHead className="whitespace-nowrap">Stripe Link</TableHead>
-                    <TableHead className="whitespace-nowrap">People</TableHead>
-                    <TableHead className="whitespace-nowrap">Invoice</TableHead>
-                    <TableHead className="whitespace-nowrap">Receipt</TableHead>
-                    {/* Remaining columns by importance */}
+                    <TableHead className="whitespace-nowrap text-center">People</TableHead>
                     <TableHead className="whitespace-nowrap">Amount</TableHead>
-                    <TableHead className="whitespace-nowrap">Email</TableHead>
-                    <TableHead className="whitespace-nowrap">Phone</TableHead>
                     <TableHead className="whitespace-nowrap">Church</TableHead>
-                    <TableHead className="whitespace-nowrap">Department</TableHead>
                     <TableHead className="whitespace-nowrap">Reg. Group</TableHead>
-                    <TableHead className="whitespace-nowrap">Check-in</TableHead>
-                    <TableHead className="whitespace-nowrap">Check-out</TableHead>
-                    <TableHead className="whitespace-nowrap">Nights</TableHead>
-                    <TableHead className="whitespace-nowrap">Reg Type</TableHead>
-                    <TableHead className="whitespace-nowrap">Paid At</TableHead>
-                    <TableHead className="whitespace-nowrap">Guardian</TableHead>
-                    <TableHead className="whitespace-nowrap">Guardian Phone</TableHead>
-                    <TableHead className="whitespace-nowrap">Notes</TableHead>
-                    <TableHead className="whitespace-nowrap">Requests</TableHead>
+                    <TableHead className="whitespace-nowrap">Invoice</TableHead>
+                    <TableHead className="whitespace-nowrap">Stripe</TableHead>
                     <TableHead className="whitespace-nowrap">Registered</TableHead>
-                    <TableHead className="whitespace-nowrap">Updated</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.map((r) => (
-                    <TableRow key={r.id}>
+                    <TableRow
+                      key={r.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => openDetail(r)}
+                    >
                       {/* Actions */}
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => openDetail(r)}
-                        >
-                          <Eye className="mr-1 size-3" />
-                          View
-                        </Button>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <RegistrationActions
+                          registration={r}
+                          onView={openDetail}
+                          onStatusChange={updateStatus}
+                          updatingId={updatingId}
+                          lockedBy={isLockedByOther(r.id)}
+                        />
                       </TableCell>
                       {/* No. */}
                       <TableCell className="font-mono text-xs whitespace-nowrap text-muted-foreground">
-                        {r.confirmation_code?.match(/(\d+)$/)?.[1] ?? "-"}
+                        {extractSeqNumber(r.confirmation_code)}
                       </TableCell>
                       {/* Code */}
                       <TableCell className="font-mono text-sm whitespace-nowrap">
@@ -596,24 +467,32 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                           </div>
                         )}
                       </TableCell>
-                      {/* Reg Status */}
+                      {/* Status */}
                       <TableCell>
-                        <Badge variant={statusVariant[r.status] ?? "secondary"}>
+                        <Badge variant={statusVariant[r.status] ?? "secondary"} className="text-xs">
                           {r.status}
                         </Badge>
                       </TableCell>
-                      {/* Pay Status */}
+                      {/* Payment — combined method + status */}
                       <TableCell>
-                        {r.payment_status ? (
-                          <Badge
-                            variant={paymentStatusVariant[r.payment_status] ?? "secondary"}
-                            className="text-xs"
-                          >
-                            {r.payment_status}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
-                        )}
+                        <div className="space-y-0.5">
+                          {r.payment_status && (
+                            <Badge
+                              variant={paymentStatusVariant[r.payment_status] ?? "secondary"}
+                              className="text-xs"
+                            >
+                              {r.payment_status}
+                            </Badge>
+                          )}
+                          {r.payment_method && (
+                            <div className="text-xs text-muted-foreground">
+                              {r.payment_method.replace(/_/g, " ")}
+                            </div>
+                          )}
+                          {!r.payment_status && !r.payment_method && (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </div>
                       </TableCell>
                       {/* C-IN */}
                       <TableCell className="text-center">
@@ -621,22 +500,35 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                           {r.checked_in ? "Yes" : "No"}
                         </Badge>
                       </TableCell>
-                      {/* C-OUT */}
-                      <TableCell className="text-center">
-                        <Badge variant={r.checked_out ? "default" : "secondary"} className="text-xs">
-                          {r.checked_out ? "Yes" : "No"}
-                        </Badge>
-                      </TableCell>
                       {/* Room */}
                       <TableCell className="text-xs whitespace-nowrap">
                         {r.room_numbers.length > 0 ? r.room_numbers.join(", ") : "-"}
                       </TableCell>
-                      {/* Pay Method */}
+                      {/* People */}
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center gap-1 text-sm">
+                          <Users className="size-3" />
+                          {r.people_count}
+                        </span>
+                      </TableCell>
+                      {/* Amount */}
+                      <TableCell className="font-mono text-sm whitespace-nowrap">
+                        {formatMoney(r.total_amount_cents)}
+                      </TableCell>
+                      {/* Church */}
                       <TableCell className="text-xs whitespace-nowrap">
-                        {r.payment_method?.replace(/_/g, " ") ?? "-"}
+                        {r.registrant_church ?? "-"}
+                      </TableCell>
+                      {/* Reg. Group */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registration_group_name ?? "-"}
+                      </TableCell>
+                      {/* Invoice */}
+                      <TableCell className="font-mono text-xs whitespace-nowrap">
+                        {r.invoice_number ?? "-"}
                       </TableCell>
                       {/* Stripe Link */}
-                      <TableCell className="text-xs whitespace-nowrap">
+                      <TableCell className="text-xs whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         {r.stripe_payment_intent_id && stripeAccountId ? (
                           <a
                             href={`https://dashboard.stripe.com/${stripeAccountId}/${
@@ -653,93 +545,16 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      {/* People */}
-                      <TableCell>
-                        <span className="flex items-center gap-1 text-sm">
-                          <Users className="size-3" />
-                          {r.people_count}
-                        </span>
-                      </TableCell>
-                      {/* Invoice */}
-                      <TableCell className="font-mono text-xs whitespace-nowrap">
-                        {r.invoice_number ?? "-"}
-                      </TableCell>
-                      {/* Receipt */}
-                      <TableCell className="font-mono text-xs whitespace-nowrap">
-                        {r.invoice_number ? r.invoice_number.replace(/^INV-/, "RCT-") : "-"}
-                      </TableCell>
-                      {/* Amount */}
-                      <TableCell className="font-mono text-sm whitespace-nowrap">
-                        {formatMoney(r.total_amount_cents)}
-                      </TableCell>
-                      {/* Email */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_email ?? "-"}
-                      </TableCell>
-                      {/* Phone */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_phone ?? "-"}
-                      </TableCell>
-                      {/* Church */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_church ?? "-"}
-                      </TableCell>
-                      {/* Department */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_department ?? "-"}
-                      </TableCell>
-                      {/* Reg. Group */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registration_group_name ?? "-"}
-                      </TableCell>
-                      {/* Check-in date */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.start_date}
-                      </TableCell>
-                      {/* Check-out date */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.end_date}
-                      </TableCell>
-                      {/* Nights */}
-                      <TableCell>{r.nights_count}</TableCell>
-                      {/* Reg Type */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registration_type === "others" ? "Others" : "Self"}
-                      </TableCell>
-                      {/* Paid At */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.paid_at ? formatTimestamp(r.paid_at) : "-"}
-                      </TableCell>
-                      {/* Guardian */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_guardian_name ?? "-"}
-                      </TableCell>
-                      {/* Guardian Phone */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_guardian_phone ?? "-"}
-                      </TableCell>
-                      {/* Notes */}
-                      <TableCell className="text-xs max-w-[200px] truncate" title={r.notes ?? ""}>
-                        {r.notes ?? "-"}
-                      </TableCell>
-                      {/* Requests */}
-                      <TableCell className="text-xs max-w-[200px] truncate" title={r.additional_requests ?? ""}>
-                        {r.additional_requests ?? "-"}
-                      </TableCell>
                       {/* Registered */}
                       <TableCell className="text-xs whitespace-nowrap">
                         {formatTimestamp(r.created_at)}
-                      </TableCell>
-                      {/* Updated */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {formatTimestamp(r.updated_at)}
                       </TableCell>
                     </TableRow>
                   ))}
                   {filtered.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={28}
+                        colSpan={15}
                         className="text-center text-muted-foreground py-8"
                       >
                         No registrations found.
@@ -750,328 +565,43 @@ export function RegistrationsTable({ events }: { events: Event[] }) {
               </Table>
             </div>
 
-            {totalCount > PAGE_SIZE && (
-              <div className="flex items-center justify-between pt-4">
-                <p className="text-sm text-muted-foreground">
-                  Showing {page * PAGE_SIZE + 1}{"-"}{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={(page + 1) * PAGE_SIZE >= totalCount}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
             </>
           )}
         </CardContent>
       </Card>
 
-      {/* Detail Dialog */}
-      <Dialog
-        open={!!detailReg}
-        onOpenChange={(open) => !open && setDetailReg(null)}
-      >
-        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
-          <DialogHeader className="shrink-0">
-            <DialogTitle>
-              Registration {detailReg?.confirmation_code}
-            </DialogTitle>
-          </DialogHeader>
+      {/* Detail Sheet */}
+      <RegistrationDetailSheet
+        registration={detailReg}
+        events={events}
+        eventId={eventId}
+        stripeAccountId={stripeAccountId}
+        onClose={closeDetail}
+        onStatusChange={updateStatus}
+        onRefresh={loadRegistrations}
+      />
+    </div>
+  );
+}
 
-          {detailReg && (
-            <div className="space-y-4 overflow-y-auto flex-1 pr-1">
-              {/* Registration info */}
-              <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Registrant:</span>{" "}
-                  <span className="font-medium">{detailReg.registrant_name}</span>
-                  {detailReg.registrant_name_ko && (
-                    <span className="ml-1 text-muted-foreground">
-                      ({detailReg.registrant_name_ko})
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Reg Status:</span>{" "}
-                  <Badge variant={statusVariant[detailReg.status] ?? "secondary"}>
-                    {detailReg.status}
-                  </Badge>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Pay Status:</span>{" "}
-                  {detailReg.payment_status ? (
-                    <Badge
-                      variant={paymentStatusVariant[detailReg.payment_status] ?? "secondary"}
-                      className="text-xs"
-                    >
-                      {detailReg.payment_status}
-                    </Badge>
-                  ) : (
-                    "-"
-                  )}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">C-IN:</span>{" "}
-                  {detailReg.checked_in ? "Yes" : "No"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">C-OUT:</span>{" "}
-                  {detailReg.checked_out ? "Yes" : "No"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Room:</span>{" "}
-                  {detailReg.room_numbers.length > 0
-                    ? detailReg.room_numbers.join(", ")
-                    : "-"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Pay Method:</span>{" "}
-                  {detailReg.payment_method?.replace(/_/g, " ") ?? "-"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Stripe Link:</span>{" "}
-                  {detailReg.stripe_payment_intent_id && stripeAccountId ? (
-                    <a
-                      href={`https://dashboard.stripe.com/${stripeAccountId}/${
-                        events.find((e) => e.id === eventId)?.stripe_mode === "live" ? "" : "test/"
-                      }payments/${detailReg.stripe_payment_intent_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-blue-600 hover:underline"
-                    >
-                      <ExternalLink className="size-3" />
-                      View in Stripe
-                    </a>
-                  ) : (
-                    "-"
-                  )}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">People:</span>{" "}
-                  {detailReg.people_count}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Invoice:</span>{" "}
-                  <span className="font-mono">
-                    {detailReg.invoice_number ?? "-"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Amount:</span>{" "}
-                  <span className="font-mono">
-                    {formatMoney(detailReg.total_amount_cents)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Email:</span>{" "}
-                  {detailReg.registrant_email ?? "-"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Phone:</span>{" "}
-                  {detailReg.registrant_phone ?? "-"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Church:</span>{" "}
-                  {detailReg.registrant_church ?? "-"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Department:</span>{" "}
-                  {detailReg.registrant_department ?? "-"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Reg. Group:</span>{" "}
-                  {detailReg.registration_group_name ?? "-"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Check-in:</span>{" "}
-                  {detailReg.start_date}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Check-out:</span>{" "}
-                  {detailReg.end_date}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Nights:</span>{" "}
-                  {detailReg.nights_count}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Paid At:</span>{" "}
-                  {detailReg.paid_at ? formatTimestamp(detailReg.paid_at) : "-"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Groups:</span>{" "}
-                  {detailReg.group_count}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Registered:</span>{" "}
-                  {formatTimestamp(detailReg.created_at)}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Updated:</span>{" "}
-                  {formatTimestamp(detailReg.updated_at)}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Reg Type:</span>{" "}
-                  {detailReg.registration_type === "others" ? "Others" : "Self"}
-                </div>
-                {detailReg.registrant_guardian_name && (
-                  <div>
-                    <span className="text-muted-foreground">Guardian:</span>{" "}
-                    {detailReg.registrant_guardian_name}
-                  </div>
-                )}
-                {detailReg.registrant_guardian_phone && (
-                  <div>
-                    <span className="text-muted-foreground">Guardian Phone:</span>{" "}
-                    {detailReg.registrant_guardian_phone}
-                  </div>
-                )}
-                {detailReg.notes && (
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground">Notes:</span>{" "}
-                    {detailReg.notes}
-                  </div>
-                )}
-                {detailReg.additional_requests && (
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground">Additional Requests:</span>{" "}
-                    {detailReg.additional_requests}
-                  </div>
-                )}
-              </div>
+// ─── Summary Card ─────────────────────────────────────────
 
-              {/* Status change */}
-              <div className="flex items-center gap-3 border-t pt-3">
-                <span className="text-sm text-muted-foreground shrink-0">Change status:</span>
-                <Select
-                  value=""
-                  onValueChange={(s) => updateStatus(detailReg.id, s)}
-                  disabled={updatingId === detailReg.id}
-                >
-                  <SelectTrigger className="h-8 w-[180px]">
-                    <SelectValue placeholder="Select new status…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["DRAFT", "SUBMITTED", "PAID", "CANCELLED", "REFUNDED"]
-                      .filter((s) => s !== detailReg.status)
-                      .map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {updatingId === detailReg.id && (
-                  <span className="text-xs text-muted-foreground">Updating…</span>
-                )}
-              </div>
-
-              {/* People list */}
-              <div className="border-t pt-3">
-                <h3 className="font-medium text-sm mb-2">Participants</h3>
-                {loadingDetail ? (
-                  <p className="text-center text-muted-foreground py-4">
-                    Loading...
-                  </p>
-                ) : (
-                  <div className="overflow-auto max-h-[280px] rounded border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Korean</TableHead>
-                        <TableHead>Gender</TableHead>
-                        <TableHead>DOB</TableHead>
-                        <TableHead>Age</TableHead>
-                        <TableHead>K-12</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Church</TableHead>
-                        <TableHead>Dept</TableHead>
-                        <TableHead>Group</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>P.Code</TableHead>
-                        <TableHead>Guardian</TableHead>
-                        <TableHead>Guardian Phone</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {detailPeople.map((p, i) => (
-                        <TableRow key={i}>
-                          <TableCell className="whitespace-nowrap font-medium text-sm">
-                            {p.first_name_en} {p.last_name_en}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {p.display_name_ko ?? "-"}
-                          </TableCell>
-                          <TableCell className="text-xs">{p.gender}</TableCell>
-                          <TableCell className="text-xs whitespace-nowrap">{p.birth_date ?? "-"}</TableCell>
-                          <TableCell>{p.age_at_event ?? "-"}</TableCell>
-                          <TableCell>{p.is_k12 ? "Y" : "-"}</TableCell>
-                          <TableCell className="text-xs">
-                            {p.email ?? "-"}
-                          </TableCell>
-                          <TableCell className="text-xs whitespace-nowrap">
-                            {p.phone ?? "-"}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {p.church_name ?? "-"}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {p.department_name ?? "-"}
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {p.group_code}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {p.role}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {p.participant_code ?? "-"}
-                          </TableCell>
-                          <TableCell className="text-xs whitespace-nowrap">
-                            {p.guardian_name ?? "-"}
-                          </TableCell>
-                          <TableCell className="text-xs whitespace-nowrap">
-                            {p.guardian_phone ?? "-"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {detailPeople.length === 0 && !loadingDetail && (
-                        <TableRow>
-                          <TableCell
-                            colSpan={15}
-                            className="text-center text-muted-foreground py-4"
-                          >
-                            No participants found.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+function SummaryCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        {icon}
+        {label}
+      </div>
+      <p className="text-xl font-bold mt-1">{value}</p>
     </div>
   );
 }

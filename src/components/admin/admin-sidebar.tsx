@@ -55,11 +55,10 @@ interface AdminSidebarProps {
 }
 
 const navLinks = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, permission: null },
   { href: "/admin/registrations", label: "Registrations", icon: FileText, exact: true, permission: "participant.read" },
+  { href: "/admin/participants", label: "Participants", icon: UserCheck, exact: false, permission: "participant.read" },
   { href: "/admin/registrations/create", label: "Manual Registration", icon: ClipboardPlus, exact: true, permission: "participant.update" },
   { href: "/admin/events", label: "Events", icon: Calendar, exact: false, permission: "event.manage" },
-  { href: "/admin/participants", label: "Participants", icon: UserCheck, exact: false, permission: "participant.read" },
   { href: "/admin/room-groups", label: "Room Groups", icon: BedDouble, exact: false, permission: "group.read" },
   { href: "/admin/invoices", label: "Invoices", icon: FileText, exact: false, permission: "invoice.read" },
   { href: "/admin/inventory", label: "Inventory", icon: Package, exact: false, permission: "participant.read" },
@@ -130,6 +129,13 @@ export function AdminSidebar({ events, permissions }: AdminSidebarProps) {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {/* Dashboard */}
+              <SidebarMenuItem>
+                <NavLink href="/admin" isActive={pathname === "/admin"} icon={LayoutDashboard}>
+                  Dashboard
+                </NavLink>
+              </SidebarMenuItem>
+
               {navLinks.filter((link) => hasPermission(link.permission)).map((link) => (
                 <SidebarMenuItem key={link.href}>
                   <NavLink

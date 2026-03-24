@@ -113,7 +113,7 @@ export async function POST(request: Request) {
       .select("id, confirmation_code")
       .eq("event_id", eventId)
       .eq("created_by_user_id", user.id)
-      .in("status", ["SUBMITTED", "PAID"])
+      .in("status", ["SUBMITTED", "APPROVED", "PAID"])
       .neq("registration_type", "others")
       .limit(1)
       .maybeSingle();
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
         )
       `)
       .eq("eckcm_groups.eckcm_registrations.event_id", eventId)
-      .in("eckcm_groups.eckcm_registrations.status", ["SUBMITTED", "PAID"]);
+      .in("eckcm_groups.eckcm_registrations.status", ["SUBMITTED", "APPROVED", "PAID"]);
 
     if (existingPeople && existingPeople.length > 0) {
       const existingSet = new Set(

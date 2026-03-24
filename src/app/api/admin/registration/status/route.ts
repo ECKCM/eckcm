@@ -6,7 +6,7 @@ import { generateEPassToken } from "@/lib/services/epass.service";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { logger } from "@/lib/logger";
 
-const VALID_STATUSES = ["DRAFT", "SUBMITTED", "PAID", "CANCELLED", "REFUNDED"];
+const VALID_STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "PAID", "CANCELLED", "REFUNDED"];
 
 export async function PATCH(request: Request) {
   const auth = await requireAdmin();
@@ -33,60 +33,62 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: regError.message }, { status: 500 });
   }
 
-  // When marking as PAID, cascade updates to payment, invoice, and e-pass
-  if (status === "PAID") {
-    // Update invoice
-    const { data: invoice } = await admin
-      .from("eckcm_invoices")
-      .select("id, total_cents")
-      .eq("registration_id", registrationId)
-      .maybeSingle();
-
-    if (invoice) {
-      await admin
+  // When marking as APPROVED or PAID, activate e-pass and send confirmation
+  if (status === "APPROVED" || status === "PAID") {
+    // Update invoice & payment records (PAID only — APPROVED skips payment)
+    if (status === "PAID") {
+      const { data: invoice } = await admin
         .from("eckcm_invoices")
-        .update({ status: "SUCCEEDED", paid_at: new Date().toISOString() })
-        .eq("id", invoice.id);
-
-      // Update existing PENDING payment or create one
-      const { data: existingPayment } = await admin
-        .from("eckcm_payments")
-        .select("id")
-        .eq("invoice_id", invoice.id)
-        .eq("status", "PENDING")
+        .select("id, total_cents")
+        .eq("registration_id", registrationId)
         .maybeSingle();
 
-      if (existingPayment) {
+      if (invoice) {
         await admin
-          .from("eckcm_payments")
-          .update({
-            status: "SUCCEEDED",
-            metadata: {
-              confirmed_by_admin: true,
-              recorded_by: user.id,
-            },
-          })
-          .eq("id", existingPayment.id);
-      } else {
-        // Check if there's already a SUCCEEDED payment
-        const { data: succeededPayment } = await admin
+          .from("eckcm_invoices")
+          .update({ status: "SUCCEEDED", paid_at: new Date().toISOString() })
+          .eq("id", invoice.id);
+
+        // Update existing PENDING payment or create one
+        const { data: existingPayment } = await admin
           .from("eckcm_payments")
           .select("id")
           .eq("invoice_id", invoice.id)
-          .eq("status", "SUCCEEDED")
+          .eq("status", "PENDING")
           .maybeSingle();
 
-        if (!succeededPayment) {
-          await admin.from("eckcm_payments").insert({
-            invoice_id: invoice.id,
-            payment_method: "MANUAL",
-            amount_cents: invoice.total_cents,
-            status: "SUCCEEDED",
-            metadata: {
-              recorded_by: user.id,
-              confirmed_by_admin: true,
-            },
-          });
+        if (existingPayment) {
+          await admin
+            .from("eckcm_payments")
+            .update({
+              status: "SUCCEEDED",
+              metadata: {
+                confirmed_by_admin: true,
+                recorded_by: user.id,
+              },
+            })
+            .eq("id", existingPayment.id);
+        } else {
+          // Check if there's already a SUCCEEDED payment
+          const { data: succeededPayment } = await admin
+            .from("eckcm_payments")
+            .select("id")
+            .eq("invoice_id", invoice.id)
+            .eq("status", "SUCCEEDED")
+            .maybeSingle();
+
+          if (!succeededPayment) {
+            await admin.from("eckcm_payments").insert({
+              invoice_id: invoice.id,
+              payment_method: "MANUAL",
+              amount_cents: invoice.total_cents,
+              status: "SUCCEEDED",
+              metadata: {
+                recorded_by: user.id,
+                confirmed_by_admin: true,
+              },
+            });
+          }
         }
       }
     }

@@ -22,6 +22,7 @@ export type Grade =
 export type RegistrationStatus =
   | "DRAFT"
   | "SUBMITTED"
+  | "APPROVED"
   | "PAID"
   | "CANCELLED"
   | "REFUNDED";

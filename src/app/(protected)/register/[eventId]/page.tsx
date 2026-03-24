@@ -109,7 +109,7 @@ export default function RegistrationStep1() {
               .select("id, confirmation_code, status")
               .eq("event_id", eventId)
               .eq("created_by_user_id", user.id)
-              .in("status", ["SUBMITTED", "PAID"])
+              .in("status", ["SUBMITTED", "APPROVED", "PAID"])
               .neq("registration_type", "others")
               .limit(1)
               .maybeSingle();

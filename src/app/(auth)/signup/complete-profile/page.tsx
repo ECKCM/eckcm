@@ -49,11 +49,9 @@ export default function CompleteProfilePage() {
 
   // Email signup fields
   const [email, setEmail] = useState("");
-  const [confirmEmail, setConfirmEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [emailError, setEmailError] = useState("");
-  const [confirmEmailError, setConfirmEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
 
@@ -72,7 +70,6 @@ export default function CompleteProfilePage() {
 
     let valid = true;
     setEmailError("");
-    setConfirmEmailError("");
     setPasswordError("");
     setConfirmPasswordError("");
 
@@ -81,13 +78,6 @@ export default function CompleteProfilePage() {
       valid = false;
     } else if (!isValidEmail(email)) {
       setEmailError("Enter a valid email address");
-      valid = false;
-    }
-    if (!confirmEmail) {
-      setConfirmEmailError("Confirm email is required");
-      valid = false;
-    } else if (email !== confirmEmail) {
-      setConfirmEmailError("Emails do not match");
       valid = false;
     }
     if (!password) {
@@ -335,28 +325,6 @@ export default function CompleteProfilePage() {
               )}
               {email && !isValidEmail(email) && !emailError && (
                 <p className="text-xs text-destructive">Enter a valid email address</p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="signup-confirm-email">Confirm Email <span className="text-destructive">*</span></Label>
-              <Input
-                id="signup-confirm-email"
-                name="signup-confirm-email"
-                type="email"
-                autoComplete="off"
-                value={confirmEmail}
-                onChange={(e) => {
-                  setConfirmEmail(e.target.value);
-                  setConfirmEmailError("");
-                }}
-                placeholder="email@example.com"
-                className={confirmEmailError || (confirmEmail && email !== confirmEmail) ? "border-destructive" : ""}
-              />
-              {confirmEmailError && (
-                <p className="text-xs text-destructive">{confirmEmailError}</p>
-              )}
-              {!confirmEmailError && confirmEmail && email !== confirmEmail && (
-                <p className="text-xs text-destructive">Emails do not match</p>
               )}
             </div>
             <div className="space-y-1">

@@ -79,7 +79,7 @@ export async function POST(request: Request) {
           )
         `)
         .eq("eckcm_groups.eckcm_registrations.event_id", eventId)
-        .in("eckcm_groups.eckcm_registrations.status", ["SUBMITTED", "PAID"]);
+        .in("eckcm_groups.eckcm_registrations.status", ["SUBMITTED", "APPROVED", "PAID"]);
 
       if (existingPeople && existingPeople.length > 0) {
         const existingSet = new Set(

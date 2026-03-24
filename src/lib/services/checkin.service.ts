@@ -73,9 +73,9 @@ export async function verifyAndCheckin(
     };
   }
 
-  if (data.eckcm_registrations.status !== "PAID") {
+  if (data.eckcm_registrations.status !== "PAID" && data.eckcm_registrations.status !== "APPROVED") {
     return {
-      result: { status: "error", error: "Registration is not paid", person },
+      result: { status: "error", error: "Registration is not paid or approved", person },
       statusCode: 403,
     };
   }

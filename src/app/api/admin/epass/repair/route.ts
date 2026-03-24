@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   let query = admin
     .from("eckcm_registrations")
     .select("id, confirmation_code, event_id")
-    .eq("status", "PAID");
+    .in("status", ["PAID", "APPROVED"]);
 
   if (registrationId) {
     query = query.eq("id", registrationId);
@@ -157,7 +157,7 @@ export async function GET(request: Request) {
   let query = admin
     .from("eckcm_registrations")
     .select("id, confirmation_code, event_id")
-    .eq("status", "PAID");
+    .in("status", ["PAID", "APPROVED"]);
 
   if (eventId) {
     query = query.eq("event_id", eventId);
