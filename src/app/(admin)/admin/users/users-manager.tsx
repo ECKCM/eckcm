@@ -218,6 +218,12 @@ export function UsersManager({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </TableHead>
                 <TableHead>Actions</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Name</TableHead>
@@ -231,7 +237,7 @@ export function UsersManager({
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="text-center text-muted-foreground py-8"
                   >
                     No users found.
@@ -240,6 +246,12 @@ export function UsersManager({
               ) : (
                 filtered.map((user) => (
                   <TableRow key={user.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(user.id)}
+                        onCheckedChange={() => toggleSelect(user.id)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Dialog
                         open={assignOpen && selectedUserId === user.id}
@@ -351,6 +363,13 @@ export function UsersManager({
           </Table>
         </CardContent>
       </Card>
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={handleDelete}
+        title={`Delete ${selectedIds.size} user(s)?`}
+        description="This will permanently delete the selected user(s) and all their related data (registrations, payments, invoices, etc). This action cannot be undone."
+      />
     </div>
   );
 }
