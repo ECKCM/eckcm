@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ArrowLeft, Mail, Phone, HelpCircle, CreditCard, QrCode, UserPlus } from "lucide-react";
+import { Mail, Phone, HelpCircle, CreditCard, QrCode, UserPlus } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -17,14 +16,6 @@ import {
 export default function SupportPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <Link
-        href="/dashboard"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Back to Dashboard
-      </Link>
-
       <h1 className="mb-2 text-3xl font-bold">Support Center</h1>
       <p className="mb-8 text-muted-foreground">
         Find answers to common questions or get in touch with us.

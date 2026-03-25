@@ -24,9 +24,12 @@ import {
   Maximize2,
   Loader2,
 } from "lucide-react";
+import { CameraErrorFallback } from "@/components/checkin/camera-error-fallback";
+import { useCameraPermission } from "@/lib/checkin/use-camera-permission";
 import {
   cacheEPassData,
   lookupToken,
+  lookupByParticipantCode,
   addPendingCheckin,
   getPendingCheckins,
   clearPendingCheckins,
@@ -41,10 +44,19 @@ interface EventOption {
   year: number;
 }
 
-function extractTokenFromQR(scannedValue: string): string | null {
-  const urlMatch = scannedValue.match(/\/epass\/([A-Za-z0-9_-]{20,})/);
-  if (urlMatch) return urlMatch[1];
-  if (/^[A-Za-z0-9_-]{20,40}$/.test(scannedValue)) return scannedValue;
+function parseQRValue(
+  scannedValue: string
+): { participantCode: string } | { token: string } | null {
+  const trimmed = scannedValue.trim();
+  if (/^[A-HJ-NP-Z2-9]{6}\.[a-f0-9]{8}$/.test(trimmed)) {
+    return { participantCode: trimmed };
+  }
+  if (/^[A-HJ-NP-Z2-9]{6}$/.test(trimmed)) {
+    return { participantCode: trimmed };
+  }
+  const urlMatch = trimmed.match(/\/epass\/(?:[A-Za-z0-9]+_)?([A-Za-z0-9_-]{20,})/);
+  if (urlMatch) return { token: urlMatch[1] };
+  if (/^[A-Za-z0-9_-]{20,40}$/.test(trimmed)) return { token: trimmed };
   return null;
 }
 
@@ -77,6 +89,7 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
   const [syncing, setSyncing] = useState(false);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScannedRef = useRef<string | null>(null);
+  const camera = useCameraPermission();
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
@@ -141,7 +154,9 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           checkins: pending.map((p) => ({
-            token: p.token,
+            ...(p.token.startsWith("pc:")
+              ? { participantCode: p.token.slice(3) }
+              : { token: p.token }),
             checkinType: p.checkinType,
             sessionId: p.sessionId,
             nonce: p.nonce,
@@ -180,10 +195,12 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
   async function handleScan(detectedCodes: { rawValue: string }[]) {
     if (processing || !detectedCodes.length) return;
     const rawValue = detectedCodes[0].rawValue;
-    const token = extractTokenFromQR(rawValue);
-    if (!token) return;
-    if (lastScannedRef.current === token) return;
-    lastScannedRef.current = token;
+    const parsed = parseQRValue(rawValue);
+    if (!parsed) return;
+
+    const dedupeKey = "participantCode" in parsed ? parsed.participantCode : parsed.token;
+    if (lastScannedRef.current === dedupeKey) return;
+    lastScannedRef.current = dedupeKey;
 
     setProcessing(true);
     setScanning(false);
@@ -193,10 +210,17 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
 
     if (isOnline) {
       try {
+        const verifyBody: Record<string, string> = { checkinType: "MAIN" };
+        if ("participantCode" in parsed) {
+          verifyBody.participantCode = parsed.participantCode;
+        } else {
+          verifyBody.token = parsed.token;
+        }
+
         const res = await fetch("/api/checkin/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, checkinType: "MAIN" }),
+          body: JSON.stringify(verifyBody),
         });
         const data = await res.json();
         if (res.ok) {
@@ -218,10 +242,10 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
           };
         }
       } catch {
-        result = await handleOffline(token);
+        result = await handleOffline(parsed);
       }
     } else {
-      result = await handleOffline(token);
+      result = await handleOffline(parsed);
     }
 
     playBeep(result.status !== "error");
@@ -246,10 +270,20 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     }, 3000);
   }
 
-  async function handleOffline(token: string): Promise<ScanResult> {
-    const cached = await lookupToken(token);
+  async function handleOffline(
+    parsed: { participantCode: string } | { token: string }
+  ): Promise<ScanResult> {
+    let cached;
+    if ("participantCode" in parsed) {
+      const plainCode = parsed.participantCode.includes(".")
+        ? parsed.participantCode.split(".")[0]
+        : parsed.participantCode;
+      cached = await lookupByParticipantCode(plainCode);
+    } else {
+      cached = await lookupToken(parsed.token);
+    }
     if (!cached) {
-      return { status: "error", errorMessage: "Token not found in cache", timestamp: new Date(), isOffline: true };
+      return { status: "error", errorMessage: "Not found in cache", timestamp: new Date(), isOffline: true };
     }
     if (!cached.isActive || cached.registrationStatus !== "PAID") {
       return {
@@ -261,7 +295,10 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
       };
     }
     const nonce = crypto.randomUUID();
-    await addPendingCheckin({ token, checkinType: "MAIN", sessionId: null, timestamp: new Date().toISOString(), nonce });
+    const pendingToken = "participantCode" in parsed
+      ? `pc:${cached.signedCode ?? parsed.participantCode}`
+      : parsed.token;
+    await addPendingCheckin({ token: pendingToken, checkinType: "MAIN", sessionId: null, timestamp: new Date().toISOString(), nonce });
     setPendingSyncCount((prev) => prev + 1);
     return {
       status: "checked_in",
@@ -318,9 +355,25 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-xl space-y-4">
           <div className="aspect-square relative rounded-lg overflow-hidden border">
-            {scanning ? (
+            {camera.status !== "granted" ? (
+              <div className="w-full h-full flex items-center justify-center bg-muted/30">
+                <CameraErrorFallback
+                  status={camera.status}
+                  onAllow={camera.allow}
+                />
+              </div>
+            ) : scanning ? (
               <Scanner
+                constraints={{ facingMode: { ideal: "environment" } }}
                 onScan={handleScan}
+                onError={(err) => {
+                  const msg = err instanceof Error ? err.name : "";
+                  if (msg === "NotAllowedError") {
+                    camera.deny();
+                  } else {
+                    setScanning(false);
+                  }
+                }}
                 allowMultiple={false}
                 scanDelay={500}
                 components={{ finder: true }}

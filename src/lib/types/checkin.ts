@@ -47,7 +47,7 @@ export interface EpassToken {
  * Check-in result from verification
  */
 export interface CheckinResult {
-  status: "checked_in" | "already_checked_in" | "error";
+  status: "checked_in" | "already_checked_in" | "checked_out" | "already_checked_out" | "error";
   person?: {
     name: string;
     koreanName: string | null;

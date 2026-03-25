@@ -48,13 +48,29 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { token, participantCode, checkinType = "MAIN", sessionId } = body;
+  const { token, participantCode, checkinType = "MAIN", sessionId, mealDate, mealType } = body;
 
   if (!token && !participantCode) {
     return NextResponse.json(
       { error: "token or participantCode is required" },
       { status: 400 }
     );
+  }
+
+  // Validate meal params for DINING check-in
+  if (checkinType === "DINING") {
+    if (!mealDate || !mealType) {
+      return NextResponse.json(
+        { error: "mealDate and mealType are required for DINING check-in" },
+        { status: 400 }
+      );
+    }
+    if (!["BREAKFAST", "LUNCH", "DINNER"].includes(mealType)) {
+      return NextResponse.json(
+        { error: "mealType must be BREAKFAST, LUNCH, or DINNER" },
+        { status: 400 }
+      );
+    }
   }
 
   const admin = createAdminClient();
@@ -194,15 +210,20 @@ export async function POST(req: NextRequest) {
   }
 
   // Record check-in
+  const insertData: Record<string, unknown> = {
+    person_id: data.person_id,
+    event_id: data.eckcm_registrations.event_id,
+    session_id: sessionId || null,
+    checkin_type: checkinType,
+    checked_in_by: user.id,
+  };
+  if (checkinType === "DINING") {
+    insertData.meal_date = mealDate;
+    insertData.meal_type = mealType;
+  }
   const { error: checkinError } = await supabase
     .from("eckcm_checkins")
-    .insert({
-      person_id: data.person_id,
-      event_id: data.eckcm_registrations.event_id,
-      session_id: sessionId || null,
-      checkin_type: checkinType,
-      checked_in_by: user.id,
-    });
+    .insert(insertData);
 
   if (checkinError) {
     // Unique constraint violation = already checked in

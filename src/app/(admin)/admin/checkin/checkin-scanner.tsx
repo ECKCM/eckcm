@@ -27,6 +27,8 @@ import {
   Play,
   Loader2,
 } from "lucide-react";
+import { CameraErrorFallback } from "@/components/checkin/camera-error-fallback";
+import { useCameraPermission } from "@/lib/checkin/use-camera-permission";
 import {
   cacheEPassData,
   lookupToken,
@@ -112,7 +114,7 @@ export function CheckinScanner({ events }: CheckinScannerProps) {
   const [selectedEventId, setSelectedEventId] = useState(
     events[0]?.id ?? ""
   );
-  const [checkinType, setCheckinType] = useState<"MAIN" | "DINING" | "SESSION">(
+  const [checkinType, setCheckinType] = useState<"MAIN" | "SESSION">(
     "MAIN"
   );
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
@@ -131,6 +133,7 @@ export function CheckinScanner({ events }: CheckinScannerProps) {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const lastScannedRef = useRef<string | null>(null);
+  const camera = useCameraPermission();
 
   // Online/offline detection
   useEffect(() => {
@@ -475,12 +478,11 @@ export function CheckinScanner({ events }: CheckinScannerProps) {
         <Tabs
           value={checkinType}
           onValueChange={(v) =>
-            setCheckinType(v as "MAIN" | "DINING" | "SESSION")
+            setCheckinType(v as "MAIN" | "SESSION")
           }
         >
           <TabsList>
             <TabsTrigger value="MAIN">Main</TabsTrigger>
-            <TabsTrigger value="DINING">Dining</TabsTrigger>
             <TabsTrigger value="SESSION">Session</TabsTrigger>
           </TabsList>
         </Tabs>
@@ -543,9 +545,26 @@ export function CheckinScanner({ events }: CheckinScannerProps) {
           <Card>
             <CardContent className="p-0 overflow-hidden relative">
               <div className="aspect-square max-w-[400px] mx-auto">
-                {scanning ? (
+                {camera.status !== "granted" ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30">
+                    <CameraErrorFallback
+                      status={camera.status}
+                      onAllow={camera.allow}
+                    />
+                  </div>
+                ) : scanning ? (
                   <Scanner
+                    constraints={{ facingMode: { ideal: "environment" } }}
                     onScan={handleScan}
+                    onError={(err) => {
+                      const msg = err instanceof Error ? err.name : "";
+                      if (msg === "NotAllowedError") {
+                        camera.deny();
+                      } else {
+                        // Non-permission error (hardware, etc.) — retry once
+                        setScanning(false);
+                      }
+                    }}
                     allowMultiple={false}
                     scanDelay={500}
                     components={{

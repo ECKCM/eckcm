@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import {
   ScanResultCard,
@@ -11,29 +11,37 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
   ScanLine,
   Users,
-  Calendar,
-  Clock,
   Pause,
   Play,
   Loader2,
+  UtensilsCrossed,
+  Coffee,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { CameraErrorFallback } from "@/components/checkin/camera-error-fallback";
 import { useCameraPermission } from "@/lib/checkin/use-camera-permission";
 import { addCheckinLog, getRecentLogs } from "@/lib/checkin/offline-store";
-import { useEffect } from "react";
 
-interface Session {
+interface EventOption {
   id: string;
-  event_id: string;
   name_en: string;
-  name_ko: string | null;
-  session_date: string;
-  start_time: string | null;
-  end_time: string | null;
-  is_active: boolean;
+  year: number;
+  start_date: string;
+  end_date: string;
 }
+
+type MealType = "BREAKFAST" | "LUNCH" | "DINNER";
 
 function parseQRValue(
   scannedValue: string
@@ -67,27 +75,75 @@ function playBeep(success: boolean) {
   }
 }
 
-export function SessionDashboardClient({
-  session,
-  initialCheckinCount,
-}: {
-  session: Session;
-  initialCheckinCount: number;
-}) {
+function vibrate(success: boolean) {
+  try {
+    if (navigator.vibrate) {
+      navigator.vibrate(success ? 100 : [100, 50, 100]);
+    }
+  } catch {
+    // Vibration not available
+  }
+}
+
+function getCurrentMealType(): MealType {
+  const hour = new Date().getHours();
+  if (hour < 10) return "BREAKFAST";
+  if (hour < 14) return "LUNCH";
+  return "DINNER";
+}
+
+function getTodayDate(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+function getEventDates(startDate: string, endDate: string): string[] {
+  const dates: string[] = [];
+  const start = new Date(startDate + "T00:00:00");
+  const end = new Date(endDate + "T00:00:00");
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    dates.push(d.toISOString().split("T")[0]);
+  }
+  return dates;
+}
+
+const MEAL_ICONS: Record<MealType, React.ReactNode> = {
+  BREAKFAST: <Coffee className="h-4 w-4" />,
+  LUNCH: <Sun className="h-4 w-4" />,
+  DINNER: <Moon className="h-4 w-4" />,
+};
+
+const MEAL_LABELS: Record<MealType, string> = {
+  BREAKFAST: "Breakfast",
+  LUNCH: "Lunch",
+  DINNER: "Dinner",
+};
+
+export function MealCheckinClient({ events }: { events: EventOption[] }) {
+  const [selectedEventId, setSelectedEventId] = useState(events[0]?.id ?? "");
+  const [mealType, setMealType] = useState<MealType>(getCurrentMealType());
+  const [mealDate, setMealDate] = useState(getTodayDate());
   const [scanning, setScanning] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
-  const [checkinCount, setCheckinCount] = useState(initialCheckinCount);
+  const [mealCount, setMealCount] = useState(0);
   const [recentCheckins, setRecentCheckins] = useState<ScanResult[]>([]);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [resumeCountdown, setResumeCountdown] = useState<number | null>(null);
   const lastScannedRef = useRef<string | null>(null);
   const camera = useCameraPermission();
 
+  const selectedEvent = events.find((e) => e.id === selectedEventId);
+  const eventDates = selectedEvent
+    ? getEventDates(selectedEvent.start_date, selectedEvent.end_date)
+    : [];
+
+  // Load recent logs and meal count
   useEffect(() => {
-    getRecentLogs(20).then((logs) => {
+    getRecentLogs(30).then((logs) => {
       setRecentCheckins(
         logs
-          .filter((l) => l.checkinType === "SESSION")
+          .filter((l) => l.checkinType === "DINING")
           .map((l) => ({
             status: l.status,
             person: { name: l.personName, koreanName: l.koreanName },
@@ -101,11 +157,41 @@ export function SessionDashboardClient({
     });
   }, []);
 
+  // Load meal count for current date+type
+  useEffect(() => {
+    if (!selectedEventId || !mealDate || !mealType) return;
+    fetch(`/api/checkin/stats?eventId=${selectedEventId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setMealCount(data.checkins?.dining ?? 0);
+      })
+      .catch(() => {});
+  }, [selectedEventId, mealDate, mealType]);
+
   useEffect(() => {
     return () => {
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
     };
   }, []);
+
+  function startResumeCountdown() {
+    setResumeCountdown(3);
+    countdownRef.current = setInterval(() => {
+      setResumeCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    resumeTimerRef.current = setTimeout(() => {
+      setScanning(true);
+      setScanResult(null);
+      lastScannedRef.current = null;
+    }, 3000);
+  }
 
   const handleScan = useCallback(
     async (detectedCodes: { rawValue: string }[]) => {
@@ -114,20 +200,23 @@ export function SessionDashboardClient({
       const parsed = parseQRValue(rawValue);
       if (!parsed) return;
 
-      const dedupeKey = "participantCode" in parsed ? parsed.participantCode : parsed.token;
+      const dedupeKey =
+        "participantCode" in parsed ? parsed.participantCode : parsed.token;
       if (lastScannedRef.current === dedupeKey) return;
       lastScannedRef.current = dedupeKey;
 
       setProcessing(true);
       setScanning(false);
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
 
       let result: ScanResult;
 
       try {
         const verifyBody: Record<string, string> = {
-          checkinType: "SESSION",
-          sessionId: session.id,
+          checkinType: "DINING",
+          mealDate,
+          mealType,
         };
         if ("participantCode" in parsed) {
           verifyBody.participantCode = parsed.participantCode;
@@ -140,24 +229,35 @@ export function SessionDashboardClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(verifyBody),
         });
+
         const data = await res.json();
+
         if (res.ok) {
           result = {
             status: data.status,
             person: data.person,
             confirmationCode: data.confirmationCode,
-            checkinType: "SESSION",
+            checkinType: "DINING",
+            mealType: MEAL_LABELS[mealType],
+            mealDate,
             timestamp: new Date(),
             isOffline: false,
           };
           if (data.status === "checked_in") {
-            setCheckinCount((prev) => prev + 1);
+            setMealCount((prev) => prev + 1);
           }
-        } else {
+        } else if (res.status === 403 || res.status === 404) {
           result = {
             status: "error",
             person: data.person,
-            errorMessage: data.error || "Check-in failed",
+            errorMessage: data.error,
+            timestamp: new Date(),
+            isOffline: false,
+          };
+        } else {
+          result = {
+            status: "error",
+            errorMessage: data.error || "Meal check-in failed",
             timestamp: new Date(),
             isOffline: false,
           };
@@ -171,53 +271,96 @@ export function SessionDashboardClient({
         };
       }
 
-      playBeep(result.status !== "error");
+      const isSuccess = result.status !== "error";
+      playBeep(isSuccess);
+      vibrate(isSuccess);
+
       setScanResult(result);
-      setRecentCheckins((prev) => [result, ...prev].slice(0, 20));
+      setRecentCheckins((prev) => [result, ...prev].slice(0, 30));
 
       await addCheckinLog({
         personName: result.person?.name ?? "Unknown",
         koreanName: result.person?.koreanName ?? null,
         confirmationCode: result.confirmationCode ?? null,
-        status: result.status,
-        checkinType: "SESSION",
+        status: result.status === "checked_out" || result.status === "already_checked_out" ? "checked_in" : result.status,
+        checkinType: "DINING",
         timestamp: result.timestamp.toISOString(),
         isOffline: result.isOffline ?? false,
         errorMessage: result.errorMessage,
       });
 
       setProcessing(false);
-      resumeTimerRef.current = setTimeout(() => {
-        setScanning(true);
-        setScanResult(null);
-        lastScannedRef.current = null;
-      }, 3000);
+      startResumeCountdown();
     },
-    [processing, session.id]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [processing, mealDate, mealType]
   );
 
   return (
     <div className="space-y-4">
-      {/* Session Info */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+        <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+          <SelectTrigger className="w-full sm:w-[220px]">
+            <SelectValue placeholder="Select event" />
+          </SelectTrigger>
+          <SelectContent>
+            {events.map((e) => (
+              <SelectItem key={e.id} value={e.id}>
+                {e.name_en} ({e.year})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={mealDate} onValueChange={setMealDate}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Select date" />
+          </SelectTrigger>
+          <SelectContent>
+            {eventDates.map((d) => (
+              <SelectItem key={d} value={d}>
+                {new Date(d + "T12:00:00").toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+                {d === getTodayDate() ? " (Today)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Tabs
+          value={mealType}
+          onValueChange={(v) => setMealType(v as MealType)}
+        >
+          <TabsList>
+            <TabsTrigger value="BREAKFAST" className="gap-1.5">
+              <Coffee className="h-4 w-4" />
+              Breakfast
+            </TabsTrigger>
+            <TabsTrigger value="LUNCH" className="gap-1.5">
+              <Sun className="h-4 w-4" />
+              Lunch
+            </TabsTrigger>
+            <TabsTrigger value="DINNER" className="gap-1.5">
+              <Moon className="h-4 w-4" />
+              Dinner
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Info cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <UtensilsCrossed className="h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="text-sm text-muted-foreground">Date</p>
-              <p className="font-medium">{session.session_date}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <Clock className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-sm text-muted-foreground">Time</p>
-              <p className="font-medium">
-                {session.start_time && session.end_time
-                  ? `${session.start_time} - ${session.end_time}`
-                  : "Not set"}
+              <p className="text-sm text-muted-foreground">Current Meal</p>
+              <p className="font-medium flex items-center gap-1.5">
+                {MEAL_ICONS[mealType]} {MEAL_LABELS[mealType]}
               </p>
             </div>
           </CardContent>
@@ -226,8 +369,8 @@ export function SessionDashboardClient({
           <CardContent className="p-4 flex items-center gap-3">
             <Users className="h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="text-sm text-muted-foreground">Checked In</p>
-              <p className="font-medium text-lg">{checkinCount}</p>
+              <p className="text-sm text-muted-foreground">Served Today</p>
+              <p className="font-medium text-lg">{mealCount}</p>
             </div>
           </CardContent>
         </Card>
@@ -241,10 +384,14 @@ export function SessionDashboardClient({
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <ScanLine className="h-4 w-4" />
-                  QR Scanner
+                  Meal Scanner
                 </CardTitle>
-                <Badge variant={session.is_active ? "default" : "secondary"}>
-                  {session.is_active ? "Active" : "Inactive"}
+                <Badge variant="secondary">
+                  {MEAL_LABELS[mealType]} &middot;{" "}
+                  {new Date(mealDate + "T12:00:00").toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })}
                 </Badge>
               </div>
             </CardHeader>
@@ -278,9 +425,16 @@ export function SessionDashboardClient({
                     }}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-muted/30">
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30 gap-3">
                     {processing ? (
                       <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+                    ) : resumeCountdown !== null ? (
+                      <>
+                        <Pause className="h-10 w-10 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          Resuming in {resumeCountdown}s
+                        </p>
+                      </>
                     ) : (
                       <Button
                         size="lg"
@@ -302,7 +456,12 @@ export function SessionDashboardClient({
                     variant="secondary"
                     size="sm"
                     className="absolute bottom-3 right-3 gap-1"
-                    onClick={() => setScanning(false)}
+                    onClick={() => {
+                      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+                      if (countdownRef.current) clearInterval(countdownRef.current);
+                      setResumeCountdown(null);
+                      setScanning(false);
+                    }}
                   >
                     <Pause className="h-4 w-4" /> Pause
                   </Button>
@@ -316,7 +475,7 @@ export function SessionDashboardClient({
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Recent Session Check-ins</CardTitle>
+            <CardTitle className="text-base">Recent Meal Check-ins</CardTitle>
           </CardHeader>
           <CardContent>
             <RecentCheckins checkins={recentCheckins} />

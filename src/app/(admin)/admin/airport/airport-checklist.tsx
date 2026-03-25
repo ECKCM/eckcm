@@ -43,15 +43,17 @@ interface RideWithPassengers {
 }
 
 interface Passenger {
+  /** Unique key: registrationRideId + memberIndex */
+  id: string;
   registrationRideId: string;
-  passengerCount: number;
   flightInfo: string | null;
   confirmationCode: string | null;
-  registrantName: string;
-  registrantPhone: string | null;
+  name: string;
+  phone: string | null;
   gender: string | null;
   ageAtEvent: number | null;
   participantCode: string | null;
+  role: string | null;
 }
 
 export function AirportChecklist() {
@@ -115,7 +117,7 @@ export function AirportChecklist() {
       )
       .in("ride_id", rideIds);
 
-    // Build ride map
+    // Build ride map — expand each registration into individual people
     const ridesWithPassengers: RideWithPassengers[] = rideRows.map((ride) => {
       const passengers: Passenger[] = [];
 
@@ -125,51 +127,63 @@ export function AirportChecklist() {
           const reg = rr.eckcm_registrations as any;
           if (!reg || reg.status === "CANCELLED" || reg.status === "DRAFT") continue;
 
-          // Extract registrant info from groups → memberships → people
-          // Use LEADER role member as primary contact (same pattern as participants-table)
-          let name = "Unknown";
-          let phone: string | null = null;
-          let gender: string | null = null;
-          let ageAtEvent: number | null = null;
-          let participantCode: string | null = null;
+          // Collect ALL members from all groups
+          const allMembers: any[] = [];
           try {
             const groups = reg.eckcm_groups;
             if (Array.isArray(groups)) {
-              // Find the LEADER member across all groups
-              let leader: any = null;
               for (const g of groups) {
                 const members = g.eckcm_group_memberships;
                 if (Array.isArray(members)) {
-                  leader = members.find((m: any) => m.role === "LEADER") || members[0];
-                  if (leader) break;
+                  allMembers.push(...members);
                 }
-              }
-              if (leader) {
-                const person = leader.eckcm_people;
-                if (person) {
-                  name = `${person.first_name_en} ${person.last_name_en}`;
-                  phone = person.phone;
-                  gender = person.gender;
-                  ageAtEvent = person.age_at_event;
-                }
-                participantCode = leader.participant_code;
               }
             }
           } catch {
             // fallback
           }
 
-          passengers.push({
-            registrationRideId: rr.id,
-            passengerCount: rr.passenger_count,
-            flightInfo: rr.flight_info,
-            confirmationCode: reg.confirmation_code,
-            registrantName: name,
-            registrantPhone: phone,
-            gender,
-            ageAtEvent,
-            participantCode,
-          });
+          if (allMembers.length === 0) {
+            // No members found — show a placeholder row
+            passengers.push({
+              id: rr.id,
+              registrationRideId: rr.id,
+              flightInfo: rr.flight_info,
+              confirmationCode: reg.confirmation_code,
+              name: "Unknown",
+              phone: null,
+              gender: null,
+              ageAtEvent: null,
+              participantCode: null,
+              role: null,
+            });
+          } else {
+            // Sort: LEADER first, then by name
+            allMembers.sort((a, b) => {
+              if (a.role === "LEADER" && b.role !== "LEADER") return -1;
+              if (a.role !== "LEADER" && b.role === "LEADER") return 1;
+              return 0;
+            });
+
+            for (let i = 0; i < allMembers.length; i++) {
+              const member = allMembers[i];
+              const person = member.eckcm_people;
+              passengers.push({
+                id: `${rr.id}-${i}`,
+                registrationRideId: rr.id,
+                flightInfo: rr.flight_info,
+                confirmationCode: reg.confirmation_code,
+                name: person
+                  ? `${person.first_name_en} ${person.last_name_en}`
+                  : "Unknown",
+                phone: person?.phone ?? null,
+                gender: person?.gender ?? null,
+                ageAtEvent: person?.age_at_event ?? null,
+                participantCode: member.participant_code,
+                role: member.role,
+              });
+            }
+          }
         }
       }
 
@@ -214,8 +228,8 @@ export function AirportChecklist() {
         ...ride,
         passengers: ride.passengers.filter(
           (p) =>
-            p.registrantName.toLowerCase().includes(q) ||
-            p.registrantPhone?.toLowerCase().includes(q) ||
+            p.name.toLowerCase().includes(q) ||
+            p.phone?.toLowerCase().includes(q) ||
             p.confirmationCode?.toLowerCase().includes(q) ||
             p.participantCode?.toLowerCase().includes(q) ||
             p.flightInfo?.toLowerCase().includes(q)
@@ -228,11 +242,11 @@ export function AirportChecklist() {
   const dropoffs = filterRides.filter((r) => r.direction === "DROPOFF");
 
   const pickupPassengerCount = pickups.reduce(
-    (sum, r) => sum + r.passengers.reduce((s, p) => s + p.passengerCount, 0),
+    (sum, r) => sum + r.passengers.length,
     0
   );
   const dropoffPassengerCount = dropoffs.reduce(
-    (sum, r) => sum + r.passengers.reduce((s, p) => s + p.passengerCount, 0),
+    (sum, r) => sum + r.passengers.length,
     0
   );
 
@@ -345,10 +359,7 @@ function RideCard({
   onToggleCheck: (id: string) => void;
   formatDateTime: (iso: string) => string;
 }) {
-  const totalPassengers = ride.passengers.reduce(
-    (sum, p) => sum + p.passengerCount,
-    0
-  );
+  const totalPassengers = ride.passengers.length;
 
   return (
     <Card className={!ride.is_active ? "opacity-50" : ""}>
@@ -377,11 +388,7 @@ function RideCard({
           <div className="flex items-center gap-1 text-sm text-muted-foreground shrink-0">
             <Users className="size-4" />
             <span>
-              {totalPassengers} passenger{totalPassengers !== 1 ? "s" : ""}
-            </span>
-            <span className="mx-1">·</span>
-            <span>
-              {ride.passengers.length} booking{ride.passengers.length !== 1 ? "s" : ""}
+              {totalPassengers} person{totalPassengers !== 1 ? "s" : ""}
             </span>
           </div>
         </div>
@@ -395,30 +402,28 @@ function RideCard({
           <div className="space-y-2">
             {ride.passengers.map((p) => (
               <label
-                key={p.registrationRideId}
+                key={p.id}
                 className={`flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-all ${
-                  checked.has(p.registrationRideId)
+                  checked.has(p.id)
                     ? "bg-muted/50 border-primary/30"
                     : "hover:bg-muted/30 active:bg-muted/60 active:scale-[0.99]"
                 }`}
               >
                 <Checkbox
-                  checked={checked.has(p.registrationRideId)}
-                  onCheckedChange={() =>
-                    onToggleCheck(p.registrationRideId)
-                  }
+                  checked={checked.has(p.id)}
+                  onCheckedChange={() => onToggleCheck(p.id)}
                   className="mt-0.5"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={`font-medium text-sm ${
-                        checked.has(p.registrationRideId)
+                        checked.has(p.id)
                           ? "line-through text-muted-foreground"
                           : ""
                       }`}
                     >
-                      {p.registrantName}
+                      {p.name}
                     </span>
                     {p.gender && (
                       <Badge variant="outline" className={`text-xs ${p.gender === "MALE" ? "border-blue-300 bg-blue-50 text-blue-700" : p.gender === "FEMALE" ? "border-pink-300 bg-pink-50 text-pink-700" : ""}`}>
@@ -430,12 +435,9 @@ function RideCard({
                         Age {p.ageAtEvent}
                       </span>
                     )}
-                    <Badge variant="outline" className="text-xs">
-                      {p.passengerCount} person{p.passengerCount !== 1 ? "s" : ""}
-                    </Badge>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                    {p.registrantPhone && <a href={`tel:${p.registrantPhone}`} onClick={(e) => e.stopPropagation()} className="underline hover:text-foreground">{p.registrantPhone}</a>}
+                    {p.phone && <a href={`tel:${p.phone}`} onClick={(e) => e.stopPropagation()} className="underline hover:text-foreground">{p.phone}</a>}
                     {p.participantCode && (
                       <span className="font-mono">{p.participantCode}</span>
                     )}

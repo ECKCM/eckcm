@@ -1,13 +1,13 @@
 {
-  "sessionCount": 419,
+  "sessionCount": 427,
   "lastSession": {
-    "startedAt": "2026-03-25T10:43:48.770Z",
+    "startedAt": "2026-03-25T14:19:03.321Z",
     "platform": "claude",
     "level": "Dynamic"
   },
-  "currentFeature": "registration-adjustment-ledger",
-  "currentPhase": "completed",
-  "matchRate": 98,
+  "currentFeature": "qr-checkin-system",
+  "currentPhase": "check",
+  "matchRate": 87,
   "pdcaHistory": [
     {
       "action": "plan_created",

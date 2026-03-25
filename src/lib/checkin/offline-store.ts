@@ -31,7 +31,7 @@ export interface CheckinLogEntry {
   personName: string;
   koreanName: string | null;
   confirmationCode: string | null;
-  status: "checked_in" | "already_checked_in" | "error";
+  status: "checked_in" | "already_checked_in" | "checked_out" | "already_checked_out" | "error";
   checkinType: string;
   timestamp: string;
   isOffline: boolean;

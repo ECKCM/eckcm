@@ -10,6 +10,8 @@ interface CheckinItem {
   participantCode?: string;
   checkinType: string;
   sessionId?: string | null;
+  mealDate?: string | null;
+  mealType?: string | null;
   nonce: string;
   timestamp: string;
 }
@@ -184,16 +186,21 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      const insertData: Record<string, unknown> = {
+        person_id: personId,
+        event_id: eventId,
+        session_id: item.sessionId || null,
+        checkin_type: item.checkinType || "MAIN",
+        checked_in_by: user.id,
+        nonce: item.nonce,
+      };
+      if (item.checkinType === "DINING" && item.mealDate && item.mealType) {
+        insertData.meal_date = item.mealDate;
+        insertData.meal_type = item.mealType;
+      }
       const { error: checkinError } = await supabase
         .from("eckcm_checkins")
-        .insert({
-          person_id: personId,
-          event_id: eventId,
-          session_id: item.sessionId || null,
-          checkin_type: item.checkinType || "MAIN",
-          checked_in_by: user.id,
-          nonce: item.nonce,
-        });
+        .insert(insertData);
 
       if (checkinError) {
         if (checkinError.code === "23505") {

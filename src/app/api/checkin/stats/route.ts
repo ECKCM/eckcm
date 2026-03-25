@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   // 3. All checkins
   const { data: checkins } = await supabase
     .from("eckcm_checkins")
-    .select("id, person_id, checkin_type, checked_in_at")
+    .select("id, person_id, checkin_type, checked_in_at, checked_out_at, meal_date, meal_type")
     .eq("event_id", eventId);
 
   const allCheckins = checkins ?? [];
@@ -43,6 +43,16 @@ export async function GET(req: NextRequest) {
   const mainCheckins = allCheckins.filter((c) => c.checkin_type === "MAIN");
   const diningCheckins = allCheckins.filter((c) => c.checkin_type === "DINING");
   const sessionCheckins = allCheckins.filter((c) => c.checkin_type === "SESSION");
+  const checkedOutCount = mainCheckins.filter((c) => c.checked_out_at).length;
+
+  // Meal breakdown by date and type
+  const mealBreakdown: Record<string, Record<string, number>> = {};
+  for (const c of diningCheckins) {
+    const date = c.meal_date ?? "unknown";
+    const meal = c.meal_type ?? "unknown";
+    if (!mealBreakdown[date]) mealBreakdown[date] = {};
+    mealBreakdown[date][meal] = (mealBreakdown[date][meal] ?? 0) + 1;
+  }
 
   // 4. Unique people checked in (MAIN) for arrival rate
   const uniqueMainPersonIds = new Set(mainCheckins.map((c) => c.person_id));
@@ -83,6 +93,7 @@ export async function GET(req: NextRequest) {
       dining: diningCheckins.length,
       session: sessionCheckins.length,
     },
+    checkouts: checkedOutCount,
     arrivalRate: {
       checkedIn: uniqueMainPersonIds.size,
       total: totalPeople,
@@ -91,6 +102,7 @@ export async function GET(req: NextRequest) {
           ? Math.round((uniqueMainPersonIds.size / totalPeople) * 100)
           : 0,
     },
+    mealBreakdown,
     hourlyDistribution,
     last24h,
   });

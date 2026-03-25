@@ -39,9 +39,11 @@ export function RecentCheckins({ checkins }: RecentCheckinsProps) {
               className={`h-2 w-2 rounded-full shrink-0 ${
                 checkin.status === "checked_in"
                   ? "bg-green-500"
-                  : checkin.status === "already_checked_in"
-                    ? "bg-amber-500"
-                    : "bg-red-500"
+                  : checkin.status === "checked_out"
+                    ? "bg-blue-500"
+                    : checkin.status === "already_checked_in" || checkin.status === "already_checked_out"
+                      ? "bg-amber-500"
+                      : "bg-red-500"
               }`}
             />
             <div className="flex-1 min-w-0">

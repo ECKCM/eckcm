@@ -139,15 +139,18 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
       .eq("event_id", eventId)
       .order("created_at", { ascending: false });
 
-    // Fetch all MAIN check-ins for this event (arrival check-in)
+    // Fetch all MAIN check-ins for this event (arrival check-in + checkout)
     const { data: checkins } = await supabase
       .from("eckcm_checkins")
-      .select("person_id")
+      .select("person_id, checked_out_at")
       .eq("event_id", eventId)
       .eq("checkin_type", "MAIN");
 
     const checkinSet = new Set(
       (checkins ?? []).map((c) => c.person_id)
+    );
+    const checkoutSet = new Set(
+      (checkins ?? []).filter((c) => c.checked_out_at).map((c) => c.person_id)
     );
 
     if (data) {
@@ -241,7 +244,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           stripe_payment_intent_id: stripePaymentIntentId,
           paid_at: invoice?.paid_at ?? null,
           checked_in: checkedIn,
-          checked_out: false,
+          checked_out: repPersonId ? checkoutSet.has(repPersonId) : false,
           room_numbers: roomNumbers,
         };
       });
