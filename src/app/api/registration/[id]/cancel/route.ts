@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { cancelRegistration } from "@/lib/services/registration.service";
+import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 
 export async function POST(
   req: NextRequest,
@@ -32,6 +34,10 @@ export async function POST(
       { status: 400 }
     );
   }
+
+  // Update inventory counts
+  const admin = createAdminClient();
+  await recalculateInventorySafe(admin);
 
   return NextResponse.json({ success: true });
 }

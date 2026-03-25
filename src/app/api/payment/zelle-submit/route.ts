@@ -7,6 +7,7 @@ import { zelleSubmitSchema } from "@/lib/schemas/api";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { getStripeForMode } from "@/lib/stripe/config";
 import { logger } from "@/lib/logger";
+import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 
 export async function POST(request: Request) {
   try {
@@ -251,6 +252,9 @@ export async function POST(request: Request) {
       logger.error("[payment/zelle-submit] Failed to send Zelle instructions email", { error: String(err) });
     }
   });
+
+  // Update inventory counts
+  await recalculateInventorySafe(admin);
 
   // Audit log
   await admin.from("eckcm_audit_logs").insert({

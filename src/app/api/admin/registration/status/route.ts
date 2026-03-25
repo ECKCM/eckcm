@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { generateEPassToken } from "@/lib/services/epass.service";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { logger } from "@/lib/logger";
+import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 
 const VALID_STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "PAID", "CANCELLED", "REFUNDED"];
 
@@ -155,6 +156,9 @@ export async function PATCH(request: Request) {
     entity_type: "registration",
     entity_id: registrationId,
   });
+
+  // Update inventory counts
+  await recalculateInventorySafe(admin);
 
   return NextResponse.json({ success: true });
 }

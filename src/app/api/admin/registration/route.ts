@@ -12,6 +12,7 @@ import { logger } from "@/lib/logger";
 import type { RoomGroupInput } from "@/lib/types/registration";
 import { buildPhoneValue } from "@/lib/utils/field-helpers";
 import { populateDefaultMeals } from "@/lib/services/meal.service";
+import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 
 interface AdminRegBody {
   eventId: string;
@@ -500,6 +501,9 @@ export async function POST(request: Request) {
         note: note || null,
       },
     });
+
+    // Update inventory counts
+    await recalculateInventorySafe(admin);
 
     return NextResponse.json({
       registrationId: registration.id,

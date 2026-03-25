@@ -13,6 +13,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { populateDefaultMeals } from "@/lib/services/meal.service";
 import { deleteDraftRegistration } from "@/lib/services/registration.service";
+import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 
 async function cleanupFailedRegistration(
   admin: SupabaseClient,
@@ -546,6 +547,9 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+
+  // Update inventory counts (non-blocking)
+  await recalculateInventorySafe(admin);
 
   return NextResponse.json({
     registrationId: registration.id,

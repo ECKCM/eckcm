@@ -2,6 +2,7 @@
 // Order matters: more-specific prefixes must come before shorter ones.
 const ROUTE_PERMISSIONS: [string, string][] = [
   ["/admin/registrations/create", "participant.update"],
+  ["/admin/guardian-consents", "participant.read"],
   ["/admin/registrations", "participant.read"],
   ["/admin/events", "event.manage"],
   ["/admin/participants", "participant.read"],
@@ -19,6 +20,7 @@ const ROUTE_PERMISSIONS: [string, string][] = [
   ["/admin/lodging", "lodging.read"],
   ["/admin/print/lanyard", "print.lanyard"],
   ["/admin/print/qr-cards", "print.qrcard"],
+  ["/admin/settings/links", "links.manage"],
   ["/admin/settings", "settings.manage"],
 ];
 

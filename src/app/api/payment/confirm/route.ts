@@ -7,6 +7,7 @@ import { generateEPassToken } from "@/lib/services/epass.service";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { confirmPaymentSchema } from "@/lib/schemas/api";
 import { logger } from "@/lib/logger";
+import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 
 /**
  * Generate E-Pass tokens and send confirmation email for a registration.
@@ -223,6 +224,9 @@ export async function POST(request: Request) {
     // Generate E-Pass tokens and send email
     await generateEPassAndSendEmail(admin, registrationId);
 
+    // Update inventory counts
+    await recalculateInventorySafe(admin);
+
     return NextResponse.json({ status: "confirmed" });
   }
 
@@ -257,6 +261,9 @@ export async function POST(request: Request) {
       .update({ status: "PENDING" })
       .eq("id", invoiceId);
   }
+
+  // Update inventory counts (SUBMITTED status)
+  await recalculateInventorySafe(admin);
 
   return NextResponse.json({ status: "processing" });
   } catch (err) {

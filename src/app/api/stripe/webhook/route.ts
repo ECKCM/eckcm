@@ -6,6 +6,7 @@ import { generateEPassToken } from "@/lib/services/epass.service";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { logger } from "@/lib/logger";
 import type Stripe from "stripe";
+import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 
 /**
  * Stripe webhook handler.
@@ -162,6 +163,9 @@ export async function POST(request: Request) {
       }
     }
 
+    // Update inventory counts
+    await recalculateInventorySafe(admin);
+
     // Send confirmation email
     after(async () => {
       try {
@@ -235,6 +239,9 @@ export async function POST(request: Request) {
         .update({ status: "FAILED" })
         .eq("id", invoiceId);
     }
+
+    // Update inventory counts (registration cancelled)
+    await recalculateInventorySafe(admin);
 
     return NextResponse.json({ received: true });
   }

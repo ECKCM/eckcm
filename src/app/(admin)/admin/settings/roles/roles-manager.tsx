@@ -56,6 +56,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   event: "Events",
   group: "Groups",
   invoice: "Invoices",
+  links: "Links",
   lodging: "Lodging",
   participant: "Participants",
   payment: "Payments",

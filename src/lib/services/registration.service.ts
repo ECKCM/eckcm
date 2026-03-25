@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 
 /**
  * Fetch a registration with related data.
@@ -135,4 +136,7 @@ export async function deleteDraftRegistration(
 
   // Finally delete the registration itself
   await admin.from("eckcm_registrations").delete().eq("id", registrationId);
+
+  // Update inventory counts
+  await recalculateInventorySafe(admin);
 }

@@ -6,6 +6,7 @@ import { getEmailConfig, getEmailHeaders } from "@/lib/email/email-config";
 import { logEmail } from "@/lib/email/email-log.service";
 import { buildInvoiceEmail } from "@/lib/email/templates/invoice";
 import { generateInvoicePdf } from "@/lib/pdf/generate";
+import { generateRegistrationSummaryPdf, type SummaryParticipant } from "@/lib/pdf/generate-summary";
 import { emailInvoiceSchema } from "@/lib/schemas/api";
 import { rateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
   // Verify user owns the registration linked to this invoice
   const { data: reg } = await admin
     .from("eckcm_registrations")
-    .select("created_by_user_id, confirmation_code, event_id, eckcm_events!inner(name_en, event_end_date)")
+    .select("created_by_user_id, confirmation_code, event_id, start_date, end_date, nights_count, registration_type, status, total_amount_cents, eckcm_events!inner(name_en, event_end_date)")
     .eq("id", inv.registration_id)
     .single();
 
@@ -168,6 +169,72 @@ export async function POST(req: NextRequest) {
     }
   } catch (err) {
     logger.error("[email/invoice] PDF generation failed", { error: String(err) });
+  }
+
+  // Generate Registration Summary PDF
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = reg as any;
+  try {
+    const { data: memberships } = await admin
+      .from("eckcm_group_memberships")
+      .select(`
+        role,
+        eckcm_people!inner(
+          first_name_en, last_name_en, display_name_ko,
+          gender, age_at_event, is_k12, grade,
+          phone, email, church_other,
+          guardian_name, guardian_phone,
+          eckcm_churches(name_en),
+          eckcm_departments(name_en)
+        ),
+        eckcm_groups!inner(registration_id, display_group_code)
+      `)
+      .eq("eckcm_groups.registration_id", inv.registration_id);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const summaryParticipants: SummaryParticipant[] = (memberships ?? []).map((m: any) => {
+      const p = m.eckcm_people;
+      return {
+        name: `${p.first_name_en} ${p.last_name_en}`,
+        nameKo: p.display_name_ko,
+        gender: p.gender ?? "-",
+        age: p.age_at_event,
+        isK12: p.is_k12 ?? false,
+        grade: p.grade,
+        email: p.email,
+        phone: p.phone,
+        church: p.church_other || p.eckcm_churches?.name_en || null,
+        department: p.eckcm_departments?.name_en ?? null,
+        guardianName: p.guardian_name,
+        guardianPhone: p.guardian_phone,
+        groupCode: m.eckcm_groups?.display_group_code ?? "-",
+        role: m.role ?? "MEMBER",
+      };
+    });
+
+    const totalAmount = `$${(r.total_amount_cents / 100).toFixed(2)}`;
+    const summaryPdfBuffer = await generateRegistrationSummaryPdf({
+      confirmationCode: r.confirmation_code ?? "",
+      eventName,
+      startDate: r.start_date,
+      endDate: r.end_date,
+      nightsCount: r.nights_count ?? 0,
+      status: r.status,
+      registrantName: summaryParticipants.find(p => p.role === "REPRESENTATIVE")?.name ?? recipientEmail,
+      registrantEmail: recipientEmail,
+      registrationType: r.registration_type ?? "self",
+      totalAmount,
+      participants: summaryParticipants,
+      lineItems,
+      subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
+      total: `$${(inv.total_cents / 100).toFixed(2)}`,
+    });
+    pdfAttachments.push({
+      filename: `eckcm-summary-${r.confirmation_code ?? "reg"}.pdf`,
+      content: summaryPdfBuffer,
+    });
+  } catch (err) {
+    logger.error("[email/invoice] Summary PDF generation failed", { error: String(err) });
   }
 
   try {

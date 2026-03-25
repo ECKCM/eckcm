@@ -6,6 +6,7 @@ import { generateSafeConfirmationCode } from "@/lib/services/confirmation-code.s
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { logger } from "@/lib/logger";
 import { requireAdmin } from "@/lib/auth/admin";
+import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 
 interface ManualPayBody {
   invoiceId: string;
@@ -203,6 +204,9 @@ export async function POST(request: Request) {
       logger.error("[admin/payment/manual] Failed to send confirmation email", { error: String(err) });
     }
   });
+
+  // Update inventory counts
+  await recalculateInventorySafe(admin);
 
   // 12. Audit log
   await admin.from("eckcm_audit_logs").insert({
