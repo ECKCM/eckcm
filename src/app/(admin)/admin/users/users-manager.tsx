@@ -28,9 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Shield } from "lucide-react";
-import { assignStaffRole } from "./actions";
+import { Shield, Trash2 } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
+import { assignStaffRole, deleteUsers } from "./actions";
 
 interface User {
   id: string;
@@ -72,6 +74,9 @@ export function UsersManager({
   const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedEventId, setSelectedEventId] = useState(events[0]?.id ?? "");
   const [selectedRoleId, setSelectedRoleId] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Mounted guard for Radix hydration
   useState(() => {
@@ -120,6 +125,40 @@ export function UsersManager({
     );
   };
 
+  const toggleSelect = (userId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((u) => u.id)));
+    }
+  };
+
+  const handleDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setDeleting(true);
+    const result = await deleteUsers([...selectedIds]);
+    setDeleting(false);
+    setDeleteOpen(false);
+
+    if (result.error) {
+      toast.error(result.error);
+    }
+    if (result.deleted > 0) {
+      toast.success(`Deleted ${result.deleted} user(s)`);
+      setUsers((prev) => prev.filter((u) => !selectedIds.has(u.id)));
+      setSelectedIds(new Set());
+    }
+  };
+
   if (!mounted) {
     return (
       <div className="space-y-4">
@@ -158,9 +197,22 @@ export function UsersManager({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">
-            {filtered.length} user(s)
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">
+              {filtered.length} user(s)
+            </CardTitle>
+            {selectedIds.size > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={deleting}
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                {deleting ? "Deleting..." : `Delete ${selectedIds.size} selected`}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <Table>

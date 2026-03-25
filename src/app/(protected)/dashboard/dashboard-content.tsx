@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, QrCode, Receipt, ClipboardList, Check } from "lucide-react";
+import { Loader2, QrCode, Receipt, ClipboardList, Check, Shield, LifeBuoy } from "lucide-react";
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -64,6 +64,7 @@ export function DashboardContent({
   events,
   registeredEventIds,
   allowDuplicateRegistration,
+  isAdmin,
 }: DashboardContentProps) {
   const router = useRouter();
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
@@ -189,6 +190,17 @@ export function DashboardContent({
 
       {/* Quick Links */}
       <div className="grid grid-cols-2 gap-3">
+        {isAdmin && (
+          <Button
+            variant="outline"
+            className="h-auto py-4 flex-col border-primary/30 bg-primary/5"
+            onClick={() => router.push("/admin")}
+          >
+            <Shield className="h-5 w-5 text-primary" />
+            <span className="text-lg font-extrabold text-primary">Admin</span>
+            <span className="text-xs text-muted-foreground">Manage events</span>
+          </Button>
+        )}
         <Button
           variant="outline"
           className="h-auto py-4 flex-col"
@@ -197,6 +209,15 @@ export function DashboardContent({
           <QrCode className="h-5 w-5" />
           <span className="text-lg font-extrabold">E-Pass</span>
           <span className="text-xs text-muted-foreground">View group passes</span>
+        </Button>
+        <Button
+          variant="outline"
+          className="h-auto py-4 flex-col"
+          onClick={() => router.push("/dashboard/registrations")}
+        >
+          <ClipboardList className="h-5 w-5" />
+          <span className="text-lg">Registrations</span>
+          <span className="text-xs text-muted-foreground">View history</span>
         </Button>
         <Button
           variant="outline"
@@ -210,11 +231,11 @@ export function DashboardContent({
         <Button
           variant="outline"
           className="h-auto py-4 flex-col"
-          onClick={() => router.push("/dashboard/registrations")}
+          onClick={() => window.open("/support", "_blank")}
         >
-          <ClipboardList className="h-5 w-5" />
-          <span className="text-lg">Registrations</span>
-          <span className="text-xs text-muted-foreground">View history</span>
+          <LifeBuoy className="h-5 w-5" />
+          <span className="text-lg">Support</span>
+          <span className="text-xs text-muted-foreground">Get help</span>
         </Button>
       </div>
 
