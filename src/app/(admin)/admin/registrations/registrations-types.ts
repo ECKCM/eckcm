@@ -40,6 +40,7 @@ export interface RegistrationRow {
 }
 
 export interface PersonDetail {
+  person_id: string;
   first_name_en: string;
   last_name_en: string;
   display_name_ko: string | null;
@@ -93,6 +94,30 @@ export function formatTimestamp(ts: string) {
   });
 }
 
+/**
+ * Calculate non-refundable processing fee based on payment method.
+ * - Card / Apple Pay / Google Pay / Amazon: 2.9% + 30¢
+ * - ACH Debit: 0.8% capped at $5.00
+ * - Zelle / Check (Manual): $0
+ */
+export function calculateProcessingFee(amountCents: number, paymentMethod: string | null): number {
+  if (!paymentMethod) return 0;
+  const method = paymentMethod.toUpperCase();
+
+  if (["ZELLE", "CHECK", "MANUAL", "MANUAL_PAYMENT"].includes(method)) {
+    return 0;
+  }
+
+  if (["ACH", "ACH_DEBIT", "US_BANK_ACCOUNT"].includes(method)) {
+    const fee = Math.round(amountCents * 0.008);
+    return Math.min(fee, 500); // capped at $5.00
+  }
+
+  // Card, Apple Pay, Google Pay, Amazon Pay, etc.
+  return Math.round(amountCents * 0.029) + 30;
+}
+
 export function extractSeqNumber(code: string | null): string {
-  return code?.match(/(\d+)$/)?.[1] ?? "-";
+  if (!code || code.length < 4) return "-";
+  return code.slice(-4);
 }

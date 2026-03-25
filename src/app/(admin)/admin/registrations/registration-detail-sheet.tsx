@@ -57,6 +57,9 @@ import {
   ShieldCheck,
   Plus,
   Loader2,
+  Pencil,
+  Save,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -68,6 +71,7 @@ import {
   formatMoney,
   formatTimestamp,
   VALID_STATUSES,
+  calculateProcessingFee,
 } from "./registrations-types";
 
 interface RegistrationDetailSheetProps {
@@ -115,7 +119,7 @@ export function RegistrationDetailSheet({
         role,
         participant_code,
         eckcm_people!inner(
-          first_name_en, last_name_en, display_name_ko,
+          id, first_name_en, last_name_en, display_name_ko,
           gender, birth_date, age_at_event, is_k12, grade,
           email, phone, phone_country, church_other,
           guardian_name, guardian_phone,
@@ -129,6 +133,7 @@ export function RegistrationDetailSheet({
     if (data) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mapped: PersonDetail[] = data.map((m: any) => ({
+        person_id: m.eckcm_people.id,
         first_name_en: m.eckcm_people.first_name_en,
         last_name_en: m.eckcm_people.last_name_en,
         display_name_ko: m.eckcm_people.display_name_ko,
@@ -400,37 +405,13 @@ export function RegistrationDetailSheet({
               </section>
 
               {/* Notes */}
-              {(reg.notes || reg.additional_requests) && (
-                <>
-                  <Separator />
-                  <section>
-                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                      <FileText className="size-4" />
-                      Notes & Requests
-                    </h3>
-                    {reg.notes && (
-                      <div className="mb-2">
-                        <p className="text-xs text-muted-foreground mb-1">
-                          Notes
-                        </p>
-                        <p className="text-sm bg-muted/50 rounded-md p-2">
-                          {reg.notes}
-                        </p>
-                      </div>
-                    )}
-                    {reg.additional_requests && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">
-                          Additional Requests
-                        </p>
-                        <p className="text-sm bg-muted/50 rounded-md p-2">
-                          {reg.additional_requests}
-                        </p>
-                      </div>
-                    )}
-                  </section>
-                </>
-              )}
+              <Separator />
+              <NotesSection
+                registrationId={reg.id}
+                initialNotes={reg.notes}
+                additionalRequests={reg.additional_requests}
+                onRefresh={onRefresh}
+              />
 
               <Separator />
 
@@ -459,7 +440,7 @@ export function RegistrationDetailSheet({
                       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                         Representative
                       </h4>
-                      <PersonCard person={representative} />
+                      <PersonCard person={representative} onSaved={() => { loadPeople(reg.id); onRefresh(); }} />
                     </div>
                   )}
 
@@ -471,7 +452,7 @@ export function RegistrationDetailSheet({
                       </h4>
                       <div className="space-y-2">
                         {members.map((p, i) => (
-                          <PersonCard key={i} person={p} />
+                          <PersonCard key={i} person={p} onSaved={() => { loadPeople(reg.id); onRefresh(); }} />
                         ))}
                       </div>
                     </div>
@@ -541,6 +522,7 @@ export function RegistrationDetailSheet({
               <AdjustmentsPanel
                 registrationId={reg.id}
                 currentAmount={reg.total_amount_cents}
+                paymentMethod={reg.payment_method}
                 onAdjustmentCreated={onRefresh}
               />
             </TabsContent>
@@ -691,10 +673,12 @@ const ACTION_OPTIONS = [
 function AdjustmentsPanel({
   registrationId,
   currentAmount,
+  paymentMethod,
   onAdjustmentCreated,
 }: {
   registrationId: string;
   currentAmount: number;
+  paymentMethod: string | null;
   onAdjustmentCreated: () => void;
 }) {
   const [adjustments, setAdjustments] = useState<AdjustmentData[]>([]);
@@ -705,7 +689,7 @@ function AdjustmentsPanel({
 
   // New adjustment form state
   const [newType, setNewType] = useState("admin_correction");
-  const [newAmount, setNewAmount] = useState(currentAmount);
+  const [newAmountDollars, setNewAmountDollars] = useState((currentAmount / 100).toFixed(2));
   const [newAction, setNewAction] = useState("pending");
   const [reason, setReason] = useState("");
 
@@ -736,12 +720,13 @@ function AdjustmentsPanel({
     if (!reason.trim()) return;
     setSubmitting(true);
     try {
+      const newAmountCents = Math.round(parseFloat(newAmountDollars) * 100);
       const res = await fetch(`/api/admin/registrations/${registrationId}/adjustments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           adjustment_type: newType,
-          new_amount: newAmount,
+          new_amount: newAmountCents,
           action_taken: newAction,
           reason: reason.trim(),
         }),
@@ -751,6 +736,7 @@ function AdjustmentsPanel({
         setShowNewDialog(false);
         setReason("");
         setNewType("admin_correction");
+        setNewAmountDollars((currentAmount / 100).toFixed(2));
         setNewAction("pending");
         await loadAdjustments();
         onAdjustmentCreated();
@@ -791,7 +777,8 @@ function AdjustmentsPanel({
     setSubmitting(false);
   };
 
-  const diff = newAmount - currentAmount;
+  const newAmountCents = Math.round(parseFloat(newAmountDollars) * 100) || 0;
+  const diff = newAmountCents - currentAmount;
 
   if (loading) {
     return (
@@ -824,12 +811,26 @@ function AdjustmentsPanel({
               <p className="text-[10px] text-muted-foreground">Refunded</p>
             </div>
           </div>
-          <div className="flex justify-between text-xs text-muted-foreground px-1">
-            <span>Net Balance: <strong className="text-foreground">{formatMoney(summary.net_balance)}</strong></span>
-            {summary.pending_count > 0 && (
-              <span className="text-amber-600">Pending: {summary.pending_count}</span>
-            )}
-          </div>
+          {(() => {
+            const processingFee = calculateProcessingFee(summary.original_amount, paymentMethod);
+            const maxRefund = summary.original_amount - processingFee;
+            return (
+              <div className="space-y-1 text-xs text-muted-foreground px-1">
+                <div className="flex justify-between">
+                  <span>Net Balance: <strong className="text-foreground">{formatMoney(summary.net_balance)}</strong></span>
+                  {summary.pending_count > 0 && (
+                    <span className="text-amber-600">Pending: {summary.pending_count}</span>
+                  )}
+                </div>
+                {processingFee > 0 && (
+                  <div className="flex justify-between">
+                    <span>Processing Fee ({paymentMethod?.replace(/_/g, " ")}): <strong className="text-foreground">{formatMoney(processingFee)}</strong></span>
+                    <span>Max Refund: <strong className="text-foreground">{formatMoney(maxRefund)}</strong></span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -838,7 +839,7 @@ function AdjustmentsPanel({
         size="sm"
         variant="outline"
         onClick={() => {
-          setNewAmount(currentAmount);
+          setNewAmountDollars((currentAmount / 100).toFixed(2));
           setShowNewDialog(true);
         }}
         className="w-full"
@@ -949,14 +950,18 @@ function AdjustmentsPanel({
             </div>
 
             <div>
-              <label className="text-sm font-medium">New Total (cents)</label>
-              <Input
-                type="number"
-                min={0}
-                value={newAmount}
-                onChange={(e) => setNewAmount(parseInt(e.target.value) || 0)}
-                className="mt-1"
-              />
+              <label className="text-sm font-medium">New Total ($)</label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={newAmountDollars}
+                  onChange={(e) => setNewAmountDollars(e.target.value)}
+                  className="pl-7"
+                />
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Current: {formatMoney(currentAmount)}
                 {" · "}
@@ -1053,6 +1058,112 @@ function AdjustmentsPanel({
   );
 }
 
+// ─── Notes Section ──────────────────────────────────────────
+
+function NotesSection({
+  registrationId,
+  initialNotes,
+  additionalRequests,
+  onRefresh,
+}: {
+  registrationId: string;
+  initialNotes: string | null;
+  additionalRequests: string | null;
+  onRefresh: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [notes, setNotes] = useState(initialNotes ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setNotes(initialNotes ?? "");
+    setEditing(false);
+  }, [initialNotes]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/notes`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: notes.trim() }),
+      });
+      if (res.ok) {
+        toast.success("Notes saved");
+        setEditing(false);
+        onRefresh();
+      } else {
+        toast.error("Failed to save notes");
+      }
+    } catch {
+      toast.error("Failed to save notes");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <section>
+      <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+        <FileText className="size-4" />
+        Notes & Requests
+        {!editing && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs ml-auto"
+            onClick={() => setEditing(true)}
+          >
+            <Pencil className="size-3 mr-1" />
+            Edit
+          </Button>
+        )}
+      </h3>
+
+      {editing ? (
+        <div className="space-y-2">
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Add admin notes..."
+            rows={3}
+          />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
+              Save
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setNotes(initialNotes ?? "");
+                setEditing(false);
+              }}
+            >
+              <X className="size-3 mr-1" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="mb-2">
+          <p className="text-xs text-muted-foreground mb-1">Notes</p>
+          <p className="text-sm bg-muted/50 rounded-md p-2 min-h-[2rem]">
+            {initialNotes || <span className="text-muted-foreground italic">No notes</span>}
+          </p>
+        </div>
+      )}
+
+      {additionalRequests && (
+        <div className="mt-2">
+          <p className="text-xs text-muted-foreground mb-1">Additional Requests</p>
+          <p className="text-sm bg-muted/50 rounded-md p-2">{additionalRequests}</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ─── Sub-components ─────────────────────────────────────────
 
 function InfoRow({
@@ -1077,7 +1188,126 @@ function InfoRow({
   );
 }
 
-function PersonCard({ person: p }: { person: PersonDetail }) {
+function PersonCard({ person: p, onSaved }: { person: PersonDetail; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    first_name_en: p.first_name_en,
+    last_name_en: p.last_name_en,
+    display_name_ko: p.display_name_ko ?? "",
+    email: p.email ?? "",
+    phone: p.phone ?? "",
+    gender: p.gender,
+    birth_date: p.birth_date ?? "",
+    guardian_name: p.guardian_name ?? "",
+    guardian_phone: p.guardian_phone ?? "",
+  });
+
+  useEffect(() => {
+    setForm({
+      first_name_en: p.first_name_en,
+      last_name_en: p.last_name_en,
+      display_name_ko: p.display_name_ko ?? "",
+      email: p.email ?? "",
+      phone: p.phone ?? "",
+      gender: p.gender,
+      birth_date: p.birth_date ?? "",
+      guardian_name: p.guardian_name ?? "",
+      guardian_phone: p.guardian_phone ?? "",
+    });
+  }, [p]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/people/${p.person_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        toast.success("Participant updated");
+        setEditing(false);
+        onSaved();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to update");
+      }
+    } catch {
+      toast.error("Failed to update");
+    }
+    setSaving(false);
+  };
+
+  const updateField = (field: string, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  if (editing) {
+    return (
+      <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
+        <div className="flex items-center justify-between">
+          <Badge variant="outline" className="text-xs">{p.role}</Badge>
+          <span className="font-mono text-xs text-muted-foreground">{p.group_code}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs text-muted-foreground">First Name</label>
+            <Input value={form.first_name_en} onChange={(e) => updateField("first_name_en", e.target.value)} className="h-8 text-sm mt-0.5" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Last Name</label>
+            <Input value={form.last_name_en} onChange={(e) => updateField("last_name_en", e.target.value)} className="h-8 text-sm mt-0.5" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Korean Name</label>
+            <Input value={form.display_name_ko} onChange={(e) => updateField("display_name_ko", e.target.value)} className="h-8 text-sm mt-0.5" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Gender</label>
+            <Select value={form.gender} onValueChange={(v) => updateField("gender", v)}>
+              <SelectTrigger className="h-8 text-sm mt-0.5"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MALE">Male</SelectItem>
+                <SelectItem value="FEMALE">Female</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Email</label>
+            <Input value={form.email} onChange={(e) => updateField("email", e.target.value)} className="h-8 text-sm mt-0.5" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Phone</label>
+            <Input value={form.phone} onChange={(e) => updateField("phone", e.target.value)} className="h-8 text-sm mt-0.5" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Date of Birth</label>
+            <Input type="date" value={form.birth_date} onChange={(e) => updateField("birth_date", e.target.value)} className="h-8 text-sm mt-0.5" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Guardian Name</label>
+            <Input value={form.guardian_name} onChange={(e) => updateField("guardian_name", e.target.value)} className="h-8 text-sm mt-0.5" />
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs text-muted-foreground">Guardian Phone</label>
+            <Input value={form.guardian_phone} onChange={(e) => updateField("guardian_phone", e.target.value)} className="h-8 text-sm mt-0.5" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
+            Save
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+            <X className="size-3 mr-1" />
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg border p-3">
       <div className="flex items-start justify-between">
@@ -1101,15 +1331,25 @@ function PersonCard({ person: p }: { person: PersonDetail }) {
             </span>
           </div>
         </div>
-        <div className="text-right">
-          <span className="font-mono text-xs text-muted-foreground">
-            {p.group_code}
-          </span>
-          {p.participant_code && (
-            <p className="font-mono text-xs text-muted-foreground">
-              {p.participant_code}
-            </p>
-          )}
+        <div className="flex items-start gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => setEditing(true)}
+          >
+            <Pencil className="size-3" />
+          </Button>
+          <div className="text-right">
+            <span className="font-mono text-xs text-muted-foreground">
+              {p.group_code}
+            </span>
+            {p.participant_code && (
+              <p className="font-mono text-xs text-muted-foreground">
+                {p.participant_code}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

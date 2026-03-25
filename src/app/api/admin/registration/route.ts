@@ -307,7 +307,7 @@ export async function POST(request: Request) {
       .flatMap((g) => g.participants)
       .find((p) => p.isRepresentative);
     const rawLastName = (representative?.lastName ?? "X").toUpperCase().replace(/[^A-Z]/g, "") || "X";
-    const repLastName = rawLastName.slice(0, 3).padEnd(3, "0");
+    const repLastName = rawLastName.slice(0, 3).padEnd(3, "O");
     const eventYear = String(event?.event_start_date ?? startDate).slice(2, 4);
 
     const { data: seqResult } = await admin.rpc("get_next_registration_seq", {

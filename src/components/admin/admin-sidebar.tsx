@@ -73,9 +73,9 @@ const navLinks = [
 ];
 
 const printLinks = [
-  { href: "/admin/print/registrations", label: "Registration Summaries", icon: Printer, permission: "participant.read" },
-  { href: "/admin/print/lanyard", label: "Lanyards", icon: Printer, permission: "participant.read" },
-  { href: "/admin/print/qr-cards", label: "QR Cards", icon: Printer, permission: "participant.read" },
+  { href: "/admin/print/registrations", label: "Registration Summaries", icon: Printer, permission: "print.registration" },
+  { href: "/admin/print/lanyard", label: "Lanyards", icon: Printer, permission: "print.lanyard" },
+  { href: "/admin/print/qr-cards", label: "QR Cards", icon: Printer, permission: "print.qrcard" },
 ];
 
 const settingsLinks = [
