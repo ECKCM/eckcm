@@ -1,6 +1,7 @@
 // Route → required permission code mapping.
 // Order matters: more-specific prefixes must come before shorter ones.
 const ROUTE_PERMISSIONS: [string, string][] = [
+  ["/admin/registrations/adjustments", "participant.update"],
   ["/admin/registrations/create", "participant.update"],
   ["/admin/guardian-consents", "participant.read"],
   ["/admin/registrations", "participant.read"],

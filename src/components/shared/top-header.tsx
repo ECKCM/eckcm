@@ -26,6 +26,7 @@ import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import {
   Bell,
+  LifeBuoy,
   LayoutDashboard,
   Shield,
   Settings,
@@ -129,6 +130,14 @@ export function TopHeader({
                 <ClipboardList className="mr-2 h-4 w-4" />
                 Registrations
               </Button>
+              <Button
+                variant="ghost"
+                className="justify-start"
+                onClick={() => navigateMobile("/support")}
+              >
+                <LifeBuoy className="mr-2 h-4 w-4" />
+                Support
+              </Button>
               <Separator className="my-2" />
               <Button
                 variant="ghost"
@@ -204,17 +213,28 @@ export function TopHeader({
 
         {/* Actions */}
         <div className="flex items-center gap-1">
+          {/* Theme Toggle */}
+          <ThemeToggle className="text-white hover:bg-white/15 hover:text-white" />
+
+          {/* Language Switcher */}
+          <LanguageSwitcher className="text-white hover:bg-white/15 hover:text-white" />
+
+          {/* Support */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative text-white hover:bg-white/15 hover:text-white"
+            onClick={() => router.push("/support")}
+          >
+            <LifeBuoy className="h-5 w-5" />
+            <span className="sr-only">Support</span>
+          </Button>
+
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative text-white hover:bg-white/15 hover:text-white">
             <Bell className="h-5 w-5" />
             <span className="sr-only">Notifications</span>
           </Button>
-
-          {/* Language Switcher */}
-          <LanguageSwitcher className="text-white hover:bg-white/15 hover:text-white" />
-
-          {/* Theme Toggle */}
-          <ThemeToggle className="text-white hover:bg-white/15 hover:text-white" />
 
           {/* Profile Dropdown */}
           <DropdownMenu>

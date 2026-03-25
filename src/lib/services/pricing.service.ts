@@ -107,6 +107,16 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
         amount: feePerPerson,
         category: "registration",
       });
+    } else {
+      // Representative's registration fee is $0 — show as waived
+      breakdown.push({
+        description: "Registration Fee (Waived)",
+        descriptionKo: "등록비 (면제)",
+        quantity: 1,
+        unitPrice: 0,
+        amount: 0,
+        category: "registration",
+      });
     }
 
     // Group non-representative members by their fee source (member group or default)
@@ -442,6 +452,11 @@ export function computeWaivedBenefits(
 
   for (const { cat, ct, dt } of categories) {
     if (ct === 0 && dt > 0) {
+      // Skip if current breakdown already has items for this category
+      // (e.g., "Registration Fee (Waived)" lines added by calculateEstimate)
+      const hasExistingItems = current.breakdown.some((item) => item.category === cat);
+      if (hasExistingItems) continue;
+
       for (const item of defaultEst.breakdown) {
         if (item.category !== cat) continue;
         waived.push({

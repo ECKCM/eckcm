@@ -50,6 +50,19 @@ export type PaymentMethod =
   | "CHECK"
   | "ZELLE"
   | "MANUAL";
+export type AdjustmentType =
+  | "initial_payment"
+  | "date_change"
+  | "option_change"
+  | "discount"
+  | "cancellation"
+  | "admin_correction";
+export type AdjustmentAction =
+  | "charge"
+  | "refund"
+  | "credit"
+  | "waive"
+  | "pending";
 export type StaffRole =
   | "PARTICIPANT"
   | "SUPER_ADMIN"

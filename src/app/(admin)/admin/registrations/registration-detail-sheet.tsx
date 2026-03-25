@@ -38,6 +38,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ExternalLink,
   Copy,
@@ -53,6 +55,8 @@ import {
   Church,
   Building2,
   ShieldCheck,
+  Plus,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -266,6 +270,9 @@ export function RegistrationDetailSheet({
               </TabsTrigger>
               <TabsTrigger value="participants" className="flex-1">
                 Participants ({reg.people_count})
+              </TabsTrigger>
+              <TabsTrigger value="adjustments" className="flex-1">
+                Adjustments
               </TabsTrigger>
             </TabsList>
 
@@ -528,6 +535,15 @@ export function RegistrationDetailSheet({
                 </div>
               )}
             </TabsContent>
+
+            {/* ─── Adjustments Tab ─── */}
+            <TabsContent value="adjustments" className="mt-4">
+              <AdjustmentsPanel
+                registrationId={reg.id}
+                currentAmount={reg.total_amount_cents}
+                onAdjustmentCreated={onRefresh}
+              />
+            </TabsContent>
           </Tabs>
 
           {/* ─── Sticky Action Bar ─── */}
@@ -609,6 +625,431 @@ export function RegistrationDetailSheet({
         </AlertDialog>
       )}
     </>
+  );
+}
+
+// ─── Adjustments Panel ──────────────────────────────────────
+
+interface AdjustmentData {
+  id: string;
+  adjustment_type: string;
+  previous_amount: number;
+  new_amount: number;
+  difference: number;
+  action_taken: string;
+  stripe_payment_intent_id: string | null;
+  stripe_refund_id: string | null;
+  reason: string;
+  adjusted_by_name: string;
+  created_at: string;
+}
+
+interface AdjustmentSummaryData {
+  original_amount: number;
+  current_amount: number;
+  total_charged: number;
+  total_refunded: number;
+  total_waived: number;
+  total_credited: number;
+  net_balance: number;
+  pending_count: number;
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  initial_payment: "Initial Payment",
+  date_change: "Date Change",
+  option_change: "Option Change",
+  discount: "Discount",
+  cancellation: "Cancellation",
+  admin_correction: "Correction",
+};
+
+const ACTION_VARIANTS: Record<string, "default" | "destructive" | "outline" | "secondary"> = {
+  charge: "default",
+  refund: "destructive",
+  credit: "secondary",
+  waive: "secondary",
+  pending: "outline",
+};
+
+const ADJUSTMENT_TYPES = [
+  { value: "date_change", label: "Date Change" },
+  { value: "option_change", label: "Option Change" },
+  { value: "discount", label: "Discount" },
+  { value: "admin_correction", label: "Admin Correction" },
+  { value: "cancellation", label: "Cancellation" },
+];
+
+const ACTION_OPTIONS = [
+  { value: "refund", label: "Refund" },
+  { value: "charge", label: "Charge" },
+  { value: "credit", label: "Credit" },
+  { value: "waive", label: "Waive" },
+  { value: "pending", label: "Pending" },
+];
+
+function AdjustmentsPanel({
+  registrationId,
+  currentAmount,
+  onAdjustmentCreated,
+}: {
+  registrationId: string;
+  currentAmount: number;
+  onAdjustmentCreated: () => void;
+}) {
+  const [adjustments, setAdjustments] = useState<AdjustmentData[]>([]);
+  const [summary, setSummary] = useState<AdjustmentSummaryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // New adjustment form state
+  const [newType, setNewType] = useState("admin_correction");
+  const [newAmount, setNewAmount] = useState(currentAmount);
+  const [newAction, setNewAction] = useState("pending");
+  const [reason, setReason] = useState("");
+
+  // Process pending state
+  const [processingAdj, setProcessingAdj] = useState<AdjustmentData | null>(null);
+  const [processAction, setProcessAction] = useState("refund");
+
+  const loadAdjustments = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/adjustments`);
+      if (res.ok) {
+        const data = await res.json();
+        setAdjustments(data.adjustments ?? []);
+        setSummary(data.summary ?? null);
+      }
+    } catch {
+      // silent
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadAdjustments();
+  }, [registrationId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleCreate = async () => {
+    if (!reason.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/adjustments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adjustment_type: newType,
+          new_amount: newAmount,
+          action_taken: newAction,
+          reason: reason.trim(),
+        }),
+      });
+      if (res.ok) {
+        toast.success("Adjustment created");
+        setShowNewDialog(false);
+        setReason("");
+        setNewType("admin_correction");
+        setNewAction("pending");
+        await loadAdjustments();
+        onAdjustmentCreated();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to create adjustment");
+      }
+    } catch {
+      toast.error("Failed to create adjustment");
+    }
+    setSubmitting(false);
+  };
+
+  const handleProcess = async () => {
+    if (!processingAdj) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/admin/registrations/${registrationId}/adjustments/${processingAdj.id}/process`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: processAction }),
+        }
+      );
+      if (res.ok) {
+        toast.success(`Adjustment processed: ${processAction}`);
+        setProcessingAdj(null);
+        await loadAdjustments();
+        onAdjustmentCreated();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to process adjustment");
+      }
+    } catch {
+      toast.error("Failed to process adjustment");
+    }
+    setSubmitting(false);
+  };
+
+  const diff = newAmount - currentAmount;
+
+  if (loading) {
+    return (
+      <p className="text-center text-muted-foreground py-8">
+        Loading adjustments...
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Summary Card */}
+      {summary && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-4 gap-2">
+            <div className="rounded-lg border p-2.5 text-center">
+              <p className="text-base font-bold">{formatMoney(summary.original_amount)}</p>
+              <p className="text-[10px] text-muted-foreground">Original</p>
+            </div>
+            <div className="rounded-lg border p-2.5 text-center">
+              <p className="text-base font-bold">{formatMoney(summary.current_amount)}</p>
+              <p className="text-[10px] text-muted-foreground">Current</p>
+            </div>
+            <div className="rounded-lg border p-2.5 text-center">
+              <p className="text-base font-bold text-green-600">{formatMoney(summary.total_charged)}</p>
+              <p className="text-[10px] text-muted-foreground">Charged</p>
+            </div>
+            <div className="rounded-lg border p-2.5 text-center">
+              <p className="text-base font-bold text-red-600">{formatMoney(summary.total_refunded)}</p>
+              <p className="text-[10px] text-muted-foreground">Refunded</p>
+            </div>
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground px-1">
+            <span>Net Balance: <strong className="text-foreground">{formatMoney(summary.net_balance)}</strong></span>
+            {summary.pending_count > 0 && (
+              <span className="text-amber-600">Pending: {summary.pending_count}</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* New Adjustment Button */}
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          setNewAmount(currentAmount);
+          setShowNewDialog(true);
+        }}
+        className="w-full"
+      >
+        <Plus className="size-3.5 mr-1.5" />
+        New Adjustment
+      </Button>
+
+      {/* Ledger Table */}
+      {adjustments.length === 0 ? (
+        <p className="text-center text-muted-foreground py-4 text-sm">
+          No adjustments recorded yet.
+        </p>
+      ) : (
+        <div className="overflow-auto rounded border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Date</TableHead>
+                <TableHead className="text-xs">Type</TableHead>
+                <TableHead className="text-xs text-right">Diff</TableHead>
+                <TableHead className="text-xs">Action</TableHead>
+                <TableHead className="text-xs">By</TableHead>
+                <TableHead className="text-xs w-[60px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {adjustments.map((adj) => (
+                <TableRow key={adj.id}>
+                  <TableCell className="text-xs whitespace-nowrap">
+                    {formatTimestamp(adj.created_at)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-[10px]">
+                      {TYPE_LABELS[adj.adjustment_type] ?? adj.adjustment_type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell
+                    className={`text-xs text-right font-mono ${
+                      adj.difference > 0
+                        ? "text-green-600"
+                        : adj.difference < 0
+                          ? "text-red-600"
+                          : ""
+                    }`}
+                  >
+                    {adj.difference >= 0 ? "+" : ""}
+                    {formatMoney(adj.difference)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={ACTION_VARIANTS[adj.action_taken] ?? "secondary"}
+                      className="text-[10px]"
+                    >
+                      {adj.action_taken}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs truncate max-w-[80px]">
+                    {adj.adjusted_by_name}
+                  </TableCell>
+                  <TableCell>
+                    {adj.action_taken === "pending" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-[10px] px-2"
+                        onClick={() => {
+                          setProcessingAdj(adj);
+                          setProcessAction(adj.difference < 0 ? "refund" : "charge");
+                        }}
+                      >
+                        Process
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* New Adjustment Dialog */}
+      <AlertDialog open={showNewDialog} onOpenChange={setShowNewDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>New Adjustment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Create a price adjustment for this registration.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Type</label>
+              <Select value={newType} onValueChange={setNewType}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ADJUSTMENT_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">New Total (cents)</label>
+              <Input
+                type="number"
+                min={0}
+                value={newAmount}
+                onChange={(e) => setNewAmount(parseInt(e.target.value) || 0)}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Current: {formatMoney(currentAmount)}
+                {" · "}
+                Difference:{" "}
+                <span className={diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : ""}>
+                  {diff >= 0 ? "+" : ""}{formatMoney(diff)}
+                </span>
+              </p>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Action</label>
+              <Select value={newAction} onValueChange={setNewAction}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACTION_OPTIONS.map((a) => (
+                    <SelectItem key={a.value} value={a.value}>
+                      {a.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Reason *</label>
+              <Textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Explain why this adjustment is being made..."
+                className="mt-1"
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCreate}
+              disabled={!reason.trim() || submitting}
+            >
+              {submitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
+              Confirm Adjustment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Process Pending Dialog */}
+      {processingAdj && (
+        <AlertDialog open onOpenChange={(open) => !open && setProcessingAdj(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Process Pending Adjustment</AlertDialogTitle>
+              <AlertDialogDescription>
+                {TYPE_LABELS[processingAdj.adjustment_type] ?? processingAdj.adjustment_type}
+                {" · "}
+                {processingAdj.difference >= 0 ? "+" : ""}
+                {formatMoney(processingAdj.difference)}
+                <br />
+                <span className="text-xs">{processingAdj.reason}</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div>
+              <label className="text-sm font-medium">Action</label>
+              <Select value={processAction} onValueChange={setProcessAction}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="refund">Refund</SelectItem>
+                  <SelectItem value="charge">Charge</SelectItem>
+                  <SelectItem value="waive">Waive</SelectItem>
+                  <SelectItem value="credit">Credit</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleProcess} disabled={submitting}>
+                {submitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
+                Process
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </div>
   );
 }
 

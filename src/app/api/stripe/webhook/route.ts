@@ -71,6 +71,44 @@ export async function POST(request: Request) {
   // ── payment_intent.succeeded ──────────────────────────────────────
   if (event.type === "payment_intent.succeeded") {
     const pi = event.data.object as Stripe.PaymentIntent;
+
+    // ── Donation payments ──
+    if (pi.metadata?.type === "donation" && pi.metadata?.donationId) {
+      const donationId = pi.metadata.donationId;
+      const { data: donation } = await admin
+        .from("eckcm_donations")
+        .select("id, status")
+        .eq("id", donationId)
+        .single();
+
+      if (!donation) {
+        logger.warn("[stripe/webhook] Donation not found", { donationId });
+        return NextResponse.json({ received: true });
+      }
+
+      if (donation.status === "SUCCEEDED") {
+        logger.info("[stripe/webhook] Donation already SUCCEEDED, skipping", { donationId });
+        return NextResponse.json({ received: true });
+      }
+
+      await admin
+        .from("eckcm_donations")
+        .update({
+          status: "SUCCEEDED",
+          metadata: {
+            stripe_payment_method: pi.payment_method,
+            stripe_charge_id:
+              typeof pi.latest_charge === "string" ? pi.latest_charge : null,
+            confirmed_by: "webhook",
+          },
+        })
+        .eq("id", donationId);
+
+      logger.info("[stripe/webhook] Donation succeeded", { donationId, piId: pi.id });
+      return NextResponse.json({ received: true });
+    }
+
+    // ── Registration payments ──
     const registrationId = pi.metadata?.registrationId;
     const invoiceId = pi.metadata?.invoiceId;
 
@@ -184,6 +222,34 @@ export async function POST(request: Request) {
   // ── payment_intent.payment_failed ─────────────────────────────────
   if (event.type === "payment_intent.payment_failed") {
     const pi = event.data.object as Stripe.PaymentIntent;
+
+    // ── Donation payment failures ──
+    if (pi.metadata?.type === "donation" && pi.metadata?.donationId) {
+      const donationId = pi.metadata.donationId;
+      const failMessage = pi.last_payment_error?.message || "Payment failed";
+
+      logger.warn("[stripe/webhook] Donation payment failed", {
+        donationId,
+        piId: pi.id,
+        failMessage,
+      });
+
+      await admin
+        .from("eckcm_donations")
+        .update({
+          status: "FAILED",
+          metadata: {
+            stripe_payment_method: pi.payment_method,
+            confirmed_by: "webhook",
+            fail_reason: failMessage,
+          },
+        })
+        .eq("id", donationId);
+
+      return NextResponse.json({ received: true });
+    }
+
+    // ── Registration payment failures ──
     const registrationId = pi.metadata?.registrationId;
     const invoiceId = pi.metadata?.invoiceId;
 

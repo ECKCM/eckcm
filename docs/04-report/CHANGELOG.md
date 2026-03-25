@@ -9,6 +9,55 @@ All notable changes to the ECKCM Online Registration & Management System will be
 - Google Sheets integration for inventory management
 - Additional E2E tests for user workflows
 - Performance optimization and bundle size reduction
+- Analytics integration for donation tracking
+- Recurring donation support (monthly giving)
+
+---
+
+## [1.1.0] - 2026-03-24
+
+### Added
+
+#### Donation Features
+- Public donation page at `/donation` with no authentication required
+- Preset donation amounts ($25, $50, $100, $250)
+- Custom donation amount input ($1–$10,000 range)
+- Optional donor name and email capture for receipts
+- "Cover processing fees" option (~2.9% + $0.30)
+- Stripe Elements card payment integration
+- Success confirmation screen with "Make Another Donation" CTA
+- Stripe Customer creation for email receipt handling
+
+#### Donation API
+- `POST /api/donation/create-intent` - Creates Stripe PaymentIntent and PENDING donation record
+- `POST /api/donation/confirm` - Confirms donation after payment success
+- Rate limiting by IP address (5 req/min create, 10 req/min confirm)
+
+#### Database
+- New `eckcm_donations` table for storing donation records
+- Stripe PaymentIntent ID tracking with indexes
+- Donation status tracking (PENDING, SUCCEEDED, FAILED)
+- Metadata fields for confirmation source tracking
+
+#### Webhook Enhancement
+- Extended existing Stripe webhook to handle donation payment intents
+- Support for `payment_intent.succeeded` and `payment_intent.payment_failed` events
+- Automatic status updates for donation records
+
+### Fixed
+- Added missing rate limit validation on donation confirm endpoint
+
+### Documentation
+- PDCA Completion Report for donation-page feature
+- Gap analysis with 95% design match rate
+- All 8 functional requirements verified
+
+### Known Improvements for Future Versions
+- Add unit and E2E tests for donation flow
+- Implement custom confirmation email via Resend
+- Add event tracking for donation funnel analytics
+- Support recurring donations (monthly giving)
+- Create donor profiles with donation history
 
 ---
 

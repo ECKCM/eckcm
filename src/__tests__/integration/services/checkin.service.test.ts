@@ -125,7 +125,7 @@ describe("verifyAndCheckin", () => {
 
     expect(statusCode).toBe(403);
     expect(result.status).toBe("error");
-    expect(result.error).toBe("Registration is not paid");
+    expect(result.error).toBe("Registration is not paid or approved");
   });
 
   it("returns already_checked_in on duplicate (unique constraint 23505)", async () => {

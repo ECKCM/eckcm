@@ -1,8 +1,29 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-25T01:24:18.613Z",
+  "lastUpdated": "2026-03-25T11:37:33.543Z",
   "activeFeatures": [
-    "online-registration"
+    "online-registration",
+    "eckcm",
+    "adjustment.service.ts",
+    "adjustments",
+    "process",
+    "confirm",
+    "registration",
+    "manual",
+    "registrations",
+    "schemas",
+    "create-intent",
+    "donation",
+    "webhook",
+    "Registration Adjustment Ledger",
+    "review",
+    "pricing.service.ts",
+    "pricing.service.test.ts",
+    "checkin.service.test.ts",
+    "payment",
+    "dashboard",
+    "invoices",
+    "support"
   ],
   "primaryFeature": "online-registration",
   "features": {
@@ -18,6 +39,280 @@
         "analysis": "docs/03-analysis/features/online-registration.analysis.md",
         "report": "docs/04-report/features/online-registration.report.md"
       }
+    },
+    "eckcm": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:34:10.913Z",
+        "lastUpdated": "2026-03-25T11:31:59.926Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/shared/top-header.tsx"
+    },
+    "adjustment.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:34:38.613Z",
+        "lastUpdated": "2026-03-25T10:34:38.613Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/adjustment.service.ts"
+    },
+    "adjustments": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:35:01.552Z",
+        "lastUpdated": "2026-03-25T10:35:01.552Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/adjustments/route.ts"
+    },
+    "process": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:35:22.245Z",
+        "lastUpdated": "2026-03-25T10:35:22.245Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/adjustments/[adjustmentId]/process/route.ts"
+    },
+    "confirm": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:35:35.118Z",
+        "lastUpdated": "2026-03-25T10:44:40.930Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/donation/confirm/route.ts"
+    },
+    "registration": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:35:46.617Z",
+        "lastUpdated": "2026-03-25T10:35:52.835Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registration/route.ts"
+    },
+    "manual": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:35:57.309Z",
+        "lastUpdated": "2026-03-25T10:36:00.956Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/payment/manual/route.ts"
+    },
+    "registrations": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:36:08.487Z",
+        "lastUpdated": "2026-03-25T10:52:24.684Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/registration-actions.tsx"
+    },
+    "schemas": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:37:02.018Z",
+        "lastUpdated": "2026-03-25T10:37:02.018Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/schemas/api.ts"
+    },
+    "create-intent": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:37:33.758Z",
+        "lastUpdated": "2026-03-25T10:37:33.758Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/donation/create-intent/route.ts"
+    },
+    "donation": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:38:51.449Z",
+        "lastUpdated": "2026-03-25T11:09:43.248Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/donation/page.tsx"
+    },
+    "webhook": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:39:12.174Z",
+        "lastUpdated": "2026-03-25T10:39:20.087Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/stripe/webhook/route.ts"
+    },
+    "Registration Adjustment Ledger": {
+      "phase": "act",
+      "phaseNumber": 5,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:41:07.756Z",
+        "lastUpdated": "2026-03-25T10:41:07.756Z"
+      },
+      "previousPhase": "check",
+      "autoAdvanced": true
+    },
+    "review": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:48:03.464Z",
+        "lastUpdated": "2026-03-25T10:48:03.464Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
+    },
+    "pricing.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T10:53:25.598Z",
+        "lastUpdated": "2026-03-25T10:53:34.832Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/pricing.service.ts"
+    },
+    "pricing.service.test.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T11:06:37.955Z",
+        "lastUpdated": "2026-03-25T11:07:08.849Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/__tests__/unit/services/pricing.service.test.ts"
+    },
+    "checkin.service.test.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T11:09:17.362Z",
+        "lastUpdated": "2026-03-25T11:09:17.362Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/__tests__/integration/services/checkin.service.test.ts"
+    },
+    "payment": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T11:10:27.378Z",
+        "lastUpdated": "2026-03-25T11:10:27.378Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/__tests__/api/payment/confirm.test.ts"
+    },
+    "dashboard": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T11:11:52.975Z",
+        "lastUpdated": "2026-03-25T11:12:00.155Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/dashboard/dashboard-content.tsx"
+    },
+    "invoices": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T11:35:33.811Z",
+        "lastUpdated": "2026-03-25T11:36:15.912Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/invoices/invoices-table.tsx"
+    },
+    "support": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-25T11:37:33.543Z",
+        "lastUpdated": "2026-03-25T11:37:33.543Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/support/page.tsx"
     }
   },
   "history": [
@@ -318,6 +613,318 @@
     {
       "timestamp": "2026-03-25T01:24:18.613Z",
       "feature": "users",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:34:10.913Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:34:38.613Z",
+      "feature": "adjustment.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:35:01.552Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:35:22.245Z",
+      "feature": "process",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:35:27.933Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:35:35.118Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:35:40.864Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:35:46.617Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:35:52.835Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:35:57.309Z",
+      "feature": "manual",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:36:00.956Z",
+      "feature": "manual",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:36:08.487Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:36:13.187Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:36:17.807Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:37:02.018Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:37:06.548Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:37:33.758Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:37:46.085Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:38:51.449Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:39:12.174Z",
+      "feature": "webhook",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:39:20.087Z",
+      "feature": "webhook",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:41:07.756Z",
+      "feature": "Registration Adjustment Ledger",
+      "phase": "act",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:44:40.930Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:48:03.464Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:51:47.139Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:51:48.531Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:51:49.475Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:51:57.647Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:52:04.331Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:52:05.894Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:52:24.684Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:53:25.598Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T10:53:34.832Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:02:52.059Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:02:57.753Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:03:14.063Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:06:37.955Z",
+      "feature": "pricing.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:07:08.849Z",
+      "feature": "pricing.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:09:17.362Z",
+      "feature": "checkin.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:09:43.248Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:10:27.378Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:11:52.975Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:12:00.155Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:31:59.926Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:35:33.811Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:35:49.635Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:35:51.761Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:35:53.023Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:35:54.423Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:36:09.785Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:36:15.912Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-25T11:37:33.543Z",
+      "feature": "support",
       "phase": "do",
       "action": "updated"
     }

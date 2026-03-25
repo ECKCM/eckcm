@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { calculateEstimate } from "@/lib/services/pricing.service";
+import { calculateEstimate, computeWaivedBenefits } from "@/lib/services/pricing.service";
 import type { LodgingRate, MealFeeCategory } from "@/lib/services/pricing.service";
-import type { ParticipantInput, RoomGroupInput } from "@/lib/types/registration";
+import type { ParticipantInput, RoomGroupInput, PriceEstimate } from "@/lib/types/registration";
 
 // -- Helpers --
 
@@ -484,6 +484,241 @@ describe("calculateEstimate", () => {
         0
       );
       expect(breakdownTotal).toBe(result.total);
+    });
+  });
+
+  describe("waived display — applyGeneralFeesToMembers=false", () => {
+    it("shows waived line for representative when group fee is $0", () => {
+      // Non-default group: rep fee = $0, non-rep pays default $100
+      const rep = makeParticipant({ id: "rep", isRepresentative: true });
+      const member = makeParticipant({ id: "m1", isRepresentative: false });
+
+      const result = calculateEstimate(
+        makeInput({
+          registrationFeePerPerson: 0, // group fee = $0
+          earlyBirdFeePerPerson: null,
+          applyGeneralFeesToMembers: false,
+          roomGroups: [makeGroup([rep, member])],
+        })
+      );
+
+      // Representative's fee should appear as waived
+      const waivedLines = result.breakdown.filter(
+        (b) => b.description === "Registration Fee (Waived)"
+      );
+      expect(waivedLines.length).toBe(1);
+      expect(waivedLines[0].quantity).toBe(1);
+      expect(waivedLines[0].amount).toBe(0);
+
+      // Non-rep member pays default $100
+      const paidLines = result.breakdown.filter(
+        (b) => b.category === "registration" && b.amount > 0
+      );
+      expect(paidLines.length).toBe(1);
+      expect(paidLines[0].amount).toBe(10000);
+    });
+
+    it("shows waived line for access-code members with $0 fee", () => {
+      const rep = makeParticipant({ id: "rep", isRepresentative: true });
+      const member = makeParticipant({
+        id: "m1",
+        isRepresentative: false,
+        memberRegistrationGroupId: "group-special",
+      });
+
+      const result = calculateEstimate(
+        makeInput({
+          registrationFeePerPerson: 5000, // rep pays $50
+          earlyBirdFeePerPerson: null,
+          applyGeneralFeesToMembers: false,
+          memberGroupFees: {
+            "group-special": {
+              registrationFee: 0,
+              earlyBirdFee: null,
+              isEarlyBird: false,
+              mealFeeCategories: [],
+              manualPaymentDiscountPerPerson: 0,
+            },
+          },
+          roomGroups: [makeGroup([rep, member])],
+        })
+      );
+
+      // Rep pays $50
+      const repLine = result.breakdown.find(
+        (b) => b.category === "registration" && b.amount > 0
+      );
+      expect(repLine).toBeDefined();
+      expect(repLine!.amount).toBe(5000);
+
+      // Access-code member shows waived
+      const waivedLines = result.breakdown.filter(
+        (b) => b.description === "Registration Fee (Waived)"
+      );
+      expect(waivedLines.length).toBe(1);
+    });
+
+    it("shows waived for rep + access-code member both $0", () => {
+      const rep = makeParticipant({ id: "rep", isRepresentative: true });
+      const member = makeParticipant({
+        id: "m1",
+        isRepresentative: false,
+        memberRegistrationGroupId: "group-free",
+      });
+
+      const result = calculateEstimate(
+        makeInput({
+          registrationFeePerPerson: 0, // rep group fee $0
+          earlyBirdFeePerPerson: null,
+          applyGeneralFeesToMembers: false,
+          memberGroupFees: {
+            "group-free": {
+              registrationFee: 0,
+              earlyBirdFee: null,
+              isEarlyBird: false,
+              mealFeeCategories: [],
+              manualPaymentDiscountPerPerson: 0,
+            },
+          },
+          roomGroups: [makeGroup([rep, member])],
+        })
+      );
+
+      // Both should show as waived
+      const waivedLines = result.breakdown.filter(
+        (b) => b.description === "Registration Fee (Waived)"
+      );
+      expect(waivedLines.length).toBe(2); // rep + access-code member
+      expect(result.registrationFee).toBe(0);
+    });
+  });
+
+  describe("computeWaivedBenefits", () => {
+    function makeEstimate(overrides: Partial<PriceEstimate> = {}): PriceEstimate {
+      return {
+        registrationFee: 0,
+        lodgingFee: 0,
+        additionalLodgingFee: 0,
+        mealFee: 0,
+        vbsFee: 0,
+        keyDeposit: 0,
+        subtotal: 0,
+        total: 0,
+        breakdown: [],
+        manualPaymentDiscount: 0,
+        ...overrides,
+      };
+    }
+
+    it("adds waived lines when current=0 and default>0", () => {
+      const current = makeEstimate({ registrationFee: 0 });
+      const defaultEst = makeEstimate({
+        registrationFee: 10000,
+        breakdown: [
+          {
+            description: "Registration Fee",
+            descriptionKo: "등록비",
+            quantity: 1,
+            unitPrice: 10000,
+            amount: 10000,
+            category: "registration",
+          },
+        ],
+      });
+
+      const waived = computeWaivedBenefits(current, defaultEst);
+      expect(waived.length).toBe(1);
+      expect(waived[0].description).toBe("Registration Fee (Waived)");
+      expect(waived[0].amount).toBe(0);
+    });
+
+    it("skips category when current breakdown already has items", () => {
+      // Scenario: calculateEstimate already added a "(Waived)" line for registration
+      const current = makeEstimate({
+        registrationFee: 0,
+        breakdown: [
+          {
+            description: "Registration Fee (Waived)",
+            descriptionKo: "등록비 (면제)",
+            quantity: 1,
+            unitPrice: 0,
+            amount: 0,
+            category: "registration",
+          },
+        ],
+      });
+      const defaultEst = makeEstimate({
+        registrationFee: 10000,
+        breakdown: [
+          {
+            description: "Registration Fee",
+            descriptionKo: "등록비",
+            quantity: 1,
+            unitPrice: 10000,
+            amount: 10000,
+            category: "registration",
+          },
+        ],
+      });
+
+      const waived = computeWaivedBenefits(current, defaultEst);
+      // Should NOT add duplicate waived lines
+      expect(waived.length).toBe(0);
+    });
+
+    it("does not add waived when current > 0", () => {
+      const current = makeEstimate({ registrationFee: 5000 });
+      const defaultEst = makeEstimate({ registrationFee: 10000 });
+
+      const waived = computeWaivedBenefits(current, defaultEst);
+      expect(waived.length).toBe(0);
+    });
+
+    it("handles multiple categories independently", () => {
+      const current = makeEstimate({
+        registrationFee: 0,
+        lodgingFee: 5000, // not waived (has cost)
+        mealFee: 0,
+      });
+      const defaultEst = makeEstimate({
+        registrationFee: 10000,
+        lodgingFee: 10000,
+        mealFee: 3000,
+        breakdown: [
+          {
+            description: "Registration Fee",
+            descriptionKo: "등록비",
+            quantity: 1,
+            unitPrice: 10000,
+            amount: 10000,
+            category: "registration",
+          },
+          {
+            description: "Lodging",
+            descriptionKo: "숙박비",
+            quantity: 7,
+            unitPrice: 1000,
+            amount: 10000,
+            category: "lodging",
+          },
+          {
+            description: "Meals",
+            descriptionKo: "식사",
+            quantity: 1,
+            unitPrice: 3000,
+            amount: 3000,
+            category: "meal",
+          },
+        ],
+      });
+
+      const waived = computeWaivedBenefits(current, defaultEst);
+      // Only registration and meal should be waived (lodging has cost)
+      expect(waived.length).toBe(2);
+      expect(waived.map((w) => w.description)).toEqual([
+        "Registration Fee (Waived)",
+        "Meals (Waived)",
+      ]);
     });
   });
 });

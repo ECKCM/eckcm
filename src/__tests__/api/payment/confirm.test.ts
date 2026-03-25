@@ -51,6 +51,14 @@ vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock("@/lib/services/adjustment.service", () => ({
+  insertInitialPayment: vi.fn(),
+}));
+
+vi.mock("@/lib/services/inventory.service", () => ({
+  recalculateInventorySafe: vi.fn(),
+}));
+
 import { POST } from "@/app/api/payment/confirm/route";
 
 // -- Helpers --

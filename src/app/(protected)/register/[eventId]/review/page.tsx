@@ -290,7 +290,7 @@ export default function ReviewStep() {
         <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
           <Banknote className="h-5 w-5 text-green-600 shrink-0" />
           <p className="text-sm font-medium text-green-800">
-            Save {formatDollars(estimate.manualPaymentDiscount)} with US Bank Account (ACH) or manual payment (Zelle)!
+            Save {formatDollars(estimate.manualPaymentDiscount)} with US Bank Account (ACH), Check, or manual payment (Zelle)!
           </p>
         </div>
       )}

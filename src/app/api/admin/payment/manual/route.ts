@@ -7,6 +7,7 @@ import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { logger } from "@/lib/logger";
 import { requireAdmin } from "@/lib/auth/admin";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
+import { insertInitialPayment } from "@/lib/services/adjustment.service";
 
 interface ManualPayBody {
   invoiceId: string;
@@ -125,7 +126,16 @@ export async function POST(request: Request) {
     .update({ status: "PAID" })
     .eq("id", registration.id);
 
-  // 9. Generate confirmation code if not already set
+  // 9. Insert initial_payment adjustment
+  await insertInitialPayment(admin, {
+    registrationId: registration.id,
+    totalAmountCents: invoice.total_cents,
+    stripePaymentIntentId: null,
+    adjustedBy: user.id,
+    source: "admin_manual_payment",
+  });
+
+  // 10. Generate confirmation code if not already set
   if (!registration.confirmation_code) {
     let code = generateSafeConfirmationCode();
     let attempts = 0;

@@ -146,3 +146,17 @@ export const emailInvoiceSchema = z.object({
   invoiceId: uuid,
   email: z.string().email().optional(),
 });
+
+// -- Donation --
+
+export const donationCreateIntentSchema = z.object({
+  amountCents: z.number().int().min(100).max(1_000_000), // $1 – $10,000
+  donorName: z.string().max(200).optional(),
+  donorEmail: z.string().email().max(255).optional(),
+  coversFees: z.boolean().optional(),
+});
+
+export const donationConfirmSchema = z.object({
+  donationId: uuid,
+  paymentIntentId: z.string().min(1),
+});

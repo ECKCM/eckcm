@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { MoreHorizontal, RotateCcw, CreditCard, Loader2, Mail, FileText, Receipt, Download } from "lucide-react";
+import { MoreHorizontal, CreditCard, Loader2, Mail, FileText, Receipt, Download } from "lucide-react";
 
 interface Event {
   id: string;
@@ -71,30 +71,6 @@ export function InvoicesTable({ events }: { events: Event[] }) {
   const [page, setPage] = useState(0);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(false);
-
-  // Refund dialog state
-  const [refundTarget, setRefundTarget] = useState<InvoiceRow | null>(null);
-  const [refundAmount, setRefundAmount] = useState("");
-  const [refundReason, setRefundReason] = useState("");
-  const [refundType, setRefundType] = useState<"full" | "partial">("full");
-  const [refunding, setRefunding] = useState(false);
-  const [refundInfo, setRefundInfo] = useState<{
-    paymentAmountCents: number;
-    paymentMethod?: string;
-    totalRefundedCents: number;
-    remainingCents: number;
-    deductStripeFees?: boolean;
-    stripeFeesCents?: number;
-    remainingAfterFeesCents?: number;
-    refunds: Array<{
-      id: string;
-      amountCents: number;
-      reason: string | null;
-      stripeRefundId: string | null;
-      createdAt: string;
-    }>;
-  } | null>(null);
-  const [loadingRefundInfo, setLoadingRefundInfo] = useState(false);
 
   // Manual payment dialog state
   const [manualPayTarget, setManualPayTarget] = useState<InvoiceRow | null>(null);
@@ -198,142 +174,6 @@ export function InvoicesTable({ events }: { events: Event[] }) {
     PARTIALLY_REFUNDED: "Partial Refund",
   };
 
-  // --- Refund ---
-  const openRefundDialog = async (inv: InvoiceRow) => {
-    setRefundTarget(inv);
-    setRefundType("full");
-    setRefundReason("");
-    setRefundInfo(null);
-    setLoadingRefundInfo(true);
-
-    let paymentId = inv.payment_id;
-
-    // If no payment record exists, auto-sync from Stripe first
-    if (!paymentId) {
-      try {
-        const syncRes = await fetch("/api/admin/stripe-sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ eventId }),
-        });
-        if (syncRes.ok) {
-          const syncData = await syncRes.json();
-          if (syncData.synced > 0) {
-            // Reload invoices to get the new payment_id
-            await loadInvoices();
-            // Find the updated invoice
-            const supabase = createClient();
-            const { data: payments } = await supabase
-              .from("eckcm_payments")
-              .select("id")
-              .eq("invoice_id", inv.id)
-              .limit(1);
-            paymentId = payments?.[0]?.id ?? null;
-            if (paymentId) {
-              // Update the target with the new payment_id
-              inv = { ...inv, payment_id: paymentId };
-              setRefundTarget(inv);
-            }
-          }
-        }
-      } catch {
-        // Sync failed, continue without it
-      }
-    }
-
-    if (!paymentId) {
-      setLoadingRefundInfo(false);
-      toast.error("No payment record found. Cannot issue refund.");
-      setRefundTarget(null);
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/admin/refund/info?paymentId=${paymentId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRefundInfo(data);
-        // Use fee-adjusted amount if deducting fees, otherwise full remaining
-        const defaultAmount = data.deductStripeFees
-          ? data.remainingAfterFeesCents
-          : data.remainingCents;
-        setRefundAmount((defaultAmount / 100).toFixed(2));
-      } else {
-        setRefundAmount(((inv.payment_amount_cents ?? inv.total_cents) / 100).toFixed(2));
-      }
-    } catch {
-      setRefundAmount(((inv.payment_amount_cents ?? inv.total_cents) / 100).toFixed(2));
-    }
-    setLoadingRefundInfo(false);
-  };
-
-  const handleRefund = async () => {
-    if (!refundTarget?.payment_id) {
-      toast.error("No payment record found. Cannot issue refund.");
-      return;
-    }
-
-    // Validate remaining balance exists
-    if (refundInfo && refundInfo.remainingCents <= 0) {
-      toast.error("This payment has already been fully refunded.");
-      return;
-    }
-
-    setRefunding(true);
-
-    const maxRefundable = refundInfo
-      ? (refundInfo.deductStripeFees
-          ? (refundInfo.remainingAfterFeesCents ?? refundInfo.remainingCents)
-          : refundInfo.remainingCents)
-      : null;
-
-    const amountCents = refundType === "full"
-      ? (maxRefundable ?? undefined)
-      : Math.round(parseFloat(refundAmount) * 100);
-
-    if (refundType === "partial") {
-      if (!amountCents || !Number.isFinite(amountCents) || amountCents <= 0) {
-        toast.error("Enter a valid refund amount");
-        setRefunding(false);
-        return;
-      }
-      if (maxRefundable != null && amountCents > maxRefundable) {
-        toast.error(
-          `Amount exceeds maximum refundable: $${(maxRefundable / 100).toFixed(2)}`
-        );
-        setRefunding(false);
-        return;
-      }
-    }
-
-    try {
-      const res = await fetch("/api/admin/refund", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          paymentId: refundTarget.payment_id,
-          amountCents,
-          reason: refundReason || undefined,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || "Refund failed");
-      } else {
-        toast.success(
-          `Refund of $${((data.amountCents ?? 0) / 100).toFixed(2)} issued successfully`
-        );
-        loadInvoices();
-      }
-    } catch {
-      toast.error("Network error");
-    }
-
-    setRefunding(false);
-    setRefundTarget(null);
-  };
-
   // --- Manual Payment ---
   const openManualPayDialog = (inv: InvoiceRow) => {
     setManualPayTarget(inv);
@@ -370,9 +210,6 @@ export function InvoicesTable({ events }: { events: Event[] }) {
     setPaying(false);
     setManualPayTarget(null);
   };
-
-  const canRefund = (inv: InvoiceRow) =>
-    inv.status === "SUCCEEDED" || inv.status === "PARTIALLY_REFUNDED";
 
   const canManualPay = (inv: InvoiceRow) => inv.status === "PENDING";
 
@@ -488,7 +325,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                         : "-"}
                     </TableCell>
                     <TableCell>
-                      {(canRefund(inv) || canManualPay(inv) || inv.registration_id) && (
+                      {(canManualPay(inv) || inv.registration_id) && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="size-8">
@@ -500,12 +337,6 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {canRefund(inv) && (
-                              <DropdownMenuItem onClick={() => openRefundDialog(inv)}>
-                                <RotateCcw className="mr-2 size-4" />
-                                Refund
-                              </DropdownMenuItem>
-                            )}
                             {canManualPay(inv) && (
                               <DropdownMenuItem onClick={() => openManualPayDialog(inv)}>
                                 <CreditCard className="mr-2 size-4" />
@@ -577,161 +408,6 @@ export function InvoicesTable({ events }: { events: Event[] }) {
           )}
         </CardContent>
       </Card>
-
-      {/* Refund Dialog */}
-      <Dialog open={!!refundTarget} onOpenChange={(open) => !open && setRefundTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Issue Refund</DialogTitle>
-            <DialogDescription>
-              Invoice {refundTarget?.invoice_number}
-            </DialogDescription>
-          </DialogHeader>
-
-          {loadingRefundInfo ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : refundInfo && refundInfo.remainingCents <= 0 ? (
-            <div className="space-y-4">
-              {/* Fully refunded — no further refunds possible */}
-              <div className="rounded-md border border-destructive/50 bg-destructive/5 p-4 text-sm space-y-2">
-                <p className="font-medium text-destructive">Fully Refunded</p>
-                <p className="text-muted-foreground">
-                  This payment of ${(refundInfo.paymentAmountCents / 100).toFixed(2)} has been fully refunded.
-                  No further refunds can be issued.
-                </p>
-              </div>
-              {refundInfo.refunds.length > 0 && (
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground text-xs">Refund History</Label>
-                  <div className="rounded-md border divide-y text-sm">
-                    {refundInfo.refunds.map((r) => (
-                      <div key={r.id} className="flex justify-between px-3 py-1.5">
-                        <span className="text-muted-foreground">
-                          {new Date(r.createdAt).toLocaleDateString("en-US")}
-                          {r.reason && ` - ${r.reason}`}
-                        </span>
-                        <span className="font-medium">-${(r.amountCents / 100).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Payment summary */}
-              {refundInfo && (
-                <div className="rounded-md border p-3 text-sm space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Payment</span>
-                    <span className="font-medium">${(refundInfo.paymentAmountCents / 100).toFixed(2)}</span>
-                  </div>
-                  {refundInfo.totalRefundedCents > 0 && (
-                    <div className="flex justify-between text-destructive">
-                      <span>Already Refunded</span>
-                      <span>-${(refundInfo.totalRefundedCents / 100).toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between font-medium border-t pt-1">
-                    <span>Remaining</span>
-                    <span>${(refundInfo.remainingCents / 100).toFixed(2)}</span>
-                  </div>
-                  {refundInfo.deductStripeFees && (refundInfo.stripeFeesCents ?? 0) > 0 && (
-                    <>
-                      <div className="flex justify-between text-orange-600">
-                        <span>Stripe Fee ({refundInfo.paymentMethod === "ACH" ? "0.8%" : "2.9% + $0.30"})</span>
-                        <span>-${((refundInfo.stripeFeesCents ?? 0) / 100).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-semibold border-t pt-1">
-                        <span>Refundable</span>
-                        <span>${((refundInfo.remainingAfterFeesCents ?? refundInfo.remainingCents) / 100).toFixed(2)}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Previous refund history */}
-              {refundInfo && refundInfo.refunds.length > 0 && (
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground text-xs">Previous Refunds</Label>
-                  <div className="rounded-md border divide-y text-sm">
-                    {refundInfo.refunds.map((r) => (
-                      <div key={r.id} className="flex justify-between px-3 py-1.5">
-                        <span className="text-muted-foreground">
-                          {new Date(r.createdAt).toLocaleDateString("en-US")}
-                          {r.reason && ` - ${r.reason}`}
-                        </span>
-                        <span className="font-medium">-${(r.amountCents / 100).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <Label>Refund Type</Label>
-                <Select value={refundType} onValueChange={(v) => setRefundType(v as "full" | "partial")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="full">
-                      Full Refund (${(refundInfo
-                        ? (refundInfo.deductStripeFees ? (refundInfo.remainingAfterFeesCents ?? refundInfo.remainingCents) : refundInfo.remainingCents) / 100
-                        : (refundTarget?.payment_amount_cents ?? 0) / 100).toFixed(2)})
-                    </SelectItem>
-                    <SelectItem value="partial">Partial Refund</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {refundType === "partial" && (
-                <div className="space-y-1">
-                  <Label>Amount ($)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max={(refundInfo
-                      ? (refundInfo.deductStripeFees ? (refundInfo.remainingAfterFeesCents ?? refundInfo.remainingCents) : refundInfo.remainingCents) / 100
-                      : (refundTarget?.payment_amount_cents ?? 0) / 100).toFixed(2)}
-                    value={refundAmount}
-                    onChange={(e) => setRefundAmount(e.target.value)}
-                  />
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <Label>Reason (optional)</Label>
-                <Textarea
-                  value={refundReason}
-                  onChange={(e) => setRefundReason(e.target.value)}
-                  placeholder="e.g., Customer requested cancellation"
-                  rows={2}
-                />
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRefundTarget(null)}>
-              {refundInfo && refundInfo.remainingCents <= 0 ? "Close" : "Cancel"}
-            </Button>
-            {(!refundInfo || refundInfo.remainingCents > 0) && (
-              <Button
-                variant="destructive"
-                onClick={handleRefund}
-                disabled={refunding || loadingRefundInfo}
-              >
-                {refunding ? "Processing..." : "Issue Refund"}
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Manual Payment Dialog */}
       <Dialog open={!!manualPayTarget} onOpenChange={(open) => !open && setManualPayTarget(null)}>

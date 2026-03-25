@@ -13,6 +13,7 @@ import type { RoomGroupInput } from "@/lib/types/registration";
 import { buildPhoneValue } from "@/lib/utils/field-helpers";
 import { populateDefaultMeals } from "@/lib/services/meal.service";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
+import { insertInitialPayment } from "@/lib/services/adjustment.service";
 
 interface AdminRegBody {
   eventId: string;
@@ -477,7 +478,16 @@ export async function POST(request: Request) {
       logger.error("[admin/registration] Invoice creation failed", { error: String(invoiceErr) });
     }
 
-    // 13. Send confirmation email (non-blocking — runs after response to avoid timeout)
+    // 13. Insert initial_payment adjustment
+    await insertInitialPayment(admin, {
+      registrationId: registration.id,
+      totalAmountCents: estimate.total,
+      stripePaymentIntentId: null,
+      adjustedBy: user.id,
+      source: "admin_registration",
+    });
+
+    // 14. Send confirmation email (non-blocking — runs after response to avoid timeout)
     after(async () => {
       try {
         await sendConfirmationEmail(registration.id);
@@ -486,7 +496,7 @@ export async function POST(request: Request) {
       }
     });
 
-    // 14. Audit log
+    // 15. Audit log
     await admin.from("eckcm_audit_logs").insert({
       event_id: eventId,
       user_id: user.id,

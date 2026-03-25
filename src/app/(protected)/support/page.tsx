@@ -18,11 +18,11 @@ export default function SupportPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <Link
-        href="/"
+        href="/dashboard"
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
-        Back to Home
+        Back to Dashboard
       </Link>
 
       <h1 className="mb-2 text-3xl font-bold">Support Center</h1>

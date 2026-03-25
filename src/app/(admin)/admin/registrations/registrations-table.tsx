@@ -437,11 +437,10 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                   {filtered.map((r) => (
                     <TableRow
                       key={r.id}
-                      className="cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors"
-                      onClick={() => openDetail(r)}
+                      className="hover:bg-muted/50 transition-colors"
                     >
                       {/* Actions */}
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell>
                         <RegistrationActions
                           registration={r}
                           onView={openDetail}
@@ -528,7 +527,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                         {r.invoice_number ?? "-"}
                       </TableCell>
                       {/* Stripe Link */}
-                      <TableCell className="text-xs whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="text-xs whitespace-nowrap">
                         {r.stripe_payment_intent_id && stripeAccountId ? (
                           <a
                             href={`https://dashboard.stripe.com/${stripeAccountId}/${

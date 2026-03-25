@@ -8,6 +8,7 @@ import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { confirmPaymentSchema } from "@/lib/schemas/api";
 import { logger } from "@/lib/logger";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
+import { insertInitialPayment } from "@/lib/services/adjustment.service";
 
 /**
  * Generate E-Pass tokens and send confirmation email for a registration.
@@ -179,6 +180,15 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    // Insert initial_payment adjustment (idempotent)
+    await insertInitialPayment(admin, {
+      registrationId,
+      totalAmountCents: paymentIntent.amount ?? 0,
+      stripePaymentIntentId: paymentIntentId,
+      adjustedBy: user.id,
+      source: "payment_confirm",
+    });
 
     // Update payment and invoice
     const [paymentUpdate, invoiceUpdate] = await Promise.all([
