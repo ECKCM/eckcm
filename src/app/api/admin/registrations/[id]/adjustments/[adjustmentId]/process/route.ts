@@ -77,15 +77,15 @@ export async function POST(
     );
   }
 
-  // 2. Resolve event's Stripe mode + payment method
+  // 2. Resolve event's Stripe mode
   const { data: reg } = await admin
     .from("eckcm_registrations")
-    .select("event_id, payment_method, eckcm_events!inner(stripe_mode)")
+    .select("event_id, eckcm_events!inner(stripe_mode)")
     .eq("id", registrationId)
     .single();
 
   const eventId = reg?.event_id ?? null;
-  const paymentMethod: string | null = reg?.payment_method ?? null;
+  let paymentMethod: string | null = null;
   const events = reg?.eckcm_events as unknown as {
     stripe_mode: string;
   } | null;
@@ -95,24 +95,7 @@ export async function POST(
 
   // 3. Execute Stripe operations based on action
   if (action === "refund" && adj.difference < 0) {
-    // Cap refund at max refundable (processing fee is non-refundable)
-    const { summary } = await getAdjustmentsWithSummary(admin, registrationId);
-    const feeBase = summary.original_amount > 0 ? summary.original_amount : (adj.previous_amount + Math.abs(adj.difference));
-    const fee = calculateProcessingFee(feeBase, paymentMethod);
-    const rawRefundAmount = Math.abs(adj.difference);
-    const cappedRefundAmount = fee > 0
-      ? Math.min(rawRefundAmount, Math.max(0, feeBase - fee - summary.total_refunded))
-      : rawRefundAmount;
-
-    if (cappedRefundAmount <= 0) {
-      return NextResponse.json(
-        { error: "No refundable amount remaining (processing fee already exceeds balance)" },
-        { status: 400 }
-      );
-    }
-
     // Find the most recent SUCCEEDED payment for this registration
-    // by joining through invoices
     const { data: invoices } = await admin
       .from("eckcm_invoices")
       .select("id")
@@ -126,13 +109,33 @@ export async function POST(
       const { data: payment } = await admin
         .from("eckcm_payments")
         .select(
-          "id, stripe_payment_intent_id, amount_cents, status"
+          "id, stripe_payment_intent_id, payment_method, amount_cents, status"
         )
         .in("invoice_id", invoiceIds)
         .in("status", ["SUCCEEDED", "PARTIALLY_REFUNDED"])
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      if (payment) {
+        paymentMethod = payment.payment_method;
+      }
+
+      // Cap refund at max refundable (processing fee is non-refundable)
+      const { summary } = await getAdjustmentsWithSummary(admin, registrationId);
+      const feeBase = summary.original_amount > 0 ? summary.original_amount : (adj.previous_amount + Math.abs(adj.difference));
+      const fee = calculateProcessingFee(feeBase, paymentMethod);
+      const rawRefundAmount = Math.abs(adj.difference);
+      const cappedRefundAmount = fee > 0
+        ? Math.min(rawRefundAmount, Math.max(0, feeBase - fee - summary.total_refunded))
+        : rawRefundAmount;
+
+      if (cappedRefundAmount <= 0) {
+        return NextResponse.json(
+          { error: "No refundable amount remaining (processing fee already exceeds balance)" },
+          { status: 400 }
+        );
+      }
 
       if (payment?.stripe_payment_intent_id) {
         try {

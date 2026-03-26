@@ -111,10 +111,10 @@ export async function POST(
 
   const admin = createAdminClient();
 
-  // Verify registration exists + load event stripe_mode and payment_method
+  // Verify registration exists + load event stripe_mode
   const { data: reg } = await admin
     .from("eckcm_registrations")
-    .select("id, event_id, total_amount_cents, payment_method, eckcm_events!inner(stripe_mode)")
+    .select("id, event_id, total_amount_cents, eckcm_events!inner(stripe_mode)")
     .eq("id", registrationId)
     .single();
 
@@ -131,26 +131,11 @@ export async function POST(
 
   // ─── Stripe refund for direct "refund" action ───
   let stripeRefundId: string | undefined;
-  let paymentMethod: string | null = reg.payment_method ?? null;
+  let paymentMethod: string | null = null;
 
   if (action_taken === "refund" && refundAmountCents > 0) {
     const events = reg.eckcm_events as unknown as { stripe_mode: string } | null;
     const stripeMode = (events?.stripe_mode as "test" | "live") ?? "test";
-
-    // Cap refund at processing fee limit
-    const { summary } = await getAdjustmentsWithSummary(admin, registrationId);
-    const feeBase = summary.original_amount > 0 ? summary.original_amount : currentAmount;
-    const fee = calculateProcessingFee(feeBase, paymentMethod);
-    const cappedRefundAmount = fee > 0
-      ? Math.min(refundAmountCents, Math.max(0, feeBase - fee - summary.total_refunded))
-      : refundAmountCents;
-
-    if (cappedRefundAmount <= 0) {
-      return NextResponse.json(
-        { error: "No refundable amount remaining (processing fee already exceeds balance)" },
-        { status: 400 }
-      );
-    }
 
     // Find the most recent SUCCEEDED Stripe payment for this registration
     const { data: invoices } = await admin
@@ -172,6 +157,21 @@ export async function POST(
 
       if (payment) {
         paymentMethod = payment.payment_method;
+
+        // Cap refund at processing fee limit
+        const { summary } = await getAdjustmentsWithSummary(admin, registrationId);
+        const feeBase = summary.original_amount > 0 ? summary.original_amount : currentAmount;
+        const fee = calculateProcessingFee(feeBase, paymentMethod);
+        const cappedRefundAmount = fee > 0
+          ? Math.min(refundAmountCents, Math.max(0, feeBase - fee - summary.total_refunded))
+          : refundAmountCents;
+
+        if (cappedRefundAmount <= 0) {
+          return NextResponse.json(
+            { error: "No refundable amount remaining (processing fee already exceeds balance)" },
+            { status: 400 }
+          );
+        }
 
         if (payment.stripe_payment_intent_id) {
           // Issue Stripe refund
