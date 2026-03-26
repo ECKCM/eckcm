@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRegistration } from "@/lib/context/registration-context";
+import { useI18n } from "@/lib/i18n/context";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,6 +34,7 @@ export default function AirportPickupStep() {
   const router = useRouter();
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
+  const { t } = useI18n();
 
   const [showKeyDeposit, setShowKeyDeposit] = useState(true);
   const [rideOptions, setRideOptions] = useState<RideOption[]>([]);
@@ -244,19 +246,19 @@ export default function AirportPickupStep() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Step 6: Airport Rides</CardTitle>
+          <CardTitle>{t("registration.step6Title")}</CardTitle>
           <CardDescription>
-            Let us know if you need transportation to or from the airport.
+            {t("registration.step6Desc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {loadingRides ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
-              Loading available rides...
+              {t("registration.loadingRides")}
             </p>
           ) : rideOptions.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
-              No airport rides are available for this event.
+              {t("registration.noRidesAvailable")}
             </p>
           ) : (
             <div className="space-y-4">
@@ -264,7 +266,7 @@ export default function AirportPickupStep() {
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="flex items-center gap-2">
                   <PlaneLanding className="size-4" />
-                  <p className="text-sm font-medium">Do you need an airport pickup/drop-off?</p>
+                  <p className="text-sm font-medium">{t("registration.needAirportRide")}</p>
                 </div>
                 <Switch checked={needsAirport} onCheckedChange={handleSetAirportIntent} />
               </div>
@@ -278,7 +280,7 @@ export default function AirportPickupStep() {
                         <div className="flex items-center gap-2">
                           <PlaneLanding className="size-4 text-muted-foreground" />
                           <div>
-                            <p className="text-sm font-medium">Airport Pickup</p>
+                            <p className="text-sm font-medium">{t("registration.airportPickup")}</p>
                             {(pickups[0]?.origin || pickups[0]?.destination) && (
                               <p className="text-xs text-muted-foreground">
                                 {pickups[0].origin ?? ""} → {pickups[0].destination ?? ""}
@@ -314,7 +316,7 @@ export default function AirportPickupStep() {
                         <div className="flex items-center gap-2">
                           <PlaneTakeoff className="size-4 text-muted-foreground" />
                           <div>
-                            <p className="text-sm font-medium">Airport Drop-off</p>
+                            <p className="text-sm font-medium">{t("registration.airportDropoff")}</p>
                             {(dropoffs[0]?.origin || dropoffs[0]?.destination) && (
                               <p className="text-xs text-muted-foreground">
                                 {dropoffs[0].origin ?? ""} → {dropoffs[0].destination ?? ""}
@@ -360,9 +362,9 @@ export default function AirportPickupStep() {
             )
           }
         >
-          Back
+          {t("common.back")}
         </Button>
-        <Button onClick={handleNext}>Review Registration</Button>
+        <Button onClick={handleNext}>{t("registration.reviewRegistration")}</Button>
       </div>
     </div>
   );
@@ -386,6 +388,7 @@ function RideCard({
   formatDate: (iso: string) => string;
   formatTime: (iso: string) => string;
 }) {
+  const { t } = useI18n();
   const selectedCount = selection?.selectedParticipantIds?.length ?? 0;
 
   return (
@@ -402,7 +405,7 @@ function RideCard({
       {/* Participant toggles */}
       <div className="space-y-1">
         <Label className="text-xs">
-          Passengers ({selectedCount} of {participants.length})
+          {t("registration.passengersCount", { selected: selectedCount, total: participants.length })}
         </Label>
         <div className="space-y-1 mt-1">
           {participants.map((p) => {
@@ -423,7 +426,7 @@ function RideCard({
                 </span>
                 {participants.length > 1 && (
                   <span className="text-xs text-muted-foreground ml-auto">
-                    Group {p.groupIndex + 1}
+                    {t("registration.groupNum", { number: p.groupIndex + 1 })}
                   </span>
                 )}
               </label>
@@ -435,13 +438,13 @@ function RideCard({
       {/* Flight info */}
       <div className="space-y-1">
         <Label className="text-xs">
-          Flight Info (airline, flight #, airport, etc.)
+          {t("registration.flightInfo")}
         </Label>
         <Textarea
           value={selection?.flightInfo ?? ""}
           onChange={(e) => onUpdateFlightInfo(e.target.value)}
           rows={2}
-          placeholder="e.g., Delta DL1234, PIT, arriving 1:00 PM"
+          placeholder={t("registration.flightInfoPlaceholder")}
         />
       </div>
     </div>

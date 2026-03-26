@@ -15,6 +15,7 @@ import { populateDefaultMeals } from "@/lib/services/meal.service";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 import { insertInitialPayment } from "@/lib/services/adjustment.service";
 import { loadFundingForGroup, toFundingDiscounts, recordFundingAllocations } from "@/lib/services/funding.service";
+import { syncRegistration } from "@/lib/services/google-sheets.service";
 
 interface AdminRegBody {
   eventId: string;
@@ -533,6 +534,9 @@ export async function POST(request: Request) {
 
     // Update inventory counts
     await recalculateInventorySafe(admin);
+
+    // Sync to Google Sheets (non-blocking)
+    syncRegistration(eventId, registration.id).catch(() => {});
 
     return NextResponse.json({
       registrationId: registration.id,

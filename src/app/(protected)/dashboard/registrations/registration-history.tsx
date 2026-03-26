@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 interface Registration {
   id: string;
@@ -34,6 +35,7 @@ export function RegistrationHistory({
 }: {
   registrations: Registration[];
 }) {
+  const { t, locale } = useI18n();
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
       <div className="flex items-center gap-3">
@@ -42,13 +44,13 @@ export function RegistrationHistory({
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold">Registrations</h1>
+        <h1 className="text-2xl font-bold">{t("registrations.title")}</h1>
       </div>
 
       {registrations.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            No registrations yet.
+            {t("registrations.noRegistrations")}
           </CardContent>
         </Card>
       ) : (
@@ -57,7 +59,7 @@ export function RegistrationHistory({
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">
-                  {reg.eckcm_events.name_en}
+                  {locale === "ko" && reg.eckcm_events.name_ko ? reg.eckcm_events.name_ko : reg.eckcm_events.name_en}
                 </CardTitle>
                 <Badge variant={statusVariant[reg.status] ?? "secondary"}>
                   {reg.status}
@@ -66,11 +68,11 @@ export function RegistrationHistory({
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <span className="text-muted-foreground">Dates</span>
+                <span className="text-muted-foreground">{t("registration.dates")}</span>
                 <span>
                   {reg.start_date} ~ {reg.end_date}
                 </span>
-                <span className="text-muted-foreground">Nights</span>
+                <span className="text-muted-foreground">{t("registration.nights")}</span>
                 <span>{reg.nights_count}</span>
                 {reg.confirmation_code && (
                   <>
@@ -80,7 +82,7 @@ export function RegistrationHistory({
                     </span>
                   </>
                 )}
-                <span className="text-muted-foreground">Total</span>
+                <span className="text-muted-foreground">{t("common.total")}</span>
                 <span className="font-medium">
                   ${(reg.total_amount_cents / 100).toFixed(2)}
                 </span>

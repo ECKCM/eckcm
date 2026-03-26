@@ -18,7 +18,7 @@ const dictionaries: Record<Locale, Messages> = { en, ko };
 interface I18nContextType {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const I18nContext = createContext<I18nContextType | null>(null);
@@ -43,6 +43,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     const stored = localStorage.getItem("eckcm-locale");
     if (stored && locales.includes(stored as Locale)) {
       setLocaleState(stored as Locale);
+      document.documentElement.lang = stored;
     }
   }, []);
 
@@ -53,11 +54,17 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: string): string => {
-      return getNestedValue(
+    (key: string, params?: Record<string, string | number>): string => {
+      let result = getNestedValue(
         dictionaries[locale] as unknown as Record<string, unknown>,
         key
       );
+      if (params) {
+        Object.entries(params).forEach(([k, v]) => {
+          result = result.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+        });
+      }
+      return result;
     },
     [locale]
   );

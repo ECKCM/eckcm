@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRegistration } from "@/lib/context/registration-context";
+import { useI18n } from "@/lib/i18n/context";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -56,6 +57,7 @@ export default function InstructionsStep() {
   const [feeCategories, setFeeCategories] = useState<FeeCategory[]>([]);
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!state.startDate) {
@@ -110,16 +112,16 @@ export default function InstructionsStep() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Step 2: Instructions</CardTitle>
+          <CardTitle>{t("registration.step2Title")}</CardTitle>
           <CardDescription>
-            Please read the following information carefully before proceeding.
+            {t("registration.step2Desc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Fee Schedule */}
           {feeCategories.length > 0 && (
             <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
-              <h3 className="text-sm font-semibold tracking-tight">Fee Schedule</h3>
+              <h3 className="text-sm font-semibold tracking-tight">{t("registration.feeSchedule")}</h3>
               {FEE_GROUPS.map((group) => {
                 const items = group.codes
                   .map((code) => feeCategories.find((f) => f.code === code))
@@ -145,8 +147,8 @@ export default function InstructionsStep() {
 
           <Tabs defaultValue="en" className="w-full">
             <TabsList className="w-full">
-              <TabsTrigger value="en" className="flex-1">English</TabsTrigger>
-              <TabsTrigger value="ko" className="flex-1">한국어</TabsTrigger>
+              <TabsTrigger value="en" className="flex-1">{t("registration.english")}</TabsTrigger>
+              <TabsTrigger value="ko" className="flex-1">{t("registration.korean")}</TabsTrigger>
             </TabsList>
             <TabsContent value="en">
               <MarkdownRenderer content={contentEn} />
@@ -163,7 +165,7 @@ export default function InstructionsStep() {
               onCheckedChange={(v) => setAgreed(v === true)}
             />
             <Label htmlFor="agree" className="cursor-pointer">
-              I have read and agree to the information above.
+              {t("registration.agreeInfo")}
             </Label>
           </div>
         </CardContent>
@@ -174,10 +176,10 @@ export default function InstructionsStep() {
           variant="outline"
           onClick={() => router.push(`/register/${eventId}`)}
         >
-          Back
+          {t("common.back")}
         </Button>
         <Button onClick={handleNext} disabled={!agreed}>
-          Next: Participants
+          {t("registration.nextParticipantsBtn")}
         </Button>
       </div>
     </div>

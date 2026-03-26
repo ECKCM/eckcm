@@ -25,6 +25,7 @@ import {
   filterName,
   buildDisplayName,
   isValidEmail,
+  sanitizeEmailInput,
   NAME_PATTERN,
 } from "@/lib/utils/field-helpers";
 import { calculateAge } from "@/lib/utils/validators";
@@ -1071,7 +1072,7 @@ export function AdminRegistrationForm() {
                           type="email"
                           value={p.email}
                           onChange={(e) =>
-                            updateParticipant(idx, { email: e.target.value })
+                            updateParticipant(idx, { email: sanitizeEmailInput(e.target.value) })
                           }
                           placeholder="john@example.com"
                           className={errs.email ? "border-destructive" : ""}

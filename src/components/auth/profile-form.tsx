@@ -15,11 +15,13 @@ import {
   isPhoneIncomplete,
   buildPhoneValue,
   NAME_PATTERN,
+  sanitizeEmailInput,
 } from "@/lib/utils/field-helpers";
 import { PhoneInput } from "@/components/shared/phone-input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Info, CircleHelp } from "lucide-react";
 import type { Gender, Grade, ChurchRole } from "@/lib/types/database";
+import { useI18n } from "@/lib/i18n/context";
 
 interface Church {
   id: string;
@@ -84,6 +86,7 @@ export function ProfileForm({
   loading = false,
   children,
 }: ProfileFormProps) {
+  const { t, locale } = useI18n();
   const [form, setForm] = useState<ProfileFormData>({
     lastName: initialData?.lastName ?? "",
     firstName: initialData?.firstName ?? "",
@@ -120,20 +123,20 @@ export function ProfileForm({
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!form.lastName.trim()) {
-      errs.lastName = "Required";
+      errs.lastName = t("common.required");
     } else if (!NAME_PATTERN.test(form.lastName.trim())) {
-      errs.lastName = "Uppercase letters only";
+      errs.lastName = t("profile.uppercaseOnly");
     }
     if (!form.firstName.trim()) {
-      errs.firstName = "Required";
+      errs.firstName = t("common.required");
     } else if (!NAME_PATTERN.test(form.firstName.trim())) {
-      errs.firstName = "Uppercase letters only";
+      errs.firstName = t("profile.uppercaseOnly");
     }
-    if (!form.displayNameKo.trim()) errs.displayNameKo = "Required";
-    if (!form.gender) errs.gender = "Required";
+    if (!form.displayNameKo.trim()) errs.displayNameKo = t("common.required");
+    if (!form.gender) errs.gender = t("common.required");
     if (!hideBirthDate) {
       if (!form.birthYear || !form.birthMonth || !form.birthDay) {
-        errs.birthDate = "Required";
+        errs.birthDate = t("common.required");
       } else {
         const currentYear = new Date().getFullYear();
         if (
@@ -144,10 +147,10 @@ export function ProfileForm({
           errs.birthDate = `Year must be between ${currentYear - 120} and ${currentYear}`;
         }
       }
-      if ((form.isK12 || isMinor) && !form.grade) errs.grade = "Required";
+      if ((form.isK12 || isMinor) && !form.grade) errs.grade = t("common.required");
     }
-    if (!form.phone.trim()) errs.phone = "Required";
-    if (showEmail && !form.email.trim()) errs.email = "Required";
+    if (!form.phone.trim()) errs.phone = t("common.required");
+    if (showEmail && !form.email.trim()) errs.email = t("common.required");
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -197,12 +200,12 @@ export function ProfileForm({
       {/* Names */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label htmlFor="firstName">First Name (Legal) <span className="text-destructive">*</span></Label>
+          <Label htmlFor="firstName">{t("profile.firstNameLegal")} <span className="text-destructive">*</span></Label>
           <Input
             id="firstName"
             value={form.firstName}
             onChange={(e) => handleNameChange("firstName", e.target.value)}
-            placeholder="FIRST NAME"
+            placeholder={t("profile.firstNamePlaceholder")}
             className={errors.firstName ? "border-destructive" : ""}
           />
           {errors.firstName && (
@@ -210,12 +213,12 @@ export function ProfileForm({
           )}
         </div>
         <div className="space-y-1">
-          <Label htmlFor="lastName">Last Name (Legal) <span className="text-destructive">*</span></Label>
+          <Label htmlFor="lastName">{t("profile.lastNameLegal")} <span className="text-destructive">*</span></Label>
           <Input
             id="lastName"
             value={form.lastName}
             onChange={(e) => handleNameChange("lastName", e.target.value)}
-            placeholder="LAST NAME"
+            placeholder={t("profile.lastNamePlaceholder")}
             className={errors.lastName ? "border-destructive" : ""}
           />
           {errors.lastName && (
@@ -226,7 +229,7 @@ export function ProfileForm({
 
       <div className="space-y-1">
         <div className="flex items-center gap-1">
-          <Label htmlFor="displayNameKo">Display Name <span className="text-destructive">*</span></Label>
+          <Label htmlFor="displayNameKo">{t("profile.displayName")} <span className="text-destructive">*</span></Label>
           <Popover>
             <PopoverTrigger asChild>
               <button type="button" className="text-muted-foreground hover:text-foreground">
@@ -234,8 +237,7 @@ export function ProfileForm({
               </button>
             </PopoverTrigger>
             <PopoverContent className="text-xs">
-              This name will be printed on your name badge.<br />
-              한국어 이름을 명찰에 표시하고 싶으시면 여기에 입력해 주세요.
+              <>{t("profile.displayNameHint")}<br />{t("profile.displayNameHintKo")}</>
             </PopoverContent>
           </Popover>
         </div>
@@ -243,10 +245,10 @@ export function ProfileForm({
           id="displayNameKo"
           value={form.displayNameKo}
           onChange={(e) => update("displayNameKo", e.target.value)}
-          placeholder="NAME ON BADGE"
+          placeholder={t("profile.displayNamePlaceholder")}
           className={errors.displayNameKo ? "border-destructive" : ""}
         />
-        <p className="text-[0.625rem] text-muted-foreground">명찰용 한국어 이름 변경 가능</p>
+        <p className="text-[0.625rem] text-muted-foreground">{t("profile.displayNameSubHint")}</p>
         {errors.displayNameKo && (
           <p className="text-xs text-destructive">{errors.displayNameKo}</p>
         )}
@@ -255,7 +257,7 @@ export function ProfileForm({
       {/* Gender */}
       <div className="space-y-1">
         <div className="flex items-center gap-1">
-          <Label>Gender <span className="text-destructive">*</span></Label>
+          <Label>{t("profile.gender")} <span className="text-destructive">*</span></Label>
           <Popover>
             <PopoverTrigger asChild>
               <button type="button" className="text-muted-foreground hover:text-foreground">
@@ -263,7 +265,7 @@ export function ProfileForm({
               </button>
             </PopoverTrigger>
             <PopoverContent className="text-xs">
-              We collect gender information for administrative and accommodation purposes only. It is not used for eligibility, pricing, or discriminatory decisions. You may choose &quot;Prefer not to say&quot; if you are uncomfortable sharing.
+              {t("profile.genderInfo")}
             </PopoverContent>
           </Popover>
         </div>
@@ -272,13 +274,13 @@ export function ProfileForm({
           onValueChange={(v) => update("gender", v)}
         >
           <SelectTrigger className={errors.gender ? "border-destructive" : ""}>
-            <SelectValue placeholder="Select gender" />
+            <SelectValue placeholder={t("profile.selectGender")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="MALE">Male</SelectItem>
-            <SelectItem value="FEMALE">Female</SelectItem>
-            <SelectItem value="NON_BINARY">Non-binary</SelectItem>
-            <SelectItem value="PREFER_NOT_TO_SAY">Prefer not to say</SelectItem>
+            <SelectItem value="MALE">{t("profile.male")}</SelectItem>
+            <SelectItem value="FEMALE">{t("profile.female")}</SelectItem>
+            <SelectItem value="NON_BINARY">{t("profile.nonBinary")}</SelectItem>
+            <SelectItem value="PREFER_NOT_TO_SAY">{t("profile.preferNotToSay")}</SelectItem>
           </SelectContent>
         </Select>
         {errors.gender && (
@@ -313,24 +315,24 @@ export function ProfileForm({
               className="mt-1"
             />
             <Label htmlFor="isK12" className="text-sm font-normal leading-snug">
-              I am currently a Pre-K/K-12 student (high school or younger)
+              {t("profile.isK12")}
             </Label>
           </div>
 
           {(form.isK12 || isMinor) && (
             <div className="space-y-1">
-              <Label>Grade <span className="text-destructive">*</span></Label>
+              <Label>{t("profile.grade")} <span className="text-destructive">*</span></Label>
               <Select
                 value={form.grade}
                 onValueChange={(v) => update("grade", v)}
               >
                 <SelectTrigger className={errors.grade ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Select grade" />
+                  <SelectValue placeholder={t("profile.selectGrade")} />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(GRADE_LABELS).map(([key, label]) => (
                     <SelectItem key={key} value={key}>
-                      {label.en}
+                      {locale === "ko" ? label.ko : label.en}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -346,18 +348,18 @@ export function ProfileForm({
       {/* Department */}
       {!hideDepartment && (
         <div className="space-y-1">
-          <Label>Department</Label>
+          <Label>{t("registration.department")}</Label>
           <Select
             value={form.departmentId}
             onValueChange={(v) => update("departmentId", v)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select department" />
+              <SelectValue placeholder={t("profile.selectDepartment")} />
             </SelectTrigger>
             <SelectContent>
               {departments.map((dept) => (
                 <SelectItem key={dept.id} value={dept.id}>
-                  {dept.name_en}
+                  {locale === "ko" ? dept.name_ko : dept.name_en}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -368,12 +370,12 @@ export function ProfileForm({
       {/* Email (conditional) */}
       {showEmail && (
         <div className="space-y-1">
-          <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
+          <Label htmlFor="email">{t("auth.email")} <span className="text-destructive">*</span></Label>
           <Input
             id="email"
             type="email"
             value={form.email}
-            onChange={(e) => update("email", e.target.value)}
+            onChange={(e) => update("email", sanitizeEmailInput(e.target.value))}
             placeholder="email@example.com"
             className={errors.email ? "border-destructive" : ""}
           />
@@ -386,7 +388,7 @@ export function ProfileForm({
       {/* Phone */}
       <div className="space-y-1">
         <div className="flex items-center gap-1">
-          <Label htmlFor="phone">Phone Number <span className="text-destructive">*</span></Label>
+          <Label htmlFor="phone">{t("profile.phoneNumber")} <span className="text-destructive">*</span></Label>
           <Popover>
             <PopoverTrigger asChild>
               <button type="button" className="text-muted-foreground hover:text-foreground">
@@ -394,7 +396,7 @@ export function ProfileForm({
               </button>
             </PopoverTrigger>
             <PopoverContent className="text-xs">
-              By providing your number, you agree to receive service-related messages.
+              {t("profile.phoneInfo")}
             </PopoverContent>
           </Popover>
         </div>
@@ -407,7 +409,7 @@ export function ProfileForm({
           error={!!errors.phone || isPhoneIncomplete(form.phone, form.phoneCountry)}
         />
         {isPhoneIncomplete(form.phone, form.phoneCountry) && (
-          <p className="text-xs text-destructive">Enter a complete phone number</p>
+          <p className="text-xs text-destructive">{t("profile.incompletePhone")}</p>
         )}
         {errors.phone && (
           <p className="text-xs text-destructive">{errors.phone}</p>
@@ -418,7 +420,7 @@ export function ProfileForm({
       {!hideChurch && (
         <>
           <div className="space-y-1">
-            <Label>Church</Label>
+            <Label>{t("profile.church")}</Label>
             <ChurchCombobox
               churches={churches}
               value={form.churchId}
@@ -429,12 +431,12 @@ export function ProfileForm({
           {/* Church Other (conditional) */}
           {showChurchOther && (
             <div className="space-y-1">
-              <Label htmlFor="churchOther">Church Name</Label>
+              <Label htmlFor="churchOther">{t("profile.churchName")}</Label>
               <Input
                 id="churchOther"
                 value={form.churchOther}
                 onChange={(e) => update("churchOther", e.target.value)}
-                placeholder="Enter your church name"
+                placeholder={t("profile.enterChurchName")}
               />
             </div>
           )}
@@ -442,20 +444,20 @@ export function ProfileForm({
           {/* Church Role (hidden when No Home Church) */}
           {!isNoHomeChurch && (
             <div className="space-y-1">
-              <Label>Church Role <span className="text-muted-foreground text-xs font-normal">(Optional)</span></Label>
+              <Label>{t("profile.churchRole")} <span className="text-muted-foreground text-xs font-normal">({t("profile.optional")})</span></Label>
               <Select
                 value={form.churchRole}
                 onValueChange={(v) => update("churchRole", v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select your church role" />
+                  <SelectValue placeholder={t("profile.selectChurchRole")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MEMBER">Member</SelectItem>
-                  <SelectItem value="DEACON">Deacon</SelectItem>
-                  <SelectItem value="ELDER">Elder</SelectItem>
-                  <SelectItem value="MINISTER">Minister</SelectItem>
-                  <SelectItem value="PASTOR">Pastor</SelectItem>
+                  <SelectItem value="MEMBER">{t("profile.member")}</SelectItem>
+                  <SelectItem value="DEACON">{t("profile.deacon")}</SelectItem>
+                  <SelectItem value="ELDER">{t("profile.elder")}</SelectItem>
+                  <SelectItem value="MINISTER">{t("profile.minister")}</SelectItem>
+                  <SelectItem value="PASTOR">{t("profile.pastor")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -466,7 +468,7 @@ export function ProfileForm({
       {children}
 
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Saving..." : submitLabel}
+        {loading ? t("common.saving") : submitLabel}
       </Button>
     </form>
   );

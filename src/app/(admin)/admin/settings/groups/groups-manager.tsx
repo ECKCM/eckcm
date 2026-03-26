@@ -66,6 +66,7 @@ interface RegistrationGroup {
   early_bird_deadline: string | null;
   early_bird_fee_category_id: string | null;
   department_id: string | null;
+  allow_add_members: boolean;
   show_special_preferences: boolean;
   show_key_deposit: boolean;
   show_tshirt_size: boolean;
@@ -102,6 +103,7 @@ const emptyForm = {
   early_bird_deadline: "",
   early_bird_fee_category_id: "",
   department_id: "",
+  allow_add_members: true,
   show_special_preferences: true,
   show_key_deposit: true,
   show_tshirt_size: false,
@@ -291,6 +293,7 @@ export function RegistrationGroupsManager() {
       early_bird_deadline: toDatetimeLocal(group.early_bird_deadline),
       early_bird_fee_category_id: group.early_bird_fee_category_id ?? "",
       department_id: group.department_id ?? "",
+      allow_add_members: group.allow_add_members,
       show_special_preferences: group.show_special_preferences,
       show_key_deposit: group.show_key_deposit,
       show_tshirt_size: group.show_tshirt_size,
@@ -342,6 +345,7 @@ export function RegistrationGroupsManager() {
         : null,
       early_bird_fee_category_id: form.early_bird_fee_category_id || null,
       department_id: form.department_id || null,
+      allow_add_members: form.allow_add_members,
       show_special_preferences: form.show_special_preferences,
       show_key_deposit: form.show_key_deposit,
       show_tshirt_size: form.show_tshirt_size,
@@ -555,6 +559,17 @@ export function RegistrationGroupsManager() {
                 <p className="text-xs text-muted-foreground">
                   When set, this group is auto-assigned if Room Group 1 representative selects this department.
                 </p>
+                {form.department_id && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Switch
+                      checked={form.allow_add_members}
+                      onCheckedChange={(checked) =>
+                        setForm({ ...form, allow_add_members: checked })
+                      }
+                    />
+                    <Label>Allow Add Members</Label>
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -838,6 +853,9 @@ export function RegistrationGroupsManager() {
                         <Badge variant="outline">
                           Dept: {allDepartments.find((d) => d.id === group.department_id)?.name_en ?? "—"}
                         </Badge>
+                      )}
+                      {group.department_id && !group.allow_add_members && (
+                        <Badge variant="secondary">No Add Members</Badge>
                       )}
                       {!group.apply_general_fees_to_members && (
                         <Badge variant="secondary">General: Rep Only</Badge>

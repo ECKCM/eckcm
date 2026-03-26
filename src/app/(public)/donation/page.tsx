@@ -24,6 +24,8 @@ import {
   CheckCircle,
   ArrowLeft,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
+import { sanitizeEmailInput } from "@/lib/utils/field-helpers";
 
 const STRIPE_APPEARANCE = {
   theme: "stripe" as const,
@@ -40,6 +42,8 @@ const STRIPE_APPEARANCE = {
 const PRESET_AMOUNTS = [2000, 5000, 10000, 30000]; // $20, $50, $100, $300
 
 export default function DonationPage() {
+  const { t } = useI18n();
+
   /* ---- amount input ---- */
   const [amountInput, setAmountInput] = useState("");
   const [amountCents, setAmountCents] = useState<number | null>(null);
@@ -91,7 +95,7 @@ export default function DonationPage() {
 
   const handleProceedToPayment = async () => {
     if (!amountCents || amountCents < 100) {
-      toast.error("Please enter an amount of at least $1.00");
+      toast.error(t("donation.minAmountError"));
       return;
     }
 
@@ -112,7 +116,7 @@ export default function DonationPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to initialize payment");
+        setError(data.error || t("donation.failedInit"));
         return;
       }
 
@@ -121,7 +125,7 @@ export default function DonationPage() {
       setChargeAmount(data.chargeAmount);
       setFeeCents(data.feeCents);
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("donation.networkError"));
     } finally {
       setLoadingIntent(false);
     }
@@ -133,16 +137,12 @@ export default function DonationPage() {
         <Card>
           <CardContent className="py-12 text-center space-y-4">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
-            <h2 className="text-2xl font-bold">Thank You!</h2>
+            <h2 className="text-2xl font-bold">{t("donation.thankYou")}</h2>
             <p className="text-muted-foreground">
-              Your donation of{" "}
-              <span className="font-semibold text-foreground">
-                ${((amountCents ?? 0) / 100).toFixed(2)}
-              </span>{" "}
-              has been received.
+              {t("donation.donationReceivedAmount", { amount: `$${((amountCents ?? 0) / 100).toFixed(2)}` })}
             </p>
             <p className="text-sm text-muted-foreground">
-              A receipt will be sent to your email if provided.
+              {t("donation.receiptSent")}
             </p>
             <div className="pt-4 flex flex-col gap-2">
               <Button
@@ -158,10 +158,10 @@ export default function DonationPage() {
                 }}
                 variant="outline"
               >
-                Make Another Donation
+                {t("donation.makeAnother")}
               </Button>
               <Button asChild variant="ghost">
-                <Link href="/">Back to Home</Link>
+                <Link href="/">{t("donation.backToHome")}</Link>
               </Button>
             </div>
           </CardContent>
@@ -177,14 +177,14 @@ export default function DonationPage() {
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
-        Back to Home
+        {t("donation.backToHome")}
       </Link>
 
       <div className="text-center mb-8">
         <Heart className="h-10 w-10 text-primary mx-auto mb-3" />
-        <h1 className="text-3xl font-bold">Make a Donation</h1>
+        <h1 className="text-3xl font-bold">{t("donation.makeDonation")}</h1>
         <p className="mt-2 text-muted-foreground">
-          Support ECKCM with a one-time donation
+          {t("donation.supportDesc")}
         </p>
       </div>
 
@@ -193,7 +193,7 @@ export default function DonationPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Donation Amount</CardTitle>
+              <CardTitle className="text-lg">{t("donation.donationAmount")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Preset amounts */}
@@ -212,7 +212,7 @@ export default function DonationPage() {
 
               {/* Custom amount */}
               <div>
-                <Label htmlFor="amount">Custom Amount</Label>
+                <Label htmlFor="amount">{t("donation.customAmount")}</Label>
                 <div className="relative mt-1">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                     $
@@ -228,7 +228,7 @@ export default function DonationPage() {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Minimum $1.00, maximum $10,000.00
+                  {t("donation.minMax")}
                 </p>
               </div>
 
@@ -242,10 +242,10 @@ export default function DonationPage() {
                 />
                 <div>
                   <p className="text-sm font-medium">
-                    Cover processing fees
+                    {t("donation.coverFees")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Add ~3% so 100% of your donation goes to ECKCM
+                    {t("donation.coverFeesDesc")}
                   </p>
                 </div>
               </label>
@@ -255,15 +255,15 @@ export default function DonationPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">
-                Your Information{" "}
+                {t("donation.yourInfo")}{" "}
                 <span className="text-sm font-normal text-muted-foreground">
-                  (optional)
+                  ({t("profile.optional")})
                 </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <Label htmlFor="donorName">Name</Label>
+                <Label htmlFor="donorName">{t("donation.donorName")}</Label>
                 <Input
                   id="donorName"
                   value={donorName}
@@ -273,17 +273,17 @@ export default function DonationPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="donorEmail">Email</Label>
+                <Label htmlFor="donorEmail">{t("donation.donorEmail")}</Label>
                 <Input
                   id="donorEmail"
                   type="email"
                   value={donorEmail}
-                  onChange={(e) => setDonorEmail(e.target.value)}
+                  onChange={(e) => setDonorEmail(sanitizeEmailInput(e.target.value))}
                   placeholder="you@example.com"
                   className="mt-1"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  For receipt purposes only
+                  {t("donation.forReceiptOnly")}
                 </p>
               </div>
             </CardContent>
@@ -302,11 +302,11 @@ export default function DonationPage() {
             {loadingIntent ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Preparing...
+                {t("donation.preparing")}
               </>
             ) : (
               <>
-                Continue to Payment
+                {t("donation.continueToPayment")}
                 {amountCents && amountCents >= 100 && (
                   <span className="ml-2">
                     — ${(amountCents / 100).toFixed(2)}
@@ -324,7 +324,7 @@ export default function DonationPage() {
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <Lock className="h-4 w-4" />
-                  Secure Payment
+                  {t("donation.securePayment")}
                 </span>
                 <span className="text-2xl font-bold">
                   ${(chargeAmount / 100).toFixed(2)}
@@ -332,7 +332,7 @@ export default function DonationPage() {
               </CardTitle>
               {feeCents > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Includes ${(feeCents / 100).toFixed(2)} processing fee coverage
+                  {t("donation.includesFee", { amount: (feeCents / 100).toFixed(2) })}
                 </p>
               )}
             </CardHeader>
@@ -361,12 +361,12 @@ export default function DonationPage() {
             }}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Change Amount
+            {t("donation.changeAmount")}
           </Button>
 
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" />
-            <span>Payments securely processed by Stripe</span>
+            <span>{t("donation.securedByStripe")}</span>
           </div>
         </div>
       )}
@@ -385,6 +385,7 @@ function DonationCheckoutForm({
   donationId: string;
   onSuccess: () => void;
 }) {
+  const { t } = useI18n();
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -407,7 +408,7 @@ function DonationCheckoutForm({
     });
 
     if (error) {
-      toast.error(error.message || "Payment failed. Please try again.");
+      toast.error(error.message || t("payment.paymentFailed"));
       setProcessing(false);
       processingRef.current = false;
       return;
@@ -429,7 +430,7 @@ function DonationCheckoutForm({
       }
     }
 
-    toast.success("Donation successful! Thank you!");
+    toast.success(t("donation.donationSuccess"));
     onSuccess();
   };
 
@@ -450,10 +451,10 @@ function DonationCheckoutForm({
         {processing ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Processing...
+            {t("common.processing")}
           </>
         ) : (
-          "Donate Now"
+          t("donation.donateNow")
         )}
       </Button>
     </form>

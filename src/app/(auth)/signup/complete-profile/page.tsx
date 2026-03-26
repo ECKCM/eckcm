@@ -22,6 +22,8 @@ import { ProfileForm, type ProfileFormData } from "@/components/auth/profile-for
 import { checkEmailAvailability, createUserProfile } from "../actions";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n/context";
+import { sanitizeEmailInput } from "@/lib/utils/field-helpers";
 
 interface Church {
   id: string;
@@ -38,6 +40,7 @@ interface Department {
 
 
 export default function CompleteProfilePage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [churches, setChurches] = useState<Church[]>([]);
@@ -63,7 +66,7 @@ export default function CompleteProfilePage() {
   const [captchaToken, setCaptchaToken] = useState<string>();
   const turnstileRef = useRef<TurnstileInstance>(null);
 
-  const isValidEmail = (v: string) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  const isValidEmail = (v: string) => !v || /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/.test(v);
 
   const validateSignupFields = (): boolean => {
     if (!isEmailSignup) return true;
@@ -74,24 +77,24 @@ export default function CompleteProfilePage() {
     setConfirmPasswordError("");
 
     if (!email) {
-      setEmailError("Email is required");
+      setEmailError(t("auth.emailRequired"));
       valid = false;
     } else if (!isValidEmail(email)) {
-      setEmailError("Enter a valid email address");
+      setEmailError(t("auth.validEmail"));
       valid = false;
     }
     if (!password) {
-      setPasswordError("Password is required");
+      setPasswordError(t("auth.passwordRequired"));
       valid = false;
     } else if (password.length < 8) {
-      setPasswordError("Password must be at least 8 characters");
+      setPasswordError(t("auth.passwordMin"));
       valid = false;
     }
     if (!confirmPassword) {
-      setConfirmPasswordError("Confirm password is required");
+      setConfirmPasswordError(t("auth.confirmPasswordRequired"));
       valid = false;
     } else if (password !== confirmPassword) {
-      setConfirmPasswordError("Passwords do not match");
+      setConfirmPasswordError(t("auth.passwordsNoMatch"));
       valid = false;
     }
 
@@ -164,12 +167,12 @@ export default function CompleteProfilePage() {
 
     // Consent checks (onValidate already caught field errors, but consent needs toast)
     if (!ageConfirmed) {
-      toast.error("Please confirm that you are at least 13 years old");
+      toast.error(t("auth.pleaseConfirmAge"));
       setLoading(false);
       return;
     }
     if (!termsAgreed) {
-      toast.error("Please agree to the Terms of Service and Privacy Policy");
+      toast.error(t("auth.pleaseAgreeTerms"));
       setLoading(false);
       return;
     }
@@ -180,7 +183,7 @@ export default function CompleteProfilePage() {
       // Check email availability (async — can't do in synchronous onValidate)
       const { available } = await checkEmailAvailability(email);
       if (!available) {
-        setEmailError("This email is already registered");
+        setEmailError(t("auth.emailAlreadyRegistered"));
         setLoading(false);
         return;
       }
@@ -201,7 +204,7 @@ export default function CompleteProfilePage() {
           authError.status === 429;
         toast.error(
           isRateLimit
-            ? "Too many signup attempts. Please wait a few minutes and try again."
+            ? t("auth.tooManyAttempts")
             : authError.message
         );
         setCaptchaToken(undefined);
@@ -219,7 +222,7 @@ export default function CompleteProfilePage() {
     const user = signedUpUser ?? (await supabase.auth.getUser()).data.user;
 
     if (!user) {
-      toast.error("Not authenticated");
+      toast.error(t("auth.notAuthenticated"));
       setLoading(false);
       return;
     }
@@ -256,20 +259,20 @@ export default function CompleteProfilePage() {
     });
 
     if (!result.success) {
-      toast.error(result.error ?? "Failed to create profile");
+      toast.error(result.error ?? t("auth.failedCreateProfile"));
       setLoading(false);
       return;
     }
 
     if (isEmailSignup) {
       // Email confirmation required — redirect to check-email page
-      toast.success("Account created! Please check your email to confirm.");
+      toast.success(t("auth.accountCreated"));
       setLoading(false);
       router.push(`/signup/check-email?email=${encodeURIComponent(email)}`);
       return;
     }
 
-    toast.success("Profile completed!");
+    toast.success(t("auth.profileCompleted"));
     setLoading(false);
     router.push("/dashboard");
   };
@@ -289,12 +292,12 @@ export default function CompleteProfilePage() {
     <Card className="bg-white dark:bg-card">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl font-bold">
-          {isEmailSignup ? "Create Your Account" : "Complete Your Profile"}
+          {isEmailSignup ? t("auth.createAccountTitle") : t("auth.completeProfile")}
         </CardTitle>
         <CardDescription>
           {isEmailSignup
-            ? "Fill in your information to create an account."
-            : "Please fill in your personal information to continue."}
+            ? t("auth.fillInfoCreate")
+            : t("auth.fillInfoComplete")}
           {userEmail && (
             <span className="block mt-1 font-medium text-foreground">
               {userEmail}
@@ -306,7 +309,7 @@ export default function CompleteProfilePage() {
         {isEmailSignup && (
           <>
             <div className="space-y-1">
-              <Label htmlFor="signup-email">Email <span className="text-destructive">*</span></Label>
+              <Label htmlFor="signup-email">{t("auth.email")} <span className="text-destructive">*</span></Label>
               <Input
                 id="signup-email"
                 name="signup-email"
@@ -314,7 +317,7 @@ export default function CompleteProfilePage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => {
-                  setEmail(e.target.value);
+                  setEmail(sanitizeEmailInput(e.target.value));
                   setEmailError("");
                 }}
                 placeholder="email@example.com"
@@ -324,11 +327,11 @@ export default function CompleteProfilePage() {
                 <p className="text-xs text-destructive">{emailError}</p>
               )}
               {email && !isValidEmail(email) && !emailError && (
-                <p className="text-xs text-destructive">Enter a valid email address</p>
+                <p className="text-xs text-destructive">{t("auth.validEmail")}</p>
               )}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="signup-password">Password <span className="text-destructive">*</span></Label>
+              <Label htmlFor="signup-password">{t("auth.password")} <span className="text-destructive">*</span></Label>
               <PasswordInput
                 id="signup-password"
                 name="signup-password"
@@ -338,7 +341,7 @@ export default function CompleteProfilePage() {
                   setPassword(e.target.value);
                   setPasswordError("");
                 }}
-                placeholder="Min 8 characters"
+                placeholder={t("auth.minChars")}
                 minLength={8}
                 className={passwordError || (password && password.length < 8) ? "border-destructive" : ""}
               />
@@ -346,11 +349,11 @@ export default function CompleteProfilePage() {
                 <p className="text-xs text-destructive">{passwordError}</p>
               )}
               {!passwordError && password && password.length < 8 && (
-                <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+                <p className="text-xs text-destructive">{t("auth.passwordMin")}</p>
               )}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="signup-confirm-password">Confirm Password <span className="text-destructive">*</span></Label>
+              <Label htmlFor="signup-confirm-password">{t("auth.confirmPassword")} <span className="text-destructive">*</span></Label>
               <PasswordInput
                 id="signup-confirm-password"
                 name="signup-confirm-password"
@@ -360,14 +363,14 @@ export default function CompleteProfilePage() {
                   setConfirmPassword(e.target.value);
                   setConfirmPasswordError("");
                 }}
-                placeholder="Re-enter password"
+                placeholder={t("auth.reenterPassword")}
                 className={confirmPasswordError || (confirmPassword && password !== confirmPassword) ? "border-destructive" : ""}
               />
               {confirmPasswordError && (
                 <p className="text-xs text-destructive">{confirmPasswordError}</p>
               )}
               {!confirmPasswordError && confirmPassword && password !== confirmPassword && (
-                <p className="text-xs text-destructive">Passwords do not match</p>
+                <p className="text-xs text-destructive">{t("auth.passwordsNoMatch")}</p>
               )}
             </div>
             <Separator />
@@ -379,7 +382,7 @@ export default function CompleteProfilePage() {
           eventStartDate={eventStartDate}
           onSubmit={handleSubmit}
           onValidate={validateSignupFields}
-          submitLabel={isEmailSignup ? "Create Account" : "Complete Profile"}
+          submitLabel={isEmailSignup ? t("auth.createAccountBtn") : t("auth.completeProfileBtn")}
           loading={loading}
           hideDepartment
           hideBirthDate
@@ -395,7 +398,7 @@ export default function CompleteProfilePage() {
                 className="mt-1"
               />
               <Label htmlFor="ageConfirmed" className="text-sm font-normal leading-snug">
-                I confirm that I am at least 13 years old. <span className="text-destructive">*</span>
+                {t("auth.ageConfirm")} <span className="text-destructive">*</span>
               </Label>
             </div>
             <div className="flex items-start gap-2">
@@ -407,13 +410,13 @@ export default function CompleteProfilePage() {
                 className="mt-1"
               />
               <Label htmlFor="termsAgreed" className="text-sm font-normal leading-snug">
-                I agree to the{" "}
+                {t("auth.termsAgree")}{" "}
                 <Link href="/terms" target="_blank" className="underline text-primary hover:text-primary/80">
-                  Terms of Service
+                  {t("auth.termsOfService")}
                 </Link>{" "}
-                and{" "}
+                {t("auth.and")}{" "}
                 <Link href="/privacy" target="_blank" className="underline text-primary hover:text-primary/80">
-                  Privacy Policy
+                  {t("auth.privacyPolicy")}
                 </Link>
                 . <span className="text-destructive">*</span>
               </Label>
@@ -430,7 +433,7 @@ export default function CompleteProfilePage() {
       </CardContent>
       <CardFooter className="justify-center">
         <Button variant="ghost" size="sm" onClick={handleCancel}>
-          Cancel
+          {t("common.cancel")}
         </Button>
       </CardFooter>
     </Card>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRegistration } from "@/lib/context/registration-context";
+import { useI18n } from "@/lib/i18n/context";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,7 @@ import {
   isPhoneIncomplete,
   stripDialCode,
   isValidEmail,
+  sanitizeEmailInput,
   NAME_PATTERN,
 } from "@/lib/utils/field-helpers";
 import { PhoneInput } from "@/components/shared/phone-input";
@@ -181,6 +183,7 @@ export default function ParticipantsStep() {
   const router = useRouter();
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
+  const { t } = useI18n();
   const representativeFilledRef = useRef<string | null>(null); // tracks which type was filled
   const groupInitRef = useRef(false);
 
@@ -196,7 +199,7 @@ export default function ParticipantsStep() {
   } | null>(null);
   const [allowAddGroup, setAllowAddGroup] = useState(true);
   const [regGroups, setRegGroups] = useState<
-    { id: string; department_id: string | null; is_default: boolean; only_one_person: boolean; show_tshirt_size: boolean; require_tshirt_size: boolean; access_code: string | null; name_en: string }[]
+    { id: string; department_id: string | null; is_default: boolean; only_one_person: boolean; allow_add_members: boolean; show_tshirt_size: boolean; require_tshirt_size: boolean; access_code: string | null; name_en: string }[]
   >([]);
 
   // Track which participants are open (accordion state)
@@ -248,6 +251,7 @@ export default function ParticipantsStep() {
   // (replaces old hardcoded HANSAMO department check)
   const currentRegGroup = regGroups.find((g) => g.id === state.registrationGroupId);
   const isOnlyOnePerson = currentRegGroup?.only_one_person ?? false;
+  const isAllowAddMembers = currentRegGroup?.allow_add_members ?? true;
   const showTshirtSize = currentRegGroup?.show_tshirt_size ?? false;
   const requireTshirtSize = currentRegGroup?.require_tshirt_size ?? false;
 
@@ -293,7 +297,7 @@ export default function ParticipantsStep() {
           .single(),
         supabase
           .from("eckcm_registration_groups")
-          .select("id, department_id, is_default, only_one_person, show_tshirt_size, require_tshirt_size, access_code, name_en")
+          .select("id, department_id, is_default, only_one_person, allow_add_members, show_tshirt_size, require_tshirt_size, access_code, name_en")
           .eq("is_active", true),
         state.registrationGroupId
           ? supabase
@@ -980,11 +984,11 @@ export default function ParticipantsStep() {
       <WizardStepper currentStep={3} />
 
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Room Groups & Participants</h2>
-        {!isOnlyOnePerson && allowAddGroup && (
+        <h2 className="text-lg font-semibold">{t("registration.step3Title")}</h2>
+        {!isOnlyOnePerson && isAllowAddMembers && allowAddGroup && (
           <Button variant="outline" size="sm" onClick={addGroup}>
             <Plus className="mr-1 size-4" />
-            Add Group
+            {t("registration.addRoom")}
           </Button>
         )}
       </div>
@@ -994,7 +998,7 @@ export default function ParticipantsStep() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <CardTitle className="text-base">Room Group{state.roomGroups.length > 1 ? ` ${gi + 1}` : ""}</CardTitle>
+                <CardTitle className="text-base">{state.roomGroups.length > 1 ? t("registration.roomGroupNum", { number: gi + 1 }) : t("registration.roomGroup")}</CardTitle>
                 <div className="flex items-center gap-0.5">
                   {Array.from({ length: group.participants.length }, (_, i) => (
                     <User key={i} className={`h-3.5 w-3.5 ${savedPanels[`${gi}-${i}`] ? "text-green-500" : "text-muted-foreground"}`} />
@@ -1012,7 +1016,7 @@ export default function ParticipantsStep() {
               )}
             </div>
             <CardDescription>
-              {group.participants.length} participant(s)
+              {t("registration.nPeople", { count: group.participants.length })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -1037,7 +1041,7 @@ export default function ParticipantsStep() {
                           <div className="size-4 shrink-0 rounded-full border-2 border-muted-foreground/30" />
                         )}
                         <span className="text-sm font-medium flex-1">
-                          {p.isRepresentative ? `Representative (${pi + 1})` : `Member (${pi + 1})`}
+                          {t("registration.participant", { number: pi + 1 })}
                           {(p.firstName || p.lastName) && (
                             <span className="ml-2 font-normal text-muted-foreground">
                               {p.firstName} {p.lastName}
@@ -1072,7 +1076,7 @@ export default function ParticipantsStep() {
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">
                               <UserPlus className="inline size-3 mr-1" />
-                              Autofill from saved person
+                              Autofill
                             </Label>
                             <Popover>
                               <PopoverTrigger asChild>
@@ -1126,7 +1130,7 @@ export default function ParticipantsStep() {
                         {state.hasOtherVolunteers && !p.isRepresentative && (
                           <div className="space-y-1 rounded-md border border-blue-200 bg-blue-50 p-3">
                             <Label className="text-xs font-medium text-blue-900">
-                              Volunteer Access Code (optional)
+                              {t("registration.accessCodeOptional")} ({t("profile.optional")})
                             </Label>
                             <div className="flex gap-2">
                               <Input
@@ -1152,14 +1156,14 @@ export default function ParticipantsStep() {
                                       (g) => g.access_code && g.access_code === code
                                     );
                                     if (!matched) {
-                                      toast.error("Invalid access code");
+                                      toast.error(t("registration.invalidAccessCode"));
                                       return;
                                     }
                                     updateParticipant(gi, pi, "memberRegistrationGroupId", matched.id);
-                                    toast.success(`Applied: ${matched.name_en}`);
+                                    toast.success(t("registration.applied", { name: matched.name_en }));
                                   }}
                                 >
-                                  Apply
+                                  {t("common.apply")}
                                 </Button>
                               ) : (
                                 <Button
@@ -1178,7 +1182,7 @@ export default function ParticipantsStep() {
                                     });
                                   }}
                                 >
-                                  Clear
+                                  {t("common.clear")}
                                 </Button>
                               )}
                             </div>
@@ -1193,25 +1197,25 @@ export default function ParticipantsStep() {
                         {/* Names */}
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <Label className="text-xs">First Name (Legal) <span className="text-destructive">*</span></Label>
+                            <Label className="text-xs">{t("profile.firstNameLegal")} <span className="text-destructive">*</span></Label>
                             <Input
                               value={p.firstName}
                               onChange={(e) =>
                                 handleNameChange(gi, pi, "firstName", e.target.value)
                               }
-                              placeholder="FIRST NAME"
+                              placeholder={t("profile.firstNamePlaceholder")}
                               className={errs.firstName ? "border-destructive" : ""}
                             />
                             {errs.firstName && <p className="text-xs text-destructive">{errs.firstName}</p>}
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs">Last Name (Legal) <span className="text-destructive">*</span></Label>
+                            <Label className="text-xs">{t("profile.lastNameLegal")} <span className="text-destructive">*</span></Label>
                             <Input
                               value={p.lastName}
                               onChange={(e) =>
                                 handleNameChange(gi, pi, "lastName", e.target.value)
                               }
-                              placeholder="LAST NAME"
+                              placeholder={t("profile.lastNamePlaceholder")}
                               className={errs.lastName ? "border-destructive" : ""}
                             />
                             {errs.lastName && <p className="text-xs text-destructive">{errs.lastName}</p>}
@@ -1222,7 +1226,7 @@ export default function ParticipantsStep() {
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
                             <div className="flex items-center gap-1">
-                              <Label className="text-xs">Display Name <span className="text-destructive">*</span></Label>
+                              <Label className="text-xs">{t("profile.displayName")} <span className="text-destructive">*</span></Label>
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <button type="button" className="text-muted-foreground hover:text-foreground">
@@ -1230,8 +1234,8 @@ export default function ParticipantsStep() {
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="text-xs">
-                                  This name will be printed on your name badge.<br />
-                                  한국어 이름이 있다면 한국어로 입력해 주세요.
+                                  {t("profile.displayNameHint")}<br />
+                                  {t("profile.displayNameHintKo")}
                                 </PopoverContent>
                               </Popover>
                             </div>
@@ -1240,15 +1244,15 @@ export default function ParticipantsStep() {
                               onChange={(e) =>
                                 updateParticipant(gi, pi, "displayNameKo", e.target.value)
                               }
-                              placeholder="NAME ON BADGE"
+                              placeholder={t("profile.displayNamePlaceholder")}
                               className={errs.displayNameKo ? "border-destructive" : ""}
                             />
-                            <p className="text-[0.625rem] text-muted-foreground">명찰용 한국어 이름 변경 가능</p>
+                            <p className="text-[0.625rem] text-muted-foreground">{t("profile.displayNameSubHint")}</p>
                             {errs.displayNameKo && <p className="text-xs text-destructive">{errs.displayNameKo}</p>}
                           </div>
                           <div className="space-y-1">
                             <div className="flex items-center gap-1">
-                              <Label className="text-xs">Gender <span className="text-destructive">*</span></Label>
+                              <Label className="text-xs">{t("profile.gender")} <span className="text-destructive">*</span></Label>
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <button type="button" className="text-muted-foreground hover:text-foreground">
@@ -1256,7 +1260,7 @@ export default function ParticipantsStep() {
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="text-xs">
-                                  We collect gender information for administrative and accommodation purposes only. It is not used for eligibility, pricing, or discriminatory decisions. You may choose &quot;Prefer not to say&quot; if you are uncomfortable sharing.
+                                  {t("profile.genderInfo")}
                                 </PopoverContent>
                               </Popover>
                             </div>
@@ -1267,13 +1271,13 @@ export default function ParticipantsStep() {
                               }
                             >
                               <SelectTrigger className={errs.gender ? "border-destructive" : ""}>
-                                <SelectValue placeholder="Select gender" />
+                                <SelectValue placeholder={t("profile.selectGender")} />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="MALE">Male</SelectItem>
-                                <SelectItem value="FEMALE">Female</SelectItem>
-                                <SelectItem value="NON_BINARY">Non-binary</SelectItem>
-                                <SelectItem value="PREFER_NOT_TO_SAY">Prefer not to say</SelectItem>
+                                <SelectItem value="MALE">{t("profile.male")}</SelectItem>
+                                <SelectItem value="FEMALE">{t("profile.female")}</SelectItem>
+                                <SelectItem value="NON_BINARY">{t("profile.nonBinary")}</SelectItem>
+                                <SelectItem value="PREFER_NOT_TO_SAY">{t("profile.preferNotToSay")}</SelectItem>
                               </SelectContent>
                             </Select>
                             {fieldErrors[`${gi}-${pi}`]?.gender && (
@@ -1320,13 +1324,13 @@ export default function ParticipantsStep() {
                               className="mt-1"
                             />
                             <Label className="text-xs font-normal leading-snug">
-                              I am currently a Pre-K/K-12 student (high school or younger)
+                              {t("profile.isK12")}
                             </Label>
                           </div>
                         )}
                         {p.isK12 && (
                           <div className="space-y-1">
-                            <Label className="text-xs">Grade <span className="text-destructive">*</span></Label>
+                            <Label className="text-xs">{t("profile.grade")} <span className="text-destructive">*</span></Label>
                             <Select
                               value={p.grade ?? ""}
                               onValueChange={(v) =>
@@ -1334,7 +1338,7 @@ export default function ParticipantsStep() {
                               }
                             >
                               <SelectTrigger className={errs.grade ? "border-destructive" : ""}>
-                                <SelectValue placeholder="Select grade" />
+                                <SelectValue placeholder={t("profile.selectGrade")} />
                               </SelectTrigger>
                               <SelectContent>
                                 {Object.entries(GRADE_LABELS).map(([key, label]) => (
@@ -1350,7 +1354,7 @@ export default function ParticipantsStep() {
 
                         {/* Department */}
                         <div className="space-y-1">
-                          <Label className="text-xs">Department <span className="text-destructive">*</span></Label>
+                          <Label className="text-xs">{t("registration.department")} <span className="text-destructive">*</span></Label>
                           <Select
                             value={p.departmentId ?? ""}
                             onValueChange={(v) =>
@@ -1358,7 +1362,7 @@ export default function ParticipantsStep() {
                             }
                           >
                             <SelectTrigger className={errs.departmentId ? "border-destructive" : ""}>
-                              <SelectValue placeholder="Select" />
+                              <SelectValue placeholder={t("profile.selectDepartment")} />
                             </SelectTrigger>
                             <SelectContent>
                               {departments.map((d) => (
@@ -1416,7 +1420,7 @@ export default function ParticipantsStep() {
                                 type="email"
                                 value={p.email}
                                 onChange={(e) =>
-                                  updateParticipant(gi, pi, "email", e.target.value)
+                                  updateParticipant(gi, pi, "email", sanitizeEmailInput(e.target.value))
                                 }
                                 placeholder="email@example.com"
                                 disabled={gi === 0 && pi === 0 && state.registrationType !== "others"}
@@ -1454,7 +1458,7 @@ export default function ParticipantsStep() {
                           {!p.noPhone && (
                             <>
                               <div className="flex items-center gap-1">
-                                <Label className="text-xs">Phone <span className="text-destructive">*</span></Label>
+                                <Label className="text-xs">{t("profile.phoneNumber")} <span className="text-destructive">*</span></Label>
                                 <Popover>
                                   <PopoverTrigger asChild>
                                     <button type="button" className="text-muted-foreground hover:text-foreground">
@@ -1462,7 +1466,7 @@ export default function ParticipantsStep() {
                                     </button>
                                   </PopoverTrigger>
                                   <PopoverContent className="text-xs">
-                                    By providing your number, you agree to receive service-related messages.
+                                    {t("profile.phoneInfo")}
                                   </PopoverContent>
                                 </Popover>
                               </div>
@@ -1474,7 +1478,7 @@ export default function ParticipantsStep() {
                                 error={!!errs.phone || isPhoneIncomplete(p.phone, p.phoneCountry)}
                               />
                               {(errs.phone || isPhoneIncomplete(p.phone, p.phoneCountry)) && (
-                                <p className="text-xs text-destructive">{errs.phone || "Enter a complete phone number"}</p>
+                                <p className="text-xs text-destructive">{errs.phone || t("profile.incompletePhone")}</p>
                               )}
                             </>
                           )}
@@ -1509,7 +1513,7 @@ export default function ParticipantsStep() {
 
                         {/* Church */}
                         <div className="space-y-1">
-                          <Label className="text-xs">Church <span className="text-destructive">*</span></Label>
+                          <Label className="text-xs">{t("profile.church")} <span className="text-destructive">*</span></Label>
                           <p className="text-xs text-muted-foreground">You can type to search for your church.</p>
                           <ChurchCombobox
                             churches={churches}
@@ -1523,13 +1527,13 @@ export default function ParticipantsStep() {
                         </div>
                         {isChurchOther(p.churchId) && (
                           <div className="space-y-1">
-                            <Label className="text-xs">Church Name <span className="text-destructive">*</span></Label>
+                            <Label className="text-xs">{t("profile.churchName")} <span className="text-destructive">*</span></Label>
                             <Input
                               value={p.churchOther ?? ""}
                               onChange={(e) =>
                                 updateParticipant(gi, pi, "churchOther", e.target.value)
                               }
-                              placeholder="Enter your church name"
+                              placeholder={t("profile.enterChurchName")}
                               className={errs.churchOther ? "border-destructive" : ""}
                             />
                             {errs.churchOther && <p className="text-xs text-destructive">{errs.churchOther}</p>}
@@ -1537,7 +1541,7 @@ export default function ParticipantsStep() {
                         )}
                         {!isNoHomeChurch(p.churchId) && (
                           <div className="space-y-1">
-                            <Label className="text-xs">Church Role <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                            <Label className="text-xs">{t("profile.churchRole")} <span className="text-muted-foreground font-normal">({t("profile.optional")})</span></Label>
                             <Select
                               value={p.churchRole ?? "__none__"}
                               onValueChange={(v) =>
@@ -1545,15 +1549,15 @@ export default function ParticipantsStep() {
                               }
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="Select your church role" />
+                                <SelectValue placeholder={t("profile.selectChurchRole")} />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="__none__">Select your church role</SelectItem>
-                                <SelectItem value="MEMBER">Member</SelectItem>
-                                <SelectItem value="DEACON">Deacon</SelectItem>
-                                <SelectItem value="ELDER">Elder</SelectItem>
-                                <SelectItem value="MINISTER">Minister</SelectItem>
-                                <SelectItem value="PASTOR">Pastor</SelectItem>
+                                <SelectItem value="__none__">{t("profile.selectChurchRole")}</SelectItem>
+                                <SelectItem value="MEMBER">{t("profile.member")}</SelectItem>
+                                <SelectItem value="DEACON">{t("profile.deacon")}</SelectItem>
+                                <SelectItem value="ELDER">{t("profile.elder")}</SelectItem>
+                                <SelectItem value="MINISTER">{t("profile.minister")}</SelectItem>
+                                <SelectItem value="PASTOR">{t("profile.pastor")}</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -1604,7 +1608,7 @@ export default function ParticipantsStep() {
                               {requireTshirtSize ? (
                                 <span className="text-destructive"> *</span>
                               ) : (
-                                <span className="text-muted-foreground font-normal"> (Optional)</span>
+                                <span className="text-muted-foreground font-normal"> ({t("profile.optional")})</span>
                               )}
                             </Label>
                             <Select
@@ -1739,8 +1743,8 @@ export default function ParticipantsStep() {
                           disabled={isSaving}
                         >
                           {isSaving
-                            ? "Saving..."
-                            : `Save ${p.firstName || "Participant"} & Continue`}
+                            ? t("common.saving")
+                            : `${t("common.save")} ${p.firstName || t("registration.participant", { number: pi + 1 })}`}
                         </Button>
                       </div>
                     </CollapsibleContent>
@@ -1748,7 +1752,7 @@ export default function ParticipantsStep() {
                 </Collapsible>
               );
             })}
-            {!isOnlyOnePerson && group.participants.length < MAX_PARTICIPANTS_PER_GROUP && (
+            {!isOnlyOnePerson && isAllowAddMembers && group.participants.length < MAX_PARTICIPANTS_PER_GROUP && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1756,7 +1760,7 @@ export default function ParticipantsStep() {
                 onClick={() => addParticipant(gi)}
               >
                 <Plus className="mr-1 size-4" />
-                Add Participant
+                {t("registration.addParticipant")}
               </Button>
             )}
           </CardContent>
@@ -1768,9 +1772,9 @@ export default function ParticipantsStep() {
           variant="outline"
           onClick={() => router.push(`/register/${eventId}/instructions`)}
         >
-          Back
+          {t("common.back")}
         </Button>
-        <Button onClick={handleNext}>Next: Lodging</Button>
+        <Button onClick={handleNext}>{t("registration.nextLodging")}</Button>
       </div>
 
       {/* Remove participant confirmation dialog */}
@@ -1782,13 +1786,13 @@ export default function ParticipantsStep() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Participant</AlertDialogTitle>
+            <AlertDialogTitle>{t("registration.removeParticipant")}</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to remove {removeTarget?.name} from the group?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (removeTarget) {
@@ -1797,7 +1801,7 @@ export default function ParticipantsStep() {
                 }
               }}
             >
-              Remove
+              {t("registration.removeParticipant")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1812,13 +1816,13 @@ export default function ParticipantsStep() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Room Group</AlertDialogTitle>
+            <AlertDialogTitle>{t("registration.removeRoom")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove Room Group{removeGroupTarget !== null && state.roomGroups.length > 1 ? ` ${removeGroupTarget + 1}` : ""}?
+              Are you sure you want to remove {removeGroupTarget !== null && state.roomGroups.length > 1 ? t("registration.roomGroupNum", { number: removeGroupTarget + 1 }) : t("registration.roomGroup")}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (removeGroupTarget !== null) {
@@ -1827,7 +1831,7 @@ export default function ParticipantsStep() {
                 }
               }}
             >
-              Remove
+              {t("registration.removeRoom")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1842,13 +1846,13 @@ export default function ParticipantsStep() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Saved Person</AlertDialogTitle>
+            <AlertDialogTitle>{t("registration.removeParticipant")}</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to remove {removeSavedPersonTarget?.first_name} {removeSavedPersonTarget?.last_name} from your saved list?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (removeSavedPersonTarget) {
@@ -1857,7 +1861,7 @@ export default function ParticipantsStep() {
                 }
               }}
             >
-              Remove
+              {t("registration.removeParticipant")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1907,7 +1911,7 @@ export default function ParticipantsStep() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               disabled={!dateOverrideAgreed}
               onClick={() => {

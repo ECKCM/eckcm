@@ -98,8 +98,13 @@ export function isPhoneIncomplete(phone: string, countryCode: string = "US"): bo
 
 // ── Email ─────────────────────────────────────────────────────────────
 
-/** True if empty or valid email format */
+/** True if empty or valid email format (ASCII only) */
 export function isValidEmail(email: string): boolean {
   if (!email) return true;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/.test(email);
+}
+
+/** Strip non-ASCII characters from email input */
+export function sanitizeEmailInput(value: string): string {
+  return value.replace(/[^\x20-\x7E]/g, "");
 }

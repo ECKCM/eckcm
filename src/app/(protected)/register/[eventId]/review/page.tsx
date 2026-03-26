@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
 import type { PriceEstimate } from "@/lib/types/registration";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n/context";
 
 export default function ReviewStep() {
   const router = useRouter();
@@ -35,6 +36,7 @@ export default function ReviewStep() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const submitCalledRef = useRef(false);
+  const { t } = useI18n();
   const [deptMap, setDeptMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -166,32 +168,32 @@ export default function ReviewStep() {
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
       <WizardStepper currentStep={7} />
-      <h2 className="text-xl font-bold text-center">Review Registration</h2>
+      <h2 className="text-xl font-bold text-center">{t("registration.reviewTitle")}</h2>
 
       {/* Summary */}
       <Card>
         <CardHeader>
-          <CardTitle>Registration Summary</CardTitle>
+          <CardTitle>{t("registration.summaryTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <span className="text-muted-foreground">Dates:</span>
+            <span className="text-muted-foreground">{t("registration.dates")}:</span>
             <span>
-              {formatDate(state.startDate)} ~ {formatDate(state.endDate)} ({state.nightsCount} nights)
+              {formatDate(state.startDate)} ~ {formatDate(state.endDate)} ({state.nightsCount} {t("registration.nights")})
             </span>
-            <span className="text-muted-foreground">Room Groups:</span>
+            <span className="text-muted-foreground">{t("registration.roomGroups")}:</span>
             <span>{state.roomGroups.length}</span>
-            <span className="text-muted-foreground">Total Participants:</span>
+            <span className="text-muted-foreground">{t("registration.totalParticipants")}:</span>
             <span>{totalParticipants}</span>
-            <span className="text-muted-foreground">Total Keys:</span>
+            <span className="text-muted-foreground">{t("registration.totalKeys")}:</span>
             <span>
               {state.roomGroups.reduce((sum, g) => sum + g.keyCount, 0)}
             </span>
-            <span className="text-muted-foreground">Airport Rides:</span>
+            <span className="text-muted-foreground">{t("registration.airportRides")}:</span>
             <span>
               {state.airportPickup.selectedRides?.length
-                ? `${state.airportPickup.selectedRides.length} ride(s), ${state.airportPickup.selectedRides.reduce((sum, r) => sum + (r.selectedParticipantIds?.length ?? 0), 0)} passenger(s)`
-                : "None"}
+                ? t("registration.ridesPassengers", { rides: state.airportPickup.selectedRides.length, passengers: state.airportPickup.selectedRides.reduce((sum, r) => sum + (r.selectedParticipantIds?.length ?? 0), 0) })
+                : t("common.none")}
             </span>
           </div>
         </CardContent>
@@ -207,21 +209,21 @@ export default function ReviewStep() {
             <p className="text-sm text-muted-foreground">
               {[
                 group.lodgingType && `Lodging: ${group.lodgingType.replace("LODGING_", "").replace("_", " ")}`,
-                group.preferences.elderly && "Elderly",
-                group.preferences.handicapped && "Accessible",
-                group.preferences.firstFloor && "1st Floor",
+                group.preferences.elderly && t("registration.elderly"),
+                group.preferences.handicapped && t("registration.accessible"),
+                group.preferences.firstFloor && t("registration.firstFloor"),
               ]
                 .filter(Boolean)
-                .join(" · ") || "No special preferences"}
+                .join(" · ") || t("registration.noSpecialPrefs")}
             </p>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <TableHead>{t("registration.name")}</TableHead>
                   <TableHead>Age (as of {formatDate(state.startDate)})</TableHead>
-                  <TableHead>Department</TableHead>
+                  <TableHead>{t("registration.department")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -251,13 +253,13 @@ export default function ReviewStep() {
       {/* Pricing Breakdown */}
       <Card>
         <CardHeader>
-          <CardTitle>Total</CardTitle>
+          <CardTitle>{t("common.total")}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-4 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Calculating...
+              {t("registration.calculating")}
             </div>
           ) : estimate ? (
             <div className="space-y-2">
@@ -269,18 +271,18 @@ export default function ReviewStep() {
                       ? ` (${formatDollars(item.unitPrice)} × ${item.quantity})`
                       : ""}
                   </span>
-                  <span>{item.amount === 0 ? "Free" : formatDollars(item.amount)}</span>
+                  <span>{item.amount === 0 ? t("common.free") : formatDollars(item.amount)}</span>
                 </div>
               ))}
               <Separator />
               <div className="flex justify-between font-bold text-lg">
-                <span>Total</span>
+                <span>{t("common.total")}</span>
                 <span>{formatDollars(estimate.total)}</span>
               </div>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-4">
-              Unable to calculate pricing. Please proceed and pricing will be finalized.
+              {t("registration.pricingUnavailable")}
             </p>
           )}
         </CardContent>
@@ -291,7 +293,7 @@ export default function ReviewStep() {
         <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
           <Banknote className="h-5 w-5 text-green-600 shrink-0" />
           <p className="text-sm font-medium text-green-800">
-            Save {formatDollars(estimate.manualPaymentDiscount)} with US Bank Account (ACH), Check, or manual payment (Zelle)!
+            {t("registration.saveWithManual", { amount: formatDollars(estimate.manualPaymentDiscount) })}
           </p>
         </div>
       )}
@@ -299,18 +301,18 @@ export default function ReviewStep() {
       {/* Additional Requests */}
       <Card>
         <CardHeader>
-          <CardTitle>Additional Requests</CardTitle>
+          <CardTitle>{t("registration.additionalRequests")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             <Label htmlFor="additional-requests" className="text-sm text-muted-foreground">
-              Please enter any additional requests or special needs for the camp meeting.
+              {t("registration.additionalRequestsDesc")}
             </Label>
             <Textarea
               id="additional-requests"
               value={state.additionalRequests ?? ""}
               onChange={(e) => dispatch({ type: "SET_ADDITIONAL_REQUESTS", text: e.target.value })}
-              placeholder="e.g., dietary restrictions, special accommodations, etc."
+              placeholder={t("registration.additionalRequestsPlaceholder")}
               rows={3}
             />
           </div>
@@ -322,16 +324,16 @@ export default function ReviewStep() {
           variant="outline"
           onClick={() => router.push(`/register/${eventId}/airport-pickup`)}
         >
-          Back
+          {t("common.back")}
         </Button>
         <Button onClick={handleSubmit} disabled={submitting} size="lg">
           {submitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Processing...
+              {t("common.processing")}
             </>
           ) : (
-            "Next: Payment"
+            t("registration.nextPayment")
           )}
         </Button>
       </div>

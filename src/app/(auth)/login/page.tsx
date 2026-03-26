@@ -7,6 +7,7 @@ import type { TurnstileInstance } from "@marsidev/react-turnstile";
 import { TurnstileWidget } from "@/components/shared/turnstile-widget";
 import { createClient } from "@/lib/supabase/client";
 import { logAuthEvent } from "@/lib/audit-client";
+import { sanitizeEmailInput } from "@/lib/utils/field-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/shared/password-input";
@@ -21,9 +22,11 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
+import { useI18n } from "@/lib/i18n/context";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -71,18 +74,18 @@ export default function LoginPage() {
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">ECKCM</CardTitle>
-        <CardDescription>Sign in to your account</CardDescription>
+        <CardTitle className="text-2xl font-bold">{t("common.appName")}</CardTitle>
+        <CardDescription>{t("auth.signInTitle")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {callbackError && (
           <p className="text-sm text-center text-destructive">
-            Authentication failed. Please try again.
+            {t("auth.authFailed")}
           </p>
         )}
         {passwordUpdated && (
           <p className="text-sm text-center text-green-600">
-            Password updated successfully. Please sign in.
+            {t("auth.passwordUpdated")}
           </p>
         )}
         <OAuthButtons />
@@ -93,20 +96,20 @@ export default function LoginPage() {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-card px-2 text-muted-foreground">
-              Or continue with email
+              {t("auth.orContinueWithEmail")}
             </span>
           </div>
         </div>
 
         <form onSubmit={handleEmailLogin} className="space-y-3" suppressHydrationWarning>
           <div className="space-y-1">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("auth.email")}</Label>
             <Input
               id="email"
               type="email"
               value={email}
               onChange={(e) => {
-                setEmail(e.target.value);
+                setEmail(sanitizeEmailInput(e.target.value));
                 setLoginError("");
               }}
               placeholder="email@example.com"
@@ -115,12 +118,12 @@ export default function LoginPage() {
           </div>
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("auth.password")}</Label>
               <Link
                 href="/forgot-password"
                 className="text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
               >
-                Forgot Password?
+                {t("auth.forgotPassword")}
               </Link>
             </div>
             <PasswordInput
@@ -143,15 +146,15 @@ export default function LoginPage() {
             onExpire={() => setCaptchaToken(undefined)}
           />
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? t("auth.signingIn") : t("common.signIn")}
           </Button>
         </form>
       </CardContent>
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
+          {t("auth.noAccount")}{" "}
           <Link href="/signup" className="text-primary underline-offset-4 hover:underline">
-            Sign Up
+            {t("common.signUp")}
           </Link>
         </p>
       </CardFooter>

@@ -2,22 +2,26 @@
 
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
-const STEPS = [
-  { number: 1, label: "Dates" },
-  { number: 2, label: "Info" },
-  { number: 3, label: "People" },
-  { number: 4, label: "Lodging" },
-  { number: 5, label: "Keys" },
-  { number: 6, label: "Airport" },
-  { number: 7, label: "Review" },
-  { number: 8, label: "Payment" },
+const STEP_KEYS = [
+  "wizard.dates",
+  "wizard.info",
+  "wizard.people",
+  "wizard.lodging",
+  "wizard.keys",
+  "wizard.airport",
+  "wizard.review",
+  "wizard.payment",
 ];
 
 export function WizardStepper({ currentStep }: { currentStep: number }) {
+  const { t } = useI18n();
+  const steps = STEP_KEYS.map((key, i) => ({ number: i + 1, label: t(key) }));
+
   return (
     <div className="flex items-center justify-center gap-0.5 py-4">
-      {STEPS.map((step, i) => (
+      {steps.map((step, i) => (
         <div key={step.number} className="flex items-center">
           <div className="flex flex-col items-center">
             <div
@@ -47,7 +51,7 @@ export function WizardStepper({ currentStep }: { currentStep: number }) {
               {step.label}
             </span>
           </div>
-          {i < STEPS.length - 1 && (
+          {i < steps.length - 1 && (
             <div
               className={cn(
                 "mx-0.5 h-0.5 w-3",

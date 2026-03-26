@@ -31,6 +31,7 @@ import {
 import { STRIPE_APPEARANCE } from "./_components/payment-constants";
 import { CopyButton } from "./_components/copy-button";
 import { useRegistration } from "@/lib/context/registration-context";
+import { useI18n } from "@/lib/i18n/context";
 
 /* ------------------------------------------------------------------ */
 /*  Zelle SVG icon                                                     */
@@ -56,6 +57,7 @@ export default function PaymentStep() {
   const registrationId = searchParams.get("registrationId");
   const confirmationCode = searchParams.get("code");
   const { suppressUnloadWarning } = useRegistration();
+  const { t } = useI18n();
 
   /* ---- payment info (loaded without creating Stripe PI) ---- */
   const [loading, setLoading] = useState(true);
@@ -391,10 +393,10 @@ export default function PaymentStep() {
         <Card>
           <CardContent className="py-12 text-center space-y-4">
             <p className="text-destructive">
-              No registration found. Please start a new registration.
+              {t("payment.noRegistration")}
             </p>
             <Button asChild>
-              <Link href="/dashboard">Return to Dashboard</Link>
+              <Link href="/dashboard">{t("payment.returnToDashboard")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -407,21 +409,21 @@ export default function PaymentStep() {
       <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
         <WizardStepper currentStep={8} />
         <h2 className="text-xl font-bold text-center">
-          Complete Registration
+          {t("payment.completeRegistration")}
         </h2>
         <Card>
           <CardContent className="py-8 text-center space-y-4">
             <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
             <div>
-              <p className="font-medium text-lg">No Payment Required</p>
+              <p className="font-medium text-lg">{t("payment.noPaymentRequired")}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Your registration total is $0.00. No payment is needed.
+                {t("payment.noPaymentDesc")}
               </p>
             </div>
             {confirmationCode && (
               <div className="pt-2">
                 <p className="text-xs text-muted-foreground">
-                  Confirmation Code
+                  {t("registration.confirmationCode")}
                 </p>
                 <p className="text-2xl font-mono font-bold tracking-wider">
                   {confirmationCode}
@@ -429,7 +431,7 @@ export default function PaymentStep() {
               </div>
             )}
             <Button onClick={() => goToConfirmation()} size="lg" className="mt-4">
-              Continue
+              {t("common.continue")}
             </Button>
           </CardContent>
         </Card>
@@ -444,43 +446,43 @@ export default function PaymentStep() {
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <p className="text-sm font-medium text-muted-foreground">
-            Processing payment&hellip; please wait
+            {t("payment.processingPayment")}
           </p>
         </div>
       )}
 
       <WizardStepper currentStep={8} />
-      <h2 className="text-xl font-bold text-center">Complete Payment</h2>
+      <h2 className="text-xl font-bold text-center">{t("payment.completePayment")}</h2>
 
       {/* Order Summary */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
-            Order Summary
+            {t("payment.orderSummary")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-4 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Loading...
+              {t("common.loading")}
             </div>
           ) : error ? null : (
             <>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Confirmation Code</span>
+                <span className="text-muted-foreground">{t("registration.confirmationCode")}</span>
                 <span className="font-mono font-bold">{confirmationCode}</span>
               </div>
               <Separator className="my-3" />
               {payMode === "stripe" && coversFees && feeCents > 0 && (
                 <>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="text-muted-foreground">{t("payment.subtotal")}</span>
                     <span>${(baseAmount / 100).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Processing fee</span>
+                    <span>{t("payment.processingFee")}</span>
                     <span>+${(feeCents / 100).toFixed(2)}</span>
                   </div>
                   <Separator className="my-2" />
@@ -489,18 +491,18 @@ export default function PaymentStep() {
               {(payMode === "zelle") && manualPaymentDiscount > 0 && (
                 <>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="text-muted-foreground">{t("payment.subtotal")}</span>
                     <span>${((invoiceTotal || amount) / 100).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-green-700">
-                    <span>Manual Payment Discount</span>
+                    <span>{t("payment.manualDiscount")}</span>
                     <span>-${(manualPaymentDiscount / 100).toFixed(2)}</span>
                   </div>
                   <Separator className="my-2" />
                 </>
               )}
               <div className="flex justify-between items-center">
-                <span className="font-medium">Total Due</span>
+                <span className="font-medium">{t("payment.totalDue")}</span>
                 <span className="text-2xl font-bold">
                   {payMode === "zelle" && manualPaymentDiscount > 0
                     ? `$${(Math.max(0, (invoiceTotal || amount) - manualPaymentDiscount) / 100).toFixed(2)}`
@@ -517,7 +519,7 @@ export default function PaymentStep() {
                     className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300"
                   />
                   <span className="text-sm">
-                    I&rsquo;d like to cover the payment processing fee.
+                    {t("payment.coverFees")}
                     {!coversFees && baseAmount > 0 && (
                       <span className="text-muted-foreground">
                         {" "}(+${(Math.ceil((baseAmount + 30) / (1 - 0.029) - baseAmount) / 100).toFixed(2)})
@@ -538,7 +540,7 @@ export default function PaymentStep() {
           <CardContent className="py-12 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
             <p className="mt-3 text-sm text-muted-foreground">
-              Loading payment options...
+              {t("payment.loadingPayment")}
             </p>
           </CardContent>
         </Card>
@@ -550,7 +552,7 @@ export default function PaymentStep() {
           <CardContent className="py-12 text-center space-y-4">
             <p className="text-destructive">{error}</p>
             <Button asChild variant="outline">
-              <Link href="/dashboard">Go to Dashboard</Link>
+              <Link href="/dashboard">{t("common.goToDashboard")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -578,9 +580,9 @@ export default function PaymentStep() {
                   <Globe className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium leading-tight">Online Payment</p>
+                  <p className="text-sm font-medium leading-tight">{t("payment.onlinePayment")}</p>
                   <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                    Card, Amazon Pay
+                    {t("payment.cardAmazon")}
                   </p>
                 </div>
               </button>
@@ -597,9 +599,9 @@ export default function PaymentStep() {
                   <Banknote className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium leading-tight">Manual Payment</p>
+                  <p className="text-sm font-medium leading-tight">{t("payment.manualPayment")}</p>
                   <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                    Zelle, Check
+                    {t("payment.zelleCheck")}
                   </p>
                 </div>
               </button>
@@ -640,7 +642,7 @@ export default function PaymentStep() {
                 <CardContent className="py-12 text-center">
                   <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
                   <p className="mt-3 text-sm text-muted-foreground">
-                    Initializing secure payment...
+                    {t("payment.initializingPayment")}
                   </p>
                 </CardContent>
               </Card>
@@ -675,8 +677,7 @@ export default function PaymentStep() {
       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
         <ShieldCheck className="h-4 w-4" />
         <span>
-          Secured by Stripe. Your payment details are never stored on our
-          servers.
+          {t("payment.securedByStripe")}
         </span>
       </div>
     </div>
@@ -722,6 +723,7 @@ function StripePaymentForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const { t } = useI18n();
   const [selectedMethod, setSelectedMethod] = useState("card");
   const abortRef = useRef<AbortController | null>(null);
   const isFirstMount = useRef(true);
@@ -813,19 +815,19 @@ function StripePaymentForm({
 
       if (error) {
         console.error("[Payment] Stripe error:", error.type, error.code, error.message);
-        toast.error(error.message || "Payment failed. Please try again.");
+        toast.error(error.message || t("payment.paymentFailed"));
         setProcessing(false);
         onPaymentFailed();
         return;
       } else if (paymentIntent?.status === "succeeded") {
-        toast.success("Payment successful!");
+        toast.success(t("payment.paymentSuccess"));
         onSuccess(paymentIntent.id);
       } else {
         setProcessing(false);
       }
     } catch (err) {
       console.error("[Payment] Unexpected error:", err);
-      toast.error("An unexpected error occurred. Please try again.");
+      toast.error(t("payment.unexpectedError"));
       setProcessing(false);
       onPaymentFailed();
     }
@@ -860,21 +862,21 @@ function StripePaymentForm({
 
       if (error) {
         console.error(`[Payment] ${expressPaymentType} error:`, error.type, error.code, error.message);
-        toast.error(error.message || "Payment failed. Please try again.");
+        toast.error(error.message || t("payment.paymentFailed"));
         setProcessing(false);
         onPaymentFailed();
       } else if (
         paymentIntent?.status === "succeeded" ||
         paymentIntent?.status === "processing"
       ) {
-        toast.success("Payment successful!");
+        toast.success(t("payment.paymentSuccess"));
         onSuccess(paymentIntent.id);
       } else {
         setProcessing(false);
       }
     } catch (err) {
       console.error("[Payment] Express checkout error:", err);
-      toast.error("An unexpected error occurred. Please try again.");
+      toast.error(t("payment.unexpectedError"));
       setProcessing(false);
       onPaymentFailed();
     }
@@ -904,7 +906,7 @@ function StripePaymentForm({
       <div className="flex items-center gap-3">
         <Separator className="flex-1" />
         <span className="text-xs text-muted-foreground whitespace-nowrap">
-          or pay with
+          {t("payment.orPayWith")}
         </span>
         <Separator className="flex-1" />
       </div>
@@ -914,7 +916,7 @@ function StripePaymentForm({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Lock className="h-4 w-4" />
-            Payment Details
+            {t("payment.paymentDetails")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -953,7 +955,7 @@ function StripePaymentForm({
         {processing ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            Processing...
+            {t("common.processing")}
           </>
         ) : (
           <>
@@ -971,7 +973,7 @@ function StripePaymentForm({
         disabled={processing}
         onClick={onCancel}
       >
-        Cancel
+        {t("common.cancel")}
       </Button>
     </form>
   );
@@ -1008,6 +1010,7 @@ function ManualPaymentForm({
   onSuccess: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   const [agreed, setAgreed] = useState(false);
 
   const handleMethodChange = (method: "zelle" | "check") => {
@@ -1031,20 +1034,20 @@ function ManualPaymentForm({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Failed to submit. Please try again.");
+        toast.error(data.error || t("payment.failedSubmit"));
         setProcessing(false);
         return;
       }
 
       toast.success(
         payMode === "check"
-          ? "Registration submitted! Please mail your check."
-          : "Registration submitted! Please send your Zelle payment."
+          ? t("payment.checkSubmitted")
+          : t("payment.zelleSubmitted")
       );
       onSuccess();
     } catch (err) {
       console.error("[Payment] Unexpected error:", err);
-      toast.error("An unexpected error occurred. Please try again.");
+      toast.error(t("payment.unexpectedError"));
       setProcessing(false);
     }
   };
@@ -1055,7 +1058,7 @@ function ManualPaymentForm({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Lock className="h-4 w-4" />
-            Manual Payment
+            {t("payment.manualPayment")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -1072,45 +1075,42 @@ function ManualPaymentForm({
                 {payMode === "zelle" && <div className="h-2 w-2 rounded-full bg-primary" />}
               </div>
               <ZelleIcon className="h-5 w-5 shrink-0" />
-              <p className="text-sm font-medium">Zelle</p>
+              <p className="text-sm font-medium">{t("payment.zelleTitle")}</p>
             </button>
             {payMode === "zelle" && (
               <div className="border-t px-4 pb-4 pt-3 space-y-3 bg-muted/20">
                 <div className="flex items-start gap-2">
                   <Clock className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
                   <p className="text-sm text-purple-800">
-                    Zelle payments are processed manually. Your registration will be held
-                    until payment is confirmed by our team.
+                    {t("payment.zelleDesc")}
                   </p>
                 </div>
                 <div className="space-y-2 text-sm text-purple-900 pl-1">
-                  <p>1. Open your banking app and select <strong>Send with Zelle</strong></p>
+                  <p>{t("payment.zelleStep1")}</p>
                   <p className="flex items-center gap-1 flex-wrap">
-                    <span>2. Send with Zelle to:</span>
+                    <span>{t("payment.zelleStep2")}</span>
                     <CopyButton text="kimdani1@icloud.com" />
                   </p>
-                  <p>3. Account Holder: <strong>EMPOWER MINISTRY GROUP, INC</strong></p>
-                  <p>4. Amount: <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong></p>
+                  <p>{t("payment.zelleStep3")}</p>
+                  <p>{t("payment.zelleStep4")} <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong></p>
                   <div className="space-y-1">
                     <p className="flex items-center gap-1 flex-wrap">
-                      <span>5. Memo/Note <strong className="text-red-600">(Required)</strong>:</span>
+                      <span>{t("payment.zelleStep5")}</span>
                     </p>
                     <div className="pl-5">
                       <CopyButton text={`${confirmationCode}-${registrantName.replace(/\s+/g, "")}-${registrantPhone.replace(/\D/g, "")}-${registrantEmail.replace(/[@.]/g, "")}`} />
                     </div>
                     <p className="text-xs text-purple-700 pl-5">
-                      Please copy and paste the memo exactly as shown so we can match your payment.
+                      {t("payment.zelleMemoHint")}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
                   <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold">Important</p>
+                    <p className="font-semibold">{t("payment.zelleImportant")}</p>
                     <p className="mt-0.5 text-amber-700">
-                      Your registration will remain in &ldquo;Pending Payment&rdquo; status until
-                      your Zelle payment is received and verified. This may take 1-3 business days.
-                      Room assignments will not be made until payment is confirmed.
+                      {t("payment.zelleWarning")}
                     </p>
                   </div>
                 </div>
@@ -1131,22 +1131,21 @@ function ManualPaymentForm({
                 {payMode === "check" && <div className="h-2 w-2 rounded-full bg-primary" />}
               </div>
               <Banknote className="h-5 w-5 shrink-0 text-emerald-700" />
-              <p className="text-sm font-medium">Check</p>
+              <p className="text-sm font-medium">{t("payment.checkTitle")}</p>
             </button>
             {payMode === "check" && (
               <div className="border-t px-4 pb-4 pt-3 space-y-3 bg-muted/20">
                 <div className="flex items-start gap-2">
                   <Clock className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
                   <p className="text-sm text-emerald-800">
-                    Check payments are processed manually. Your registration will be held
-                    until payment is received and confirmed by our team.
+                    {t("payment.checkDesc")}
                   </p>
                 </div>
                 <div className="space-y-2 text-sm text-emerald-900 pl-1">
-                  <p>1. Make check payable to: <strong>ECKCM</strong></p>
-                  <p>2. Amount: <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong></p>
-                  <p>3. On the memo line, write: <strong>{confirmationCode}</strong></p>
-                  <p>4. Mail to:</p>
+                  <p>{t("payment.checkStep1")}</p>
+                  <p>{t("payment.checkStep2")} <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong></p>
+                  <p>{t("payment.checkStep3")} <strong>{confirmationCode}</strong></p>
+                  <p>{t("payment.checkStep4")}</p>
                   <div className="pl-5 text-sm font-medium">
                     <p>ECKCM</p>
                     <p>574 Mountain Shadow Ln</p>
@@ -1156,11 +1155,9 @@ function ManualPaymentForm({
                 <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
                   <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold">Important</p>
+                    <p className="font-semibold">{t("payment.checkImportant")}</p>
                     <p className="mt-0.5 text-amber-700">
-                      Your registration will remain in &ldquo;Pending Payment&rdquo; status until
-                      your check is received and verified. This may take 5-10 business days.
-                      Room assignments will not be made until payment is confirmed.
+                      {t("payment.checkWarning")}
                     </p>
                   </div>
                 </div>
@@ -1206,12 +1203,12 @@ function ManualPaymentForm({
         {processing ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            Processing...
+            {t("common.processing")}
           </>
         ) : (
           <>
             <CheckCircle className="h-4 w-4 mr-2" />
-            Complete Registration
+            {t("payment.completeRegistration")}
           </>
         )}
       </Button>
@@ -1224,7 +1221,7 @@ function ManualPaymentForm({
         disabled={processing}
         onClick={onCancel}
       >
-        Cancel
+        {t("common.cancel")}
       </Button>
     </form>
   );

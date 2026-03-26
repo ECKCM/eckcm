@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Info } from "lucide-react";
 import { calculateAge } from "@/lib/utils/validators";
 import { INFANT_AGE_THRESHOLD } from "@/lib/utils/constants";
+import { useI18n } from "@/lib/i18n/context";
 
 interface LodgingOption {
   code: string;
@@ -31,6 +32,7 @@ export default function LodgingStep() {
   const router = useRouter();
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
+  const { t } = useI18n();
   const [lodgingOptions, setLodgingOptions] = useState<LodgingOption[]>([]);
   const [hasExtraFee, setHasExtraFee] = useState(false);
   const [extraFeeAmount, setExtraFeeAmount] = useState(0);
@@ -124,7 +126,7 @@ export default function LodgingStep() {
     // Validate: each room group must have a lodging type selected
     for (let i = 0; i < state.roomGroups.length; i++) {
       if (!state.roomGroups[i].lodgingType) {
-        toast.error(`Please select a room type for Room Group${state.roomGroups.length > 1 ? ` ${i + 1}` : ""}`);
+        toast.error(t("registration.selectRoomType", { group: state.roomGroups.length > 1 ? ` ${i + 1}` : "" }));
         return;
       }
     }
@@ -146,18 +148,18 @@ export default function LodgingStep() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Step 4: Lodging</CardTitle>
+          <CardTitle>{t("registration.step4Title")}</CardTitle>
           <CardDescription>
             {isSingleOption
-              ? "Your room assignment has been set for this registration group."
-              : "Select your preferred room type for each room group."}
+              ? t("registration.step4DescSingle")
+              : t("registration.step4Desc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {state.roomGroups.map((group, gi) => (
             <div key={group.id} className="space-y-4 rounded-lg border p-4">
               <h3 className="font-medium">
-                Room Group{state.roomGroups.length > 1 ? ` ${gi + 1}` : ""} ({group.participants.length} people)
+                {state.roomGroups.length > 1 ? t("registration.roomGroupNum", { number: gi + 1 }) : t("registration.roomGroup")} ({t("registration.nPeople", { count: group.participants.length })})
               </h3>
 
               {/* Lodging Type Selection */}
@@ -169,13 +171,13 @@ export default function LodgingStep() {
                       <p className="font-medium">{lodgingOptions[0].name_en}</p>
                       <p className="text-sm text-muted-foreground">
                         {lodgingOptions[0].amount_cents === 0
-                          ? "Included"
+                          ? t("registration.included")
                           : lodgingOptions[0].pricing_type === "PER_NIGHT"
-                            ? `${formatPrice(lodgingOptions[0].amount_cents)}/night`
+                            ? t("registration.perNight", { price: formatPrice(lodgingOptions[0].amount_cents) })
                             : formatPrice(lodgingOptions[0].amount_cents)}
                       </p>
                     </div>
-                    <span className="text-xs font-medium text-primary">Assigned</span>
+                    <span className="text-xs font-medium text-primary">{t("registration.assigned")}</span>
                   </div>
                 </div>
               ) : (
@@ -204,7 +206,7 @@ export default function LodgingStep() {
                             <p className="font-medium">{option.name_en}</p>
                             <p className="text-sm text-muted-foreground">
                               {option.pricing_type === "PER_NIGHT"
-                                ? `${formatPrice(option.amount_cents)}/night`
+                                ? t("registration.perNight", { price: formatPrice(option.amount_cents) })
                                 : formatPrice(option.amount_cents)}
                             </p>
                           </div>
@@ -214,7 +216,7 @@ export default function LodgingStep() {
                             </p>
                             {option.pricing_type === "PER_NIGHT" && (
                               <p className="text-xs text-muted-foreground">
-                                {state.nightsCount} night{state.nightsCount !== 1 ? "s" : ""}
+                                {t("registration.nightCount", { count: state.nightsCount, s: state.nightsCount !== 1 ? "s" : "" })}
                               </p>
                             )}
                           </div>
@@ -243,12 +245,13 @@ export default function LodgingStep() {
                   <div className="flex items-start gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground">
                     <Info className="h-4 w-4 mt-0.5 shrink-0" />
                     <p>
-                      An additional lodging fee of {formatPrice(extraFeeAmount)}/night per person
-                      applies for each person beyond 2 in this room group (
-                      {extraPeople} extra × {state.nightsCount} night
-                      {state.nightsCount !== 1 ? "s" : ""} ={" "}
-                      {formatPrice(extraFeeAmount * extraPeople * state.nightsCount)}
-                      ).{billable < group.participants.length && " Children under 4 are exempt."}
+                      {t("registration.extraFeeNotice", {
+                        price: formatPrice(extraFeeAmount),
+                        extra: extraPeople,
+                        nights: state.nightsCount,
+                        s: state.nightsCount !== 1 ? "s" : "",
+                        total: formatPrice(extraFeeAmount * extraPeople * state.nightsCount),
+                      })}{billable < group.participants.length && ` ${t("registration.childrenExempt")}`}
                     </p>
                   </div>
                 );
@@ -257,16 +260,16 @@ export default function LodgingStep() {
               {/* Special Preferences */}
               {showSpecialPreferences && (
                 <div className="space-y-3 pt-2 border-t">
-                  <p className="text-sm font-medium text-muted-foreground">Special Preferences</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("registration.specialPreferences")}</p>
                   <div className="flex items-center justify-between">
-                    <Label>Elderly / Senior member in group</Label>
+                    <Label>{t("registration.elderlyLabel")}</Label>
                     <Switch
                       checked={group.preferences.elderly}
                       onCheckedChange={(v) => updatePreference(gi, "elderly", v)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Handicapped / Accessibility needed</Label>
+                    <Label>{t("registration.handicappedLabel")}</Label>
                     <Switch
                       checked={group.preferences.handicapped}
                       onCheckedChange={(v) =>
@@ -275,7 +278,7 @@ export default function LodgingStep() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>First floor preferred</Label>
+                    <Label>{t("registration.firstFloorLabel")}</Label>
                     <Switch
                       checked={group.preferences.firstFloor}
                       onCheckedChange={(v) =>
@@ -295,10 +298,10 @@ export default function LodgingStep() {
           variant="outline"
           onClick={() => router.push(`/register/${eventId}/participants`)}
         >
-          Back
+          {t("common.back")}
         </Button>
         <Button onClick={handleNext}>
-          {showKeyDeposit ? "Next: Key Deposit" : "Next: Airport Pickup"}
+          {showKeyDeposit ? t("registration.nextKeyDeposit") : t("registration.nextAirportPickup")}
         </Button>
       </div>
     </div>

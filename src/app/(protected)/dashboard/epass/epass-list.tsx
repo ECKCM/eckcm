@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, QrCode, Copy, Check, AlertTriangle, MessageSquare, Share2 } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 interface EPassToken {
   id: string;
@@ -55,9 +56,9 @@ function getMealCategory(birthDate: string, eventDate: string): string {
   let age = ref.getFullYear() - birth.getFullYear();
   const m = ref.getMonth() - birth.getMonth();
   if (m < 0 || (m === 0 && ref.getDate() < birth.getDate())) age--;
-  if (age >= 11) return "Adult";
-  if (age >= 5) return "Youth";
-  return "Free";
+  if (age >= 11) return "adult";
+  if (age >= 5) return "youth";
+  return "free";
 }
 
 function buildEPassSlug(firstName: string, lastName: string, token: string): string {
@@ -70,6 +71,7 @@ function getEPassUrl(slug: string) {
 }
 
 function CopyLinkButton({ slug }: { slug: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   async function handleCopy(e: React.MouseEvent) {
@@ -89,11 +91,11 @@ function CopyLinkButton({ slug }: { slug: string }) {
     >
       {copied ? (
         <>
-          <Check className="h-3.5 w-3.5" /> Copied!
+          <Check className="h-3.5 w-3.5" /> {t("epass.copied")}
         </>
       ) : (
         <>
-          <Copy className="h-3.5 w-3.5" /> Copy
+          <Copy className="h-3.5 w-3.5" /> {t("epass.copy")}
         </>
       )}
     </Button>
@@ -105,6 +107,7 @@ function toE164(phone: string): string {
 }
 
 function ShareButtons({ slug, personName, phone, eventYear }: { slug: string; personName: string; phone: string | null; eventYear: number }) {
+  const { t } = useI18n();
   const [origin, setOrigin] = useState("");
   const sharingRef = useRef(false);
 
@@ -115,19 +118,21 @@ function ShareButtons({ slug, personName, phone, eventYear }: { slug: string; pe
   if (!origin) return null;
 
   const epassUrl = `${origin}/epass/${slug}`;
-  const smsBody = encodeURIComponent(`${eventYear} ECKCM E-Pass for ${personName}: ${epassUrl}`);
+  const smsBody = encodeURIComponent(t("epass.smsBody", { year: eventYear, name: personName, url: epassUrl }));
   const smsRecipient = phone ? toE164(phone) : "";
   const smsHref = smsRecipient
     ? `sms:${smsRecipient}?&body=${smsBody}`
     : `sms:?&body=${smsBody}`;
+
+  const shareTitle = t("epass.shareTitle", { year: eventYear, name: personName });
 
   async function handleShare() {
     if (sharingRef.current) return;
     sharingRef.current = true;
     try {
       await navigator.share({
-        title: `${eventYear} ECKCM E-Pass for ${personName}`,
-        text: `${eventYear} ECKCM E-Pass for ${personName}`,
+        title: shareTitle,
+        text: shareTitle,
         url: epassUrl,
       });
     } catch {
@@ -142,13 +147,13 @@ function ShareButtons({ slug, personName, phone, eventYear }: { slug: string; pe
       {phone && (
         <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" asChild>
           <a href={smsHref}>
-            <MessageSquare className="h-3.5 w-3.5" /> Send
+            <MessageSquare className="h-3.5 w-3.5" /> {t("epass.send")}
           </a>
         </Button>
       )}
       {typeof navigator !== "undefined" && !!navigator.share && (
         <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleShare}>
-          <Share2 className="h-3.5 w-3.5" /> Share
+          <Share2 className="h-3.5 w-3.5" /> {t("epass.share")}
         </Button>
       )}
     </>
@@ -168,11 +173,19 @@ function EPassCardList({
   getCardStyle: (t: EPassToken) => string;
   onCardClick: (t: EPassToken, e: React.MouseEvent) => void;
 }) {
+  const { t, locale } = useI18n();
+
+  const mealLabel: Record<string, string> = {
+    adult: t("epass.adult"),
+    youth: t("epass.youth"),
+    free: t("common.free"),
+  };
+
   if (tokens.length === 0) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
-          No E-Pass available yet.
+          {t("epass.noEPassYet")}
         </CardContent>
       </Card>
     );
@@ -195,6 +208,7 @@ function EPassCardList({
           person.display_name_ko ??
           `${person.first_name_en} ${person.last_name_en}`;
         const meal = getMealCategory(person.birth_date, reg.start_date);
+        const eventName = locale === "ko" && event.name_ko ? event.name_ko : event.name_en;
         const slug = buildEPassSlug(
           person.first_name_en,
           person.last_name_en,
@@ -212,7 +226,7 @@ function EPassCardList({
                   <CardTitle className="text-base">{displayName}</CardTitle>
                   <div className="flex items-center gap-1.5">
                     <Badge variant={token.is_active ? "default" : "secondary"}>
-                      {token.is_active ? "Active" : "Inactive"}
+                      {token.is_active ? t("epass.active") : t("epass.inactive")}
                     </Badge>
                     {(person.gender === "MALE" || person.gender === "FEMALE") && (
                       <Badge
@@ -223,20 +237,20 @@ function EPassCardList({
                             : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
                         }
                       >
-                        {person.gender === "MALE" ? "Male" : "Female"}
+                        {person.gender === "MALE" ? t("profile.male") : t("profile.female")}
                       </Badge>
                     )}
                     <Badge
                       variant="outline"
                       className={
-                        meal === "Adult"
+                        meal === "adult"
                           ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                          : meal === "Youth"
+                          : meal === "youth"
                             ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300"
                             : "border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
                       }
                     >
-                      {meal}
+                      {mealLabel[meal] ?? meal}
                     </Badge>
                   </div>
                 </div>
@@ -244,7 +258,7 @@ function EPassCardList({
               <CardContent>
                 <div className="flex items-center justify-between">
                   <div className="space-y-1 text-sm text-muted-foreground">
-                    <p>{event.name_en}</p>
+                    <p>{eventName}</p>
                     {token.participant_code && (
                       <p className="font-mono font-medium text-foreground">
                         {token.participant_code}
@@ -268,6 +282,7 @@ function EPassCardList({
 
 export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPersonIds: string[] }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [warningToken, setWarningToken] = useState<EPassToken | null>(null);
   const [dialogCopied, setDialogCopied] = useState(false);
 
@@ -308,14 +323,18 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
   }
 
   const myTokens = tokens.filter(
-    (t) => t.eckcm_registrations.registration_type !== "others"
+    (tk) => tk.eckcm_registrations.registration_type !== "others"
   );
   const othersTokens = tokens.filter(
-    (t) => t.eckcm_registrations.registration_type === "others"
+    (tk) => tk.eckcm_registrations.registration_type === "others"
   );
   const hasBothTabs = othersTokens.length > 0;
 
   const cardListProps = { myPersonIds, isMyPass, getCardStyle, onCardClick: handleCardClick };
+
+  const warningName = warningToken
+    ? `${warningToken.eckcm_people.first_name_en} ${warningToken.eckcm_people.last_name_en}`
+    : "";
 
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
@@ -325,13 +344,13 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold">E-Pass</h1>
+        <h1 className="text-2xl font-bold">{t("epass.title")}</h1>
       </div>
 
       {tokens.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            No E-Pass available yet. Complete payment to receive your E-Pass.
+            {t("epass.noEPassComplete")}
           </CardContent>
         </Card>
       ) : !hasBothTabs ? (
@@ -340,10 +359,10 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
         <Tabs defaultValue="my">
           <TabsList className="w-full">
             <TabsTrigger value="my" className="flex-1">
-              My Registration ({myTokens.length})
+              {t("epass.myRegistration", { count: myTokens.length })}
             </TabsTrigger>
             <TabsTrigger value="others" className="flex-1">
-              Registered for Others ({othersTokens.length})
+              {t("epass.registeredForOthers", { count: othersTokens.length })}
             </TabsTrigger>
           </TabsList>
           <TabsContent value="my" className="mt-4">
@@ -361,29 +380,25 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
-              Not Your E-Pass
+              {t("epass.notYourEPass")}
             </DialogTitle>
             <DialogDescription>
-              This E-Pass belongs to{" "}
-              <span className="font-semibold text-foreground">
-                {warningToken?.eckcm_people.first_name_en} {warningToken?.eckcm_people.last_name_en}
-              </span>
-              . You can open it here or copy the link to share with them.
+              {t("epass.notYourEPassDesc", { name: warningName })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row gap-2 sm:justify-end">
             <Button variant="outline" className="gap-1.5" onClick={handleDialogCopyLink}>
               {dialogCopied ? (
                 <>
-                  <Check className="h-4 w-4" /> Copied!
+                  <Check className="h-4 w-4" /> {t("epass.copied")}
                 </>
               ) : (
                 <>
-                  <Copy className="h-4 w-4" /> Copy Link
+                  <Copy className="h-4 w-4" /> {t("epass.copyLink")}
                 </>
               )}
             </Button>
-            <Button onClick={handleDialogOpen}>Open</Button>
+            <Button onClick={handleDialogOpen}>{t("epass.open")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

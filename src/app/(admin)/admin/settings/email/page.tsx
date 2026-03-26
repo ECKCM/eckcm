@@ -39,6 +39,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { sanitizeEmailInput } from "@/lib/utils/field-helpers";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -293,7 +294,7 @@ function SettingsTab() {
             <Input
               value={config.zelle_email}
               onChange={(e) =>
-                setConfig({ ...config, zelle_email: e.target.value })
+                setConfig({ ...config, zelle_email: sanitizeEmailInput(e.target.value) })
               }
               placeholder="zelle@example.com"
               type="email"
@@ -409,7 +410,7 @@ function TestEmailTab() {
             placeholder="recipient@example.com"
             type="email"
             value={to}
-            onChange={(e) => setTo(e.target.value)}
+            onChange={(e) => setTo(sanitizeEmailInput(e.target.value))}
           />
         </div>
 

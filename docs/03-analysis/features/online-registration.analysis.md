@@ -1,14 +1,14 @@
 # online-registration Analysis Report
 
-> **Analysis Type**: Gap Analysis (Design v4 vs Implementation) -- v7.0 Act-5 Update
+> **Analysis Type**: Gap Analysis (Design v5 vs Implementation) -- v8.0 Update
 >
 > **Project**: ECKCM (Eastern Korean Churches Camp Meeting)
-> **Analyst**: pdca-iterator (Sonnet 4.6)
-> **Date**: 2026-03-01
+> **Analyst**: gap-detector (Opus 4.6)
+> **Date**: 2026-03-26
 > **Design Doc**: [online-registration.design.md](../../02-design/features/online-registration.design.md)
 > **Plan Doc**: [online-registration.plan.md](../../01-plan/features/online-registration.plan.md)
-> **Design Version**: v4 (Synced with implementation, Act-5)
-> **Previous Analysis**: v6.0 (2026-03-01, 92% match rate, 205/222)
+> **Design Version**: v5 (updated 2026-03-14)
+> **Previous Analysis**: v7.0 (2026-03-01, 95% match rate, 218/230)
 
 ---
 
@@ -34,7 +34,22 @@ Incremental gap analysis update for Act-5 iteration (2026-03-01). Building on v6
 - Functional completeness assessment (does the feature work, even if structured differently)
 - Each designed item scored: Implemented = 1.0, Missing = 0.0
 
-### 1.4 v7.0 Delta Summary (Act-5 Changes)
+### 1.4 v8.0 Delta Summary (2026-03-26 Changes)
+
+| Change Type | Description | Impact |
+|-------------|-------------|--------|
+| Code | Removed "US Bank Account (ACH)" from review page savings text | UI text change only |
+| Code | Added `allow_add_members` column to `eckcm_registration_groups` | New DB column (default true) |
+| Code | Added `allow_add_members` toggle in groups-manager.tsx (shown when dept set) | Admin UI |
+| Code | Added `allow_add_members` check in participants/page.tsx (hides Add buttons) | Registration flow |
+| New routes | `api/payment/check-submit`, `api/donation/create-intent`, `api/donation/confirm`, `api/checkin/checkout` + 13 more | +17 undocumented routes |
+| New tables | `eckcm_donations`, `eckcm_registration_locks`, `eckcm_admin_presence`, `eckcm_funding_allocations`, `eckcm_registration_adjustments`, `eckcm_links`, `eckcm_profiles` | +7 undocumented tables |
+| Webhook | Stripe webhook fully restored (design v5 says "removed") | Design doc stale |
+| Donation | `(public)/donation/page.tsx` + donation API routes implemented | Previously deferred, now done |
+
+**v8.0 Match Rate: 237/248 = 95.6%** (11 remaining items all deferred in design Section 19.7)
+
+### 1.5 v7.0 Delta Summary (Act-5 Changes, archived)
 
 | Change Type | Description | Impact |
 |-------------|-------------|--------|
@@ -768,3 +783,5 @@ The project maintains **92% match rate** (205/222), still exceeding the 90% targ
 | 4.0 | 2026-02-24 | 75% | 166/222 | Comprehensive v4 with tiered roadmap, phase assessment, bug tracking | gap-detector (Opus 4.6) |
 | 5.0 | 2026-02-26 | 93% | 206/222 | Major implementation sprint: +40 items. All admin pages complete. Bug fixed. Threshold achieved. | gap-detector (Opus 4.6) |
 | 6.0 | 2026-03-01 | 92% | 205/222 | Stripe webhook removed (-1). Email system expanded. Production infra added. 27 undocumented items. Design sync needed. | gap-detector (Opus 4.6) |
+| 7.0 | 2026-03-01 | 95% | 218/230 | Act-5: Design v3→v4 sync, lodging.service, form_field_config wired, use-auth.ts | pdca-iterator (Sonnet 4.6) |
+| 8.0 | 2026-03-26 | 95.6% | 237/248 | Webhook restored, donation implemented, allow_add_members added, ACH text removed. 42 undocumented items. | gap-detector (Opus 4.6) |

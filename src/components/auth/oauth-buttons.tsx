@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n/context";
 
 export function OAuthButtons() {
   const [loading, setLoading] = useState(false);
+  const { t } = useI18n();
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -53,7 +55,7 @@ export function OAuthButtons() {
             />
           </svg>
         )}
-        Continue with Google
+        {t("auth.continueWithGoogle")}
       </Button>
     </div>
   );

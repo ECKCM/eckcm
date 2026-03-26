@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 interface EPassDetailProps {
   token: {
@@ -38,16 +39,23 @@ function getMealCategory(birthDate: string, eventDate: string): string {
   let age = ref.getFullYear() - birth.getFullYear();
   const m = ref.getMonth() - birth.getMonth();
   if (m < 0 || (m === 0 && ref.getDate() < birth.getDate())) age--;
-  if (age >= 11) return "Adult";
-  if (age >= 5) return "Youth";
-  return "Free";
+  if (age >= 11) return "adult";
+  if (age >= 5) return "youth";
+  return "free";
 }
 
 export function EPassDetail({ token }: EPassDetailProps) {
+  const { t } = useI18n();
   const person = token.eckcm_people;
   const reg = token.eckcm_registrations;
   const event = reg.eckcm_events;
   const meal = getMealCategory(person.birth_date, reg.start_date);
+
+  const mealLabel: Record<string, string> = {
+    adult: t("epass.adult"),
+    youth: t("epass.youth"),
+    free: t("common.free"),
+  };
 
   return (
     <div className="mx-auto max-w-md p-4 pt-8 space-y-4">
@@ -57,7 +65,7 @@ export function EPassDetail({ token }: EPassDetailProps) {
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold">E-Pass</h1>
+        <h1 className="text-2xl font-bold">{t("epass.title")}</h1>
       </div>
 
       <Card className="shadow-xl overflow-hidden">
@@ -83,7 +91,7 @@ export function EPassDetail({ token }: EPassDetailProps) {
               variant={token.is_active ? "default" : "destructive"}
               className="text-base px-3 py-1"
             >
-              {token.is_active ? "Active" : "Inactive"}
+              {token.is_active ? t("epass.active") : t("epass.inactive")}
             </Badge>
             {(person.gender === "MALE" || person.gender === "FEMALE") && (
               <Badge
@@ -94,20 +102,20 @@ export function EPassDetail({ token }: EPassDetailProps) {
                     : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
                 }`}
               >
-                {person.gender === "MALE" ? "Male" : "Female"}
+                {person.gender === "MALE" ? t("profile.male") : t("profile.female")}
               </Badge>
             )}
             <Badge
               variant="outline"
               className={`text-base px-3 py-1 ${
-                meal === "Adult"
+                meal === "adult"
                   ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                  : meal === "Youth"
+                  : meal === "youth"
                     ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300"
                     : "border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
               }`}
             >
-              {meal}
+              {mealLabel[meal] ?? meal}
             </Badge>
           </div>
         </CardHeader>

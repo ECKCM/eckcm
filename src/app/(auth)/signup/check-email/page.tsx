@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Mail } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n/context";
 
 function CheckEmailContent() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
 
@@ -17,9 +19,9 @@ function CheckEmailContent() {
         <div className="flex justify-center mb-2">
           <Mail className="h-10 w-10 text-primary" />
         </div>
-        <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
+        <CardTitle className="text-2xl font-bold">{t("auth.checkEmail")}</CardTitle>
         <CardDescription>
-          We sent a confirmation link to
+          {t("auth.sentConfirmationTo")}
           {email && (
             <span className="block mt-1 font-medium text-foreground">{email}</span>
           )}
@@ -27,17 +29,17 @@ function CheckEmailContent() {
       </CardHeader>
       <CardContent className="space-y-4 text-center text-sm text-muted-foreground">
         <p>
-          Click the link in the email to confirm your account and complete signup.
+          {t("auth.clickConfirmLink")}
         </p>
         <p>
-          Didn&apos;t receive an email? Check your spam folder or{" "}
+          {t("auth.noEmailReceived")}{" "}
           <Link href="/signup" className="underline text-primary hover:text-primary/80">
-            try signing up again
+            {t("auth.trySignupAgain")}
           </Link>
           .
         </p>
         <Button variant="outline" size="sm" asChild>
-          <Link href="/login">Back to Login</Link>
+          <Link href="/login">{t("auth.backToLogin")}</Link>
         </Button>
       </CardContent>
     </Card>

@@ -4,13 +4,76 @@ All notable changes to the ECKCM Online Registration & Management System will be
 
 ## Unreleased (Development)
 
-### In Progress
+### Deferred to Phase 15
 - Service worker implementation for full PWA offline support
 - Google Sheets integration for inventory management
 - Additional E2E tests for user workflows
 - Performance optimization and bundle size reduction
 - Analytics integration for donation tracking
 - Recurring donation support (monthly giving)
+
+---
+
+## [1.0.0] - 2026-03-26
+
+### PDCA Completion Report
+- **Feature**: online-registration (Online Registration & Management System)
+- **Status**: ✅ COMPLETED
+- **Match Rate**: 95.6% (237/248 designed items)
+- **Duration**: 43 days (2026-02-12 → 2026-03-26)
+- **PDCA Cycles**: 5 Act iterations
+
+### Completion Metrics
+- Auth Routes: 7/7 (100%)
+- Admin Routes: 44/44 (100%)
+- API Routes: 42/42 (100%)
+- Services: 10/10 (100%)
+- Components: 26/26 (100%)
+- Hooks: 5/5 (100%)
+- Lib Infrastructure: 27/27 (100%)
+- Database Tables: 39/39 (100%)
+- Public Routes: 5/7 (71%, deferred)
+- PWA: 1/4 (25%, deferred)
+
+### Key Features (Ready for Production)
+- Multi-step registration wizard with autofill
+- Stripe + Zelle payment processing with webhook
+- Admin dashboard with 44 pages
+- Real-time smart polling + admin presence
+- QR-based check-in (online/offline)
+- Email communications with PDF invoicing
+- Role-based access control (10 role types)
+- Room assignment & lodging management
+- Audit logging for all admin changes
+- Meal selection with pricing rules
+
+### Deferred Items (11 total, intentional)
+- PWA service worker (Phase 15)
+- Google Sheets sync (Phase 15)
+- Manual payment page (Phase 15)
+- Donation page routes (NOTE: API implemented in v8.0)
+- Admin API wrappers (Magic room generator, custom invoice)
+- Meal rules DB wiring (functional via alternative query)
+- Full i18n (Korean labels partial)
+
+### Undocumented Additions (42 items)
+- 7 new database tables (donations, locks, presence, funding, adjustments, links, profiles)
+- 17 new API routes (payment checks, donation endpoints, checkins)
+- 18 implementation-only components and utilities
+
+### v8.0 Final Changes (2026-03-26)
+- Stripe webhook fully restored (was temporarily removed in v6.0)
+- Donation page + donation API routes implemented
+- Funding tracker for donation allocations
+- Registration adjustments ledger
+- Refund emails for payment refunds
+- `allow_add_members` toggle for registration groups
+- Cron cleanup for abandoned DRAFT registrations
+- All 248 designed items verified (237 implemented, 11 deferred)
+
+### Documentation
+- Completion Report: [online-registration.report.md](features/online-registration.report.md)
+- Full Gap Analysis: [online-registration.analysis.md](../03-analysis/features/online-registration.analysis.md)
 
 ---
 

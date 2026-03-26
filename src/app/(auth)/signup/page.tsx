@@ -12,13 +12,16 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
+import { useI18n } from "@/lib/i18n/context";
 
 export default function SignupPage() {
+  const { t } = useI18n();
+
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">ECKCM</CardTitle>
-        <CardDescription>Create your account</CardDescription>
+        <CardTitle className="text-2xl font-bold">{t("common.appName")}</CardTitle>
+        <CardDescription>{t("auth.createAccount")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <OAuthButtons />
@@ -29,20 +32,20 @@ export default function SignupPage() {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-card px-2 text-muted-foreground">
-              Or register with email
+              {t("auth.orRegisterWithEmail")}
             </span>
           </div>
         </div>
 
         <Button asChild variant="outline" className="w-full">
-          <Link href="/signup/complete-profile">Sign up with Email</Link>
+          <Link href="/signup/complete-profile">{t("auth.signUpWithEmail")}</Link>
         </Button>
       </CardContent>
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {t("auth.hasAccount")}{" "}
           <Link href="/login" className="text-primary underline-offset-4 hover:underline">
-            Sign In
+            {t("common.signIn")}
           </Link>
         </p>
       </CardFooter>

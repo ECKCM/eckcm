@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { AlertCircle } from "lucide-react";
 import { DateRangePicker } from "@/components/registration/date-range-picker";
+import { useI18n } from "@/lib/i18n/context";
 
 interface EventData {
   id: string;
@@ -50,6 +51,7 @@ export default function RegistrationStep1() {
   const [accessCodeApplied, setAccessCodeApplied] = useState(!!state.accessCode);
   const [accessCodeGroupName, setAccessCodeGroupName] = useState("");
   const [hasOtherVolunteers, setHasOtherVolunteers] = useState(state.hasOtherVolunteers ?? false);
+  const { t, locale } = useI18n();
   const [existingRegistration, setExistingRegistration] = useState<{
     id: string;
     confirmationCode: string;
@@ -197,36 +199,36 @@ export default function RegistrationStep1() {
 
   const handleApplyAccessCode = () => {
     if (!accessCode.trim()) {
-      toast.error("Please enter an access code");
+      toast.error(t("registration.pleaseEnterAccessCode"));
       return;
     }
     const matched = groups.find(
       (g) => g.access_code && g.access_code === accessCode.trim()
     );
     if (!matched) {
-      toast.error("Invalid access code");
+      toast.error(t("registration.invalidAccessCode"));
       return;
     }
     dispatch({ type: "SET_ACCESS_CODE", code: accessCode.trim() });
     dispatch({ type: "SET_REGISTRATION_GROUP", groupId: matched.id });
     setAccessCodeApplied(true);
     setAccessCodeGroupName(matched.name_en);
-    toast.success(`Access code applied: ${matched.name_en}`);
+    toast.success(t("registration.accessCodeApplied", { name: matched.name_en }));
   };
 
   const handleNext = () => {
     if (!state.startDate || !state.endDate) {
-      toast.error("Please select dates");
+      toast.error(t("registration.pleaseSelectDates"));
       return;
     }
     if (state.nightsCount < 1) {
-      toast.error("Minimum 1 night stay required");
+      toast.error(t("registration.minOneNight"));
       return;
     }
 
     // If access code was entered but not applied
     if (accessCode.trim() && !accessCodeApplied) {
-      toast.error("Please click Apply to validate your access code");
+      toast.error(t("registration.pleaseApplyCode"));
       return;
     }
 
@@ -235,7 +237,7 @@ export default function RegistrationStep1() {
       ? groups.find((g) => g.id === state.registrationGroupId)
       : resolveGroup("");
     if (!group) {
-      toast.error("No registration group available");
+      toast.error(t("registration.noGroupAvailable"));
       return;
     }
 
@@ -247,7 +249,7 @@ export default function RegistrationStep1() {
   if (loading) {
     return (
       <div className="mx-auto max-w-2xl p-4 pt-8 text-center text-muted-foreground">
-        Loading...
+        {t("common.loading")}
       </div>
     );
   }
@@ -255,7 +257,7 @@ export default function RegistrationStep1() {
   if (!event) {
     return (
       <div className="mx-auto max-w-2xl p-4 pt-8 text-center text-muted-foreground">
-        Event not found.
+        {t("registration.eventNotFound")}
       </div>
     );
   }
@@ -269,16 +271,16 @@ export default function RegistrationStep1() {
             <div className="flex flex-col items-center gap-4 text-center">
               <AlertCircle className="size-12 text-amber-500" />
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold">Already Registered</h2>
+                <h2 className="text-lg font-semibold">{t("registration.alreadyRegisteredTitle")}</h2>
                 <p className="text-muted-foreground">
-                  You already have a registration for this event.
+                  {t("registration.alreadyRegisteredDesc")}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Confirmation Code: <span className="font-mono font-semibold text-foreground">{existingRegistration.confirmationCode}</span>
+                  {t("registration.confirmationCode")}: <span className="font-mono font-semibold text-foreground">{existingRegistration.confirmationCode}</span>
                 </p>
               </div>
               <Button onClick={() => router.push("/dashboard")}>
-                Go to Dashboard
+                {t("common.goToDashboard")}
               </Button>
             </div>
           </CardContent>
@@ -294,13 +296,13 @@ export default function RegistrationStep1() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Step 1: Dates</CardTitle>
+          <CardTitle>{t("registration.step1Title")}</CardTitle>
           <CardDescription>
             <span className="font-medium text-foreground">
-              Event Dates: {format(new Date(event.event_start_date + "T00:00:00"), "MM.dd.yy")} - {format(new Date(event.event_end_date + "T00:00:00"), "MM.dd.yy")}
+              {t("registration.eventDates")}: {format(new Date(event.event_start_date + "T00:00:00"), "MM.dd.yy")} - {format(new Date(event.event_end_date + "T00:00:00"), "MM.dd.yy")}
             </span>
             <br />
-            Select your stay dates
+            {t("registration.selectStayDates")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -308,11 +310,10 @@ export default function RegistrationStep1() {
           {state.registrationType === "others" && userProfile && (
             <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
               <p className="font-medium text-blue-900">
-                Registering on behalf of another group
+                {t("registration.registeringOnBehalf")}
               </p>
               <p className="text-blue-700 mt-1">
-                Signed in as <span className="font-semibold">{userProfile.name}</span> (<span className="break-all">{userProfile.email}</span>).
-                The registration will be linked to your account.
+                {t("registration.signedInAsRegistering", { name: userProfile.name, email: userProfile.email })}
               </p>
             </div>
           )}
@@ -335,12 +336,12 @@ export default function RegistrationStep1() {
 
           {/* Access Code */}
           <div className="space-y-2">
-            <Label>Access Code (optional)</Label>
+            <Label>{t("registration.accessCode")}</Label>
             <div className="flex gap-2">
               <Input
                 value={accessCode}
                 onChange={(e) => handleAccessCodeInput(e.target.value)}
-                placeholder="Enter if you have one"
+                placeholder={t("registration.enterIfYouHave")}
                 disabled={accessCodeApplied}
               />
               {!accessCodeApplied ? (
@@ -350,7 +351,7 @@ export default function RegistrationStep1() {
                   disabled={!accessCode.trim()}
                   className="shrink-0"
                 >
-                  Apply
+                  {t("common.apply")}
                 </Button>
               ) : (
                 <Button
@@ -369,13 +370,13 @@ export default function RegistrationStep1() {
                   }}
                   className="shrink-0 text-muted-foreground"
                 >
-                  Clear
+                  {t("common.clear")}
                 </Button>
               )}
             </div>
             {accessCodeApplied && (
               <p className="text-sm text-green-700">
-                ✓ Applied: {accessCodeGroupName}
+                ✓ {t("registration.applied", { name: accessCodeGroupName })}
               </p>
             )}
           </div>
@@ -392,7 +393,7 @@ export default function RegistrationStep1() {
           })() && (
             <div className="space-y-3 rounded-md border border-blue-200 bg-blue-50 p-4">
               <p className="text-sm font-medium text-blue-900">
-                Are there other volunteers among the room members currently staying?
+                {t("registration.volunteerQuestion")}
               </p>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -406,7 +407,7 @@ export default function RegistrationStep1() {
                     }}
                     className="accent-primary"
                   />
-                  <span className="text-sm">No</span>
+                  <span className="text-sm">{t("common.no")}</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -419,12 +420,12 @@ export default function RegistrationStep1() {
                     }}
                     className="accent-primary"
                   />
-                  <span className="text-sm">Yes</span>
+                  <span className="text-sm">{t("common.yes")}</span>
                 </label>
               </div>
               {hasOtherVolunteers && (
                 <p className="text-xs text-blue-700">
-                  You can apply access codes for your members on Step 3 (People).
+                  {t("registration.volunteerHint")}
                 </p>
               )}
             </div>
@@ -432,9 +433,9 @@ export default function RegistrationStep1() {
 
           <div className="flex justify-between pt-4">
             <Button variant="outline" onClick={() => router.push("/dashboard")}>
-              Cancel
+              {t("common.cancel")}
             </Button>
-            <Button onClick={handleNext}>Next: Participants</Button>
+            <Button onClick={handleNext}>{t("registration.nextParticipants")}</Button>
           </div>
         </CardContent>
       </Card>

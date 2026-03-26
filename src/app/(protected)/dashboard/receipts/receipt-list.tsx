@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, FileText, Receipt } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 interface LineItem {
   description_en: string;
@@ -41,13 +42,18 @@ const statusVariant: Record<string, "default" | "secondary" | "destructive" | "o
   PARTIALLY_REFUNDED: "secondary",
 };
 
-function statusLabel(status: string) {
-  if (status === "SUCCEEDED") return "Paid";
-  if (status === "PENDING") return "Pending";
-  return status;
+function useStatusLabel() {
+  const { t } = useI18n();
+  return (status: string) => {
+    if (status === "SUCCEEDED") return t("receipts.paid");
+    if (status === "PENDING") return t("receipts.pending");
+    return status;
+  };
 }
 
 function InvoiceCard({ inv }: { inv: Invoice }) {
+  const { t } = useI18n();
+  const statusLabel = useStatusLabel();
   const reg = inv.eckcm_registrations;
   const event = reg.eckcm_events;
   const isPaid = inv.status === "SUCCEEDED";
@@ -141,7 +147,7 @@ function InvoiceCard({ inv }: { inv: Invoice }) {
               <div className="grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 border-t font-medium">
                 <span />
                 <span />
-                <span className="text-right">Total</span>
+                <span className="text-right">{t("common.total")}</span>
                 <span className="text-right">${(inv.total_cents / 100).toFixed(2)}</span>
               </div>
             </div>
@@ -177,11 +183,12 @@ function InvoiceCard({ inv }: { inv: Invoice }) {
 }
 
 function InvoiceList({ invoices }: { invoices: Invoice[] }) {
+  const { t } = useI18n();
   if (invoices.length === 0) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
-          No receipts yet.
+          {t("registrations.noRegistrations")}
         </CardContent>
       </Card>
     );
@@ -196,6 +203,7 @@ function InvoiceList({ invoices }: { invoices: Invoice[] }) {
 }
 
 export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
+  const { t } = useI18n();
   const myInvoices = invoices.filter(
     (inv) => inv.eckcm_registrations.registration_type !== "others"
   );
@@ -212,7 +220,7 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold">Receipts & Invoices</h1>
+        <h1 className="text-2xl font-bold">{t("receipts.title")}</h1>
       </div>
 
       {!hasBothTabs ? (

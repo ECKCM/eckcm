@@ -1,0 +1,591 @@
+{
+  "timestamp": "2026-03-26T20:08:20.097Z",
+  "reason": "compaction",
+  "status": {
+    "version": "2.0",
+    "lastUpdated": "2026-03-26T20:08:19.979Z",
+    "activeFeatures": [
+      "payment-complete",
+      "lodging",
+      "airport-pickup",
+      "(public)",
+      "(protected)",
+      "_components",
+      "donation",
+      "participants",
+      "i18n",
+      "google-sheets.service.ts"
+    ],
+    "primaryFeature": "payment-complete",
+    "features": {
+      "payment-complete": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-26T19:43:25.388Z",
+          "lastUpdated": "2026-03-26T19:43:25.388Z"
+        },
+        "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/payment-complete/page.tsx"
+      },
+      "lodging": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-26T19:43:26.993Z",
+          "lastUpdated": "2026-03-26T19:44:01.553Z"
+        },
+        "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/lodging/page.tsx"
+      },
+      "airport-pickup": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-26T19:43:28.971Z",
+          "lastUpdated": "2026-03-26T19:43:59.606Z"
+        },
+        "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/airport-pickup/page.tsx"
+      },
+      "(public)": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-26T19:43:47.003Z",
+          "lastUpdated": "2026-03-26T19:43:58.656Z"
+        },
+        "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/error.tsx"
+      },
+      "(protected)": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-26T19:43:48.640Z",
+          "lastUpdated": "2026-03-26T19:44:02.273Z"
+        },
+        "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/error.tsx"
+      },
+      "_components": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-26T19:43:50.014Z",
+          "lastUpdated": "2026-03-26T19:44:04.505Z"
+        },
+        "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/payment/_components/copy-button.tsx"
+      },
+      "donation": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-26T19:43:50.623Z",
+          "lastUpdated": "2026-03-26T19:43:50.623Z"
+        },
+        "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/donation/page.tsx"
+      },
+      "participants": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-26T19:44:10.557Z",
+          "lastUpdated": "2026-03-26T19:48:12.827Z"
+        },
+        "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
+      },
+      "i18n": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-26T19:44:53.504Z",
+          "lastUpdated": "2026-03-26T19:44:53.504Z"
+        },
+        "lastFile": "/Users/rlulu/dev/eckcm/src/lib/i18n/context.tsx"
+      },
+      "google-sheets.service.ts": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-26T20:08:19.979Z",
+          "lastUpdated": "2026-03-26T20:08:19.979Z"
+        },
+        "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/google-sheets.service.ts"
+      }
+    },
+    "pipeline": {
+      "currentPhase": 1,
+      "level": "Dynamic",
+      "phaseHistory": []
+    },
+    "session": {
+      "startedAt": "2026-03-26T19:43:25.388Z",
+      "onboardingCompleted": false,
+      "lastActivity": "2026-03-26T20:08:19.979Z"
+    },
+    "history": [
+      {
+        "timestamp": "2026-03-26T19:43:25.388Z",
+        "feature": "payment-complete",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:26.993Z",
+        "feature": "lodging",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:28.971Z",
+        "feature": "airport-pickup",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:31.824Z",
+        "feature": "lodging",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:33.065Z",
+        "feature": "airport-pickup",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:38.096Z",
+        "feature": "airport-pickup",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:40.616Z",
+        "feature": "lodging",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:43.423Z",
+        "feature": "airport-pickup",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:44.663Z",
+        "feature": "lodging",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:47.003Z",
+        "feature": "(public)",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:47.325Z",
+        "feature": "airport-pickup",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:48.500Z",
+        "feature": "lodging",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:48.640Z",
+        "feature": "(protected)",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:50.014Z",
+        "feature": "_components",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:50.623Z",
+        "feature": "donation",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:51.138Z",
+        "feature": "airport-pickup",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:52.697Z",
+        "feature": "lodging",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:55.166Z",
+        "feature": "airport-pickup",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:56.381Z",
+        "feature": "lodging",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:58.656Z",
+        "feature": "(public)",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:43:59.606Z",
+        "feature": "airport-pickup",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:01.553Z",
+        "feature": "lodging",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:02.273Z",
+        "feature": "(protected)",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:04.505Z",
+        "feature": "_components",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:10.557Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:14.995Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:19.981Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:23.618Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:28.482Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:32.898Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:39.360Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:44.696Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:49.433Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:53.504Z",
+        "feature": "i18n",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:44:54.962Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:00.639Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:04.828Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:08.311Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:12.452Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:16.765Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:20.846Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:25.750Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:29.855Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:35.126Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:39.070Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:45.486Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:50.069Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:45:55.448Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:46:00.387Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:46:05.827Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:46:09.791Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:46:14.115Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:46:24.116Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:46:28.289Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:46:32.751Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:46:37.919Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:46:42.095Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:46:46.275Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:46:50.882Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:46:55.445Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:47:01.799Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:47:07.158Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:47:11.541Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:47:16.512Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:47:23.279Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:47:31.347Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:47:38.014Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:47:43.097Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:47:53.364Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T19:48:12.827Z",
+        "feature": "participants",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-26T20:08:19.979Z",
+        "feature": "google-sheets.service.ts",
+        "phase": "do",
+        "action": "updated"
+      }
+    ]
+  }
+}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSuperAdmin } from "@/lib/auth/admin";
 import { logger } from "@/lib/logger";
+import { clearAllSheets, isConfigured } from "@/lib/services/google-sheets.service";
 
 export async function POST(request: Request) {
   const auth = await requireSuperAdmin();
@@ -204,6 +205,17 @@ export async function POST(request: Request) {
     errors.push(
       `Incomplete: ${remainingRegs ?? 0} registrations and ${remainingInvoices ?? 0} invoices still remain`
     );
+  }
+
+  // Clear Google Sheets data
+  if (isConfigured()) {
+    try {
+      await clearAllSheets();
+    } catch (gErr) {
+      const msg = `Google Sheets clear: ${gErr instanceof Error ? gErr.message : String(gErr)}`;
+      logger.error(`[hard-reset] ${msg}`);
+      errors.push(msg);
+    }
   }
 
   // Reset sequence counters

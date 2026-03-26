@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { CheckCircle, Clock, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n/context";
 
 type PaymentStatus = "loading" | "paid" | "pending" | "error";
 
@@ -18,6 +19,7 @@ export default function ConfirmationPage() {
   const method = searchParams.get("method");
   const isManual = method === "zelle" || method === "check";
   const [status, setStatus] = useState<PaymentStatus>(isManual ? "pending" : "loading");
+  const { t } = useI18n();
 
   useEffect(() => {
     // Zelle/Check payments are pending until confirmed — skip polling
@@ -70,7 +72,7 @@ export default function ConfirmationPage() {
           <CardContent className="py-12 space-y-4">
             <Loader2 className="h-10 w-10 animate-spin mx-auto text-muted-foreground" />
             <p className="text-muted-foreground">
-              Verifying payment status...
+              {t("confirmation.verifying")}
             </p>
           </CardContent>
         </Card>
@@ -84,10 +86,10 @@ export default function ConfirmationPage() {
         <Card>
           <CardContent className="py-12 space-y-4">
             <p className="text-destructive">
-              Could not verify registration. Please check your dashboard.
+              {t("confirmation.cannotVerify")}
             </p>
             <Button asChild>
-              <Link href="/dashboard">Go to Dashboard</Link>
+              <Link href="/dashboard">{t("common.goToDashboard")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -110,14 +112,14 @@ export default function ConfirmationPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isPaid ? "Registration Complete!" : "Payment Processing"}
+            {isPaid ? t("confirmation.complete") : t("confirmation.paymentProcessing")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {code && (
             <div>
               <p className="text-sm text-muted-foreground">
-                Your confirmation code
+                {t("confirmation.yourCode")}
               </p>
               <p className="text-3xl font-mono font-bold tracking-wider mt-2">
                 {code}
@@ -129,34 +131,27 @@ export default function ConfirmationPage() {
             variant={isPaid ? "secondary" : "outline"}
             className="text-sm"
           >
-            {isPaid ? "Payment Confirmed" : "Payment Processing..."}
+            {isPaid ? t("confirmation.paymentConfirmed") : t("confirmation.paymentProcessingBadge")}
           </Badge>
 
           <div className="text-sm text-muted-foreground space-y-2">
             {isPaid ? (
-              <p>
-                A confirmation email with your E-Pass and registration details
-                will be sent to the group representative&apos;s email address.
-              </p>
+              <p>{t("confirmation.paidMessage")}</p>
             ) : (
-              <p>
-                Your payment is being processed. You can check your registration
-                status in your dashboard. A confirmation email will be sent once
-                payment is confirmed.
-              </p>
+              <p>{t("confirmation.pendingMessage")}</p>
             )}
             {registrationId && (
-              <p className="text-xs">Registration ID: {registrationId}</p>
+              <p className="text-xs">{t("confirmation.registrationId")}: {registrationId}</p>
             )}
           </div>
 
           <div className="flex flex-col gap-3 pt-4">
             <Button asChild size="lg">
-              <Link href="/dashboard">Go to Dashboard</Link>
+              <Link href="/dashboard">{t("common.goToDashboard")}</Link>
             </Button>
             {isPaid && (
               <Button asChild variant="outline">
-                <Link href="/dashboard/epass">View E-Pass</Link>
+                <Link href="/dashboard/epass">{t("confirmation.viewEPass")}</Link>
               </Button>
             )}
           </div>

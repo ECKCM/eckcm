@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRegistration } from "@/lib/context/registration-context";
+import { useI18n } from "@/lib/i18n/context";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ export default function KeyDepositStep() {
   const router = useRouter();
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
+  const { t } = useI18n();
 
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
@@ -67,16 +69,17 @@ export default function KeyDepositStep() {
     router.push(`/register/${eventId}/airport-pickup`);
   };
 
+  const totalKeys = state.roomGroups.reduce((sum, g) => sum + g.keyCount, 0);
+
   return (
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
       <WizardStepper currentStep={5} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Step 5: Key Deposit</CardTitle>
+          <CardTitle>{t("registration.step5Title")}</CardTitle>
           <CardDescription>
-            Each room group needs at least 1 key. Maximum 2 keys per group.
-            Key deposit is $65 per key (refundable).
+            {t("registration.step5Desc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -86,13 +89,13 @@ export default function KeyDepositStep() {
               className="flex items-center justify-between rounded-lg border p-4"
             >
               <div>
-                <p className="font-medium">Room Group{state.roomGroups.length > 1 ? ` ${gi + 1}` : ""}</p>
+                <p className="font-medium">{state.roomGroups.length > 1 ? t("registration.roomGroupNum", { number: gi + 1 }) : t("registration.roomGroup")}</p>
                 <p className="text-sm text-muted-foreground">
-                  {group.participants.length} participant(s)
+                  {t("registration.nParticipants", { count: group.participants.length })}
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <Label>Keys:</Label>
+                <Label>{t("registration.keysLabel")}</Label>
                 <Select
                   value={group.keyCount.toString()}
                   onValueChange={(v) => updateKeyCount(gi, parseInt(v))}
@@ -109,12 +112,7 @@ export default function KeyDepositStep() {
             </div>
           ))}
           <p className="text-sm text-muted-foreground">
-            Total keys:{" "}
-            {state.roomGroups.reduce((sum, g) => sum + g.keyCount, 0)} ($
-            {(
-              state.roomGroups.reduce((sum, g) => sum + g.keyCount, 0) * 65
-            ).toFixed(2)}{" "}
-            deposit)
+            {t("registration.totalKeysDeposit", { keys: totalKeys, amount: (totalKeys * 65).toFixed(2) })}
           </p>
         </CardContent>
       </Card>
@@ -124,9 +122,9 @@ export default function KeyDepositStep() {
           variant="outline"
           onClick={() => router.push(`/register/${eventId}/lodging`)}
         >
-          Back
+          {t("common.back")}
         </Button>
-        <Button onClick={handleNext}>Next: Airport Pickup</Button>
+        <Button onClick={handleNext}>{t("registration.nextAirportPickup")}</Button>
       </div>
     </div>
   );

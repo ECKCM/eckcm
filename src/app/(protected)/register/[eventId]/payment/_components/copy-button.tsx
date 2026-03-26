@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { Copy, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n/context";
 
 export function CopyButton({ text }: { text: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [pulse, setPulse] = useState(false);
 
@@ -17,7 +19,7 @@ export function CopyButton({ text }: { text: string }) {
       }
       setCopied(true);
     } catch {
-      toast.error("Failed to copy");
+      toast.error(t("common.failedToCopy"));
     }
   };
 

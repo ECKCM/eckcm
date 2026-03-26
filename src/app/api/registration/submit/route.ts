@@ -15,6 +15,7 @@ import { populateDefaultMeals } from "@/lib/services/meal.service";
 import { deleteDraftRegistration } from "@/lib/services/registration.service";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 import { loadFundingForGroup, toFundingDiscounts, recordFundingAllocations } from "@/lib/services/funding.service";
+import { syncRegistration } from "@/lib/services/google-sheets.service";
 
 async function cleanupFailedRegistration(
   admin: SupabaseClient,
@@ -569,6 +570,9 @@ export async function POST(request: Request) {
 
   // Update inventory counts (non-blocking)
   await recalculateInventorySafe(admin);
+
+  // Sync to Google Sheets (non-blocking, fire-and-forget)
+  syncRegistration(eventId, registration.id).catch(() => {});
 
   return NextResponse.json({
     registrationId: registration.id,

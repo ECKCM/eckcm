@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Loader2, QrCode, Receipt, ClipboardList, Check, Shield, LifeBuoy, Heart } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -67,6 +68,7 @@ export function DashboardContent({
   isAdmin,
 }: DashboardContentProps) {
   const router = useRouter();
+  const { t, locale } = useI18n();
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<Record<string, RegistrationType>>({});
   const [othersDialogEventId, setOthersDialogEventId] = useState<string | null>(null);
@@ -114,7 +116,7 @@ export function DashboardContent({
     <div className="mx-auto max-w-2xl space-y-6 p-4 pt-8">
       {/* Welcome */}
       <div>
-        <h1 className="text-2xl font-bold">Welcome, {displayName}</h1>
+        <h1 className="text-2xl font-bold">{t("dashboard.welcome", { name: displayName })}</h1>
         <p className="text-sm text-muted-foreground">{user.email}</p>
       </div>
 
@@ -128,7 +130,7 @@ export function DashboardContent({
           return (
             <Card key={event.id}>
               <CardHeader>
-                <CardTitle>{event.name_en}</CardTitle>
+                <CardTitle>{locale === "ko" && event.name_ko ? event.name_ko : event.name_en}</CardTitle>
                 <CardDescription>
                   {formatShortDate(event.event_start_date)} - {formatShortDate(event.event_end_date)}
                 </CardDescription>
@@ -138,7 +140,7 @@ export function DashboardContent({
                 {isRegistered && (
                   <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
                     <Check className="size-4 shrink-0" />
-                    <span className="font-medium">You are already registered</span>
+                    <span className="font-medium">{t("dashboard.alreadyRegistered")}</span>
                   </div>
                 )}
 
@@ -155,7 +157,7 @@ export function DashboardContent({
                       Loading...
                     </>
                   ) : (
-                    "Register Now"
+                    t("dashboard.registerNow")
                   )}
                 </Button>
 
@@ -172,10 +174,10 @@ export function DashboardContent({
                       Loading...
                     </>
                   ) : (
-                    "Register for Someone Else"
+                    t("dashboard.registerForOthers")
                   )}
                 </Button>
-                <p className="text-xs text-muted-foreground">&quot;Register for Someone Else&quot; lets you register on behalf of others — this will not include you as a participant.</p>
+                <p className="text-xs text-muted-foreground">{t("dashboard.registerForOthersNote")}</p>
               </CardContent>
             </Card>
           );
@@ -183,7 +185,7 @@ export function DashboardContent({
       ) : (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            No active events at this time.
+            {t("dashboard.noActiveEvents")}
           </CardContent>
         </Card>
       )}
@@ -197,8 +199,8 @@ export function DashboardContent({
             onClick={() => router.push("/admin")}
           >
             <Shield className="h-5 w-5 text-primary" />
-            <span className="text-lg font-extrabold text-primary">Admin</span>
-            <span className="text-xs text-muted-foreground">Manage events</span>
+            <span className="text-lg font-extrabold text-primary">{t("dashboard.admin")}</span>
+            <span className="text-xs text-muted-foreground">{t("dashboard.manageEvents")}</span>
           </Button>
         )}
         <Button
@@ -207,8 +209,8 @@ export function DashboardContent({
           onClick={() => router.push("/dashboard/epass")}
         >
           <QrCode className="h-5 w-5" />
-          <span className="text-lg font-extrabold">E-Pass</span>
-          <span className="text-xs text-muted-foreground">View group passes</span>
+          <span className="text-lg font-extrabold">{t("dashboard.epass")}</span>
+          <span className="text-xs text-muted-foreground">{t("dashboard.viewGroupPasses")}</span>
         </Button>
         <Button
           variant="outline"
@@ -216,8 +218,8 @@ export function DashboardContent({
           onClick={() => router.push("/dashboard/registrations")}
         >
           <ClipboardList className="h-5 w-5" />
-          <span className="text-lg">Registrations</span>
-          <span className="text-xs text-muted-foreground">View history</span>
+          <span className="text-lg">{t("dashboard.registrations")}</span>
+          <span className="text-xs text-muted-foreground">{t("dashboard.viewHistory")}</span>
         </Button>
         <Button
           variant="outline"
@@ -225,8 +227,8 @@ export function DashboardContent({
           onClick={() => router.push("/dashboard/receipts")}
         >
           <Receipt className="h-5 w-5" />
-          <span className="text-lg">Receipts</span>
-          <span className="text-xs text-muted-foreground">View receipts</span>
+          <span className="text-lg">{t("dashboard.receipts")}</span>
+          <span className="text-xs text-muted-foreground">{t("dashboard.viewReceipts")}</span>
         </Button>
         <Button
           variant="outline"
@@ -234,8 +236,8 @@ export function DashboardContent({
           onClick={() => router.push("/donation")}
         >
           <Heart className="h-5 w-5" />
-          <span className="text-lg">Donation</span>
-          <span className="text-xs text-muted-foreground">Make a donation</span>
+          <span className="text-lg">{t("dashboard.donation")}</span>
+          <span className="text-xs text-muted-foreground">{t("dashboard.makeDonation")}</span>
         </Button>
         <Button
           variant="outline"
@@ -243,8 +245,8 @@ export function DashboardContent({
           onClick={() => window.open("/support", "_blank")}
         >
           <LifeBuoy className="h-5 w-5" />
-          <span className="text-lg">Support</span>
-          <span className="text-xs text-muted-foreground">Get help</span>
+          <span className="text-lg">{t("dashboard.support")}</span>
+          <span className="text-xs text-muted-foreground">{t("dashboard.getHelp")}</span>
         </Button>
       </div>
 
@@ -252,15 +254,14 @@ export function DashboardContent({
       <AlertDialog open={!!othersDialogEventId} onOpenChange={(open) => { if (!open) handleOthersCancel(); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Registering for Someone Else</AlertDialogTitle>
+            <AlertDialogTitle>{t("dashboard.registerForOthersTitle")}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
-                  You are about to register on behalf of another person or group.
-                  The registration will be linked to your account.
+                  {t("dashboard.registerForOthersDesc")}
                 </p>
                 <p>
-                  Signed in as <span className="font-semibold text-foreground">{displayName}</span> (<span className="break-all">{user.email}</span>)
+                  {t("dashboard.signedInAs", { name: displayName, email: user.email })}
                 </p>
                 <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
                   <input
@@ -270,16 +271,16 @@ export function DashboardContent({
                     className="mt-0.5 size-4 rounded border-gray-300"
                   />
                   <span className="text-sm">
-                    I understand that I am registering on behalf of someone else and that this registration will be linked to my account.
+                    {t("dashboard.registerForOthersConfirm")}
                   </span>
                 </label>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleOthersCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleOthersCancel}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleOthersConfirm} disabled={!othersConfirmed}>
-              Confirm
+              {t("common.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

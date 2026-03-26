@@ -6,6 +6,7 @@ import { generateEPassToken } from "@/lib/services/epass.service";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { logger } from "@/lib/logger";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
+import { syncRegistration } from "@/lib/services/google-sheets.service";
 
 const VALID_STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "PAID", "CANCELLED", "REFUNDED"];
 
@@ -159,6 +160,16 @@ export async function PATCH(request: Request) {
 
   // Update inventory counts
   await recalculateInventorySafe(admin);
+
+  // Sync updated status to Google Sheets (non-blocking)
+  const { data: regForSync } = await admin
+    .from("eckcm_registrations")
+    .select("event_id")
+    .eq("id", registrationId)
+    .single();
+  if (regForSync) {
+    syncRegistration(regForSync.event_id, registrationId).catch(() => {});
+  }
 
   return NextResponse.json({ success: true });
 }

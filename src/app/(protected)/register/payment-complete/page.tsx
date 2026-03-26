@@ -6,10 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Loader2, XCircle } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 export default function PaymentCompletePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -18,12 +20,12 @@ export default function PaymentCompletePage() {
       const redirectStatus = searchParams.get("redirect_status");
 
       if (!paymentIntentId) {
-        setError("Invalid payment session.");
+        setError(t("payment.invalidSession"));
         return;
       }
 
       if (redirectStatus === "failed") {
-        setError("Payment failed. Please try again.");
+        setError(t("payment.paymentFailed"));
         return;
       }
 
@@ -35,7 +37,7 @@ export default function PaymentCompletePage() {
       });
 
       if (!res.ok) {
-        setError("Could not verify payment.");
+        setError(t("payment.couldNotVerify"));
         return;
       }
 
@@ -70,7 +72,7 @@ export default function PaymentCompletePage() {
           router.replace("/dashboard");
         }
       } else {
-        setError(`Payment status: ${status}. Please try again.`);
+        setError(t("payment.paymentStatusError", { status }));
       }
     }
 
@@ -85,7 +87,7 @@ export default function PaymentCompletePage() {
           <CardContent className="py-8 space-y-4">
             <p className="text-destructive font-medium">{error}</p>
             <Button asChild>
-              <Link href="/dashboard">Go to Dashboard</Link>
+              <Link href="/dashboard">{t("common.goToDashboard")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -98,7 +100,7 @@ export default function PaymentCompletePage() {
       <Card>
         <CardContent className="py-12 space-y-4">
           <Loader2 className="h-10 w-10 animate-spin mx-auto text-muted-foreground" />
-          <p className="text-muted-foreground">Verifying payment...</p>
+          <p className="text-muted-foreground">{t("payment.verifyingPayment")}</p>
         </CardContent>
       </Card>
     </div>
