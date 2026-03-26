@@ -429,7 +429,6 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                   <SelectItem value="MANUAL">Manual / Cash</SelectItem>
                   <SelectItem value="CHECK">Check</SelectItem>
                   <SelectItem value="ZELLE">Zelle</SelectItem>
-                  <SelectItem value="ACH">ACH Transfer</SelectItem>
                 </SelectContent>
               </Select>
             </div>

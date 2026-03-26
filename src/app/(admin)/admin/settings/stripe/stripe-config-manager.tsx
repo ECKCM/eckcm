@@ -303,8 +303,7 @@ export function StripeConfigManager() {
               </p>
               <p className="text-xs text-muted-foreground">
                 When enabled, refunds will exclude Stripe processing fees (2.9%
-                + $0.30 for cards, 0.8% capped at $5 for ACH). Stripe does not
-                refund their processing fees.
+                + $0.30 for cards). Stripe does not refund their processing fees.
               </p>
             </div>
             <Switch

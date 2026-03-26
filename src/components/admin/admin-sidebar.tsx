@@ -29,6 +29,7 @@ import {
   Mail,
   Link2,
   Printer,
+  HandCoins,
 } from "lucide-react";
 import {
   Sidebar,
@@ -61,13 +62,14 @@ const navLinks = [
   { href: "/admin/participants", label: "Participants", icon: UserCheck, exact: false, permission: "participant.read" },
   { href: "/admin/registrations/create", label: "Manual Registration", icon: ClipboardPlus, exact: true, permission: "participant.update" },
   { href: "/admin/events", label: "Events", icon: Calendar, exact: false, permission: "event.manage" },
-  { href: "/admin/room-groups", label: "Room Groups", icon: BedDouble, exact: false, permission: "group.read" },
+  { href: "/admin/room-groups", label: "Room Assignment", icon: BedDouble, exact: false, permission: "group.read" },
   { href: "/admin/invoices", label: "Invoices", icon: FileText, exact: false, permission: "invoice.read" },
   { href: "/admin/inventory", label: "Inventory", icon: Package, exact: false, permission: "participant.read" },
   { href: "/admin/airport", label: "Airport", icon: Plane, exact: false, permission: "participant.read" },
   { href: "/admin/checkin", label: "Check-in", icon: ScanLine, exact: false, permission: "checkin.main" },
   { href: "/admin/settings/links", label: "Links", icon: Link2, exact: false, permission: "links.manage" },
   { href: "/admin/guardian-consents", label: "Guardian Consents", icon: ShieldCheck, exact: false, permission: "participant.read" },
+  { href: "/admin/funding", label: "Funding Tracker", icon: HandCoins, exact: false, permission: "settings.manage" },
   { href: "/admin/audit", label: "Audit Logs", icon: ScrollText, exact: false, permission: "audit.read" },
   { href: "/admin/users", label: "Users", icon: Users, exact: false, permission: "user.manage" },
 ];

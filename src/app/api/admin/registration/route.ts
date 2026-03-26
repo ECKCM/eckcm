@@ -14,6 +14,7 @@ import { buildPhoneValue } from "@/lib/utils/field-helpers";
 import { populateDefaultMeals } from "@/lib/services/meal.service";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 import { insertInitialPayment } from "@/lib/services/adjustment.service";
+import { loadFundingForGroup, toFundingDiscounts, recordFundingAllocations } from "@/lib/services/funding.service";
 
 interface AdminRegBody {
   eventId: string;
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const validMethods = ["MANUAL", "CHECK", "ZELLE", "ACH"];
+    const validMethods = ["MANUAL", "CHECK", "ZELLE"];
     if (!validMethods.includes(paymentMethod)) {
       return NextResponse.json(
         { error: `Invalid payment method. Must be one of: ${validMethods.join(", ")}` },
@@ -248,6 +249,10 @@ export async function POST(request: Request) {
       evEndDate
     );
 
+    // Load active funding sources targeting this registration group
+    const fundingSources = await loadFundingForGroup(admin, registrationGroupId);
+    const fundingDiscounts = toFundingDiscounts(fundingSources);
+
     const estimate = calculateEstimate({
       nightsCount,
       roomGroups: processedRoomGroups,
@@ -271,6 +276,7 @@ export async function POST(request: Request) {
       defaultIsEarlyBird: isEarlyBird,
       defaultMealFeeCategories: mealFeeCategories,
       defaultManualPaymentDiscountPerPerson: manualPaymentDiscountPerPerson,
+      fundingDiscounts,
     });
 
     // Dual estimate: compute what default group would charge, then list waived benefits
@@ -355,6 +361,7 @@ export async function POST(request: Request) {
           room_assign_status: "PENDING",
           preferences: roomGroup.preferences,
           key_count: roomGroup.keyCount,
+          lodging_type: roomGroup.lodgingType || null,
         })
         .select("id")
         .single();
@@ -511,6 +518,18 @@ export async function POST(request: Request) {
         note: note || null,
       },
     });
+
+    // Record funding allocations
+    if (fundingSources.length > 0) {
+      const totalParticipants = roomGroups.reduce((s, g) => s + g.participants.length, 0);
+      await recordFundingAllocations(admin, {
+        fundingSources,
+        registrationId: registration.id,
+        eventId,
+        registrationGroupId,
+        participantCount: totalParticipants,
+      });
+    }
 
     // Update inventory counts
     await recalculateInventorySafe(admin);

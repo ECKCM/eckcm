@@ -46,7 +46,6 @@ export type PaymentMethod =
   | "CARD"
   | "APPLE_PAY"
   | "GOOGLE_PAY"
-  | "ACH"
   | "CHECK"
   | "ZELLE"
   | "MANUAL";

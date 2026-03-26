@@ -14,6 +14,7 @@ import { logger } from "@/lib/logger";
 import { populateDefaultMeals } from "@/lib/services/meal.service";
 import { deleteDraftRegistration } from "@/lib/services/registration.service";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
+import { loadFundingForGroup, toFundingDiscounts, recordFundingAllocations } from "@/lib/services/funding.service";
 
 async function cleanupFailedRegistration(
   admin: SupabaseClient,
@@ -296,6 +297,10 @@ export async function POST(request: Request) {
     ? await loadMemberGroupFees(admin, processedRoomGroups, event)
     : {};
 
+  // Load active funding sources targeting this registration group
+  const fundingSources = await loadFundingForGroup(admin, registrationGroupId);
+  const fundingDiscounts = toFundingDiscounts(fundingSources);
+
   const estimate = calculateEstimate({
     nightsCount,
     roomGroups: processedRoomGroups,
@@ -319,6 +324,7 @@ export async function POST(request: Request) {
     defaultMealFeeCategories: defMealFeeCategories,
     defaultManualPaymentDiscountPerPerson: defManualPaymentDiscountPerPerson,
     memberGroupFees,
+    fundingDiscounts,
   });
 
   // Dual estimate: compute what default group would charge, then list waived benefits
@@ -418,6 +424,7 @@ export async function POST(request: Request) {
     room_assign_status: "PENDING",
     preferences: roomGroup.preferences,
     key_count: roomGroup.keyCount,
+    lodging_type: roomGroup.lodgingType || null,
   }));
 
   const { data: groups, error: groupError } = await admin
@@ -546,6 +553,18 @@ export async function POST(request: Request) {
       { error: "Failed to create invoice" },
       { status: 500 }
     );
+  }
+
+  // Record funding allocations (non-blocking)
+  if (fundingSources.length > 0) {
+    const totalParticipants = roomGroups.reduce((s, g) => s + g.participants.length, 0);
+    await recordFundingAllocations(admin, {
+      fundingSources,
+      registrationId: registration.id,
+      eventId,
+      registrationGroupId,
+      participantCount: totalParticipants,
+    });
   }
 
   // Update inventory counts (non-blocking)

@@ -80,8 +80,9 @@ export default function InstructionsStep() {
         state.registrationGroupId
           ? supabase
               .from("eckcm_registration_group_fee_categories")
-              .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents)")
+              .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, is_active)")
               .eq("registration_group_id", state.registrationGroupId)
+              .eq("eckcm_fee_categories.is_active", true)
           : Promise.resolve({ data: null }),
       ]);
 

@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const validMethods = ["MANUAL", "CHECK", "ZELLE", "ACH"];
+  const validMethods = ["MANUAL", "CHECK", "ZELLE"];
   if (!validMethods.includes(paymentMethod)) {
     return NextResponse.json(
       { error: `Invalid payment method. Must be one of: ${validMethods.join(", ")}` },

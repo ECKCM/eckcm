@@ -101,6 +101,7 @@ export interface PriceEstimate {
   total: number;
   breakdown: PriceLineItem[];
   manualPaymentDiscount: number; // cents — per-person discount × participants (informational, NOT subtracted from total)
+  fundingDiscount: number; // cents — total funding discount applied (subtracted from total)
 }
 
 export interface PriceLineItem {
@@ -109,5 +110,5 @@ export interface PriceLineItem {
   quantity: number;
   unitPrice: number; // cents
   amount: number; // cents
-  category?: "registration" | "lodging" | "additional_lodging" | "key_deposit" | "meal" | "vbs";
+  category?: "registration" | "lodging" | "additional_lodging" | "key_deposit" | "meal" | "vbs" | "funding";
 }

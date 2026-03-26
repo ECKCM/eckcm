@@ -79,7 +79,7 @@ export default function PaymentStep() {
 
   /* ---- payment methods & fees ---- */
   const [enabledMethods, setEnabledMethods] = useState<string[]>([
-    "card", "ach", "zelle", "wallet",
+    "card", "zelle", "wallet",
   ]);
   const [donorCoversFees, setDonorCoversFees] = useState(false);
   const [coversFees, setCoversFees] = useState(false);
@@ -90,9 +90,8 @@ export default function PaymentStep() {
   const [payMode, setPayMode] = useState<PayMode>("stripe");
   const [processing, setProcessing] = useState(false);
 
-  /* ---- ACH discount tracking ---- */
+  /* ---- selected method tracking ---- */
   const [stripeSelectedMethod, setStripeSelectedMethod] = useState("card");
-  const [achDiscountApplied, setAchDiscountApplied] = useState(false);
 
   /* ---- refs for beforeunload cleanup (must track latest values) ---- */
   const clientSecretRef = useRef<string | null>(null);
@@ -275,9 +274,7 @@ export default function PaymentStep() {
   }, [registrationId, eventId]);
 
   // Derive which modes are available
-  const stripeEnabled = enabledMethods.some((m) =>
-    ["card", "ach"].includes(m)
-  );
+  const stripeEnabled = enabledMethods.includes("card");
   const zelleEnabled = enabledMethods.includes("zelle");
   // Auto-select payMode when only one option is available
   useEffect(() => {
@@ -317,7 +314,7 @@ export default function PaymentStep() {
     }
   };
 
-  const goToConfirmation = async (paymentIntentId?: string, achProcessing?: boolean) => {
+  const goToConfirmation = async (paymentIntentId?: string) => {
     paymentCompletedRef.current = true;
     sessionStorage.removeItem("eckcm_registration");
     if (paymentIntentId && registrationId) {
@@ -340,7 +337,6 @@ export default function PaymentStep() {
       code: confirmationCode || "",
     });
     if (!paymentIntentId) params.set("method", payMode === "check" ? "check" : "zelle");
-    if (achProcessing) params.set("method", "ach");
     router.push(`/register/${eventId}/confirmation?${params.toString()}`);
   };
 
@@ -490,7 +486,7 @@ export default function PaymentStep() {
                   <Separator className="my-2" />
                 </>
               )}
-              {((payMode === "zelle") || (payMode === "stripe" && achDiscountApplied)) && manualPaymentDiscount > 0 && (
+              {(payMode === "zelle") && manualPaymentDiscount > 0 && (
                 <>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
@@ -506,12 +502,12 @@ export default function PaymentStep() {
               <div className="flex justify-between items-center">
                 <span className="font-medium">Total Due</span>
                 <span className="text-2xl font-bold">
-                  {(payMode === "zelle" || (payMode === "stripe" && achDiscountApplied)) && manualPaymentDiscount > 0
+                  {payMode === "zelle" && manualPaymentDiscount > 0
                     ? `$${(Math.max(0, (invoiceTotal || amount) - manualPaymentDiscount) / 100).toFixed(2)}`
                     : `$${(amount / 100).toFixed(2)}`}
                 </span>
               </div>
-              {donorCoversFees && payMode === "stripe" && clientSecret && stripeSelectedMethod !== "us_bank_account" && (
+              {donorCoversFees && payMode === "stripe" && clientSecret && (
                 <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-dashed p-3 mt-3 hover:bg-muted/30 transition-colors">
                   <input
                     type="checkbox"
@@ -570,26 +566,6 @@ export default function PaymentStep() {
                 type="button"
                 onClick={() => {
                   setPayMode("stripe");
-                  // Restore PI amount if ACH discount was applied
-                  if (achDiscountApplied && clientSecret) {
-                    const piId = clientSecret.split("_secret_")[0];
-                    fetch("/api/payment/update-method-discount", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        registrationId,
-                        paymentIntentId: piId,
-                        selectedMethod: "card",
-                        coversFees: false,
-                      }),
-                    })
-                      .then((res) => res.json())
-                      .then((data) => {
-                        if (data.amount) setAmount(data.amount);
-                      })
-                      .catch(() => {});
-                  }
-                  setAchDiscountApplied(false);
                   setStripeSelectedMethod("card");
                 }}
                 className={`relative flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${
@@ -604,7 +580,7 @@ export default function PaymentStep() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium leading-tight">Online Payment</p>
                   <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                    Card, Bank, Amazon Pay
+                    Card, Amazon Pay
                   </p>
                 </div>
               </button>
@@ -646,17 +622,11 @@ export default function PaymentStep() {
                   setProcessing={setProcessing}
                   onPaymentMethodChange={(method) => {
                     setStripeSelectedMethod(method);
-                    // Reset coversFees when switching to ACH
-                    if (method === "us_bank_account" && coversFees) {
-                      setCoversFees(false);
-                      setFeeCents(0);
-                    }
                   }}
-                  onAmountUpdate={(newAmount, discountApplied) => {
+                  onAmountUpdate={(newAmount) => {
                     setAmount(newAmount);
-                    setAchDiscountApplied(discountApplied);
                   }}
-                  onSuccess={(piId, achProcessing) => goToConfirmation(piId, achProcessing)}
+                  onSuccess={(piId) => goToConfirmation(piId)}
                   onCancel={cancelPaymentAndGoBack}
                   onPaymentFailed={cancelPaymentAndGoBack}
                   beforeUnloadHandlerRef={beforeUnloadHandlerRef}
@@ -741,8 +711,8 @@ function StripePaymentForm({
   processing: boolean;
   setProcessing: (v: boolean) => void;
   onPaymentMethodChange: (method: string) => void;
-  onAmountUpdate: (amount: number, discountApplied: boolean) => void;
-  onSuccess: (paymentIntentId: string, achProcessing?: boolean) => void;
+  onAmountUpdate: (amount: number) => void;
+  onSuccess: (paymentIntentId: string) => void;
   onCancel: () => void;
   onPaymentFailed: () => void;
   beforeUnloadHandlerRef: React.MutableRefObject<(() => void) | null>;
@@ -778,14 +748,14 @@ function StripePaymentForm({
         registrationId,
         paymentIntentId: piId,
         selectedMethod,
-        coversFees: selectedMethod === "us_bank_account" ? false : coversFees,
+        coversFees,
       }),
       signal: controller.signal,
     })
       .then((res) => res.json())
       .then((data) => {
         if (!controller.signal.aborted && data.amount) {
-          onAmountUpdate(data.amount, !!data.discountApplied);
+          onAmountUpdate(data.amount);
         }
       })
       .catch((err) => {
@@ -847,17 +817,9 @@ function StripePaymentForm({
         setProcessing(false);
         onPaymentFailed();
         return;
-      } else if (
-        paymentIntent?.status === "succeeded" ||
-        paymentIntent?.status === "processing"
-      ) {
-        const isACHProcessing = paymentIntent.status === "processing";
-        toast.success(
-          isACHProcessing
-            ? "Payment initiated! Processing may take a few days."
-            : "Payment successful!"
-        );
-        onSuccess(paymentIntent.id, isACHProcessing);
+      } else if (paymentIntent?.status === "succeeded") {
+        toast.success("Payment successful!");
+        onSuccess(paymentIntent.id);
       } else {
         setProcessing(false);
       }
@@ -973,7 +935,6 @@ function StripePaymentForm({
               },
               paymentMethodOrder: [
                 "card",
-                "us_bank_account",
                 "amazon_pay",
               ],
               wallets: { applePay: "never", googlePay: "never" },

@@ -120,6 +120,8 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         eckcm_groups(
           id,
           display_group_code,
+          lodging_type,
+          preferences,
           eckcm_room_assignments(
             eckcm_rooms(room_number)
           ),
@@ -168,8 +170,14 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         let registrantGuardianPhone: string | null = null;
         let repPersonId: string | null = null;
         const roomNumbers: string[] = [];
+        let lodgingType: string | null = null;
+        let preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null = null;
 
         for (const g of groups) {
+          // Lodging type & preferences (take from first group)
+          if (!lodgingType && g.lodging_type) lodgingType = g.lodging_type;
+          if (!preferences && g.preferences) preferences = g.preferences as typeof preferences;
+
           // Room assignments
           const roomAssignments = g.eckcm_room_assignments ?? [];
           for (const ra of roomAssignments) {
@@ -246,6 +254,8 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           checked_in: checkedIn,
           checked_out: repPersonId ? checkoutSet.has(repPersonId) : false,
           room_numbers: roomNumbers,
+          lodging_type: lodgingType,
+          preferences,
         };
       });
       setRegistrations(rows);
@@ -423,17 +433,31 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                     <TableHead className="whitespace-nowrap">No.</TableHead>
                     <TableHead className="whitespace-nowrap">Code</TableHead>
                     <TableHead className="whitespace-nowrap">Name</TableHead>
+                    <TableHead className="whitespace-nowrap">Email</TableHead>
+                    <TableHead className="whitespace-nowrap">Phone</TableHead>
                     <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Type</TableHead>
                     <TableHead className="whitespace-nowrap">Payment</TableHead>
+                    <TableHead className="whitespace-nowrap">Paid At</TableHead>
                     <TableHead className="whitespace-nowrap text-center">C-IN</TableHead>
+                    <TableHead className="whitespace-nowrap text-center">C-OUT</TableHead>
                     <TableHead className="whitespace-nowrap">Room</TableHead>
+                    <TableHead className="whitespace-nowrap">Lodging</TableHead>
+                    <TableHead className="whitespace-nowrap">Room Pref.</TableHead>
                     <TableHead className="whitespace-nowrap text-center">People</TableHead>
                     <TableHead className="whitespace-nowrap">Amount</TableHead>
+                    <TableHead className="whitespace-nowrap">Dates</TableHead>
+                    <TableHead className="whitespace-nowrap text-center">Nights</TableHead>
                     <TableHead className="whitespace-nowrap">Church</TableHead>
+                    <TableHead className="whitespace-nowrap">Dept.</TableHead>
+                    <TableHead className="whitespace-nowrap">Guardian</TableHead>
                     <TableHead className="whitespace-nowrap">Reg. Group</TableHead>
                     <TableHead className="whitespace-nowrap">Invoice</TableHead>
                     <TableHead className="whitespace-nowrap">Stripe</TableHead>
+                    <TableHead className="whitespace-nowrap">Notes</TableHead>
+                    <TableHead className="whitespace-nowrap">Requests</TableHead>
                     <TableHead className="whitespace-nowrap">Registered</TableHead>
+                    <TableHead className="whitespace-nowrap">Updated</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -469,11 +493,23 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                           </div>
                         )}
                       </TableCell>
+                      {/* Email */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registrant_email ?? "-"}
+                      </TableCell>
+                      {/* Phone */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registrant_phone ?? "-"}
+                      </TableCell>
                       {/* Status */}
                       <TableCell>
                         <Badge variant={statusVariant[r.status] ?? "secondary"} className="text-xs">
                           {r.status}
                         </Badge>
+                      </TableCell>
+                      {/* Type */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registration_type}
                       </TableCell>
                       {/* Payment — combined method + status */}
                       <TableCell>
@@ -496,15 +532,39 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                           )}
                         </div>
                       </TableCell>
+                      {/* Paid At */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.paid_at ? formatTimestamp(r.paid_at) : "-"}
+                      </TableCell>
                       {/* C-IN */}
                       <TableCell className="text-center">
                         <Badge variant={r.checked_in ? "default" : "secondary"} className="text-xs">
                           {r.checked_in ? "Yes" : "No"}
                         </Badge>
                       </TableCell>
+                      {/* C-OUT */}
+                      <TableCell className="text-center">
+                        <Badge variant={r.checked_out ? "default" : "secondary"} className="text-xs">
+                          {r.checked_out ? "Yes" : "No"}
+                        </Badge>
+                      </TableCell>
                       {/* Room */}
                       <TableCell className="text-xs whitespace-nowrap">
                         {r.room_numbers.length > 0 ? r.room_numbers.join(", ") : "-"}
+                      </TableCell>
+                      {/* Lodging */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.lodging_type?.replace(/^LODGING_/, "").replace(/_/g, " ") ?? "-"}
+                      </TableCell>
+                      {/* Room Pref. */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.preferences ? (
+                          [
+                            r.preferences.elderly && "Elderly",
+                            r.preferences.handicapped && "Handicapped",
+                            r.preferences.firstFloor && "1st Floor",
+                          ].filter(Boolean).join(", ") || "-"
+                        ) : "-"}
                       </TableCell>
                       {/* People */}
                       <TableCell className="text-center">
@@ -517,9 +577,32 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                       <TableCell className="font-mono text-sm whitespace-nowrap">
                         {formatMoney(r.total_amount_cents)}
                       </TableCell>
+                      {/* Dates */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.start_date} ~ {r.end_date}
+                      </TableCell>
+                      {/* Nights */}
+                      <TableCell className="text-center text-xs">
+                        {r.nights_count}
+                      </TableCell>
                       {/* Church */}
                       <TableCell className="text-xs whitespace-nowrap">
                         {r.registrant_church ?? "-"}
+                      </TableCell>
+                      {/* Dept */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registrant_department ?? "-"}
+                      </TableCell>
+                      {/* Guardian */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registrant_guardian_name ? (
+                          <div>
+                            <div>{r.registrant_guardian_name}</div>
+                            {r.registrant_guardian_phone && (
+                              <div className="text-muted-foreground">{r.registrant_guardian_phone}</div>
+                            )}
+                          </div>
+                        ) : "-"}
                       </TableCell>
                       {/* Reg. Group */}
                       <TableCell className="text-xs whitespace-nowrap">
@@ -547,16 +630,28 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
+                      {/* Notes */}
+                      <TableCell className="text-xs max-w-[200px] truncate" title={r.notes ?? ""}>
+                        {r.notes ?? "-"}
+                      </TableCell>
+                      {/* Requests */}
+                      <TableCell className="text-xs max-w-[200px] truncate" title={r.additional_requests ?? ""}>
+                        {r.additional_requests ?? "-"}
+                      </TableCell>
                       {/* Registered */}
                       <TableCell className="text-xs whitespace-nowrap">
                         {formatTimestamp(r.created_at)}
+                      </TableCell>
+                      {/* Updated */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {formatTimestamp(r.updated_at)}
                       </TableCell>
                     </TableRow>
                   ))}
                   {filtered.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={15}
+                        colSpan={30}
                         className="text-center text-muted-foreground py-8"
                       >
                         No registrations found.

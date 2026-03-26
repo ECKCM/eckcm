@@ -16,12 +16,12 @@ export default function ConfirmationPage() {
   const code = searchParams.get("code");
   const registrationId = searchParams.get("registrationId");
   const method = searchParams.get("method");
-  const isManualOrACH = method === "zelle" || method === "ach" || method === "check";
-  const [status, setStatus] = useState<PaymentStatus>(isManualOrACH ? "pending" : "loading");
+  const isManual = method === "zelle" || method === "check";
+  const [status, setStatus] = useState<PaymentStatus>(isManual ? "pending" : "loading");
 
   useEffect(() => {
-    // Zelle/ACH payments are pending until confirmed — skip polling
-    if (isManualOrACH) return;
+    // Zelle/Check payments are pending until confirmed — skip polling
+    if (isManual) return;
 
     if (!registrationId) {
       setStatus("error");
@@ -137,12 +137,6 @@ export default function ConfirmationPage() {
               <p>
                 A confirmation email with your E-Pass and registration details
                 will be sent to the group representative&apos;s email address.
-              </p>
-            ) : method === "ach" ? (
-              <p>
-                Your bank transfer (ACH) is being processed. This typically takes
-                2-4 business days. A confirmation email will be sent once the
-                transfer is complete.
               </p>
             ) : (
               <p>

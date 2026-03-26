@@ -298,13 +298,15 @@ export default function ParticipantsStep() {
         state.registrationGroupId
           ? supabase
               .from("eckcm_registration_group_fee_categories")
-              .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
+              .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max, is_active)")
               .eq("registration_group_id", state.registrationGroupId)
               .like("eckcm_fee_categories.code", "MEAL_%")
+              .eq("eckcm_fee_categories.is_active", true)
           : supabase
               .from("eckcm_fee_categories")
               .select("code, name_en, pricing_type, amount_cents, age_min, age_max")
-              .like("code", "MEAL_%"),
+              .like("code", "MEAL_%")
+              .eq("is_active", true),
         supabase
           .from("eckcm_saved_persons")
           .select("id, first_name, last_name, display_name_ko, gender, birth_year, birth_month, birth_day, church_id, updated_at")

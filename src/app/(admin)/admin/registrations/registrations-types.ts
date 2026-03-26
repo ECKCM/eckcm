@@ -37,6 +37,8 @@ export interface RegistrationRow {
   checked_in: boolean;
   checked_out: boolean;
   room_numbers: string[];
+  lodging_type: string | null;
+  preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null;
 }
 
 export interface PersonDetail {
@@ -97,7 +99,6 @@ export function formatTimestamp(ts: string) {
 /**
  * Calculate non-refundable processing fee based on payment method.
  * - Card / Apple Pay / Google Pay / Amazon: 2.9% + 30¢
- * - ACH Debit: 0.8% capped at $5.00
  * - Zelle / Check (Manual): $0
  */
 export function calculateProcessingFee(amountCents: number, paymentMethod: string | null): number {
@@ -106,11 +107,6 @@ export function calculateProcessingFee(amountCents: number, paymentMethod: strin
 
   if (["ZELLE", "CHECK", "MANUAL", "MANUAL_PAYMENT"].includes(method)) {
     return 0;
-  }
-
-  if (["ACH", "ACH_DEBIT", "US_BANK_ACCOUNT"].includes(method)) {
-    const fee = Math.round(amountCents * 0.008);
-    return Math.min(fee, 500); // capped at $5.00
   }
 
   // Card, Apple Pay, Google Pay, Amazon Pay, etc.

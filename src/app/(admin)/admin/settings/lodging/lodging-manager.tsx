@@ -39,6 +39,13 @@ import {
   DoorOpen,
   Wand2,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
 
@@ -70,6 +77,13 @@ interface Room {
   fee_per_night_cents: number;
   is_accessible: boolean;
   is_available: boolean;
+  fee_category_code: string | null;
+}
+
+interface FeeCategory {
+  id: string;
+  code: string;
+  name_en: string;
 }
 
 type DialogMode =
@@ -85,6 +99,7 @@ export function LodgingManager() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [floors, setFloors] = useState<Floor[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [lodgingCategories, setLodgingCategories] = useState<FeeCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [saving, setSaving] = useState(false);
@@ -114,6 +129,7 @@ export function LodgingManager() {
     fee_per_night_cents: 0,
     is_accessible: false,
     is_available: true,
+    fee_category_code: "" as string,
   });
   const [bulkForm, setBulkForm] = useState({
     prefix: "",
@@ -122,12 +138,23 @@ export function LodgingManager() {
     capacity: 4,
     has_ac: false,
     fee_per_night_cents: 0,
+    fee_category_code: "" as string,
   });
 
   // ─── Load all lodging data ────────────────────────────────────
 
   const loadData = useCallback(async () => {
     const supabase = createClient();
+
+    // Load lodging fee categories (inventory trackable lodging types)
+    const { data: feeData } = await supabase
+      .from("eckcm_fee_categories")
+      .select("id, code, name_en")
+      .eq("category", "LODGING")
+      .eq("is_inventory_trackable", true)
+      .eq("is_active", true)
+      .order("sort_order");
+    setLodgingCategories(feeData ?? []);
 
     const { data: bData } = await supabase
       .from("eckcm_buildings")
@@ -291,6 +318,7 @@ export function LodgingManager() {
         fee_per_night_cents: editing.fee_per_night_cents,
         is_accessible: editing.is_accessible,
         is_available: editing.is_available,
+        fee_category_code: editing.fee_category_code ?? "",
       });
     } else {
       setRoomForm({
@@ -300,6 +328,7 @@ export function LodgingManager() {
         fee_per_night_cents: 0,
         is_accessible: false,
         is_available: true,
+        fee_category_code: "",
       });
     }
     setDialogMode({ type: "room", floorId, editing });
@@ -323,6 +352,7 @@ export function LodgingManager() {
       fee_per_night_cents: roomForm.fee_per_night_cents,
       is_accessible: roomForm.is_accessible,
       is_available: roomForm.is_available,
+      fee_category_code: roomForm.fee_category_code || null,
     };
 
     if (editing) {
@@ -344,7 +374,7 @@ export function LodgingManager() {
   // ─── Bulk room generation ─────────────────────────────────────
 
   const openBulkDialog = (floorId: string) => {
-    setBulkForm({ prefix: "", start: 1, count: 10, capacity: 4, has_ac: false, fee_per_night_cents: 0 });
+    setBulkForm({ prefix: "", start: 1, count: 10, capacity: 4, has_ac: false, fee_per_night_cents: 0, fee_category_code: "" });
     setDialogMode({ type: "bulk-rooms", floorId });
   };
 
@@ -363,6 +393,7 @@ export function LodgingManager() {
       capacity: bulkForm.capacity,
       has_ac: bulkForm.has_ac,
       fee_per_night_cents: bulkForm.fee_per_night_cents,
+      fee_category_code: bulkForm.fee_category_code || null,
       is_accessible: false,
       is_available: true,
     }));
@@ -582,6 +613,7 @@ export function LodgingManager() {
                               <TableRow>
                                 <TableHead>Room #</TableHead>
                                 <TableHead>Capacity</TableHead>
+                                <TableHead>Category</TableHead>
                                 <TableHead>A/C</TableHead>
                                 <TableHead>Fee/Night</TableHead>
                                 <TableHead>Accessible</TableHead>
@@ -599,6 +631,13 @@ export function LodgingManager() {
                                     {room.room_number}
                                   </TableCell>
                                   <TableCell>{room.capacity}</TableCell>
+                                  <TableCell className="text-xs">
+                                    {room.fee_category_code ? (
+                                      <Badge variant="outline" className="font-mono text-[10px]">
+                                        {lodgingCategories.find(c => c.code === room.fee_category_code)?.name_en ?? room.fee_category_code}
+                                      </Badge>
+                                    ) : "-"}
+                                  </TableCell>
                                   <TableCell>
                                     {room.has_ac ? "Yes" : "-"}
                                   </TableCell>
@@ -816,6 +855,27 @@ export function LodgingManager() {
               </div>
             </div>
             <div className="space-y-1">
+              <Label>Lodging Category</Label>
+              <Select
+                value={roomForm.fee_category_code || "__none__"}
+                onValueChange={(v) =>
+                  setRoomForm({ ...roomForm, fee_category_code: v === "__none__" ? "" : v })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {lodgingCategories.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.name_en} ({c.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
               <Label>Fee Per Night ($)</Label>
               <Input
                 type="number"
@@ -955,6 +1015,27 @@ export function LodgingManager() {
                   }
                 />
               </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Lodging Category</Label>
+              <Select
+                value={bulkForm.fee_category_code || "__none__"}
+                onValueChange={(v) =>
+                  setBulkForm({ ...bulkForm, fee_category_code: v === "__none__" ? "" : v })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {lodgingCategories.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.name_en} ({c.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center gap-2">
               <Switch

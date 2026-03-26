@@ -606,6 +606,7 @@ describe("calculateEstimate", () => {
         total: 0,
         breakdown: [],
         manualPaymentDiscount: 0,
+        fundingDiscount: 0,
         ...overrides,
       };
     }

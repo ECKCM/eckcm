@@ -5,6 +5,7 @@ import type { MealFeeCategory, LodgingRate } from "@/lib/services/pricing.servic
 import { estimateSchema } from "@/lib/schemas/api";
 import { logger } from "@/lib/logger";
 import { populateDefaultMeals } from "@/lib/services/meal.service";
+import { loadFundingForGroup, toFundingDiscounts } from "@/lib/services/funding.service";
 
 export async function POST(request: Request) {
   try {
@@ -193,6 +194,10 @@ export async function POST(request: Request) {
     ? await loadMemberGroupFees(supabase, processedRoomGroups, eventEarlyDates)
     : {};
 
+  // Load active funding sources targeting this registration group
+  const fundingSources = await loadFundingForGroup(supabase, registrationGroupId);
+  const fundingDiscounts = toFundingDiscounts(fundingSources);
+
   const estimate = calculateEstimate({
     nightsCount,
     roomGroups: processedRoomGroups,
@@ -216,6 +221,7 @@ export async function POST(request: Request) {
     defaultMealFeeCategories: defMealFeeCategories,
     defaultManualPaymentDiscountPerPerson: defManualPaymentDiscountPerPerson,
     memberGroupFees,
+    fundingDiscounts,
   });
 
   // Dual estimate: compute what default group would charge, then list waived benefits

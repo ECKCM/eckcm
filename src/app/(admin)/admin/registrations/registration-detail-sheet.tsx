@@ -720,13 +720,16 @@ function AdjustmentsPanel({
     if (!reason.trim()) return;
     setSubmitting(true);
     try {
-      const newAmountCents = Math.round(parseFloat(newAmountDollars) * 100);
+      const inputCents = Math.round(parseFloat(newAmountDollars) * 100);
+      const apiNewAmount = newAction === "refund"
+        ? Math.max(0, currentAmount - inputCents)
+        : inputCents;
       const res = await fetch(`/api/admin/registrations/${registrationId}/adjustments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           adjustment_type: newType,
-          new_amount: newAmountCents,
+          new_amount: apiNewAmount,
           action_taken: newAction,
           reason: reason.trim(),
         }),
@@ -777,8 +780,20 @@ function AdjustmentsPanel({
     setSubmitting(false);
   };
 
-  const newAmountCents = Math.round(parseFloat(newAmountDollars) * 100) || 0;
+  const inputCents = Math.round(parseFloat(newAmountDollars) * 100) || 0;
+  const isRefundAction = newAction === "refund";
+  // When action is "refund", input = refund amount; otherwise input = new total
+  const newAmountCents = isRefundAction ? currentAmount - inputCents : inputCents;
   const diff = newAmountCents - currentAmount;
+
+  // Refund limit: processing fee is non-refundable
+  const feeBase = summary && summary.original_amount > 0 ? summary.original_amount : currentAmount;
+  const processingFee = feeBase > 0 ? calculateProcessingFee(feeBase, paymentMethod) : 0;
+  const maxRefundTotal = feeBase - processingFee;
+  const availableRefund = summary ? Math.max(0, maxRefundTotal - summary.total_refunded) : 0;
+  // Stripe refund is capped at availableRefund; registration total goes to 0 on full refund
+  const stripeRefund = isRefundAction ? Math.min(inputCents, availableRefund) : 0;
+  const refundExceedsTotal = isRefundAction && inputCents > currentAmount;
 
   if (loading) {
     return (
@@ -811,26 +826,28 @@ function AdjustmentsPanel({
               <p className="text-[10px] text-muted-foreground">Refunded</p>
             </div>
           </div>
-          {(() => {
-            const processingFee = calculateProcessingFee(summary.original_amount, paymentMethod);
-            const maxRefund = summary.original_amount - processingFee;
-            return (
-              <div className="space-y-1 text-xs text-muted-foreground px-1">
+          <div className="space-y-1 text-xs text-muted-foreground px-1">
+            <div className="flex justify-between">
+              <span>Net Balance: <strong className="text-foreground">{formatMoney(summary.net_balance)}</strong></span>
+              {summary.pending_count > 0 && (
+                <span className="text-amber-600">Pending: {summary.pending_count}</span>
+              )}
+            </div>
+            {processingFee > 0 && (
+              <>
                 <div className="flex justify-between">
-                  <span>Net Balance: <strong className="text-foreground">{formatMoney(summary.net_balance)}</strong></span>
-                  {summary.pending_count > 0 && (
-                    <span className="text-amber-600">Pending: {summary.pending_count}</span>
-                  )}
+                  <span>Processing Fee ({paymentMethod?.replace(/_/g, " ")}): <strong className="text-foreground">{formatMoney(processingFee)}</strong></span>
+                  <span>Max Refund: <strong className="text-foreground">{formatMoney(maxRefundTotal)}</strong></span>
                 </div>
-                {processingFee > 0 && (
+                {summary.total_refunded > 0 && (
                   <div className="flex justify-between">
-                    <span>Processing Fee ({paymentMethod?.replace(/_/g, " ")}): <strong className="text-foreground">{formatMoney(processingFee)}</strong></span>
-                    <span>Max Refund: <strong className="text-foreground">{formatMoney(maxRefund)}</strong></span>
+                    <span>Refunded: <strong className="text-foreground">{formatMoney(summary.total_refunded)}</strong></span>
+                    <span>Available: <strong className={availableRefund <= 0 ? "text-destructive" : "text-foreground"}>{formatMoney(availableRefund)}</strong></span>
                   </div>
                 )}
-              </div>
-            );
-          })()}
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -950,7 +967,9 @@ function AdjustmentsPanel({
             </div>
 
             <div>
-              <label className="text-sm font-medium">New Total ($)</label>
+              <label className="text-sm font-medium">
+                {isRefundAction ? "Refund Amount ($)" : "New Total ($)"}
+              </label>
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                 <Input
@@ -962,19 +981,45 @@ function AdjustmentsPanel({
                   className="pl-7"
                 />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Current: {formatMoney(currentAmount)}
-                {" · "}
-                Difference:{" "}
-                <span className={diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : ""}>
-                  {diff >= 0 ? "+" : ""}{formatMoney(diff)}
-                </span>
-              </p>
+              {isRefundAction ? (
+                <div className="text-xs mt-1 space-y-0.5">
+                  <p className="text-muted-foreground">
+                    New Total: {formatMoney(Math.max(0, newAmountCents))}
+                    {processingFee > 0 && inputCents > 0 && (
+                      <> · Stripe refund: {formatMoney(stripeRefund)}
+                        {inputCents > availableRefund && ` (fee ${formatMoney(processingFee)} non-refundable)`}
+                      </>
+                    )}
+                  </p>
+                  {refundExceedsTotal && (
+                    <p className="text-destructive">
+                      Cannot refund more than current amount ({formatMoney(currentAmount)})
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Current: {formatMoney(currentAmount)}
+                  {" · "}
+                  Difference:{" "}
+                  <span className={diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : ""}>
+                    {diff >= 0 ? "+" : ""}{formatMoney(diff)}
+                  </span>
+                </p>
+              )}
             </div>
 
             <div>
               <label className="text-sm font-medium">Action</label>
-              <Select value={newAction} onValueChange={setNewAction}>
+              <Select value={newAction} onValueChange={(val) => {
+                setNewAction(val);
+                if (val === "refund") {
+                  // Auto-fill with full current amount (Stripe refund is capped separately)
+                  setNewAmountDollars((currentAmount / 100).toFixed(2));
+                } else if (newAction === "refund") {
+                  setNewAmountDollars((currentAmount / 100).toFixed(2));
+                }
+              }}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -1004,7 +1049,7 @@ function AdjustmentsPanel({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCreate}
-              disabled={!reason.trim() || submitting}
+              disabled={!reason.trim() || submitting || refundExceedsTotal}
             >
               {submitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
               Confirm Adjustment
@@ -1042,6 +1087,12 @@ function AdjustmentsPanel({
                   <SelectItem value="credit">Credit</SelectItem>
                 </SelectContent>
               </Select>
+              {processAction === "refund" && processingAdj && processingFee > 0 && (
+                <p className="text-xs mt-1.5 text-muted-foreground">
+                  Actual refund: {formatMoney(Math.min(Math.abs(processingAdj.difference), availableRefund))}{" "}
+                  (fee {formatMoney(processingFee)} non-refundable)
+                </p>
+              )}
             </div>
 
             <AlertDialogFooter>

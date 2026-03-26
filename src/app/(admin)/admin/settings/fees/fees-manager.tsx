@@ -36,9 +36,9 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
 
-type FeeTab = "all" | "GENERAL" | "LODGING" | "MEALS";
+type FeeTab = "all" | "GENERAL" | "LODGING" | "MEALS" | "FUNDING";
 
-const CATEGORIES = ["GENERAL", "LODGING", "MEALS"] as const;
+const CATEGORIES = ["GENERAL", "LODGING", "MEALS", "FUNDING"] as const;
 
 interface FeeCategory {
   id: string;
@@ -56,6 +56,13 @@ interface FeeCategory {
   is_inventory_trackable: boolean;
 }
 
+interface RegistrationGroup {
+  id: string;
+  name_en: string;
+  name_ko: string | null;
+  is_active: boolean;
+}
+
 const PRICING_TYPES = ["FLAT", "PER_NIGHT", "PER_MEAL", "TIERED"];
 
 const emptyForm = {
@@ -70,6 +77,10 @@ const emptyForm = {
   age_min: "",
   age_max: "",
   is_inventory_trackable: false,
+  // Funding-specific fields (stored in metadata)
+  funding_group_id: "",
+  sponsor_name: "",
+  sponsor_contact: "",
 };
 
 export function FeeCategoriesManager() {
@@ -82,6 +93,17 @@ export function FeeCategoriesManager() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [registrationGroups, setRegistrationGroups] = useState<RegistrationGroup[]>([]);
+
+  const loadRegistrationGroups = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("eckcm_registration_groups")
+      .select("id, name_en, name_ko, is_active")
+      .eq("is_active", true)
+      .order("name_en");
+    setRegistrationGroups(data ?? []);
+  }, []);
 
   const loadFees = useCallback(async () => {
     setLoading(true);
@@ -98,7 +120,8 @@ export function FeeCategoriesManager() {
   useEffect(() => {
     setMounted(true);
     loadFees();
-  }, [loadFees]);
+    loadRegistrationGroups();
+  }, [loadFees, loadRegistrationGroups]);
 
   // Live updates
   const _reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -128,6 +151,9 @@ export function FeeCategoriesManager() {
       age_min: fee.age_min != null ? fee.age_min.toString() : "",
       age_max: fee.age_max != null ? fee.age_max.toString() : "",
       is_inventory_trackable: fee.is_inventory_trackable,
+      funding_group_id: (fee.metadata?.registration_group_id as string) ?? "",
+      sponsor_name: (fee.metadata?.sponsor_name as string) ?? "",
+      sponsor_contact: (fee.metadata?.sponsor_contact as string) ?? "",
     });
     setDialogOpen(true);
   };
@@ -137,21 +163,34 @@ export function FeeCategoriesManager() {
       toast.error("Code and Name are required");
       return;
     }
+    if (form.category === "FUNDING" && !form.funding_group_id) {
+      toast.error("Registration Group is required for Funding categories");
+      return;
+    }
     setSaving(true);
     const supabase = createClient();
+
+    // Build metadata — include funding fields when category is FUNDING
+    const metadata: Record<string, unknown> = {};
+    if (form.category === "FUNDING") {
+      metadata.registration_group_id = form.funding_group_id;
+      if (form.sponsor_name) metadata.sponsor_name = form.sponsor_name;
+      if (form.sponsor_contact) metadata.sponsor_contact = form.sponsor_contact;
+    }
 
     const payload = {
       code: form.code.toUpperCase(),
       category: form.category,
       name_en: form.name_en,
       name_ko: form.name_ko || null,
-      pricing_type: form.pricing_type,
+      pricing_type: form.category === "FUNDING" ? "FLAT" : form.pricing_type,
       amount_cents: parseInt(form.amount_cents) || 0,
       sort_order: parseInt(form.sort_order) || 0,
       is_active: form.is_active,
       age_min: form.age_min ? parseInt(form.age_min) : null,
       age_max: form.age_max ? parseInt(form.age_max) : null,
       is_inventory_trackable: form.is_inventory_trackable,
+      metadata,
     };
 
     if (editingId) {
@@ -222,6 +261,7 @@ export function FeeCategoriesManager() {
             <TabsTrigger value="GENERAL">General</TabsTrigger>
             <TabsTrigger value="LODGING">Lodging</TabsTrigger>
             <TabsTrigger value="MEALS">Meals</TabsTrigger>
+            <TabsTrigger value="FUNDING">Funding</TabsTrigger>
           </TabsList>
         </Tabs>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -293,73 +333,146 @@ export function FeeCategoriesManager() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label>Pricing Type</Label>
-                  <Select
-                    value={form.pricing_type}
-                    onValueChange={(v) =>
-                      setForm({ ...form, pricing_type: v })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRICING_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label>Amount (cents)</Label>
-                  <Input
-                    type="number"
-                    value={form.amount_cents}
-                    onChange={(e) =>
-                      setForm({ ...form, amount_cents: e.target.value })
-                    }
-                    placeholder="15000 = $150"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Sort Order</Label>
-                  <Input
-                    type="number"
-                    value={form.sort_order}
-                    onChange={(e) =>
-                      setForm({ ...form, sort_order: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Age Min</Label>
-                  <Input
-                    type="number"
-                    value={form.age_min}
-                    onChange={(e) =>
-                      setForm({ ...form, age_min: e.target.value })
-                    }
-                    placeholder="No minimum"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Age Max</Label>
-                  <Input
-                    type="number"
-                    value={form.age_max}
-                    onChange={(e) =>
-                      setForm({ ...form, age_max: e.target.value })
-                    }
-                    placeholder="No maximum"
-                  />
-                </div>
-              </div>
+              {form.category === "FUNDING" ? (
+                <>
+                  {/* Funding: Registration Group + Amount */}
+                  <div className="space-y-1">
+                    <Label>Target Registration Group *</Label>
+                    <Select
+                      value={form.funding_group_id}
+                      onValueChange={(v) =>
+                        setForm({ ...form, funding_group_id: v })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a group..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {registrationGroups.map((g) => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.name_en}{g.name_ko ? ` (${g.name_ko})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>Funding per Registration (cents)</Label>
+                      <Input
+                        type="number"
+                        value={form.amount_cents}
+                        onChange={(e) =>
+                          setForm({ ...form, amount_cents: e.target.value })
+                        }
+                        placeholder="5000 = $50"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Sort Order</Label>
+                      <Input
+                        type="number"
+                        value={form.sort_order}
+                        onChange={(e) =>
+                          setForm({ ...form, sort_order: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>Sponsor Name</Label>
+                      <Input
+                        value={form.sponsor_name}
+                        onChange={(e) =>
+                          setForm({ ...form, sponsor_name: e.target.value })
+                        }
+                        placeholder="e.g. HANSAMO"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Sponsor Contact</Label>
+                      <Input
+                        value={form.sponsor_contact}
+                        onChange={(e) =>
+                          setForm({ ...form, sponsor_contact: e.target.value })
+                        }
+                        placeholder="Email or phone"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label>Pricing Type</Label>
+                      <Select
+                        value={form.pricing_type}
+                        onValueChange={(v) =>
+                          setForm({ ...form, pricing_type: v })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PRICING_TYPES.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Amount (cents)</Label>
+                      <Input
+                        type="number"
+                        value={form.amount_cents}
+                        onChange={(e) =>
+                          setForm({ ...form, amount_cents: e.target.value })
+                        }
+                        placeholder="15000 = $150"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Sort Order</Label>
+                      <Input
+                        type="number"
+                        value={form.sort_order}
+                        onChange={(e) =>
+                          setForm({ ...form, sort_order: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>Age Min</Label>
+                      <Input
+                        type="number"
+                        value={form.age_min}
+                        onChange={(e) =>
+                          setForm({ ...form, age_min: e.target.value })
+                        }
+                        placeholder="No minimum"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Age Max</Label>
+                      <Input
+                        type="number"
+                        value={form.age_max}
+                        onChange={(e) =>
+                          setForm({ ...form, age_max: e.target.value })
+                        }
+                        placeholder="No maximum"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Switch
@@ -403,7 +516,7 @@ export function FeeCategoriesManager() {
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Amount</TableHead>
-              <TableHead>Age</TableHead>
+              <TableHead>{activeTab === "FUNDING" ? "Target Group" : "Age"}</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -439,9 +552,18 @@ export function FeeCategoriesManager() {
                   </TableCell>
                   <TableCell>${(fee.amount_cents / 100).toFixed(2)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {fee.age_min != null || fee.age_max != null
-                      ? `${fee.age_min ?? "0"}–${fee.age_max ?? "∞"}`
-                      : "—"}
+                    {fee.category === "FUNDING" ? (
+                      <>
+                        {registrationGroups.find((g) => g.id === fee.metadata?.registration_group_id)?.name_en ?? "—"}
+                        {fee.metadata?.sponsor_name && (
+                          <p className="text-xs text-muted-foreground">Sponsor: {fee.metadata.sponsor_name as string}</p>
+                        )}
+                      </>
+                    ) : (
+                      fee.age_min != null || fee.age_max != null
+                        ? `${fee.age_min ?? "0"}–${fee.age_max ?? "∞"}`
+                        : "—"
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">

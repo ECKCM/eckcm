@@ -58,9 +58,10 @@ export default function LodgingStep() {
 
       const { data, error } = await supabase
         .from("eckcm_registration_group_fee_categories")
-        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents)")
+        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, is_active)")
         .eq("registration_group_id", state.registrationGroupId!)
-        .like("eckcm_fee_categories.code", "LODGING_%");
+        .like("eckcm_fee_categories.code", "LODGING_%")
+        .eq("eckcm_fee_categories.is_active", true);
 
       if (error) {
         console.error("Failed to fetch lodging options:", error);

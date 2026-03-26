@@ -41,6 +41,9 @@ const ROUTE_PERMISSIONS: [string, string][] = [
   ["/admin/print/lanyard", "print.lanyard"],
   ["/admin/print/qr-cards", "print.qrcard"],
 
+  // Funding
+  ["/admin/funding", "settings.manage"],
+
   // Audit & Users
   ["/admin/audit", "audit.read"],
   ["/admin/users", "user.manage"],

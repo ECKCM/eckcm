@@ -1125,7 +1125,6 @@ export function AdminRegistrationForm() {
                   <SelectItem value="MANUAL">Manual / Cash</SelectItem>
                   <SelectItem value="CHECK">Check</SelectItem>
                   <SelectItem value="ZELLE">Zelle</SelectItem>
-                  <SelectItem value="ACH">ACH</SelectItem>
                 </SelectContent>
               </Select>
             </div>

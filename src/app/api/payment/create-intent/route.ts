@@ -251,7 +251,6 @@ export async function POST(request: Request) {
     },
     payment_method_types: [
       "card",
-      "us_bank_account",
       "amazon_pay",
     ],
   });

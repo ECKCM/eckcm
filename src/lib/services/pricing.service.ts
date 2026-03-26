@@ -45,6 +45,8 @@ interface PricingInput {
   // Per-member group fees: when a member has their own access code (memberRegistrationGroupId),
   // use that group's fees instead of the default group's fees
   memberGroupFees?: Record<string, MemberGroupFees>;
+  // Funding discounts from FUNDING fee categories targeting this registration group
+  fundingDiscounts?: { feeCategoryId: string; name: string; nameKo: string; amountCents: number }[];
 }
 
 export interface MemberGroupFees {
@@ -385,9 +387,28 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
   }
 
   const subtotal = registrationFee + lodgingFee + additionalLodgingFee + mealFee + vbsFee;
-  const total = subtotal + keyDeposit;
 
-  // 7. Manual payment discount (informational — not subtracted from total)
+  // 7. Funding discounts (per-registration, subtracted from total)
+  let fundingDiscount = 0;
+  if (input.fundingDiscounts && input.fundingDiscounts.length > 0) {
+    for (const fd of input.fundingDiscounts) {
+      fundingDiscount += fd.amountCents;
+      breakdown.push({
+        description: `Funding: ${fd.name}`,
+        descriptionKo: `후원금: ${fd.nameKo}`,
+        quantity: 1,
+        unitPrice: -fd.amountCents,
+        amount: -fd.amountCents,
+        category: "funding",
+      });
+    }
+    // Funding cannot exceed subtotal
+    fundingDiscount = Math.min(fundingDiscount, subtotal);
+  }
+
+  const total = subtotal + keyDeposit - fundingDiscount;
+
+  // 8. Manual payment discount (informational — not subtracted from total)
   const manualPaymentDiscount =
     input.manualPaymentDiscountPerPerson > 0
       ? input.manualPaymentDiscountPerPerson * totalParticipants
@@ -404,6 +425,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     total,
     breakdown,
     manualPaymentDiscount,
+    fundingDiscount,
   };
 }
 

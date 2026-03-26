@@ -144,7 +144,8 @@ export default function ReviewStep() {
     0
   );
 
-  const formatDollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+  const formatDollars = (cents: number) =>
+    cents < 0 ? `-$${(Math.abs(cents) / 100).toFixed(2)}` : `$${(cents / 100).toFixed(2)}`;
 
   /** YYYY-MM-DD → MM.DD.YYYY */
   const formatDate = (d: string) => {
@@ -261,7 +262,7 @@ export default function ReviewStep() {
           ) : estimate ? (
             <div className="space-y-2">
               {estimate.breakdown.map((item, i) => (
-                <div key={i} className={`flex justify-between text-sm ${item.amount === 0 ? "text-green-600" : ""}`}>
+                <div key={i} className={`flex justify-between text-sm ${item.amount === 0 ? "text-green-600" : ""} ${item.amount < 0 ? "text-green-600" : ""}`}>
                   <span>
                     {item.description}
                     {item.quantity > 1 && item.unitPrice > 0

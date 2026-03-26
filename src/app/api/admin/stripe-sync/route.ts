@@ -90,8 +90,7 @@ export async function POST(request: Request) {
         // Determine payment method
         const pmType = succeededPI.payment_method_types?.[0] ?? "card";
         let method = "CARD";
-        if (pmType === "us_bank_account") method = "ACH";
-        else if (pmType === "klarna") method = "KLARNA";
+        if (pmType === "klarna") method = "KLARNA";
         else if (pmType === "amazon_pay") method = "AMAZON_PAY";
 
         // Create missing payment record

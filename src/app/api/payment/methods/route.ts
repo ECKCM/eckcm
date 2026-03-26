@@ -19,13 +19,13 @@ export async function GET() {
   if (error || !data) {
     // Default: all methods enabled
     return NextResponse.json({
-      enabled: ["card", "ach", "zelle", "check", "wallet"],
+      enabled: ["card", "zelle", "check", "wallet"],
       donorCoversFees: false,
     });
   }
 
   return NextResponse.json({
-    enabled: data.enabled_payment_methods ?? ["card", "ach", "zelle", "check", "wallet"],
+    enabled: data.enabled_payment_methods ?? ["card", "zelle", "check", "wallet"],
     donorCoversFees: data.donor_covers_fees_registration ?? false,
   });
 }

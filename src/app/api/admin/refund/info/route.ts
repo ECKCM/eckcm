@@ -48,13 +48,8 @@ export async function GET(request: Request) {
   let stripeFeesCents = 0;
 
   if (deductFees && payment.payment_method !== "MANUAL" && payment.payment_method !== "ZELLE" && payment.payment_method !== "CHECK") {
-    if (payment.payment_method === "ACH") {
-      // ACH: 0.8%, capped at $5.00
-      stripeFeesCents = Math.min(Math.round(payment.amount_cents * 0.008), 500);
-    } else {
-      // Card (default): 2.9% + $0.30
-      stripeFeesCents = Math.round(payment.amount_cents * 0.029) + 30;
-    }
+    // Card: 2.9% + $0.30
+    stripeFeesCents = Math.round(payment.amount_cents * 0.029) + 30;
   }
 
   const remainingAfterFeesCents = Math.max(0, remainingCents - stripeFeesCents);

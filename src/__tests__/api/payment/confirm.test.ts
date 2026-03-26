@@ -311,7 +311,7 @@ describe("POST /api/payment/confirm", () => {
     expect(json.status).toBe("confirmed");
   });
 
-  it("handles ACH payment (processing) → returns 'processing'", async () => {
+  it("rejects payment with processing status", async () => {
     const reg = setupRegistration();
 
     mockAdminFrom.mockImplementation((table: string) => {
@@ -321,9 +321,6 @@ describe("POST /api/payment/confirm", () => {
             eq: vi.fn(() => ({
               single: vi.fn(() => ({ data: reg, error: null })),
             })),
-          })),
-          update: vi.fn(() => ({
-            eq: vi.fn(() => ({ data: null, error: null })),
           })),
         };
       }
@@ -339,44 +336,28 @@ describe("POST /api/payment/confirm", () => {
           })),
         };
       }
-      if (table === "eckcm_payments") {
-        return {
-          update: vi.fn(() => ({
-            eq: vi.fn(() => ({ data: null, error: null })),
-          })),
-        };
-      }
-      if (table === "eckcm_invoices") {
-        return {
-          update: vi.fn(() => ({
-            eq: vi.fn(() => ({ data: null, error: null })),
-          })),
-        };
-      }
       return {};
     });
 
-    // ACH payment: status = "processing"
+    // Payment status = "processing" (not succeeded)
     mockRetrieve.mockResolvedValue({
-      id: "pi_ach",
+      id: "pi_processing",
       status: "processing",
       metadata: {
         registrationId: "550e8400-e29b-41d4-a716-446655440000",
         userId,
         invoiceId: "inv-1",
       },
-      payment_method: "pm_us_bank",
+      payment_method: "pm_test",
     });
 
     const res = await POST(
       makeRequest({
         registrationId: "550e8400-e29b-41d4-a716-446655440000",
-        paymentIntentId: "pi_ach",
+        paymentIntentId: "pi_processing",
       })
     );
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json.status).toBe("processing");
+    expect(res.status).toBe(400);
   });
 
   it("returns 400 when PaymentIntent status is not succeeded/processing", async () => {

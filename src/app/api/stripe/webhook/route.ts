@@ -10,8 +10,7 @@ import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 
 /**
  * Stripe webhook handler.
- * Handles payment_intent.succeeded (ACH finally clears) and
- * payment_intent.payment_failed (ACH rejected by bank).
+ * Handles payment_intent.succeeded and payment_intent.payment_failed.
  *
  * Card payments are already confirmed instantly via /api/payment/confirm,
  * so webhooks for card are idempotent no-ops.
@@ -135,8 +134,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true });
     }
 
-    // ACH payment succeeded — upgrade from SUBMITTED/DRAFT to PAID
-    logger.info("[stripe/webhook] ACH payment succeeded — updating to PAID", {
+    // Payment succeeded — upgrade to PAID
+    logger.info("[stripe/webhook] Payment succeeded — updating to PAID", {
       registrationId,
       previousStatus: registration.status,
     });
@@ -267,14 +266,13 @@ export async function POST(request: Request) {
     });
 
     // Cancel registration when payment fails
-    // Handles both SUBMITTED (new flow) and PAID (old flow that incorrectly marked ACH as PAID)
     const { data: registration } = await admin
       .from("eckcm_registrations")
       .select("id, status")
       .eq("id", registrationId)
       .single();
 
-    if (registration && (registration.status === "SUBMITTED" || registration.status === "PAID")) {
+    if (registration && registration.status === "PAID") {
       logger.warn("[stripe/webhook] Cancelling registration — payment failed", {
         registrationId,
         previousStatus: registration.status,

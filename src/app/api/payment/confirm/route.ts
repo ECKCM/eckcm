@@ -139,10 +139,9 @@ export async function POST(request: Request) {
 
   const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
-  const isProcessing = paymentIntent.status === "processing"; // ACH/us_bank_account
-  const isSucceeded = paymentIntent.status === "succeeded";  // Card/wallet
+  const isSucceeded = paymentIntent.status === "succeeded";
 
-  if (!isSucceeded && !isProcessing) {
+  if (!isSucceeded) {
     return NextResponse.json(
       { error: `Payment not succeeded. Status: ${paymentIntent.status}` },
       { status: 400 }
@@ -162,8 +161,6 @@ export async function POST(request: Request) {
 
   const invoiceId = paymentIntent.metadata.invoiceId;
 
-  if (isSucceeded) {
-    // ── Card/wallet: payment confirmed instantly → PAID ──
     const { error: registrationError, data: registrationData } = await admin
       .from("eckcm_registrations")
       .update({ status: "PAID" })
@@ -238,44 +235,6 @@ export async function POST(request: Request) {
     await recalculateInventorySafe(admin);
 
     return NextResponse.json({ status: "confirmed" });
-  }
-
-  // ── ACH/us_bank_account: still processing → SUBMITTED (awaiting bank confirmation) ──
-  // Final confirmation will come via Stripe webhook
-  logger.info("[payment/confirm] ACH payment processing — setting SUBMITTED", {
-    registrationId,
-    paymentIntentId,
-  });
-
-  await admin
-    .from("eckcm_registrations")
-    .update({ status: "SUBMITTED" })
-    .eq("id", registrationId);
-
-  // Mark payment as PENDING (not SUCCEEDED yet)
-  await admin
-    .from("eckcm_payments")
-    .update({
-      status: "PENDING",
-      metadata: {
-        stripe_payment_method: paymentIntent.payment_method,
-        confirmed_by: "client",
-        ach_processing: true,
-      },
-    })
-    .eq("stripe_payment_intent_id", paymentIntentId);
-
-  if (invoiceId) {
-    await admin
-      .from("eckcm_invoices")
-      .update({ status: "PENDING" })
-      .eq("id", invoiceId);
-  }
-
-  // Update inventory counts (SUBMITTED status)
-  await recalculateInventorySafe(admin);
-
-  return NextResponse.json({ status: "processing" });
   } catch (err) {
     logger.error("[payment/confirm] Unhandled error", { error: String(err) });
     return NextResponse.json(
