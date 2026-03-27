@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 import { requireAdmin } from "@/lib/auth/admin";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 import { insertInitialPayment } from "@/lib/services/adjustment.service";
+import { syncRegistration } from "@/lib/services/google-sheets.service";
 
 interface ManualPayBody {
   invoiceId: string;
@@ -217,6 +218,9 @@ export async function POST(request: Request) {
 
   // Update inventory counts
   await recalculateInventorySafe(admin);
+
+  // Sync to Google Sheets
+  syncRegistration(registration.event_id, registration.id).catch(() => {});
 
   // 12. Audit log
   await admin.from("eckcm_audit_logs").insert({

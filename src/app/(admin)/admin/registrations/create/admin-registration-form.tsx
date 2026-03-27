@@ -194,7 +194,8 @@ export function AdminRegistrationForm() {
     const { data: groups } = await supabase
       .from("eckcm_registration_groups")
       .select("id, name_en, is_default, only_one_person")
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .order("sort_order");
 
     setRegGroups(groups ?? []);
     if (groups?.length) {

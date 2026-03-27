@@ -70,7 +70,7 @@ export default async function RootLayout({
 
   return (
     <html
-      lang="ko"
+      lang="en"
       suppressHydrationWarning
       {...(colorTheme !== DEFAULT_COLOR_THEME
         ? { "data-color-theme": colorTheme }

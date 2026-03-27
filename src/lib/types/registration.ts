@@ -100,6 +100,7 @@ export interface PriceEstimate {
   subtotal: number;
   total: number;
   breakdown: PriceLineItem[];
+  participantBreakdown: Record<string, PriceLineItem[]>; // keyed by participant temp ID — per-person fee items
   manualPaymentDiscount: number; // cents — per-person discount × participants (informational, NOT subtracted from total)
   fundingDiscount: number; // cents — total funding discount applied (subtracted from total)
 }

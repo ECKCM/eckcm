@@ -10,21 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Loader2, Banknote } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { WizardStepper } from "@/components/registration/wizard-stepper";
-import type { PriceEstimate } from "@/lib/types/registration";
+import type { PriceEstimate, PriceLineItem } from "@/lib/types/registration";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/context";
 
@@ -112,7 +104,7 @@ export default function ReviewStep() {
       });
       if (!res.ok) {
         const text = await res.text();
-        let message = `Submission failed (${res.status})`;
+        let message = `${t("registration.submissionFailed")} (${res.status})`;
         try {
           const err = JSON.parse(text);
           message = err.error || message;
@@ -134,7 +126,7 @@ export default function ReviewStep() {
     } catch (err) {
       console.error("[ReviewStep] Submit error:", err);
       toast.error(
-        err instanceof Error ? err.message : "Network error. Please try again."
+        err instanceof Error ? err.message : t("registration.networkError")
       );
       setSubmitting(false);
       submitCalledRef.current = false;
@@ -199,58 +191,117 @@ export default function ReviewStep() {
         </CardContent>
       </Card>
 
-      {/* Participants List */}
-      {state.roomGroups.map((group, gi) => (
-        <Card key={group.id}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">
-              Group{state.roomGroups.length > 1 ? ` ${gi + 1}` : ""} - {group.participants.length} participant(s), {group.keyCount} key(s)
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {[
-                group.lodgingType && `Lodging: ${group.lodgingType.replace("LODGING_", "").replace("_", " ")}`,
-                group.preferences.elderly && t("registration.elderly"),
-                group.preferences.handicapped && t("registration.accessible"),
-                group.preferences.firstFloor && t("registration.firstFloor"),
-              ]
-                .filter(Boolean)
-                .join(" · ") || t("registration.noSpecialPrefs")}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("registration.name")}</TableHead>
-                  <TableHead>Age (as of {formatDate(state.startDate)})</TableHead>
-                  <TableHead>{t("registration.department")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {group.participants.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell>
-                      <div>
-                        {p.firstName} {p.lastName}
-                        {p.displayNameKo ? ` (${p.displayNameKo})` : ""}
-                      </div>
-                      {p.isDateOverridden && p.checkInDate && p.checkOutDate && (
-                        <div className="text-xs text-muted-foreground">
-                          {formatDate(p.checkInDate)} ~ {formatDate(p.checkOutDate)}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>{p.birthYear ? calcAge(p.birthYear, p.birthMonth ?? 1, p.birthDay ?? 1) : "-"}</TableCell>
-                    <TableCell>{p.departmentId ? (deptMap[p.departmentId] ?? "-") : "-"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ))}
+      {/* Room Groups with Per-Participant Pricing */}
+      {state.roomGroups.map((group, gi) => {
+        // Group-level fee items (lodging, additional lodging)
+        const groupFeeItems: PriceLineItem[] = estimate
+          ? estimate.breakdown.filter((item) => {
+              const prefix = `Group ${gi + 1}:`;
+              if (item.category === "lodging" || item.category === "additional_lodging") {
+                return item.description.startsWith(prefix);
+              }
+              // Waived lodging items (no category, from computeWaivedBenefits)
+              if (!item.category && item.description.startsWith(prefix)) return true;
+              return false;
+            })
+          : [];
 
-      {/* Pricing Breakdown */}
+        return (
+          <Card key={group.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">
+                Group{state.roomGroups.length > 1 ? ` ${gi + 1}` : ""} - {group.participants.length} participant(s), {group.keyCount} key(s)
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {[
+                  group.lodgingType && `Lodging: ${group.lodgingType.replace("LODGING_", "").replace("_", " ")}`,
+                  group.preferences.elderly && t("registration.elderly"),
+                  group.preferences.handicapped && t("registration.accessible"),
+                  group.preferences.firstFloor && t("registration.firstFloor"),
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || t("registration.noSpecialPrefs")}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-0">
+              {group.participants.map((p, pi) => {
+                const pItems = estimate?.participantBreakdown?.[p.id] ?? [];
+                const pTotal = pItems.reduce((sum, item) => sum + item.amount, 0);
+                return (
+                  <div key={p.id}>
+                    {pi > 0 && <Separator className="my-3" />}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm">
+                          {p.firstName} {p.lastName}
+                          {p.displayNameKo ? ` (${p.displayNameKo})` : ""}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {[
+                            p.birthYear ? `Age ${calcAge(p.birthYear, p.birthMonth ?? 1, p.birthDay ?? 1)}` : null,
+                            p.departmentId ? (deptMap[p.departmentId] ?? null) : null,
+                          ].filter(Boolean).join(" · ")}
+                        </div>
+                        {p.isDateOverridden && p.checkInDate && p.checkOutDate && (
+                          <div className="text-xs text-muted-foreground">
+                            {formatDate(p.checkInDate)} ~ {formatDate(p.checkOutDate)}
+                          </div>
+                        )}
+                      </div>
+                      {!loading && estimate && pItems.length > 0 && (
+                        <span className="text-sm font-semibold shrink-0">
+                          {pTotal === 0 ? t("common.free") : formatDollars(pTotal)}
+                        </span>
+                      )}
+                    </div>
+                    {/* Per-person fee breakdown */}
+                    {!loading && estimate && pItems.length > 0 && (
+                      <div className="mt-1 ml-3 space-y-0.5">
+                        {pItems.map((item, i) => (
+                          <div key={i} className={`flex justify-between text-xs ${item.amount === 0 ? "text-green-600" : "text-muted-foreground"}`}>
+                            <span>
+                              {item.category === "meal"
+                                ? item.description.replace(/^Meals - .+? \(/, "Meals (")
+                                : item.description}
+                              {item.quantity > 1 && item.unitPrice > 0
+                                ? ` (${formatDollars(item.unitPrice)} x ${item.quantity})`
+                                : ""}
+                            </span>
+                            <span>{item.amount === 0 ? t("common.free") : formatDollars(item.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Group-level fees (lodging, additional lodging) */}
+              {!loading && estimate && groupFeeItems.length > 0 && (
+                <>
+                  <Separator className="my-3" />
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-medium text-muted-foreground mb-1">Room</div>
+                    {groupFeeItems.map((item, i) => (
+                      <div key={i} className={`flex justify-between text-xs ${item.amount === 0 ? "text-green-600" : "text-muted-foreground"}`}>
+                        <span>
+                          {item.description.replace(/^Group \d+: /, "")}
+                          {item.quantity > 1 && item.unitPrice > 0
+                            ? ` (${formatDollars(item.unitPrice)} x ${item.quantity})`
+                            : ""}
+                        </span>
+                        <span>{item.amount === 0 ? t("common.free") : formatDollars(item.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+
+      {/* Total */}
       <Card>
         <CardHeader>
           <CardTitle>{t("common.total")}</CardTitle>
@@ -263,17 +314,26 @@ export default function ReviewStep() {
             </div>
           ) : estimate ? (
             <div className="space-y-2">
-              {estimate.breakdown.map((item, i) => (
-                <div key={i} className={`flex justify-between text-sm ${item.amount === 0 ? "text-green-600" : ""} ${item.amount < 0 ? "text-green-600" : ""}`}>
-                  <span>
-                    {item.description}
-                    {item.quantity > 1 && item.unitPrice > 0
-                      ? ` (${formatDollars(item.unitPrice)} × ${item.quantity})`
-                      : ""}
-                  </span>
-                  <span>{item.amount === 0 ? t("common.free") : formatDollars(item.amount)}</span>
-                </div>
-              ))}
+              {/* Shared fees: key deposit, funding, standalone waived items */}
+              {estimate.breakdown
+                .filter((item) => {
+                  const cat = item.category;
+                  if (cat === "registration" || cat === "meal" || cat === "vbs") return false;
+                  if (cat === "lodging" || cat === "additional_lodging") return false;
+                  if (!cat && item.description.match(/^Group \d+:/)) return false;
+                  return true;
+                })
+                .map((item, i) => (
+                  <div key={i} className={`flex justify-between text-sm ${item.amount <= 0 ? "text-green-600" : ""}`}>
+                    <span>
+                      {item.description}
+                      {item.quantity > 1 && item.unitPrice > 0
+                        ? ` (${formatDollars(item.unitPrice)} x ${item.quantity})`
+                        : ""}
+                    </span>
+                    <span>{item.amount === 0 ? t("common.free") : formatDollars(item.amount)}</span>
+                  </div>
+                ))}
               <Separator />
               <div className="flex justify-between font-bold text-lg">
                 <span>{t("common.total")}</span>

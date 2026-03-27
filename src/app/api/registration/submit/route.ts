@@ -218,6 +218,10 @@ export async function POST(request: Request) {
   let defKeyDepositPerKey = 0;
   let defHasLodgingExtra = false;
   let defVbsMaterialsFeeCents = 0;
+  let defRegFeeAgeMin: number | null = null;
+  let defRegFeeAgeMax: number | null = null;
+  let defEarlyBirdAgeMin: number | null = null;
+  let defEarlyBirdAgeMax: number | null = null;
 
   if (!regGroup.is_default) {
     const { data: defaultGroup } = await admin
@@ -259,6 +263,10 @@ export async function POST(request: Request) {
       defHasLodgingExtra = defaultLinkedFees.some((f: any) => f.code === "LODGING_EXTRA");
       const defVbsCat = defaultLinkedFees.find((f: any) => f.code === "VBS_MATERIALS");
       defVbsMaterialsFeeCents = defVbsCat?.amount_cents ?? 0;
+      defRegFeeAgeMin = defRegFeeCat?.age_min ?? null;
+      defRegFeeAgeMax = defRegFeeCat?.age_max ?? null;
+      defEarlyBirdAgeMin = defEarlyBirdCat?.age_min ?? null;
+      defEarlyBirdAgeMax = defEarlyBirdCat?.age_max ?? null;
     }
   }
 
@@ -324,6 +332,14 @@ export async function POST(request: Request) {
     defaultIsEarlyBird: defIsEarlyBird,
     defaultMealFeeCategories: defMealFeeCategories,
     defaultManualPaymentDiscountPerPerson: defManualPaymentDiscountPerPerson,
+    regFeeAgeMin: regFeeCat?.age_min ?? null,
+    regFeeAgeMax: regFeeCat?.age_max ?? null,
+    earlyBirdAgeMin: earlyBirdCat?.age_min ?? null,
+    earlyBirdAgeMax: earlyBirdCat?.age_max ?? null,
+    defaultRegFeeAgeMin: defRegFeeAgeMin,
+    defaultRegFeeAgeMax: defRegFeeAgeMax,
+    defaultEarlyBirdAgeMin: defEarlyBirdAgeMin,
+    defaultEarlyBirdAgeMax: defEarlyBirdAgeMax,
     memberGroupFees,
     fundingDiscounts,
   });
@@ -353,6 +369,14 @@ export async function POST(request: Request) {
       defaultIsEarlyBird: defIsEarlyBird,
       defaultMealFeeCategories: defMealFeeCategories,
       defaultManualPaymentDiscountPerPerson: defManualPaymentDiscountPerPerson,
+      regFeeAgeMin: defRegFeeAgeMin,
+      regFeeAgeMax: defRegFeeAgeMax,
+      earlyBirdAgeMin: defEarlyBirdAgeMin,
+      earlyBirdAgeMax: defEarlyBirdAgeMax,
+      defaultRegFeeAgeMin: defRegFeeAgeMin,
+      defaultRegFeeAgeMax: defRegFeeAgeMax,
+      defaultEarlyBirdAgeMin: defEarlyBirdAgeMin,
+      defaultEarlyBirdAgeMax: defEarlyBirdAgeMax,
     });
     estimate.breakdown.push(...computeWaivedBenefits(estimate, defaultEstimate));
   }

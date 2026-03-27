@@ -298,7 +298,8 @@ export default function ParticipantsStep() {
         supabase
           .from("eckcm_registration_groups")
           .select("id, department_id, is_default, only_one_person, allow_add_members, show_tshirt_size, require_tshirt_size, access_code, name_en")
-          .eq("is_active", true),
+          .eq("is_active", true)
+          .order("sort_order"),
         state.registrationGroupId
           ? supabase
               .from("eckcm_registration_group_fee_categories")
@@ -438,7 +439,7 @@ export default function ParticipantsStep() {
 
   const addGroup = () => {
     if (state.roomGroups.length >= MAX_GROUPS) {
-      toast.error(`Maximum ${MAX_GROUPS} room groups allowed`);
+      toast.error(t("registration.maxGroupsAllowed", { max: MAX_GROUPS }));
       return;
     }
     const newGroup = createEmptyGroup();
@@ -461,7 +462,7 @@ export default function ParticipantsStep() {
   const addParticipant = (groupIndex: number) => {
     const group = state.roomGroups[groupIndex];
     if (group.participants.length >= MAX_PARTICIPANTS_PER_GROUP) {
-      toast.error(`Maximum ${MAX_PARTICIPANTS_PER_GROUP} participants per group`);
+      toast.error(t("registration.maxParticipantsPerGroup", { max: MAX_PARTICIPANTS_PER_GROUP }));
       return;
     }
     const newP = createEmptyParticipant(false);
@@ -478,7 +479,7 @@ export default function ParticipantsStep() {
   const removeParticipant = (groupIndex: number, pIndex: number) => {
     const group = state.roomGroups[groupIndex];
     if (group.participants.length <= 1) {
-      toast.error("At least one participant is required");
+      toast.error(t("registration.minOneParticipant"));
       return;
     }
     const updated = {
@@ -692,6 +693,22 @@ export default function ParticipantsStep() {
     );
   };
 
+  // Check if a participant is a minor (< 18 at event start)
+  const isParticipantMinor = (p: ParticipantInput): boolean => {
+    if (!p.birthYear || !p.birthMonth || !p.birthDay) return false;
+    const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
+    const refDate = eventDates
+      ? new Date(eventDates.eventStartDate + "T00:00:00")
+      : new Date(state.startDate + "T00:00:00");
+    return calculateAge(birthDate, refDate) < 18;
+  };
+
+  // Check if the representative of a room group is a minor
+  const isGroupRepMinor = (gi: number): boolean => {
+    const rep = state.roomGroups[gi]?.participants.find((p) => p.isRepresentative);
+    return rep ? isParticipantMinor(rep) : false;
+  };
+
   // Validate a single participant — returns all field errors
   const validateParticipant = (p: ParticipantInput, gi: number, pi: number): Record<string, string> => {
     const errs: Record<string, string> = {};
@@ -732,20 +749,17 @@ export default function ParticipantsStep() {
         errs.birthYear = "Representative must be at least 11 years old";
       }
     }
-    // Guardian fields required if representative is a minor
-    if (p.isRepresentative && p.birthYear && p.birthMonth && p.birthDay) {
-      const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
-      const refDate = eventDates
-        ? new Date(eventDates.eventStartDate + "T00:00:00")
-        : new Date(state.startDate + "T00:00:00");
-      if (calculateAge(birthDate, refDate) < 18) {
-        if (!p.guardianName?.trim()) errs.guardianName = "Required";
-        else if (!NAME_PATTERN.test(p.guardianName.trim())) errs.guardianName = "Uppercase letters only";
-        if (!p.guardianPhone?.trim()) errs.guardianPhone = "Required";
-        else if (isPhoneIncomplete(p.guardianPhone, p.guardianPhoneCountry ?? "US")) errs.guardianPhone = "Enter a complete phone number";
-        if (!p.guardianSignature) errs.guardianSignature = "Signature is required";
-        if (!p.guardianConsent) errs.guardianConsent = "You must confirm guardian authorization";
-      }
+    // Guardian fields required if:
+    // 1. Representative is a minor, OR
+    // 2. Member is a minor AND their group representative is also a minor
+    const needsGuardian = isParticipantMinor(p) && (p.isRepresentative || isGroupRepMinor(gi));
+    if (needsGuardian) {
+      if (!p.guardianName?.trim()) errs.guardianName = "Required";
+      else if (!NAME_PATTERN.test(p.guardianName.trim())) errs.guardianName = "Uppercase letters only";
+      if (!p.guardianPhone?.trim()) errs.guardianPhone = "Required";
+      else if (isPhoneIncomplete(p.guardianPhone, p.guardianPhoneCountry ?? "US")) errs.guardianPhone = "Enter a complete phone number";
+      if (!p.guardianSignature) errs.guardianSignature = "Signature is required";
+      if (!p.guardianConsent) errs.guardianConsent = "You must confirm guardian authorization";
     }
     return errs;
   };
@@ -793,7 +807,7 @@ export default function ParticipantsStep() {
           otherBirthDate === birthDate &&
           other.gender === p.gender
         ) {
-          setFieldErrors((prev) => ({ ...prev, [key]: { firstName: "이미 등록된 사람입니다" } }));
+          setFieldErrors((prev) => ({ ...prev, [key]: { firstName: t("registration.alreadyRegisteredPerson") } }));
           return;
         }
       }
@@ -804,7 +818,7 @@ export default function ParticipantsStep() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      toast.error("Not authenticated");
+      toast.error(t("auth.notAuthenticated"));
       setSavingPanel(null);
       return;
     }
@@ -825,8 +839,8 @@ export default function ParticipantsStep() {
     if (!dupError && dupCheck) {
       const dupErrs: Record<string, string> = {};
       const skipRepEmailDup = allowDuplicateEmail || (state.registrationType === "others" && p.isRepresentative);
-      if (dupCheck.emailDuplicate && !skipRepEmailDup) dupErrs.email = "Unable to use this email";
-      if (dupCheck.personDuplicate) dupErrs.firstName = "이미 등록된 사람입니다";
+      if (dupCheck.emailDuplicate && !skipRepEmailDup) dupErrs.email = t("registration.unableToUseEmail");
+      if (dupCheck.personDuplicate) dupErrs.firstName = t("registration.alreadyRegisteredPerson");
       if (Object.keys(dupErrs).length > 0) {
         setFieldErrors((prev) => ({ ...prev, [key]: dupErrs }));
         setSavingPanel(null);
@@ -851,7 +865,7 @@ export default function ParticipantsStep() {
     setSavingPanel(null);
 
     if (dbError) {
-      toast.error("Failed to save");
+      toast.error(t("registration.failedToSave"));
       return;
     }
 
@@ -885,7 +899,7 @@ export default function ParticipantsStep() {
     // Mark as saved and collapse
     setSavedPanels((prev) => ({ ...prev, [key]: true }));
     setOpenPanels((prev) => ({ ...prev, [key]: false }));
-    toast.success(`${p.firstName || "Participant"} saved`);
+    toast.success(t("registration.participantSaved", { name: p.firstName || t("registration.participant", { number: pi + 1 }) }));
   };
 
   // Autofill participant from a saved person
@@ -922,7 +936,7 @@ export default function ParticipantsStep() {
       participantIndex: pi,
       participant: filled,
     });
-    toast.success(`Filled from ${sp.first_name} ${sp.last_name}`);
+    toast.success(t("registration.filledFrom", { name: `${sp.first_name} ${sp.last_name}` }));
   };
 
   // Delete a saved person (called after confirmation)
@@ -934,7 +948,7 @@ export default function ParticipantsStep() {
       .eq("id", personId);
     if (!error) {
       setSavedPersons((prev) => prev.filter((sp) => sp.id !== personId));
-      toast.success("Saved person removed");
+      toast.success(t("registration.savedPersonRemoved"));
     }
   };
 
@@ -946,7 +960,7 @@ export default function ParticipantsStep() {
     if (isOnlyOnePerson) {
       // Only Room Group 1 Representative needs to be saved
       if (!savedPanels["0-0"]) {
-        toast.error("Please save the participant before proceeding");
+        toast.error(t("registration.saveBeforeProceeding"));
         setOpenPanels((prev) => ({ ...prev, "0-0": true }));
         return;
       }
@@ -966,7 +980,7 @@ export default function ParticipantsStep() {
         for (let pi = 0; pi < group.participants.length; pi++) {
           const key = `${gi}-${pi}`;
           if (!savedPanels[key]) {
-            toast.error(`Please save all participants before proceeding`);
+            toast.error(t("registration.saveAllBeforeProceeding"));
             // Open the unsaved participant
             setOpenPanels((prev) => ({ ...prev, [key]: true }));
             return;
@@ -1041,7 +1055,7 @@ export default function ParticipantsStep() {
                           <div className="size-4 shrink-0 rounded-full border-2 border-muted-foreground/30" />
                         )}
                         <span className="text-sm font-medium flex-1">
-                          {t("registration.participant", { number: pi + 1 })}
+                          {p.isRepresentative ? t("registration.representative", { number: pi + 1 }) : t("registration.participant", { number: pi + 1 })}
                           {(p.firstName || p.lastName) && (
                             <span className="ml-2 font-normal text-muted-foreground">
                               {p.firstName} {p.lastName}
@@ -1653,15 +1667,8 @@ export default function ParticipantsStep() {
                           );
                         })()}
 
-                        {/* Parent/Guardian (shown when representative is a minor) */}
-                        {p.isRepresentative && (() => {
-                          if (!p.birthYear || !p.birthMonth || !p.birthDay) return false;
-                          const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
-                          const refDate = eventDates
-                            ? new Date(eventDates.eventStartDate + "T00:00:00")
-                            : new Date(state.startDate + "T00:00:00");
-                          return calculateAge(birthDate, refDate) < 18;
-                        })() && (
+                        {/* Parent/Guardian (shown when participant is a minor and needs guardian consent) */}
+                        {isParticipantMinor(p) && (p.isRepresentative || isGroupRepMinor(gi)) && (
                           <div className="space-y-4 rounded-md border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
                             <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
                               The registrant is a minor. Parent/guardian information is required.
@@ -1729,7 +1736,9 @@ export default function ParticipantsStep() {
                                 className="mt-0.5"
                               />
                               <Label className="text-xs font-normal leading-relaxed">
-                                I understand that the registrant is a minor. I confirm that the parent/guardian listed above has authorized this minor to serve as the group representative, and I consent to the parent/guardian being contacted in case of any issues or emergencies.
+                                {p.isRepresentative
+                                  ? "I understand that the registrant is a minor. I confirm that the parent/guardian listed above has authorized this minor to serve as the group representative, and I consent to the parent/guardian being contacted in case of any issues or emergencies."
+                                  : "I understand that the registrant is a minor. I confirm that the parent/guardian listed above has authorized this minor to attend the camp meeting, and I consent to the parent/guardian being contacted in case of any issues or emergencies."}
                               </Label>
                             </div>
                             {errs.guardianConsent && <p className="text-xs text-destructive">{errs.guardianConsent}</p>}

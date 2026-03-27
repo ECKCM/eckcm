@@ -225,6 +225,7 @@
     "step3Title": "Step 3: Participants",
     "addParticipant": "Add Participant",
     "removeParticipant": "Remove",
+    "representative": "Representative {number}",
     "participant": "Participant {number}",
     "birthDate": "Birth Date",
     "year": "Year",
@@ -238,7 +239,19 @@
     "nextLodging": "Next: Lodging",
     "fillRequiredFields": "Please fill in all required fields for all participants",
     "invalidBirthDate": "Please enter a valid birth date for all participants",
-    "duplicateParticipant": "Duplicate participant detected"
+    "duplicateParticipant": "Duplicate participant detected",
+    "maxGroupsAllowed": "Maximum {max} room groups allowed",
+    "maxParticipantsPerGroup": "Maximum {max} participants per group",
+    "failedToSave": "Failed to save",
+    "participantSaved": "{name} saved",
+    "filledFrom": "Filled from {name}",
+    "savedPersonRemoved": "Saved person removed",
+    "saveBeforeProceeding": "Please save the participant before proceeding",
+    "saveAllBeforeProceeding": "Please save all participants before proceeding",
+    "unableToUseEmail": "Unable to use this email",
+    "alreadyRegisteredPerson": "Already registered person",
+    "submissionFailed": "Submission failed",
+    "networkError": "Network error. Please try again."
   },
   "payment": {
     "noRegistration": "No registration found. Please start a new registration.",
@@ -293,7 +306,10 @@
     "invalidSession": "Invalid payment session.",
     "couldNotVerify": "Could not verify payment.",
     "verifyingPayment": "Verifying payment...",
-    "paymentStatusError": "Payment status: {status}. Please try again."
+    "paymentStatusError": "Payment status: {status}. Please try again.",
+    "failedUpdateFees": "Failed to update fee coverage",
+    "networkErrorShort": "Network error",
+    "checkPaymentDetails": "Please check your payment details."
   },
   "confirmation": {
     "verifying": "Verifying payment status...",
@@ -384,7 +400,24 @@
   "receipts": {
     "title": "Receipts",
     "paid": "Paid",
-    "pending": "Pending"
+    "pending": "Pending",
+    "myRegistration": "My Registration ({count})",
+    "registeredForOthers": "Registered for Others ({count})",
+    "invoice": "Invoice",
+    "receipt": "Receipt",
+    "invoicePdf": "Invoice PDF",
+    "receiptPdf": "Receipt PDF",
+    "invoiceNum": "Invoice #",
+    "receiptNum": "Receipt #",
+    "event": "Event",
+    "code": "Code",
+    "issued": "Issued",
+    "paidDate": "Paid",
+    "method": "Method",
+    "description": "Description",
+    "qty": "Qty",
+    "unit": "Unit",
+    "amount": "Amount"
   },
   "donation": {
     "title": "Donation",
@@ -428,6 +461,21 @@
     "theme": "Theme",
     "deleteAccount": "Delete Account",
     "deleteAccountDesc": "This action cannot be undone.",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "account": "Account",
+    "email": "Email",
+    "providers": "Providers",
+    "personalInfo": "Personal Info",
+    "preferences": "Preferences",
+    "saveChanges": "Save Changes",
+    "saveChangesConfirm": "Save Changes?",
+    "saveChangesDesc": "Are you sure you want to update your profile settings?",
+    "discard": "Discard",
+    "failedUpdatePreferences": "Failed to update preferences",
+    "failedUpdateProfile": "Failed to update profile",
+    "settingsSaved": "Settings saved",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
   }
 }

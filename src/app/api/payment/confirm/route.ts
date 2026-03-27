@@ -9,6 +9,7 @@ import { confirmPaymentSchema } from "@/lib/schemas/api";
 import { logger } from "@/lib/logger";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 import { insertInitialPayment } from "@/lib/services/adjustment.service";
+import { syncRegistration } from "@/lib/services/google-sheets.service";
 
 /**
  * Generate E-Pass tokens and send confirmation email for a registration.
@@ -233,6 +234,9 @@ export async function POST(request: Request) {
 
     // Update inventory counts
     await recalculateInventorySafe(admin);
+
+    // Sync to Google Sheets
+    syncRegistration(registration.event_id, registrationId).catch(() => {});
 
     return NextResponse.json({ status: "confirmed" });
   } catch (err) {

@@ -76,6 +76,7 @@ interface RegistrationGroup {
   apply_meal_fees_to_members: boolean;
   is_default: boolean;
   is_active: boolean;
+  sort_order: number;
 }
 
 interface Department {
@@ -113,6 +114,7 @@ const emptyForm = {
   apply_meal_fees_to_members: true,
   is_default: false,
   is_active: true,
+  sort_order: "0",
 };
 
 function AccessCodeList({ groups, loading }: { groups: RegistrationGroup[]; loading: boolean }) {
@@ -218,7 +220,7 @@ export function RegistrationGroupsManager() {
     const { data } = await supabase
       .from("eckcm_registration_groups")
       .select("*")
-      .order("created_at");
+      .order("sort_order");
     setGroups(data ?? []);
 
     // Load fee category mappings for all groups
@@ -303,6 +305,7 @@ export function RegistrationGroupsManager() {
       apply_meal_fees_to_members: group.apply_meal_fees_to_members,
       is_default: group.is_default,
       is_active: group.is_active,
+      sort_order: group.sort_order.toString(),
     });
     setSelectedFeeIds(new Set(groupFeeMap.get(group.id) ?? []));
     setDialogOpen(true);
@@ -355,6 +358,7 @@ export function RegistrationGroupsManager() {
       apply_meal_fees_to_members: form.apply_meal_fees_to_members,
       is_default: form.is_default,
       is_active: form.is_active,
+      sort_order: parseInt(form.sort_order) || 0,
     };
 
     let groupId = editingId;
@@ -627,6 +631,19 @@ export function RegistrationGroupsManager() {
                   onChange={(e) =>
                     setForm({ ...form, early_bird_deadline: e.target.value })
                   }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Sort Order</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={form.sort_order}
+                  onChange={(e) =>
+                    setForm({ ...form, sort_order: e.target.value })
+                  }
+                  placeholder="0"
                 />
               </div>
               <div className="flex flex-wrap items-center gap-6">

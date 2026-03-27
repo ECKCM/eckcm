@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { getRegistrationFeeBillableCount } from "@/lib/services/pricing.service";
 
 export async function POST(request: Request) {
   try {
@@ -117,27 +118,15 @@ export async function POST(request: Request) {
       });
     }
 
-    // Calculate manual payment discount
+    // Calculate manual payment discount (only for reg-fee-billable participants)
     let manualPaymentDiscount = 0;
     {
-      const { count: participantCount } = await admin
-        .from("eckcm_group_memberships")
-        .select("id", { count: "exact", head: true })
-        .in(
-          "group_id",
-          (
-            await admin
-              .from("eckcm_groups")
-              .select("id")
-              .eq("registration_id", registrationId)
-          ).data?.map((g: { id: string }) => g.id) ?? []
-        );
       const { data: regData } = await admin
         .from("eckcm_registrations")
         .select("registration_group_id")
         .eq("id", registrationId)
         .single();
-      if (regData?.registration_group_id && participantCount) {
+      if (regData?.registration_group_id) {
         const { data: discountFee } = await admin
           .from("eckcm_registration_group_fee_categories")
           .select("eckcm_fee_categories!inner(amount_cents)")
@@ -146,7 +135,10 @@ export async function POST(request: Request) {
           .maybeSingle();
         const discountPerPerson =
           (discountFee as any)?.eckcm_fee_categories?.amount_cents ?? 0;
-        manualPaymentDiscount = discountPerPerson * participantCount;
+        if (discountPerPerson > 0) {
+          const billableCount = await getRegistrationFeeBillableCount(admin, registrationId);
+          manualPaymentDiscount = discountPerPerson * billableCount;
+        }
       }
     }
 

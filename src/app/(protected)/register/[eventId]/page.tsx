@@ -85,7 +85,7 @@ export default function RegistrationStep1() {
           .from("eckcm_registration_groups")
           .select("id, name_en, access_code, is_default, only_one_person, apply_general_fees_to_members, apply_meal_fees_to_members")
           .eq("is_active", true)
-          .order("created_at"),
+          .order("sort_order"),
       ]);
       setEvent(ev);
       setGroups(grps ?? []);

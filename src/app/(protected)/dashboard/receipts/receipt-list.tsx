@@ -57,7 +57,7 @@ function InvoiceCard({ inv }: { inv: Invoice }) {
   const reg = inv.eckcm_registrations;
   const event = reg.eckcm_events;
   const isPaid = inv.status === "SUCCEEDED";
-  const docType = isPaid ? "Receipt" : "Invoice";
+  const docType = isPaid ? t("receipts.receipt") : t("receipts.invoice");
   const payment = inv.eckcm_payments?.find(
     (p) => p.status === "SUCCEEDED" || p.status === "PARTIALLY_REFUNDED"
   );
@@ -83,29 +83,29 @@ function InvoiceCard({ inv }: { inv: Invoice }) {
       <CardContent className="space-y-4">
         {/* Summary */}
         <div className="grid grid-cols-2 gap-2 text-sm overflow-x-auto">
-          <span className="text-muted-foreground">Invoice #</span>
+          <span className="text-muted-foreground">{t("receipts.invoiceNum")}</span>
           <span className="font-mono">{inv.invoice_number}</span>
           {isPaid && (
             <>
-              <span className="text-muted-foreground">Receipt #</span>
+              <span className="text-muted-foreground">{t("receipts.receiptNum")}</span>
               <span className="font-mono">{inv.invoice_number.replace(/^INV-/, "RCT-")}</span>
             </>
           )}
-          <span className="text-muted-foreground">Event</span>
+          <span className="text-muted-foreground">{t("receipts.event")}</span>
           <span>{event.name_en}</span>
           {reg.confirmation_code && (
             <>
-              <span className="text-muted-foreground">Code</span>
+              <span className="text-muted-foreground">{t("receipts.code")}</span>
               <span className="font-mono">{reg.confirmation_code}</span>
             </>
           )}
-          <span className="text-muted-foreground">Issued</span>
+          <span className="text-muted-foreground">{t("receipts.issued")}</span>
           <span>
             {new Date(inv.issued_at).toLocaleDateString("en-US")}
           </span>
           {inv.paid_at && (
             <>
-              <span className="text-muted-foreground">Paid</span>
+              <span className="text-muted-foreground">{t("receipts.paidDate")}</span>
               <span>
                 {new Date(inv.paid_at).toLocaleDateString("en-US")}
               </span>
@@ -113,7 +113,7 @@ function InvoiceCard({ inv }: { inv: Invoice }) {
           )}
           {payment && (
             <>
-              <span className="text-muted-foreground">Method</span>
+              <span className="text-muted-foreground">{t("receipts.method")}</span>
               <span>{payment.payment_method}</span>
             </>
           )}
@@ -124,10 +124,10 @@ function InvoiceCard({ inv }: { inv: Invoice }) {
           <div className="overflow-x-auto">
             <div className="min-w-[24rem] rounded-md border text-sm">
               <div className="grid grid-cols-[1fr_2.5rem_5rem_5.5rem] gap-x-2 px-3 py-2 bg-muted/50 text-xs text-muted-foreground font-medium">
-                <span>Description</span>
-                <span className="text-right">Qty</span>
-                <span className="text-right">Unit</span>
-                <span className="text-right">Amount</span>
+                <span>{t("receipts.description")}</span>
+                <span className="text-right">{t("receipts.qty")}</span>
+                <span className="text-right">{t("receipts.unit")}</span>
+                <span className="text-right">{t("receipts.amount")}</span>
               </div>
               {lineItems.map((li, i) => (
                 <div
@@ -137,10 +137,10 @@ function InvoiceCard({ inv }: { inv: Invoice }) {
                   <span className="truncate">{li.description_en}</span>
                   <span className="text-right">{li.quantity}</span>
                   <span className="text-right">
-                    {li.total_cents === 0 ? "Free" : `$${(li.unit_price_cents / 100).toFixed(2)}`}
+                    {li.total_cents === 0 ? t("common.free") : `$${(li.unit_price_cents / 100).toFixed(2)}`}
                   </span>
                   <span className="text-right">
-                    {li.total_cents === 0 ? "Free" : `$${(li.total_cents / 100).toFixed(2)}`}
+                    {li.total_cents === 0 ? t("common.free") : `$${(li.total_cents / 100).toFixed(2)}`}
                   </span>
                 </div>
               ))}
@@ -162,7 +162,7 @@ function InvoiceCard({ inv }: { inv: Invoice }) {
               download={`eckcm-invoice-${inv.invoice_number}.pdf`}
             >
               <FileText className="mr-1.5 h-3.5 w-3.5" />
-              Invoice PDF
+              {t("receipts.invoicePdf")}
             </a>
           </Button>
           {isPaid && (
@@ -172,7 +172,7 @@ function InvoiceCard({ inv }: { inv: Invoice }) {
                 download={`eckcm-receipt-${inv.invoice_number}.pdf`}
               >
                 <Receipt className="mr-1.5 h-3.5 w-3.5" />
-                Receipt PDF
+                {t("receipts.receiptPdf")}
               </a>
             </Button>
           )}
@@ -229,10 +229,10 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
         <Tabs defaultValue="my">
           <TabsList className="w-full">
             <TabsTrigger value="my" className="flex-1">
-              My Registration ({myInvoices.length})
+              {t("receipts.myRegistration", { count: myInvoices.length })}
             </TabsTrigger>
             <TabsTrigger value="others" className="flex-1">
-              Registered for Others ({othersInvoices.length})
+              {t("receipts.registeredForOthers", { count: othersInvoices.length })}
             </TabsTrigger>
           </TabsList>
           <TabsContent value="my" className="mt-4">

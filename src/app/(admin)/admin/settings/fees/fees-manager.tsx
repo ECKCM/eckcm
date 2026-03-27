@@ -101,7 +101,7 @@ export function FeeCategoriesManager() {
       .from("eckcm_registration_groups")
       .select("id, name_en, name_ko, is_active")
       .eq("is_active", true)
-      .order("name_en");
+      .order("sort_order");
     setRegistrationGroups(data ?? []);
   }, []);
 

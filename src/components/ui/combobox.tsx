@@ -110,7 +110,7 @@ function ComboboxContent({
         <ComboboxPrimitive.Popup
           data-slot="combobox-content"
           className={cn(
-            "bg-popover text-popover-foreground group/combobox-content relative max-h-96 w-(--anchor-width) overflow-hidden rounded-md border shadow-md",
+            "bg-popover text-popover-foreground group/combobox-content relative max-h-[clamp(8rem,50svh,24rem)] w-(--anchor-width) overflow-y-auto overflow-x-hidden rounded-md border shadow-md",
             "data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
             className
           )}
@@ -126,7 +126,7 @@ function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
     <ComboboxPrimitive.List
       data-slot="combobox-list"
       className={cn(
-        "max-h-72 overflow-y-auto p-1",
+        "max-h-[clamp(6rem,45svh,18rem)] overflow-y-auto p-1",
         className
       )}
       {...props}

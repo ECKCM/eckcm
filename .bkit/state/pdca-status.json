@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-26T20:32:11.234Z",
+  "lastUpdated": "2026-03-27T04:06:10.154Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -18,10 +18,38 @@
     "forgot-password",
     "auth",
     "create",
-    "email"
+    "email",
+    "admin",
+    "manual",
+    "zelle-submit",
+    "check-submit",
+    "confirm",
+    "groups",
+    "fees",
+    "settings",
+    "receipts",
+    "review",
+    "payment",
+    "pricing.service.ts",
+    "pricing.service.test.ts",
+    "ui",
+    "[eventId]",
+    "estimate",
+    "submit",
+    "info",
+    "create-intent",
+    "registration"
   ],
   "primaryFeature": "payment-complete",
   "features": {
+    "online-registration": {
+      "phase": "archived",
+      "matchRate": 95.6,
+      "iterationCount": 5,
+      "startedAt": "2026-02-11T07:00:00.000Z",
+      "archivedAt": "2026-03-26T06:00:00.000Z",
+      "archivedTo": "docs/archive/2026-03/online-registration/"
+    },
     "payment-complete": {
       "phase": "do",
       "phaseNumber": 3,
@@ -122,7 +150,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T19:44:10.557Z",
-        "lastUpdated": "2026-03-26T20:31:32.650Z"
+        "lastUpdated": "2026-03-27T03:37:16.226Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
@@ -135,9 +163,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T19:44:53.504Z",
-        "lastUpdated": "2026-03-26T19:44:53.504Z"
+        "lastUpdated": "2026-03-26T23:54:19.024Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/i18n/context.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/i18n/config.ts"
     },
     "google-sheets.service.ts": {
       "phase": "do",
@@ -161,9 +189,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:29:55.102Z",
-        "lastUpdated": "2026-03-26T20:29:55.102Z"
+        "lastUpdated": "2026-03-27T02:56:42.959Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/utils/field-helpers.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/types/registration.ts"
     },
     "complete-profile": {
       "phase": "do",
@@ -226,7 +254,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:31:38.573Z",
-        "lastUpdated": "2026-03-26T20:31:44.356Z"
+        "lastUpdated": "2026-03-26T22:06:27.494Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/create/admin-registration-form.tsx"
     },
@@ -242,6 +270,266 @@
         "lastUpdated": "2026-03-26T20:32:11.234Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/email/page.tsx"
+    },
+    "admin": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-26T21:01:37.763Z",
+        "lastUpdated": "2026-03-26T21:01:42.624Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/admin-sidebar.tsx"
+    },
+    "manual": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-26T21:01:48.090Z",
+        "lastUpdated": "2026-03-26T21:01:53.258Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/payment/manual/route.ts"
+    },
+    "zelle-submit": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-26T21:01:58.763Z",
+        "lastUpdated": "2026-03-27T04:03:19.528Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/zelle-submit/route.ts"
+    },
+    "check-submit": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-26T21:02:10.080Z",
+        "lastUpdated": "2026-03-27T04:03:07.340Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/check-submit/route.ts"
+    },
+    "confirm": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-26T21:02:20.119Z",
+        "lastUpdated": "2026-03-26T21:02:25.463Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/confirm/route.ts"
+    },
+    "groups": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-26T22:05:36.624Z",
+        "lastUpdated": "2026-03-27T03:31:14.369Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/groups/groups-manager.tsx"
+    },
+    "fees": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-26T22:06:39.921Z",
+        "lastUpdated": "2026-03-26T22:06:39.921Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/fees/fees-manager.tsx"
+    },
+    "settings": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T00:34:51.971Z",
+        "lastUpdated": "2026-03-27T00:36:05.486Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/dashboard/settings/profile-settings.tsx"
+    },
+    "receipts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T00:36:11.402Z",
+        "lastUpdated": "2026-03-27T00:37:19.957Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/dashboard/receipts/receipt-list.tsx"
+    },
+    "review": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T00:38:27.001Z",
+        "lastUpdated": "2026-03-27T03:01:02.194Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/review/page.tsx"
+    },
+    "payment": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T00:38:36.722Z",
+        "lastUpdated": "2026-03-27T00:38:45.590Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
+    },
+    "pricing.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T02:57:04.116Z",
+        "lastUpdated": "2026-03-27T04:00:35.013Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/pricing.service.ts"
+    },
+    "pricing.service.test.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T02:58:38.502Z",
+        "lastUpdated": "2026-03-27T04:06:10.154Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/__tests__/unit/services/pricing.service.test.ts"
+    },
+    "ui": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T02:59:19.863Z",
+        "lastUpdated": "2026-03-27T03:30:40.047Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/ui/dropdown-menu.tsx"
+    },
+    "[eventId]": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T03:31:02.681Z",
+        "lastUpdated": "2026-03-27T03:31:02.681Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/page.tsx"
+    },
+    "estimate": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T04:01:14.743Z",
+        "lastUpdated": "2026-03-27T04:01:53.552Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/registration/estimate/route.ts"
+    },
+    "submit": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T04:02:10.314Z",
+        "lastUpdated": "2026-03-27T04:02:30.633Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/registration/submit/route.ts"
+    },
+    "info": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T04:03:51.077Z",
+        "lastUpdated": "2026-03-27T04:04:03.065Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/info/route.ts"
+    },
+    "create-intent": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T04:04:07.405Z",
+        "lastUpdated": "2026-03-27T04:04:15.918Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/create-intent/route.ts"
+    },
+    "registration": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-27T04:04:34.050Z",
+        "lastUpdated": "2026-03-27T04:04:52.271Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registration/route.ts"
     }
   },
   "pipeline": {
@@ -252,7 +540,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-03-26T20:32:11.234Z"
+    "lastActivity": "2026-03-27T04:06:10.154Z"
   },
   "history": [
     {
@@ -876,6 +1164,762 @@
     {
       "timestamp": "2026-03-26T20:32:11.234Z",
       "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T21:01:37.763Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T21:01:42.624Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T21:01:48.090Z",
+      "feature": "manual",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T21:01:53.258Z",
+      "feature": "manual",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T21:01:58.763Z",
+      "feature": "zelle-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T21:02:04.134Z",
+      "feature": "zelle-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T21:02:10.080Z",
+      "feature": "check-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T21:02:15.003Z",
+      "feature": "check-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T21:02:20.119Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T21:02:25.463Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T22:05:36.624Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T22:05:43.648Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T22:05:48.691Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T22:05:56.088Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T22:06:01.669Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T22:06:14.156Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T22:06:27.494Z",
+      "feature": "create",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T22:06:39.921Z",
+      "feature": "fees",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T23:54:19.024Z",
+      "feature": "i18n",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-26T23:54:19.576Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:34:51.971Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:34:56.858Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:00.938Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:05.205Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:09.864Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:14.713Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:19.555Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:23.602Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:27.553Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:31.966Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:36.303Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:40.709Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:45.893Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:50.954Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:35:55.634Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:36:00.465Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:36:05.486Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:36:11.402Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:36:17.367Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:36:24.953Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:36:30.648Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:36:34.794Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:36:38.727Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:36:42.863Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:36:48.627Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:36:53.579Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:37:00.607Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:37:10.090Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:37:14.218Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:37:19.957Z",
+      "feature": "receipts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:37:26.500Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:37:31.129Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:37:36.183Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:37:41.323Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:37:46.334Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:37:51.909Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:37:56.265Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:38:01.439Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:38:06.335Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:38:12.239Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:38:16.649Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:38:21.485Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:38:27.001Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:38:31.357Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:38:36.722Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:38:40.902Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T00:38:45.590Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T01:49:33.415Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T02:56:42.959Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T02:57:04.116Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T02:57:11.777Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T02:57:31.234Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T02:57:54.120Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T02:58:05.699Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T02:58:12.579Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T02:58:38.502Z",
+      "feature": "pricing.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T02:59:19.863Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T02:59:21.196Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T02:59:24.772Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T02:59:29.023Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:00:06.947Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:00:41.033Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:01:02.194Z",
+      "feature": "review",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:30:36.863Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:30:38.690Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:30:40.047Z",
+      "feature": "ui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:31:02.681Z",
+      "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:31:04.260Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:31:14.369Z",
+      "feature": "groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:36:31.301Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:36:42.369Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:37:16.226Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:58:41.735Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:58:48.966Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:58:52.986Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:59:38.631Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:59:48.584Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T03:59:53.054Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:00:01.741Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:00:11.305Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:00:35.013Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:01:14.743Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:01:33.876Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:01:39.077Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:01:44.294Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:01:53.552Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:02:10.314Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:02:16.296Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:02:24.388Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:02:30.633Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:02:56.505Z",
+      "feature": "check-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:03:07.340Z",
+      "feature": "check-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:03:11.645Z",
+      "feature": "zelle-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:03:19.528Z",
+      "feature": "zelle-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:03:51.077Z",
+      "feature": "info",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:04:03.065Z",
+      "feature": "info",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:04:07.405Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:04:15.918Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:04:34.050Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:04:40.540Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:04:47.121Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:04:52.271Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:05:19.475Z",
+      "feature": "pricing.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:05:23.989Z",
+      "feature": "pricing.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:05:40.075Z",
+      "feature": "pricing.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-27T04:06:10.154Z",
+      "feature": "pricing.service.test.ts",
       "phase": "do",
       "action": "updated"
     }

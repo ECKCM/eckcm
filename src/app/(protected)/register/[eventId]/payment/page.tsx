@@ -302,7 +302,7 @@ export default function PaymentStep() {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         setCoversFees(!checked);
-        toast.error(errData.error || "Failed to update fee coverage");
+        toast.error(errData.error || t("payment.failedUpdateFees"));
         return;
       }
       const data = await res.json();
@@ -310,7 +310,7 @@ export default function PaymentStep() {
       setFeeCents(data.feeCents);
     } catch {
       setCoversFees(!checked);
-      toast.error("Network error");
+      toast.error(t("payment.networkErrorShort"));
     } finally {
       setUpdatingFees(false);
     }
@@ -779,7 +779,7 @@ function StripePaymentForm({
     try {
       const { error: submitError } = await elements.submit();
       if (submitError) {
-        toast.error(submitError.message || "Please check your payment details.");
+        toast.error(submitError.message || t("payment.checkPaymentDetails"));
         setProcessing(false);
         return;
       }

@@ -30,6 +30,7 @@ import {
   Link2,
   Printer,
   HandCoins,
+  Sheet,
 } from "lucide-react";
 import {
   Sidebar,
@@ -92,6 +93,7 @@ const settingsLinks = [
   { href: "/admin/settings/sessions", label: "Sessions", icon: Presentation },
   { href: "/admin/settings/airport-rides", label: "Airport Rides", icon: Plane },
   { href: "/admin/settings/email", label: "Email", icon: Mail },
+  { href: "/admin/settings/google-sheets", label: "Google Sheets", icon: Sheet },
   { href: "/admin/settings/configuration", label: "Configuration", icon: Settings2 },
 ];
 

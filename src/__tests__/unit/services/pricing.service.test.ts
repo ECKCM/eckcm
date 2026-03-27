@@ -78,6 +78,14 @@ function makeInput(overrides: Record<string, unknown> = {}) {
     defaultIsEarlyBird: false,
     defaultMealFeeCategories: defaultMealCategories,
     defaultManualPaymentDiscountPerPerson: 0,
+    regFeeAgeMin: null,
+    regFeeAgeMax: null,
+    earlyBirdAgeMin: null,
+    earlyBirdAgeMax: null,
+    defaultRegFeeAgeMin: null,
+    defaultRegFeeAgeMax: null,
+    defaultEarlyBirdAgeMin: null,
+    defaultEarlyBirdAgeMax: null,
     ...overrides,
   };
 }
@@ -121,6 +129,114 @@ describe("calculateEstimate", () => {
       );
       expect(result.registrationFee).toBe(0);
       expect(result.breakdown.find((b) => b.description.includes("Registration"))).toBeUndefined();
+    });
+
+    it("exempts participants under age_min from registration fee", () => {
+      // age_min=5, infant born 2024 → age ~2 → exempt
+      const result = calculateEstimate(
+        makeInput({
+          regFeeAgeMin: 5,
+          roomGroups: [
+            makeGroup([
+              makeParticipant({
+                id: "infant",
+                birthYear: 2024,
+                birthMonth: 1,
+                birthDay: 1,
+              }),
+            ]),
+          ],
+        })
+      );
+      expect(result.registrationFee).toBe(0);
+    });
+
+    it("charges participants at exactly age_min", () => {
+      // age_min=5, child born 2021-06-21 → exactly 5 at event start 2026-06-21
+      const result = calculateEstimate(
+        makeInput({
+          regFeeAgeMin: 5,
+          roomGroups: [
+            makeGroup([
+              makeParticipant({
+                id: "child5",
+                birthYear: 2021,
+                birthMonth: 6,
+                birthDay: 21,
+              }),
+            ]),
+          ],
+        })
+      );
+      expect(result.registrationFee).toBe(10000); // $100
+    });
+
+    it("handles mixed ages — only charges eligible participants", () => {
+      // age_min=5: 1 adult (eligible) + 1 infant (exempt)
+      const result = calculateEstimate(
+        makeInput({
+          regFeeAgeMin: 5,
+          roomGroups: [
+            makeGroup([
+              makeParticipant({ id: "adult", birthYear: 1990 }),
+              makeParticipant({ id: "infant", birthYear: 2024, birthMonth: 1, birthDay: 1 }),
+            ]),
+          ],
+        })
+      );
+      expect(result.registrationFee).toBe(10000); // only 1 × $100
+      // Breakdown should show quantity=1
+      const regLine = result.breakdown.find(
+        (b) => b.category === "registration" && b.amount > 0
+      );
+      expect(regLine?.quantity).toBe(1);
+    });
+
+    it("uses early bird age bounds when early bird is active", () => {
+      // regFeeAgeMin=5 but earlyBirdAgeMin=3 — early bird allows younger
+      const result = calculateEstimate(
+        makeInput({
+          isEarlyBird: true,
+          regFeeAgeMin: 5,
+          earlyBirdAgeMin: 3,
+          roomGroups: [
+            makeGroup([
+              makeParticipant({
+                id: "child4",
+                birthYear: 2022, // ~4 years old
+                birthMonth: 1,
+                birthDay: 1,
+              }),
+            ]),
+          ],
+        })
+      );
+      // Early bird active → uses earlyBirdAgeMin=3, child age 4 >= 3 → eligible
+      expect(result.registrationFee).toBe(8000); // early bird $80
+    });
+
+    it("applies age filter in applyGeneralFeesToMembers=false path", () => {
+      const rep = makeParticipant({ id: "rep", isRepresentative: true, birthYear: 1990 });
+      const infant = makeParticipant({
+        id: "infant",
+        isRepresentative: false,
+        birthYear: 2024,
+        birthMonth: 1,
+        birthDay: 1,
+      });
+
+      const result = calculateEstimate(
+        makeInput({
+          regFeeAgeMin: 5,
+          defaultRegFeeAgeMin: 5,
+          registrationFeePerPerson: 7000,
+          applyGeneralFeesToMembers: false,
+          roomGroups: [makeGroup([rep, infant])],
+        })
+      );
+
+      // Rep (adult) pays $70, infant is age-exempt from default group fee too
+      expect(result.registrationFee).toBe(7000);
     });
   });
 
@@ -434,7 +550,7 @@ describe("calculateEstimate", () => {
   });
 
   describe("manual payment discount", () => {
-    it("calculates discount as perPerson × totalParticipants", () => {
+    it("calculates discount as perPerson × billable participants", () => {
       const result = calculateEstimate(
         makeInput({
           manualPaymentDiscountPerPerson: 500,
@@ -457,6 +573,34 @@ describe("calculateEstimate", () => {
       );
       // total should not be reduced by discount
       expect(result.total).toBe(result.subtotal + result.keyDeposit);
+    });
+
+    it("only counts age-eligible participants for discount", () => {
+      // 1 adult (eligible) + 1 infant age 2 (not eligible with age_min=5)
+      const result = calculateEstimate(
+        makeInput({
+          manualPaymentDiscountPerPerson: 500,
+          regFeeAgeMin: 5,
+          roomGroups: [
+            makeGroup([
+              makeParticipant({ id: "adult", birthYear: 1990 }),
+              makeParticipant({ id: "infant", birthYear: 2024, birthMonth: 1, birthDay: 1 }),
+            ]),
+          ],
+        })
+      );
+      // Only 1 participant is billable → discount = 1 × $5
+      expect(result.manualPaymentDiscount).toBe(500);
+    });
+
+    it("is zero when registration fee is zero (no billable participants)", () => {
+      const result = calculateEstimate(
+        makeInput({
+          registrationFeePerPerson: 0,
+          manualPaymentDiscountPerPerson: 500,
+        })
+      );
+      expect(result.manualPaymentDiscount).toBe(0);
     });
   });
 
@@ -538,6 +682,10 @@ describe("calculateEstimate", () => {
               isEarlyBird: false,
               mealFeeCategories: [],
               manualPaymentDiscountPerPerson: 0,
+              regFeeAgeMin: null,
+              regFeeAgeMax: null,
+              earlyBirdAgeMin: null,
+              earlyBirdAgeMax: null,
             },
           },
           roomGroups: [makeGroup([rep, member])],
@@ -578,6 +726,10 @@ describe("calculateEstimate", () => {
               isEarlyBird: false,
               mealFeeCategories: [],
               manualPaymentDiscountPerPerson: 0,
+              regFeeAgeMin: null,
+              regFeeAgeMax: null,
+              earlyBirdAgeMin: null,
+              earlyBirdAgeMax: null,
             },
           },
           roomGroups: [makeGroup([rep, member])],
@@ -605,6 +757,7 @@ describe("calculateEstimate", () => {
         subtotal: 0,
         total: 0,
         breakdown: [],
+        participantBreakdown: {},
         manualPaymentDiscount: 0,
         fundingDiscount: 0,
         ...overrides,

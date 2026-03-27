@@ -87,7 +87,7 @@ export function ProfileSettings({
   const [saving, setSaving] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingData, setPendingData] = useState<ProfileFormData | null>(null);
-  const { locale: i18nLocale, setLocale: setI18nLocale } = useI18n();
+  const { locale: i18nLocale, setLocale: setI18nLocale, t } = useI18n();
   const [locale, setLocale] = useState(profile?.locale ?? "en");
   const { theme, setTheme } = useTheme();
 
@@ -144,7 +144,7 @@ export function ProfileSettings({
       .eq("id", userId);
 
     if (userError) {
-      toast.error("Failed to update preferences");
+      toast.error(t("settings.failedUpdatePreferences"));
       setSaving(false);
       return;
     }
@@ -179,7 +179,7 @@ export function ProfileSettings({
         .eq("id", person.id);
 
       if (personError) {
-        toast.error("Failed to update profile");
+        toast.error(t("settings.failedUpdateProfile"));
         setSaving(false);
         return;
       }
@@ -188,7 +188,7 @@ export function ProfileSettings({
     // Sync locale to i18n context so toolbar updates immediately
     setI18nLocale(locale as "en" | "ko");
 
-    toast.success("Settings saved");
+    toast.success(t("settings.settingsSaved"));
     setSaving(false);
     setPendingData(null);
   };
@@ -201,21 +201,21 @@ export function ProfileSettings({
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold">Settings</h1>
+        <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
       </div>
 
       {/* Account Info (read-only) */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Account</CardTitle>
+          <CardTitle className="text-base">{t("settings.account")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
-            <Label className="text-muted-foreground text-xs">Email</Label>
+            <Label className="text-muted-foreground text-xs">{t("settings.email")}</Label>
             <p className="text-sm">{profile?.email}</p>
           </div>
           <div>
-            <Label className="text-muted-foreground text-xs">Providers</Label>
+            <Label className="text-muted-foreground text-xs">{t("settings.providers")}</Label>
             <p className="text-sm capitalize">{profile?.auth_provider}</p>
           </div>
         </CardContent>
@@ -225,7 +225,7 @@ export function ProfileSettings({
       {person && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Personal Info</CardTitle>
+            <CardTitle className="text-base">{t("settings.personalInfo")}</CardTitle>
           </CardHeader>
           <CardContent>
             <ProfileForm
@@ -237,17 +237,17 @@ export function ProfileSettings({
               hideBirthDate
               hideChurch
               onSubmit={handleSubmit}
-              submitLabel={saving ? "Saving..." : "Save Changes"}
+              submitLabel={saving ? t("common.saving") : t("settings.saveChanges")}
               loading={saving}
             >
               <Separator />
 
               {/* Preferences */}
               <div className="space-y-4">
-                <h3 className="text-base font-semibold">Preferences</h3>
+                <h3 className="text-base font-semibold">{t("settings.preferences")}</h3>
 
                 <div className="space-y-1">
-                  <Label htmlFor="locale">Language</Label>
+                  <Label htmlFor="locale">{t("settings.language")}</Label>
                   {mounted ? (
                     <Select value={locale} onValueChange={setLocale}>
                       <SelectTrigger id="locale">
@@ -266,7 +266,7 @@ export function ProfileSettings({
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="theme">Theme</Label>
+                  <Label htmlFor="theme">{t("settings.theme")}</Label>
                   {mounted ? (
                     <Select
                       value={theme ?? "light"}
@@ -276,14 +276,14 @@ export function ProfileSettings({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="light">Light</SelectItem>
-                        <SelectItem value="dark">Dark</SelectItem>
-                        <SelectItem value="system">System</SelectItem>
+                        <SelectItem value="light">{t("settings.light")}</SelectItem>
+                        <SelectItem value="dark">{t("settings.dark")}</SelectItem>
+                        <SelectItem value="system">{t("settings.system")}</SelectItem>
                       </SelectContent>
                     </Select>
                   ) : (
                     <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 text-sm">
-                      Light
+                      {t("settings.light")}
                     </div>
                   )}
                 </div>
@@ -295,14 +295,14 @@ export function ProfileSettings({
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Save Changes?</AlertDialogTitle>
+            <AlertDialogTitle>{t("settings.saveChangesConfirm")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to update your profile settings?
+              {t("settings.saveChangesDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Discard</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmSave}>Yes</AlertDialogAction>
+            <AlertDialogCancel>{t("settings.discard")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSave}>{t("common.yes")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

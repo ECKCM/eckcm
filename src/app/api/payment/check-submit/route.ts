@@ -8,6 +8,8 @@ import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { getStripeForMode } from "@/lib/stripe/config";
 import { logger } from "@/lib/logger";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
+import { syncRegistration } from "@/lib/services/google-sheets.service";
+import { getRegistrationFeeBillableCount } from "@/lib/services/pricing.service";
 
 export async function POST(request: Request) {
   try {
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // Calculate manual payment discount
+  // Calculate manual payment discount (only for reg-fee-billable participants)
   let discountCents = 0;
   {
     const { data: regData } = await admin
@@ -94,14 +96,8 @@ export async function POST(request: Request) {
         .maybeSingle();
       const discountPerPerson = (discountFee as any)?.eckcm_fee_categories?.amount_cents ?? 0;
       if (discountPerPerson > 0) {
-        const { count } = await admin
-          .from("eckcm_group_memberships")
-          .select("id", { count: "exact", head: true })
-          .in(
-            "group_id",
-            (await admin.from("eckcm_groups").select("id").eq("registration_id", registrationId)).data?.map((g: { id: string }) => g.id) ?? []
-          );
-        discountCents = discountPerPerson * (count ?? 0);
+        const billableCount = await getRegistrationFeeBillableCount(admin, registrationId);
+        discountCents = discountPerPerson * billableCount;
       }
     }
   }
@@ -255,6 +251,9 @@ export async function POST(request: Request) {
 
   // Update inventory counts
   await recalculateInventorySafe(admin);
+
+  // Sync to Google Sheets
+  syncRegistration(registration.event_id, registrationId).catch(() => {});
 
   // Audit log
   await admin.from("eckcm_audit_logs").insert({
