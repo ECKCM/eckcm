@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-27T11:48:43.520Z",
+  "lastUpdated": "2026-03-28T10:49:27.619Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -55,20 +55,21 @@
       "archivedTo": "docs/archive/2026-03/online-registration/"
     },
     "payment-complete": {
-      "phase": "check",
-      "phaseNumber": 4,
+      "phase": "completed",
+      "phaseNumber": 6,
       "matchRate": 93,
       "iterationCount": 0,
       "requirements": [],
       "documents": {
         "design": "docs/02-design/features/payment-complete.design.md",
-        "analysis": "docs/03-analysis/features/payment-complete.analysis.md"
+        "analysis": "docs/03-analysis/features/payment-complete.analysis.md",
+        "report": "docs/04-report/features/payment-complete.report.md"
       },
       "timestamps": {
         "started": "2026-03-26T19:43:25.388Z",
-        "lastUpdated": "2026-03-27T00:15:00.000Z"
+        "lastUpdated": "2026-03-28T00:00:00.000Z"
       },
-      "lastFile": "docs/03-analysis/features/payment-complete.analysis.md"
+      "lastFile": "docs/04-report/features/payment-complete.report.md"
     },
     "lodging": {
       "phase": "do",
@@ -157,7 +158,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T19:44:10.557Z",
-        "lastUpdated": "2026-03-27T11:48:11.642Z"
+        "lastUpdated": "2026-03-28T10:33:02.684Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
@@ -196,9 +197,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:29:55.102Z",
-        "lastUpdated": "2026-03-27T02:56:42.959Z"
+        "lastUpdated": "2026-03-28T10:32:55.492Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/types/registration.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/shared/church-combobox.tsx"
     },
     "complete-profile": {
       "phase": "do",
@@ -469,7 +470,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T03:31:02.681Z",
-        "lastUpdated": "2026-03-27T03:31:02.681Z"
+        "lastUpdated": "2026-03-28T10:49:27.619Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/page.tsx"
     },
@@ -534,9 +535,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:04:34.050Z",
-        "lastUpdated": "2026-03-27T04:04:52.271Z"
+        "lastUpdated": "2026-03-28T10:32:28.314Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registration/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/registration/date-range-picker.tsx"
     },
     "pdf": {
       "phase": "do",
@@ -599,7 +600,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-03-27T11:48:43.520Z"
+    "lastActivity": "2026-03-28T10:49:27.619Z"
   },
   "history": [
     {
@@ -2183,6 +2184,126 @@
     {
       "timestamp": "2026-03-27T11:48:43.520Z",
       "feature": "google-sheets.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:16.223Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:18.399Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:19.742Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:23.429Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:25.404Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:26.477Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:28.314Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:34.884Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:36.235Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:37.985Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:39.759Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:42.449Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:44.658Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:46.555Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:51.672Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:53.499Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:32:55.492Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:33:01.088Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:33:02.684Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-28T10:49:27.619Z",
+      "feature": "[eventId]",
       "phase": "do",
       "action": "updated"
     }

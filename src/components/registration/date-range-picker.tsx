@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/context";
 import type { DateRange } from "react-day-picker";
 
 interface DateRangePickerProps {
@@ -45,6 +46,7 @@ export function DateRangePicker({
   nightsCount,
   onDatesChange,
 }: DateRangePickerProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   // Tracks the "from" date during a two-click selection
   const pickingFrom = useRef<string | null>(null);
@@ -119,8 +121,8 @@ export function DateRangePicker({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label>Check-in</Label>
-        <Label>Check-out</Label>
+        <Label>{t("registration.checkIn")}</Label>
+        <Label>{t("registration.checkOut")}</Label>
       </div>
       <Popover open={open} onOpenChange={handleOpenChange}>
         {/* Trigger — date header bar */}
@@ -136,11 +138,11 @@ export function DateRangePicker({
             <span className="truncate font-medium">
               {startDate
                 ? format(toDate(startDate), "EEE, MMM d")
-                : "Check-in"}
+                : t("registration.checkIn")}
             </span>
             <span className="shrink-0 px-1 text-center text-muted-foreground">—</span>
             <span className="truncate font-medium text-right">
-              {endDate ? format(toDate(endDate), "EEE, MMM d") : "Check-out"}
+              {endDate ? format(toDate(endDate), "EEE, MMM d") : t("registration.checkOut")}
             </span>
           </button>
         </PopoverTrigger>
@@ -153,7 +155,7 @@ export function DateRangePicker({
               <span className="truncate text-sm font-medium">
                 {startDate
                   ? format(toDate(startDate), "EEE, MMM d")
-                  : "Check-in"}
+                  : t("registration.checkIn")}
               </span>
               <button
                 type="button"
@@ -172,7 +174,7 @@ export function DateRangePicker({
             </div>
             <div className="flex items-center gap-1 min-w-0">
               <span className="truncate text-sm font-medium">
-                {endDate ? format(toDate(endDate), "EEE, MMM d") : "Check-out"}
+                {endDate ? format(toDate(endDate), "EEE, MMM d") : t("registration.checkOut")}
               </span>
               <button
                 type="button"
@@ -193,7 +195,7 @@ export function DateRangePicker({
 
           {pickingFrom.current && (
             <p className="px-4 pt-2 text-xs text-muted-foreground">
-              Now select check-out date
+              {t("registration.selectCheckOutDate")}
             </p>
           )}
 

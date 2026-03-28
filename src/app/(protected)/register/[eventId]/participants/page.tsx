@@ -1426,7 +1426,7 @@ export default function ParticipantsStep() {
                         <div className="space-y-1">
                           {!p.noEmail && (
                             <>
-                              <Label className="text-xs">Email <span className="text-destructive">*</span></Label>
+                              <Label className="text-xs">{t("profile.email")} <span className="text-destructive">*</span></Label>
                               {state.registrationType === "others" && p.isRepresentative && (
                                 <p className="text-xs text-muted-foreground">You may change this to the email of the person you are registering on behalf of.</p>
                               )}
@@ -1581,7 +1581,7 @@ export default function ParticipantsStep() {
                         {eventDates && (
                           <div className="space-y-1">
                             <Label className="text-xs">
-                              Stay Dates
+                              {t("registration.stayDates")}
                               {p.isDateOverridden && (
                                 <span className="ml-1 text-muted-foreground font-normal">(customized)</span>
                               )}

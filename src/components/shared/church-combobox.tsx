@@ -10,6 +10,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/context";
 
 interface Church {
   id: string;
@@ -32,9 +33,10 @@ export function ChurchCombobox({
   value,
   onValueChange,
   error,
-  placeholder = "Select church",
+  placeholder,
   className,
 }: ChurchComboboxProps) {
+  const { t } = useI18n();
   const sorted = useMemo(
     () =>
       [...churches].sort((a, b) => {
@@ -61,11 +63,11 @@ export function ChurchCombobox({
       items={labels}
     >
       <ComboboxInput
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("profile.selectChurch")}
         className={cn(className, error && "border-destructive")}
       />
       <ComboboxContent>
-        <ComboboxEmpty>No church found.</ComboboxEmpty>
+        <ComboboxEmpty>{t("profile.noChurchFound")}</ComboboxEmpty>
         <ComboboxList>
           {(item) => (
             <ComboboxItem key={item} value={item}>

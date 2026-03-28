@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Info } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 interface BirthDatePickerProps {
   year: number | undefined;
@@ -41,6 +42,7 @@ export function BirthDatePicker({
   labelClassName,
   error,
 }: BirthDatePickerProps) {
+  const { t } = useI18n();
   const [yearInput, setYearInput] = useState(year?.toString() ?? "");
   const [yearError, setYearError] = useState("");
 
@@ -102,7 +104,7 @@ export function BirthDatePicker({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1">
-        <Label className={labelClassName}>Date of Birth (Legal) <span className="text-destructive">*</span></Label>
+        <Label className={labelClassName}>{t("profile.birthDateLegal")} <span className="text-destructive">*</span></Label>
         <Popover>
           <PopoverTrigger asChild>
             <button type="button" className="text-muted-foreground hover:text-foreground">
@@ -113,18 +115,18 @@ export function BirthDatePicker({
             We collect your date of birth to determine your appropriate room assignment, calculate accurate meal pricing, and assign you to the correct department or group for this event. This information helps us coordinate travel logistics, dietary accommodations, and group organization efficiently. Your date of birth is securely stored, used only for these stated purposes, and never sold to third parties. It may be shared with authorized event organizers only as needed to support your participation. Participants under age 13 require parental consent in accordance with applicable U.S. regulations.
           </PopoverContent>
         </Popover>
-        {age !== null && <span className="text-xs text-muted-foreground">Age: {age}</span>}
+        {age !== null && <span className="text-xs text-muted-foreground">{t("profile.age")}: {age}</span>}
       </div>
       <div className="grid grid-cols-3 gap-2">
         {/* Month - Dropdown */}
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Month</Label>
+          <Label className="text-xs text-muted-foreground">{t("profile.monthLabel")}</Label>
           <Select
             value={month !== undefined ? month.toString() : ""}
             onValueChange={(v) => onMonthChange(parseInt(v))}
           >
             <SelectTrigger className={error ? "border-destructive" : ""}>
-              <SelectValue placeholder="Month" />
+              <SelectValue placeholder={t("profile.monthLabel")} />
             </SelectTrigger>
             <SelectContent className="max-h-60">
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
@@ -138,13 +140,13 @@ export function BirthDatePicker({
 
         {/* Day - Dropdown */}
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Day</Label>
+          <Label className="text-xs text-muted-foreground">{t("profile.dayLabel")}</Label>
           <Select
             value={day !== undefined ? day.toString() : ""}
             onValueChange={(v) => onDayChange(parseInt(v))}
           >
             <SelectTrigger className={error ? "border-destructive" : ""}>
-              <SelectValue placeholder="Day" />
+              <SelectValue placeholder={t("profile.dayLabel")} />
             </SelectTrigger>
             <SelectContent className="max-h-60">
               {Array.from({ length: maxDays }, (_, i) => i + 1).map((d) => (
@@ -158,11 +160,11 @@ export function BirthDatePicker({
 
         {/* Year - Input with live validation */}
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Year</Label>
+          <Label className="text-xs text-muted-foreground">{t("profile.yearLabel")}</Label>
           <Input
             type="text"
             inputMode="numeric"
-            placeholder="Year"
+            placeholder={t("profile.yearLabel")}
             maxLength={4}
             autoComplete="off"
             value={yearInput}

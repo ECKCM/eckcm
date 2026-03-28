@@ -337,6 +337,7 @@ export default function RegistrationStep1() {
           {/* Access Code */}
           <div className="space-y-2">
             <Label>{t("registration.accessCode")}</Label>
+            <p className="text-sm text-muted-foreground">{t("registration.accessCodeDescription")}</p>
             <div className="flex gap-2">
               <Input
                 value={accessCode}
