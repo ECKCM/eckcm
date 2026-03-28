@@ -113,6 +113,19 @@ export async function POST(req: NextRequest) {
     })
   );
 
+  // Load participant names
+  const { data: memberships } = await admin
+    .from("eckcm_group_memberships")
+    .select("eckcm_people!inner(first_name_en, last_name_en, display_name_ko), eckcm_groups!inner(registration_id)")
+    .eq("eckcm_groups.registration_id", registrationId);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const participantNames = (memberships ?? []).map((m: any) => {
+    const p = m.eckcm_people;
+    const fullName = `${p.first_name_en} ${p.last_name_en}`;
+    return p.display_name_ko ? `${fullName} (${p.display_name_ko})` : fullName;
+  });
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const eventName = (reg as any).eckcm_events?.name_en ?? "ECKCM Event";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -122,6 +135,7 @@ export async function POST(req: NextRequest) {
     invoiceNumber: inv.invoice_number,
     confirmationCode: reg.confirmation_code ?? "",
     eventName,
+    participants: participantNames,
     lineItems,
     subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
     total: `$${(inv.total_cents / 100).toFixed(2)}`,
@@ -145,6 +159,7 @@ export async function POST(req: NextRequest) {
       issuedDate: new Date(inv.issued_at).toLocaleDateString("en-US"),
       billTo: registrant.email,
       dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
+      participants: participantNames,
       lineItems,
       subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
       total: `$${(inv.total_cents / 100).toFixed(2)}`,

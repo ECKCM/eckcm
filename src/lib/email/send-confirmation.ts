@@ -269,6 +269,13 @@ export async function sendConfirmationEmail(
       ?? (invoicePaid ? "both" : "invoice-only");
 
     const eventEndDate = reg.eckcm_events.event_end_date;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pdfParticipants = (membershipsResult.data ?? []).map((m: any) => {
+      const p = m.eckcm_people;
+      const fullName = `${p.first_name_en} ${p.last_name_en}`;
+      return p.display_name_ko ? `${fullName} (${p.display_name_ko})` : fullName;
+    });
+
     const basePdfData = {
       invoiceNumber: includeInvoice.invoiceNumber,
       confirmationCode: reg.confirmation_code,
@@ -276,6 +283,7 @@ export async function sendConfirmationEmail(
       issuedDate: new Date().toLocaleDateString("en-US"),
       billTo: user.email!,
       dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
+      participants: pdfParticipants,
       lineItems: includeInvoice.lineItems.map((li: { description: string; quantity: number; unitPrice: string; amount: string }) => ({
         description: li.description,
         quantity: li.quantity,

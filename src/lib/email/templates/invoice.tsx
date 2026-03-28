@@ -2,6 +2,7 @@ interface InvoiceEmailProps {
   invoiceNumber: string;
   confirmationCode: string;
   eventName: string;
+  participants?: string[];
   lineItems: Array<{
     description: string;
     quantity: number;
@@ -18,6 +19,7 @@ export function buildInvoiceEmail({
   invoiceNumber,
   confirmationCode,
   eventName,
+  participants,
   lineItems,
   subtotal,
   total,
@@ -84,6 +86,19 @@ export function buildInvoiceEmail({
                   <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${paymentDate}</td>
                 </tr>
               </table>
+
+              <!-- Participants -->
+              ${participants && participants.length > 0 ? `
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 0 0 8px; color: #111827; font-size: 14px; font-weight: bold;">Participants</td>
+                </tr>
+                ${participants.map((name, i) => `
+                <tr>
+                  <td style="padding: 2px 0 2px 8px; color: #6b7280; font-size: 14px;">${i + 1}. ${name}</td>
+                </tr>`).join("")}
+              </table>
+              ` : ""}
 
               <!-- Line Items -->
               <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 24px;">

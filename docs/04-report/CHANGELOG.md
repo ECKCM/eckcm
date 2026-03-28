@@ -4,6 +4,13 @@ All notable changes to the ECKCM Online Registration & Management System will be
 
 ## Unreleased (Development)
 
+### Fixed
+- **Payment Complete**: Fix REG_FEE/EARLY_BIRD Age Filtering & MANUAL_PAYMENT_DISCOUNT Logic
+  - Age-based registration fee eligibility now enforced (children under age_min are exempt)
+  - Manual payment discounts now apply only to age-eligible, fee-paying participants
+  - 9 files updated, 44 tests passing, 100% design match rate
+  - Affects: pricing.service.ts, 4 registration routes, 4 payment routes, admin route
+
 ### Deferred to Phase 15
 - Service worker implementation for full PWA offline support
 - Google Sheets integration for inventory management

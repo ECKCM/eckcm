@@ -11,6 +11,7 @@ export interface InvoicePdfData {
   paymentDate: string;
   billTo: string;        // representative user email
   dateDue?: string;      // event end date (for invoices)
+  participants?: string[];  // participant display names
   lineItems: Array<{
     description: string;
     quantity: number;
@@ -84,6 +85,7 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
     paymentDate,
     billTo,
     dateDue,
+    participants,
     lineItems,
     subtotal,
     total,
@@ -190,7 +192,19 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
     y -= ROW_H;
   }
 
-  y -= 16;
+  // ─── PARTICIPANTS ────────────────────────────────────────────────────────
+  if (participants && participants.length > 0) {
+    y -= 8;
+    txt("Participants", MX, y - 12, bold, 10, C_BLACK);
+    y -= 20;
+    for (const [i, name] of participants.entries()) {
+      txt(`${i + 1}. ${name}`, MX + 8, y - 12, regular, 10, C_GRAY_MID);
+      y -= 16;
+    }
+    y -= 4;
+  } else {
+    y -= 16;
+  }
 
   // ─── LINE ITEMS TABLE ─────────────────────────────────────────────────────
   // Column widths: Description 59%, Qty 10%, Unit 15.5%, Amount 15.5%

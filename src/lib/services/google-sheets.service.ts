@@ -466,18 +466,7 @@ interface MealRow {
 async function fetchMealData(eventId: string): Promise<MealRow[]> {
   const admin = createAdminClient();
 
-  // Fetch checkin records of type DINING for the event, joined with person data
-  const { data: checkins } = await admin
-    .from("eckcm_checkins")
-    .select(`
-      person_id, checkin_type, checked_in_at,
-      eckcm_sessions(name, session_date, start_time),
-      eckcm_people!inner(first_name_en, last_name_en)
-    `)
-    .eq("event_id", eventId)
-    .eq("checkin_type", "DINING");
-
-  // Also get all participants for this event to build complete meal grid
+  // Get all participants for this event to build complete meal grid
   const participants = await fetchParticipants(eventId);
 
   // Get event dates to build the date range
@@ -500,29 +489,7 @@ async function fetchMealData(eventId: string): Promise<MealRow[]> {
     }
   }
 
-  // Build dining check-in lookup: personId -> date -> Set<mealType>
-  const diningMap = new Map<string, Map<string, Set<string>>>();
-  for (const c of (checkins ?? []) as any[]) {
-    const personId = c.person_id;
-    const session = c.eckcm_sessions;
-    if (!session) continue;
-    const date = session.session_date;
-    const mealName = (session.name ?? "").toUpperCase();
-
-    let mealType = "";
-    if (mealName.includes("BREAKFAST")) mealType = "BREAKFAST";
-    else if (mealName.includes("LUNCH")) mealType = "LUNCH";
-    else if (mealName.includes("DINNER")) mealType = "DINNER";
-
-    if (!mealType) continue;
-
-    if (!diningMap.has(personId)) diningMap.set(personId, new Map());
-    const dateMap = diningMap.get(personId)!;
-    if (!dateMap.has(date)) dateMap.set(date, new Set());
-    dateMap.get(date)!.add(mealType);
-  }
-
-  // Build rows: one per participant per date
+  // Build rows: one per participant per date (all meals default to planned=Yes)
   const rows: MealRow[] = [];
   for (const p of participants) {
     for (const date of dates) {
@@ -531,7 +498,7 @@ async function fetchMealData(eventId: string): Promise<MealRow[]> {
         first_name: p.first_name,
         last_name: p.last_name,
         date,
-        breakfast: true, // Default: all meals selected during registration
+        breakfast: true,
         lunch: true,
         dinner: true,
       });

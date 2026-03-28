@@ -51,7 +51,7 @@ function useStatusLabel() {
   };
 }
 
-function InvoiceCard({ inv }: { inv: Invoice }) {
+function InvoiceCard({ inv, participants }: { inv: Invoice; participants?: string[] }) {
   const { t } = useI18n();
   const statusLabel = useStatusLabel();
   const reg = inv.eckcm_registrations;
@@ -119,6 +119,20 @@ function InvoiceCard({ inv }: { inv: Invoice }) {
           )}
         </div>
 
+        {/* Participants */}
+        {participants && participants.length > 0 && (
+          <div className="text-sm">
+            <span className="text-muted-foreground font-medium">{t("receipts.participants")}</span>
+            <div className="mt-1 ml-1 space-y-0.5">
+              {participants.map((name, i) => (
+                <div key={i} className="text-muted-foreground text-xs">
+                  {i + 1}. {name}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Line items */}
         {lineItems.length > 0 && (
           <div className="overflow-x-auto">
@@ -182,7 +196,7 @@ function InvoiceCard({ inv }: { inv: Invoice }) {
   );
 }
 
-function InvoiceList({ invoices }: { invoices: Invoice[] }) {
+function InvoiceList({ invoices, participantsByRegId }: { invoices: Invoice[]; participantsByRegId?: Record<string, string[]> }) {
   const { t } = useI18n();
   if (invoices.length === 0) {
     return (
@@ -196,13 +210,13 @@ function InvoiceList({ invoices }: { invoices: Invoice[] }) {
   return (
     <div className="space-y-4">
       {invoices.map((inv) => (
-        <InvoiceCard key={inv.id} inv={inv} />
+        <InvoiceCard key={inv.id} inv={inv} participants={participantsByRegId?.[inv.registration_id]} />
       ))}
     </div>
   );
 }
 
-export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
+export function ReceiptList({ invoices, participantsByRegId }: { invoices: Invoice[]; participantsByRegId?: Record<string, string[]> }) {
   const { t } = useI18n();
   const myInvoices = invoices.filter(
     (inv) => inv.eckcm_registrations.registration_type !== "others"
@@ -224,7 +238,7 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
       </div>
 
       {!hasBothTabs ? (
-        <InvoiceList invoices={invoices} />
+        <InvoiceList invoices={invoices} participantsByRegId={participantsByRegId} />
       ) : (
         <Tabs defaultValue="my">
           <TabsList className="w-full">
@@ -236,10 +250,10 @@ export function ReceiptList({ invoices }: { invoices: Invoice[] }) {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="my" className="mt-4">
-            <InvoiceList invoices={myInvoices} />
+            <InvoiceList invoices={myInvoices} participantsByRegId={participantsByRegId} />
           </TabsContent>
           <TabsContent value="others" className="mt-4">
-            <InvoiceList invoices={othersInvoices} />
+            <InvoiceList invoices={othersInvoices} participantsByRegId={participantsByRegId} />
           </TabsContent>
         </Tabs>
       )}

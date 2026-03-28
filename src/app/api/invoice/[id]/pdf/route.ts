@@ -66,9 +66,21 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Get registrant email for "Bill To"
-  const { data: { user: registrant } } = await admin.auth.admin.getUserById(r.created_by_user_id);
+  // Get registrant email for "Bill To" + participant names
+  const [{ data: { user: registrant } }, { data: memberships }] = await Promise.all([
+    admin.auth.admin.getUserById(r.created_by_user_id),
+    admin
+      .from("eckcm_group_memberships")
+      .select("eckcm_people!inner(first_name_en, last_name_en, display_name_ko), eckcm_groups!inner(registration_id)")
+      .eq("eckcm_groups.registration_id", inv.registration_id),
+  ]);
   const billTo = registrant?.email ?? user.email ?? "-";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const participants = (memberships ?? []).map((m: any) => {
+    const p = m.eckcm_people;
+    const fullName = `${p.first_name_en} ${p.last_name_en}`;
+    return p.display_name_ko ? `${fullName} (${p.display_name_ko})` : fullName;
+  });
 
   const actuallyPaid = inv.status === "SUCCEEDED";
 
@@ -107,6 +119,7 @@ export async function GET(
     paymentDate: renderAsReceipt && inv.paid_at ? new Date(inv.paid_at).toLocaleDateString("en-US") : "-",
     billTo,
     dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
+    participants,
     lineItems,
     subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
     total: `$${(inv.total_cents / 100).toFixed(2)}`,

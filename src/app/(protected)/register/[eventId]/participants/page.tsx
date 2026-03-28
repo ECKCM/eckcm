@@ -712,33 +712,33 @@ export default function ParticipantsStep() {
   // Validate a single participant — returns all field errors
   const validateParticipant = (p: ParticipantInput, gi: number, pi: number): Record<string, string> => {
     const errs: Record<string, string> = {};
-    if (!p.firstName.trim()) errs.firstName = "Required";
-    else if (!NAME_PATTERN.test(p.firstName.trim())) errs.firstName = "Uppercase letters only";
-    if (!p.lastName.trim()) errs.lastName = "Required";
-    else if (!NAME_PATTERN.test(p.lastName.trim())) errs.lastName = "Uppercase letters only";
-    if (!p.gender) errs.gender = "Required";
-    if (!p.displayNameKo?.trim()) errs.displayNameKo = "Required";
-    if (!p.departmentId) errs.departmentId = "Required";
+    if (!p.firstName.trim()) errs.firstName = t("registration.valRequired");
+    else if (!NAME_PATTERN.test(p.firstName.trim())) errs.firstName = t("registration.valUppercaseOnly");
+    if (!p.lastName.trim()) errs.lastName = t("registration.valRequired");
+    else if (!NAME_PATTERN.test(p.lastName.trim())) errs.lastName = t("registration.valUppercaseOnly");
+    if (!p.gender) errs.gender = t("registration.valRequired");
+    if (!p.displayNameKo?.trim()) errs.displayNameKo = t("registration.valRequired");
+    if (!p.departmentId) errs.departmentId = t("registration.valRequired");
     if (!p.noEmail) {
-      if (!p.email) errs.email = "Required";
-      else if (!isValidEmail(p.email)) errs.email = "Enter a valid email";
+      if (!p.email) errs.email = t("registration.valRequired");
+      else if (!isValidEmail(p.email)) errs.email = t("registration.valValidEmail");
     }
     if (!p.noPhone) {
-      if (!p.phone.trim()) errs.phone = "Required";
-      else if (isPhoneIncomplete(p.phone, p.phoneCountry)) errs.phone = "Enter a complete phone number";
+      if (!p.phone.trim()) errs.phone = t("registration.valRequired");
+      else if (isPhoneIncomplete(p.phone, p.phoneCountry)) errs.phone = t("registration.valCompletePhone");
     }
-    if (p.isK12 && !p.grade) errs.grade = "Required";
-    if (!p.churchId) errs.churchId = "Required";
-    if (isChurchOther(p.churchId) && !p.churchOther?.trim()) errs.churchOther = "Required";
+    if (p.isK12 && !p.grade) errs.grade = t("registration.valRequired");
+    if (!p.churchId) errs.churchId = t("registration.valRequired");
+    if (isChurchOther(p.churchId) && !p.churchOther?.trim()) errs.churchOther = t("registration.valRequired");
     // T-Shirt size: required when group has require_tshirt_size=true
     if (showTshirtSize && requireTshirtSize && !p.tshirtSize) {
-      errs.tshirtSize = "Required";
+      errs.tshirtSize = t("registration.valRequired");
     }
     // Birth date required
     if (!p.birthYear || !p.birthMonth || !p.birthDay) {
-      errs.birthYear = "Date of birth is required";
+      errs.birthYear = t("registration.valDobRequired");
     } else if (!isValidCalendarDate(p.birthYear, p.birthMonth, p.birthDay)) {
-      errs.birthYear = "Enter a valid date of birth";
+      errs.birthYear = t("registration.valDobInvalid");
     } else if (gi === 0 && pi === 0) {
       // Room Group 1 Representative must be at least 11 by event start
       const birthDate = new Date(p.birthYear, p.birthMonth - 1, p.birthDay);
@@ -746,7 +746,7 @@ export default function ParticipantsStep() {
         ? new Date(eventDates.eventStartDate + "T00:00:00")
         : new Date(state.startDate + "T00:00:00");
       if (calculateAge(birthDate, refDate) < 11) {
-        errs.birthYear = "Representative must be at least 11 years old";
+        errs.birthYear = t("registration.valRepMinAge");
       }
     }
     // Guardian fields required if:
@@ -754,12 +754,12 @@ export default function ParticipantsStep() {
     // 2. Member is a minor AND their group representative is also a minor
     const needsGuardian = isParticipantMinor(p) && (p.isRepresentative || isGroupRepMinor(gi));
     if (needsGuardian) {
-      if (!p.guardianName?.trim()) errs.guardianName = "Required";
-      else if (!NAME_PATTERN.test(p.guardianName.trim())) errs.guardianName = "Uppercase letters only";
-      if (!p.guardianPhone?.trim()) errs.guardianPhone = "Required";
-      else if (isPhoneIncomplete(p.guardianPhone, p.guardianPhoneCountry ?? "US")) errs.guardianPhone = "Enter a complete phone number";
-      if (!p.guardianSignature) errs.guardianSignature = "Signature is required";
-      if (!p.guardianConsent) errs.guardianConsent = "You must confirm guardian authorization";
+      if (!p.guardianName?.trim()) errs.guardianName = t("registration.valRequired");
+      else if (!NAME_PATTERN.test(p.guardianName.trim())) errs.guardianName = t("registration.valUppercaseOnly");
+      if (!p.guardianPhone?.trim()) errs.guardianPhone = t("registration.valRequired");
+      else if (isPhoneIncomplete(p.guardianPhone, p.guardianPhoneCountry ?? "US")) errs.guardianPhone = t("registration.valCompletePhone");
+      if (!p.guardianSignature) errs.guardianSignature = t("registration.valSignatureRequired");
+      if (!p.guardianConsent) errs.guardianConsent = t("registration.valGuardianConsent");
     }
     return errs;
   };
@@ -1441,7 +1441,7 @@ export default function ParticipantsStep() {
                                 className={errs.email || (p.email && !isValidEmail(p.email)) ? "border-destructive" : ""}
                               />
                               {(errs.email || (p.email && !isValidEmail(p.email))) && (
-                                <p className="text-xs text-destructive">{errs.email || "Enter a valid email"}</p>
+                                <p className="text-xs text-destructive">{errs.email || t("registration.valValidEmail")}</p>
                               )}
                             </>
                           )}
@@ -1671,20 +1671,20 @@ export default function ParticipantsStep() {
                         {isParticipantMinor(p) && (p.isRepresentative || isGroupRepMinor(gi)) && (
                           <div className="space-y-4 rounded-md border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
                             <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                              The registrant is a minor. Parent/guardian information is required.
+                              {t("registration.guardianRequired")}
                             </p>
 
                             {/* Guardian Info Section */}
                             <div className="space-y-3">
-                              <p className="text-xs font-medium">Guardian who attends camp meeting Information</p>
+                              <p className="text-xs font-medium">{t("registration.guardianInfoTitle")}</p>
 
                               {/* Guardian Name */}
                               <div className="space-y-1">
-                                <Label className="text-xs">Guardian Name (Legal) <span className="text-destructive">*</span></Label>
+                                <Label className="text-xs">{t("registration.guardianNameLabel")} <span className="text-destructive">*</span></Label>
                                 <Input
                                   value={p.guardianName ?? ""}
                                   onChange={(e) => updateParticipant(gi, pi, "guardianName", filterName(e.target.value))}
-                                  placeholder="Full name of guardian"
+                                  placeholder={t("registration.guardianNamePlaceholder")}
                                   className={errs.guardianName ? "border-destructive" : ""}
                                 />
                                 {errs.guardianName && <p className="text-xs text-destructive">{errs.guardianName}</p>}
@@ -1692,7 +1692,7 @@ export default function ParticipantsStep() {
 
                               {/* Guardian Phone */}
                               <div className="space-y-1">
-                                <Label className="text-xs">Guardian Phone <span className="text-destructive">*</span></Label>
+                                <Label className="text-xs">{t("registration.guardianPhoneLabel")} <span className="text-destructive">*</span></Label>
                                 <PhoneInput
                                   value={p.guardianPhone ?? ""}
                                   countryCode={p.guardianPhoneCountry ?? "US"}
@@ -1701,21 +1701,21 @@ export default function ParticipantsStep() {
                                   error={!!errs.guardianPhone || isPhoneIncomplete(p.guardianPhone ?? "", p.guardianPhoneCountry ?? "US")}
                                 />
                                 {(errs.guardianPhone || isPhoneIncomplete(p.guardianPhone ?? "", p.guardianPhoneCountry ?? "US")) && (
-                                  <p className="text-xs text-destructive">{errs.guardianPhone || "Enter a complete phone number"}</p>
+                                  <p className="text-xs text-destructive">{errs.guardianPhone || t("registration.valCompletePhone")}</p>
                                 )}
                               </div>
                             </div>
 
                             {/* Consent and Acknowledgement */}
                             <div className="space-y-3 border-t border-amber-200 pt-3 dark:border-amber-800">
-                              <p className="text-xs font-medium">Consent and Acknowledgement</p>
-                              <p className="text-xs">By signing this form, I confirm the following:</p>
+                              <p className="text-xs font-medium">{t("registration.consentTitle")}</p>
+                              <p className="text-xs">{t("registration.consentIntro")}</p>
                               <ol className="list-decimal pl-5 space-y-1.5 text-xs leading-relaxed">
-                                <li>I authorize my child to attend the camp meeting unaccompanied by me or another legal guardian.</li>
-                                <li>I understand that my child will be under the supervision of the camp meeting organizers and adult volunteers/staff.</li>
-                                <li>I give permission for the camp meeting organizers to direct, supervise, and make reasonable decisions regarding the care and behavior of my child during the event.</li>
-                                <li>I acknowledge that I have provided all relevant medical, allergy, or emergency contact information necessary for the safety and well-being of my child.</li>
-                                <li>I release and hold harmless the camp meeting organizers, staff, and volunteers from any liability that may arise during the course of this camp meeting, except in cases of gross negligence or willful misconduct.</li>
+                                <li>{t("registration.consent1")}</li>
+                                <li>{t("registration.consent2")}</li>
+                                <li>{t("registration.consent3")}</li>
+                                <li>{t("registration.consent4")}</li>
+                                <li>{t("registration.consent5")}</li>
                               </ol>
 
                               {/* E-Signature */}
@@ -1737,8 +1737,8 @@ export default function ParticipantsStep() {
                               />
                               <Label className="text-xs font-normal leading-relaxed">
                                 {p.isRepresentative
-                                  ? "I understand that the registrant is a minor. I confirm that the parent/guardian listed above has authorized this minor to serve as the group representative, and I consent to the parent/guardian being contacted in case of any issues or emergencies."
-                                  : "I understand that the registrant is a minor. I confirm that the parent/guardian listed above has authorized this minor to attend the camp meeting, and I consent to the parent/guardian being contacted in case of any issues or emergencies."}
+                                  ? t("registration.consentCheckRep")
+                                  : t("registration.consentCheckMember")}
                               </Label>
                             </div>
                             {errs.guardianConsent && <p className="text-xs text-destructive">{errs.guardianConsent}</p>}
@@ -1797,7 +1797,7 @@ export default function ParticipantsStep() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t("registration.removeParticipant")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove {removeTarget?.name} from the group?
+              {t("registration.removeParticipantConfirm", { name: removeTarget?.name ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1827,7 +1827,7 @@ export default function ParticipantsStep() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t("registration.removeRoom")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove {removeGroupTarget !== null && state.roomGroups.length > 1 ? t("registration.roomGroupNum", { number: removeGroupTarget + 1 }) : t("registration.roomGroup")}?
+              {t("registration.removeGroupConfirm", { name: removeGroupTarget !== null && state.roomGroups.length > 1 ? t("registration.roomGroupNum", { number: removeGroupTarget + 1 }) : t("registration.roomGroup") })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1857,7 +1857,7 @@ export default function ParticipantsStep() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t("registration.removeParticipant")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove {removeSavedPersonTarget?.first_name} {removeSavedPersonTarget?.last_name} from your saved list?
+              {t("registration.removeSavedPersonConfirm", { name: `${removeSavedPersonTarget?.first_name} ${removeSavedPersonTarget?.last_name}` })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1888,22 +1888,19 @@ export default function ParticipantsStep() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Individual Date Change Policy</AlertDialogTitle>
+            <AlertDialogTitle>{t("registration.dateChangePolicyTitle")}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
-                  Your group is registered for{" "}
-                  <strong>
-                    {state.startDate && format(new Date(state.startDate + "T00:00:00"), "EEE, MMM d")}
-                    {" — "}
-                    {state.endDate && format(new Date(state.endDate + "T00:00:00"), "EEE, MMM d")}
-                  </strong>.
+                  {t("registration.dateChangePolicyRegistered", {
+                    dates: `${state.startDate ? format(new Date(state.startDate + "T00:00:00"), "EEE, MMM d") : ""} — ${state.endDate ? format(new Date(state.endDate + "T00:00:00"), "EEE, MMM d") : ""}`
+                  })}
                 </p>
                 <p>
-                  You are about to change this person&apos;s stay dates to differ from the group.
+                  {t("registration.dateChangePolicyWarning")}
                 </p>
                 <p className="font-medium text-foreground">
-                  The dates you select must accurately reflect this person&apos;s actual attendance. Any discrepancy between the registered dates and actual attendance is a violation of camp policy.
+                  {t("registration.dateChangePolicyViolation")}
                 </p>
                 <label className="flex items-start gap-2 rounded-md border p-3 cursor-pointer hover:bg-accent/50 transition-colors">
                   <input
@@ -1913,7 +1910,7 @@ export default function ParticipantsStep() {
                     className="mt-0.5"
                   />
                   <span className="text-sm">
-                    I confirm that the dates I am selecting accurately reflect this person&apos;s actual attendance.
+                    {t("registration.dateChangePolicyAgree")}
                   </span>
                 </label>
               </div>
@@ -1932,7 +1929,7 @@ export default function ParticipantsStep() {
                 }
               }}
             >
-              Confirm Change
+              {t("registration.confirmChange")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
