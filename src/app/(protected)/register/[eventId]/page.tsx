@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { AlertCircle } from "lucide-react";
 import { DateRangePicker } from "@/components/registration/date-range-picker";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { useI18n } from "@/lib/i18n/context";
 
 interface EventData {
@@ -293,6 +294,18 @@ export default function RegistrationStep1() {
     <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
       <h1 className="text-2xl font-bold text-center">{event.name_en}</h1>
       <WizardStepper currentStep={1} />
+
+      <div className="flex flex-col items-center gap-2 rounded-lg border bg-muted/50 px-4 py-3">
+        <div className="text-sm text-muted-foreground">
+          {locale === "en" ? "Select your preferred language" : "언어를 선택하세요"}
+        </div>
+        <LanguageSwitcher variant="toggle" />
+        <p className="text-xs text-muted-foreground/70">
+          {locale === "en"
+            ? "You can change this anytime from the top-right menu."
+            : "오른쪽 상단 메뉴에서 언제든지 변경할 수 있습니다."}
+        </p>
+      </div>
 
       <Card>
         <CardHeader>

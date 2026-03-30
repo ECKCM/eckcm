@@ -1090,12 +1090,12 @@ export default function ParticipantsStep() {
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">
                               <UserPlus className="inline size-3 mr-1" />
-                              Autofill
+                              {t("registration.autofill")}
                             </Label>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <Button variant="outline" size="sm" className="w-full h-8 justify-start text-xs font-normal text-muted-foreground">
-                                  Select a saved person...
+                                  {t("registration.selectSavedPerson")}
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-(--radix-popover-trigger-width) p-1" align="start">
@@ -1462,7 +1462,7 @@ export default function ParticipantsStep() {
                                   });
                                 }}
                               />
-                              <Label className="text-xs font-normal">I don&apos;t have an email address.</Label>
+                              <Label className="text-xs font-normal">{t("registration.noEmailAddress")}</Label>
                             </div>
                           )}
                         </div>
@@ -1520,7 +1520,7 @@ export default function ParticipantsStep() {
                                   });
                                 }}
                               />
-                              <Label className="text-xs font-normal">I don&apos;t have a phone number.</Label>
+                              <Label className="text-xs font-normal">{t("registration.noPhoneNumber")}</Label>
                             </div>
                           )}
                         </div>
@@ -1528,7 +1528,7 @@ export default function ParticipantsStep() {
                         {/* Church */}
                         <div className="space-y-1">
                           <Label className="text-xs">{t("profile.church")} <span className="text-destructive">*</span></Label>
-                          <p className="text-xs text-muted-foreground">You can type to search for your church.</p>
+                          <p className="text-xs text-muted-foreground">{t("registration.churchSearchHint")}</p>
                           <ChurchCombobox
                             churches={churches}
                             value={p.churchId ?? ""}

@@ -22,9 +22,16 @@ interface LegalPage {
 }
 
 const INSTRUCTION_SLUGS = ["registration-instructions-en", "registration-instructions-ko"];
+const CLAUDE_SUMMARY_SLUGS = ["claude-summary-en", "claude-summary-ko"];
+const CHATGPT_SUMMARY_SLUGS = ["chatgpt-summary-en", "chatgpt-summary-ko"];
+const AI_SUMMARY_SLUGS = [...CLAUDE_SUMMARY_SLUGS, ...CHATGPT_SUMMARY_SLUGS];
 
 function isInstructionSlug(slug: string) {
   return INSTRUCTION_SLUGS.includes(slug);
+}
+
+function isAiSummarySlug(slug: string) {
+  return AI_SUMMARY_SLUGS.includes(slug);
 }
 
 export function LegalManager({ initialPages }: { initialPages: LegalPage[] }) {
@@ -79,11 +86,16 @@ export function LegalManager({ initialPages }: { initialPages: LegalPage[] }) {
     if (data) setPages(data);
   };
 
-  // Split pages into regular legal pages and instruction pages
-  const regularPages = pages.filter((p) => !isInstructionSlug(p.slug));
+  // Split pages into regular legal pages, instruction pages, and AI summary pages
+  const regularPages = pages.filter((p) => !isInstructionSlug(p.slug) && !isAiSummarySlug(p.slug));
   const instructionPages = pages.filter((p) => isInstructionSlug(p.slug));
   const instructionEn = instructionPages.find((p) => p.slug === "registration-instructions-en");
   const instructionKo = instructionPages.find((p) => p.slug === "registration-instructions-ko");
+
+  const claudeEn = pages.find((p) => p.slug === "claude-summary-en");
+  const claudeKo = pages.find((p) => p.slug === "claude-summary-ko");
+  const chatgptEn = pages.find((p) => p.slug === "chatgpt-summary-en");
+  const chatgptKo = pages.find((p) => p.slug === "chatgpt-summary-ko");
 
   const previewHref = (slug: string) => {
     if (slug === "terms") return "/terms";
@@ -195,6 +207,140 @@ export function LegalManager({ initialPages }: { initialPages: LegalPage[] }) {
                     disabled={saving === instructionKo.slug}
                   >
                     {saving === instructionKo.slug ? "Saving..." : "Save Korean"}
+                  </Button>
+                </div>
+              </TabsContent>
+            )}
+          </Tabs>
+        </div>
+      )}
+
+      {/* Claude Summary (EN / KO) */}
+      {(claudeEn || claudeKo) && (
+        <div className="space-y-3 rounded-lg border p-4">
+          <div>
+            <Label className="text-base font-semibold">Claude Summary</Label>
+            <p className="text-xs text-muted-foreground">
+              AI summary displayed when users click the Claude button on Step 2.
+            </p>
+          </div>
+
+          <Tabs defaultValue="en" className="w-full">
+            <TabsList>
+              <TabsTrigger value="en">English</TabsTrigger>
+              <TabsTrigger value="ko">Korean</TabsTrigger>
+            </TabsList>
+
+            {claudeEn && (
+              <TabsContent value="en" className="space-y-3 mt-3">
+                <p className="text-xs text-muted-foreground">
+                  Last updated: {claudeEn.updated_at ? new Date(claudeEn.updated_at).toISOString().slice(0, 10) : "Never"}
+                </p>
+                <MarkdownEditor
+                  value={contents[claudeEn.slug] ?? ""}
+                  onChange={(val) =>
+                    setContents((prev) => ({ ...prev, [claudeEn.slug]: val }))
+                  }
+                  height={300}
+                  placeholder="Enter English Claude summary (Markdown supported)..."
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => handleSave(claudeEn)}
+                    disabled={saving === claudeEn.slug}
+                  >
+                    {saving === claudeEn.slug ? "Saving..." : "Save English"}
+                  </Button>
+                </div>
+              </TabsContent>
+            )}
+
+            {claudeKo && (
+              <TabsContent value="ko" className="space-y-3 mt-3">
+                <p className="text-xs text-muted-foreground">
+                  Last updated: {claudeKo.updated_at ? new Date(claudeKo.updated_at).toISOString().slice(0, 10) : "Never"}
+                </p>
+                <MarkdownEditor
+                  value={contents[claudeKo.slug] ?? ""}
+                  onChange={(val) =>
+                    setContents((prev) => ({ ...prev, [claudeKo.slug]: val }))
+                  }
+                  height={300}
+                  placeholder="Enter Korean Claude summary (Markdown supported)..."
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => handleSave(claudeKo)}
+                    disabled={saving === claudeKo.slug}
+                  >
+                    {saving === claudeKo.slug ? "Saving..." : "Save Korean"}
+                  </Button>
+                </div>
+              </TabsContent>
+            )}
+          </Tabs>
+        </div>
+      )}
+
+      {/* ChatGPT Summary (EN / KO) */}
+      {(chatgptEn || chatgptKo) && (
+        <div className="space-y-3 rounded-lg border p-4">
+          <div>
+            <Label className="text-base font-semibold">ChatGPT Summary</Label>
+            <p className="text-xs text-muted-foreground">
+              AI summary displayed when users click the ChatGPT button on Step 2.
+            </p>
+          </div>
+
+          <Tabs defaultValue="en" className="w-full">
+            <TabsList>
+              <TabsTrigger value="en">English</TabsTrigger>
+              <TabsTrigger value="ko">Korean</TabsTrigger>
+            </TabsList>
+
+            {chatgptEn && (
+              <TabsContent value="en" className="space-y-3 mt-3">
+                <p className="text-xs text-muted-foreground">
+                  Last updated: {chatgptEn.updated_at ? new Date(chatgptEn.updated_at).toISOString().slice(0, 10) : "Never"}
+                </p>
+                <MarkdownEditor
+                  value={contents[chatgptEn.slug] ?? ""}
+                  onChange={(val) =>
+                    setContents((prev) => ({ ...prev, [chatgptEn.slug]: val }))
+                  }
+                  height={300}
+                  placeholder="Enter English ChatGPT summary (Markdown supported)..."
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => handleSave(chatgptEn)}
+                    disabled={saving === chatgptEn.slug}
+                  >
+                    {saving === chatgptEn.slug ? "Saving..." : "Save English"}
+                  </Button>
+                </div>
+              </TabsContent>
+            )}
+
+            {chatgptKo && (
+              <TabsContent value="ko" className="space-y-3 mt-3">
+                <p className="text-xs text-muted-foreground">
+                  Last updated: {chatgptKo.updated_at ? new Date(chatgptKo.updated_at).toISOString().slice(0, 10) : "Never"}
+                </p>
+                <MarkdownEditor
+                  value={contents[chatgptKo.slug] ?? ""}
+                  onChange={(val) =>
+                    setContents((prev) => ({ ...prev, [chatgptKo.slug]: val }))
+                  }
+                  height={300}
+                  placeholder="Enter Korean ChatGPT summary (Markdown supported)..."
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => handleSave(chatgptKo)}
+                    disabled={saving === chatgptKo.slug}
+                  >
+                    {saving === chatgptKo.slug ? "Saving..." : "Save Korean"}
                   </Button>
                 </div>
               </TabsContent>

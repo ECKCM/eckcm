@@ -49,6 +49,7 @@ export default function CompleteProfilePage() {
   const [eventStartDate, setEventStartDate] = useState<string | undefined>();
   const [isEmailSignup, setIsEmailSignup] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [initError, setInitError] = useState(false);
 
   // Email signup fields
   const [email, setEmail] = useState("");
@@ -152,13 +153,22 @@ export default function CompleteProfilePage() {
           .maybeSingle(),
       ]);
 
+      if (churchRes.error || deptRes.error) {
+        console.error("[signup] Failed to load reference data:", churchRes.error, deptRes.error);
+        setInitError(true);
+        return;
+      }
+
       if (churchRes.data) setChurches(churchRes.data);
       if (deptRes.data) setDepartments(deptRes.data);
       if (eventRes.data) setEventStartDate(eventRes.data.event_start_date);
       setInitialized(true);
     }
 
-    init();
+    init().catch((err) => {
+      console.error("[signup] Init failed:", err);
+      setInitError(true);
+    });
   }, [router]);
 
   const handleSubmit = async (data: ProfileFormData) => {
@@ -286,7 +296,34 @@ export default function CompleteProfilePage() {
     router.refresh();
   };
 
-  if (!initialized) return null;
+  if (initError) {
+    return (
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle className="text-xl">{t("common.somethingWentWrong")}</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center">
+          <p className="text-muted-foreground text-sm">{t("common.failedToLoadData")}</p>
+        </CardContent>
+        <CardFooter className="justify-center">
+          <Button onClick={() => window.location.reload()}>{t("common.tryAgain")}</Button>
+        </CardFooter>
+      </Card>
+    );
+  }
+
+  if (!initialized) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <p className="text-sm text-muted-foreground">{t("common.loadingData")}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="bg-white dark:bg-card">

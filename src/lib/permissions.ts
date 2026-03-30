@@ -41,6 +41,9 @@ const ROUTE_PERMISSIONS: [string, string][] = [
   ["/admin/print/lanyard", "print.lanyard"],
   ["/admin/print/qr-cards", "print.qrcard"],
 
+  // Manual Payments (Zelle / Check)
+  ["/admin/manual-payments", "settings.manage"],
+
   // Funding
   ["/admin/funding", "settings.manage"],
 

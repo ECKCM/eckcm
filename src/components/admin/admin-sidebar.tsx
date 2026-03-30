@@ -70,6 +70,7 @@ const navLinks = [
   { href: "/admin/checkin", label: "Check-in", icon: ScanLine, exact: false, permission: "checkin.main" },
   { href: "/admin/settings/links", label: "Links", icon: Link2, exact: false, permission: "links.manage" },
   { href: "/admin/guardian-consents", label: "Guardian Consents", icon: ShieldCheck, exact: false, permission: "participant.read" },
+  { href: "/admin/manual-payments", label: "Zelle / Check", icon: DollarSign, exact: false, permission: "settings.manage" },
   { href: "/admin/funding", label: "Funding Tracker", icon: HandCoins, exact: false, permission: "settings.manage" },
   { href: "/admin/audit", label: "Audit Logs", icon: ScrollText, exact: false, permission: "audit.read" },
   { href: "/admin/users", label: "Users", icon: Users, exact: false, permission: "user.manage" },

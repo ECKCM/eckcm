@@ -14,6 +14,9 @@ export function HomeContent() {
         <Toolbar />
       </div>
       <div className="mx-auto max-w-2xl text-center">
+        <p className="text-4xl text-muted-foreground" style={{ fontFamily: '"Pacifico", cursive' }}>
+          my
+        </p>
         <h1 className="text-6xl font-bold tracking-tight">
           {t("common.appName")}
         </h1>
