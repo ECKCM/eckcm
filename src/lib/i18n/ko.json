@@ -182,7 +182,7 @@
     "department": "부서",
     "calculating": "계산 중...",
     "pricingUnavailable": "가격 계산이 불가합니다. 진행하시면 최종 가격이 확정됩니다.",
-    "saveWithManual": "수표 또는 수동 결제(Zelle)로 {amount} 절약하세요!",
+    "saveWithManual": "수동 결제(수표 또는 Zelle)로 {amount} 절약하세요!",
     "additionalRequests": "추가 요청사항",
     "additionalRequestsDesc": "야영회에 대한 추가 요청사항이나 특별한 필요사항을 입력해 주세요.",
     "additionalRequestsPlaceholder": "예: 식이 제한, 특별 편의시설 등",

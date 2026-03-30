@@ -160,6 +160,7 @@ export function GoogleSheetsManager() {
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [showScript, setShowScript] = useState(false);
 
   useEffect(() => {
@@ -219,6 +220,24 @@ export function GoogleSheetsManager() {
       toast.error("Sync failed: " + String(err));
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleTestConnection() {
+    setTesting(true);
+    try {
+      const res = await fetch("/api/admin/google-sheets/test");
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(`Connection failed: ${data.error}`);
+        return;
+      }
+      toast.success(`Connection OK! Apps Script responded in ${data.latencyMs}ms`);
+      await fetchStatus();
+    } catch (err) {
+      toast.error("Connection test failed: " + String(err));
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -437,15 +456,30 @@ export function GoogleSheetsManager() {
             </Button>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={fetchStatus}
-            className="text-muted-foreground"
-          >
-            <RefreshCw className="mr-1 h-3.5 w-3.5" />
-            Refresh Status
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={fetchStatus}
+              className="text-muted-foreground"
+            >
+              <RefreshCw className="mr-1 h-3.5 w-3.5" />
+              Refresh Status
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTestConnection}
+              disabled={testing}
+            >
+              {testing ? (
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+              )}
+              Test Connection
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

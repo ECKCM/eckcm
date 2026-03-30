@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cancelRegistration } from "@/lib/services/registration.service";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
+import { syncRegistration } from "@/lib/services/google-sheets.service";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   req: NextRequest,
@@ -38,6 +40,18 @@ export async function POST(
   // Update inventory counts
   const admin = createAdminClient();
   await recalculateInventorySafe(admin);
+
+  // Sync to Google Sheets
+  const { data: reg } = await admin
+    .from("eckcm_registrations")
+    .select("event_id")
+    .eq("id", registrationId)
+    .single();
+  if (reg) {
+    syncRegistration(reg.event_id, registrationId).catch((err) =>
+      logger.error("[registration/cancel] Google Sheets sync failed", { error: String(err) })
+    );
+  }
 
   return NextResponse.json({ success: true });
 }

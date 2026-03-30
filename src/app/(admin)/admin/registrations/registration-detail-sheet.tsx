@@ -794,6 +794,7 @@ function AdjustmentsPanel({
   // Stripe refund is capped at availableRefund; registration total goes to 0 on full refund
   const stripeRefund = isRefundAction ? Math.min(inputCents, availableRefund) : 0;
   const refundExceedsTotal = isRefundAction && inputCents > currentAmount;
+  const refundExceedsAvailable = isRefundAction && processingFee > 0 && inputCents > availableRefund;
 
   if (loading) {
     return (
@@ -991,6 +992,11 @@ function AdjustmentsPanel({
                       </>
                     )}
                   </p>
+                  {refundExceedsAvailable && !refundExceedsTotal && (
+                    <p className="text-destructive">
+                      Max refundable: {formatMoney(availableRefund)} (fee {formatMoney(processingFee)} non-refundable)
+                    </p>
+                  )}
                   {refundExceedsTotal && (
                     <p className="text-destructive">
                       Cannot refund more than current amount ({formatMoney(currentAmount)})
@@ -1014,8 +1020,9 @@ function AdjustmentsPanel({
               <Select value={newAction} onValueChange={(val) => {
                 setNewAction(val);
                 if (val === "refund") {
-                  // Auto-fill with full current amount (Stripe refund is capped separately)
-                  setNewAmountDollars((currentAmount / 100).toFixed(2));
+                  // Auto-fill with max refundable (processing fee deducted)
+                  const maxRefund = availableRefund > 0 ? availableRefund : currentAmount;
+                  setNewAmountDollars((maxRefund / 100).toFixed(2));
                 } else if (newAction === "refund") {
                   setNewAmountDollars((currentAmount / 100).toFixed(2));
                 }
@@ -1049,7 +1056,7 @@ function AdjustmentsPanel({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCreate}
-              disabled={!reason.trim() || submitting || refundExceedsTotal}
+              disabled={!reason.trim() || submitting || refundExceedsTotal || refundExceedsAvailable}
             >
               {submitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
               Confirm Adjustment

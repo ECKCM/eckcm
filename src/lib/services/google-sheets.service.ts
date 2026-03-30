@@ -96,19 +96,58 @@ async function callAppsScript(
 ): Promise<any> {
   if (!APPS_SCRIPT_URL) throw new Error("Google Apps Script URL not configured");
 
-  const res = await fetch(APPS_SCRIPT_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, ...data }),
-    redirect: "follow",
+  const payload = JSON.stringify({ action, ...data });
+  logger.info("[google-sheets] Calling Apps Script", {
+    action,
+    payloadSize: payload.length,
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Apps Script error (${res.status}): ${text}`);
+  // Use manual redirect to properly handle Google Apps Script's 302 redirects.
+  let res = await fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: payload,
+    redirect: "manual",
+  });
+
+  // Follow the 302 redirect chain manually (Apps Script always redirects)
+  let redirectCount = 0;
+  while (res.status >= 300 && res.status < 400 && redirectCount < 5) {
+    const location = res.headers.get("location");
+    if (!location) break;
+    res = await fetch(location, { redirect: "manual" });
+    redirectCount++;
   }
 
-  return res.json();
+  logger.info("[google-sheets] Apps Script response", {
+    action,
+    status: res.status,
+    redirects: redirectCount,
+  });
+
+  const text = await res.text();
+
+  if (!text) {
+    throw new Error(`Apps Script returned empty response (status: ${res.status})`);
+  }
+
+  try {
+    const json = JSON.parse(text);
+    if (json.error) {
+      throw new Error(`Apps Script error: ${json.error}`);
+    }
+    return json;
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      logger.error("[google-sheets] Non-JSON response from Apps Script", {
+        action,
+        status: res.status,
+        body: text.slice(0, 500),
+      });
+      throw new Error(`Apps Script returned non-JSON (status: ${res.status})`);
+    }
+    throw e;
+  }
 }
 
 // ---------------------------------------------------------------------------

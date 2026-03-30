@@ -596,7 +596,9 @@ export async function POST(request: Request) {
   await recalculateInventorySafe(admin);
 
   // Sync to Google Sheets (non-blocking, fire-and-forget)
-  syncRegistration(eventId, registration.id).catch(() => {});
+  syncRegistration(eventId, registration.id).catch((err) =>
+    logger.error("[registration/submit] Google Sheets sync failed", { error: String(err) })
+  );
 
   return NextResponse.json({
     registrationId: registration.id,

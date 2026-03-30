@@ -182,7 +182,7 @@
     "department": "Department",
     "calculating": "Calculating...",
     "pricingUnavailable": "Unable to calculate pricing. Please proceed and pricing will be finalized.",
-    "saveWithManual": "Save {amount} with Check or manual payment (Zelle)!",
+    "saveWithManual": "Save {amount} with manual payment (Check or Zelle)!",
     "additionalRequests": "Additional Requests",
     "additionalRequestsDesc": "Please enter any additional requests or special needs for the camp meeting.",
     "additionalRequestsPlaceholder": "e.g., dietary restrictions, special accommodations, etc.",

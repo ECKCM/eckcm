@@ -132,6 +132,7 @@ export async function POST(
   // ─── Stripe refund for direct "refund" action ───
   let stripeRefundId: string | undefined;
   let paymentMethod: string | null = null;
+  let cappedRefundAmount: number | undefined;
 
   if (action_taken === "refund" && refundAmountCents > 0) {
     const events = reg.eckcm_events as unknown as { stripe_mode: string } | null;
@@ -157,12 +158,16 @@ export async function POST(
 
       if (payment) {
         paymentMethod = payment.payment_method;
+        // Safety: if Stripe payment intent exists, it's always a card payment
+        if (!paymentMethod && payment.stripe_payment_intent_id) {
+          paymentMethod = "CARD";
+        }
 
         // Cap refund at processing fee limit
         const { summary } = await getAdjustmentsWithSummary(admin, registrationId);
         const feeBase = summary.original_amount > 0 ? summary.original_amount : currentAmount;
         const fee = calculateProcessingFee(feeBase, paymentMethod);
-        const cappedRefundAmount = fee > 0
+        cappedRefundAmount = fee > 0
           ? Math.min(refundAmountCents, Math.max(0, feeBase - fee - summary.total_refunded))
           : refundAmountCents;
 
@@ -237,11 +242,16 @@ export async function POST(
     }
   }
 
+  // When refund is capped (processing fee deducted), adjustment must reflect actual refund
+  const adjustedNewAmount = (action_taken === "refund" && cappedRefundAmount !== undefined)
+    ? currentAmount - cappedRefundAmount
+    : new_amount;
+
   try {
     const adjustment = await createAdjustment(admin, {
       registrationId,
       adjustmentType: adjustment_type,
-      newAmount: new_amount,
+      newAmount: adjustedNewAmount,
       actionTaken: action_taken,
       reason: reason.trim(),
       adjustedBy: user.id,
@@ -270,11 +280,12 @@ export async function POST(
 
     // Send refund email in background (non-blocking)
     if (action_taken === "refund" && refundAmountCents > 0) {
+      const actualRefund = cappedRefundAmount ?? refundAmountCents;
       const isFullRefund = new_amount === 0;
       after(
         sendRefundEmail({
           registrationId,
-          refundAmountCents,
+          refundAmountCents: actualRefund,
           reason: reason.trim(),
           isFullRefund,
           paymentMethod,

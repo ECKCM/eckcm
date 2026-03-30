@@ -42,6 +42,13 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { RegistrationCodeCombobox } from "@/components/shared/registration-code-combobox";
@@ -128,6 +135,8 @@ export function ManualPaymentsManager() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [refundTarget, setRefundTarget] = useState<ManualPayment | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ManualPayment | null>(null);
   const [registrationCodes, setRegistrationCodes] = useState<string[]>([]);
@@ -197,16 +206,22 @@ export function ManualPaymentsManager() {
 
   // Filtered list
   const filtered = useMemo(() => {
-    if (!search) return payments;
-    const q = search.toLowerCase();
-    return payments.filter(
-      (p) =>
-        p.first_name.toLowerCase().includes(q) ||
-        p.last_name.toLowerCase().includes(q) ||
-        (p.registration_code ?? "").toLowerCase().includes(q) ||
-        (p.note ?? "").toLowerCase().includes(q)
-    );
-  }, [payments, search]);
+    return payments.filter((p) => {
+      if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (typeFilter !== "all" && p.payment_type !== typeFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        if (
+          !p.first_name.toLowerCase().includes(q) &&
+          !p.last_name.toLowerCase().includes(q) &&
+          !(p.registration_code ?? "").toLowerCase().includes(q) &&
+          !(p.note ?? "").toLowerCase().includes(q)
+        )
+          return false;
+      }
+      return true;
+    });
+  }, [payments, search, statusFilter, typeFilter]);
 
   const openDialog = (type: "zelle" | "check") => {
     setDialogType(type);
@@ -416,6 +431,27 @@ export function ManualPaymentsManager() {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
         />
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="received">Received</SelectItem>
+            <SelectItem value="updated">Updated</SelectItem>
+            <SelectItem value="refunded">Refunded</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[130px]">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="zelle">Zelle</SelectItem>
+            <SelectItem value="check">Check</SelectItem>
+          </SelectContent>
+        </Select>
         <Button variant="outline" size="icon" onClick={loadPayments} disabled={loading}>
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
         </Button>

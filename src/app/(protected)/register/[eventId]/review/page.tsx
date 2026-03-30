@@ -191,7 +191,8 @@ export default function ReviewStep() {
         </CardContent>
       </Card>
 
-      {/* Room Groups with Per-Participant Pricing */}
+      {/* Room Groups with Pricing & Total */}
+      <Card>
       {state.roomGroups.map((group, gi) => {
         // Group-level fee items (lodging, additional lodging)
         const groupFeeItems: PriceLineItem[] = estimate
@@ -207,7 +208,8 @@ export default function ReviewStep() {
           : [];
 
         return (
-          <Card key={group.id}>
+          <div key={group.id}>
+            {gi > 0 && <Separator className="my-4" />}
             <CardHeader className="pb-2">
               <CardTitle className="text-base">
                 Group{state.roomGroups.length > 1 ? ` ${gi + 1}` : ""} - {group.participants.length} participant(s), {group.keyCount} key(s)
@@ -223,7 +225,7 @@ export default function ReviewStep() {
                   .join(" · ") || t("registration.noSpecialPrefs")}
               </p>
             </CardHeader>
-            <CardContent className="space-y-0">
+            <CardContent className="space-y-0 pb-3">
               {group.participants.map((p, pi) => {
                 const pItems = estimate?.participantBreakdown?.[p.id] ?? [];
                 const pTotal = pItems.reduce((sum, item) => sum + item.amount, 0);
@@ -297,23 +299,20 @@ export default function ReviewStep() {
                 </>
               )}
             </CardContent>
-          </Card>
+          </div>
         );
       })}
 
       {/* Total */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("common.total")}</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="px-6"><Separator /></div>
+      <div className="px-6 pt-3 pb-6">
           {loading ? (
             <div className="flex items-center justify-center py-4 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
               {t("registration.calculating")}
             </div>
           ) : estimate ? (
-            <div className="space-y-2">
+            <div className="space-y-0.5">
               {/* Shared fees: key deposit, funding, standalone waived items */}
               {estimate.breakdown
                 .filter((item) => {
@@ -324,7 +323,7 @@ export default function ReviewStep() {
                   return true;
                 })
                 .map((item, i) => (
-                  <div key={i} className={`flex justify-between text-sm ${item.amount <= 0 ? "text-green-600" : ""}`}>
+                  <div key={i} className={`flex justify-between text-xs ${item.amount <= 0 ? "text-green-600" : "text-muted-foreground"}`}>
                     <span>
                       {item.description}
                       {item.quantity > 1 && item.unitPrice > 0
@@ -334,8 +333,8 @@ export default function ReviewStep() {
                     <span>{item.amount === 0 ? t("common.free") : formatDollars(item.amount)}</span>
                   </div>
                 ))}
-              <Separator />
-              <div className="flex justify-between font-bold text-lg">
+              <Separator className="my-2" />
+              <div className="flex justify-between font-bold text-sm">
                 <span>{t("common.total")}</span>
                 <span>{formatDollars(estimate.total)}</span>
               </div>
@@ -345,7 +344,7 @@ export default function ReviewStep() {
               {t("registration.pricingUnavailable")}
             </p>
           )}
-        </CardContent>
+      </div>
       </Card>
 
       {/* Manual payment discount banner */}

@@ -253,7 +253,9 @@ export async function POST(request: Request) {
   await recalculateInventorySafe(admin);
 
   // Sync to Google Sheets
-  syncRegistration(registration.event_id, registrationId).catch(() => {});
+  syncRegistration(registration.event_id, registrationId).catch((err) =>
+    logger.error("[payment/check-submit] Google Sheets sync failed", { error: String(err) })
+  );
 
   // Audit log
   await admin.from("eckcm_audit_logs").insert({

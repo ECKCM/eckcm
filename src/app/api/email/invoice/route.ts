@@ -121,6 +121,12 @@ export async function POST(req: NextRequest) {
     const fullName = `${p.first_name_en} ${p.last_name_en}`;
     return p.display_name_ko ? `${fullName} (${p.display_name_ko})` : fullName;
   });
+  // English-only names for PDF (pdf-lib Helvetica cannot encode Korean glyphs)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const participantNamesEn = (memberships ?? []).map((m: any) => {
+    const p = m.eckcm_people;
+    return `${p.first_name_en} ${p.last_name_en}`;
+  });
 
   const html = buildInvoiceEmail({
     invoiceNumber: inv.invoice_number,
@@ -151,7 +157,7 @@ export async function POST(req: NextRequest) {
       issuedDate: new Date(inv.issued_at).toLocaleDateString("en-US"),
       billTo: recipientEmail,
       dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
-      participants: participantNames,
+      participants: participantNamesEn,
       lineItems,
       subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
       total: `$${(inv.total_cents / 100).toFixed(2)}`,

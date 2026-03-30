@@ -92,6 +92,7 @@ export async function POST(
   const stripeMode = (events?.stripe_mode as "test" | "live") ?? "test";
 
   let stripeRefundId: string | undefined;
+  let cappedRefundAmount: number | undefined;
 
   // 3. Execute Stripe operations based on action
   if (action === "refund" && adj.difference < 0) {
@@ -119,6 +120,10 @@ export async function POST(
 
       if (payment) {
         paymentMethod = payment.payment_method;
+        // Safety: if Stripe payment intent exists, it's always a card payment
+        if (!paymentMethod && payment.stripe_payment_intent_id) {
+          paymentMethod = "CARD";
+        }
       }
 
       // Cap refund at max refundable (processing fee is non-refundable)
@@ -126,7 +131,7 @@ export async function POST(
       const feeBase = summary.original_amount > 0 ? summary.original_amount : (adj.previous_amount + Math.abs(adj.difference));
       const fee = calculateProcessingFee(feeBase, paymentMethod);
       const rawRefundAmount = Math.abs(adj.difference);
-      const cappedRefundAmount = fee > 0
+      cappedRefundAmount = fee > 0
         ? Math.min(rawRefundAmount, Math.max(0, feeBase - fee - summary.total_refunded))
         : rawRefundAmount;
 
@@ -216,6 +221,22 @@ export async function POST(
     }
   }
 
+  // 3b. Correct adjustment amounts if refund was capped (processing fee deducted)
+  if (action === "refund" && cappedRefundAmount !== undefined && cappedRefundAmount !== Math.abs(adj.difference)) {
+    const adjustedNewAmount = adj.previous_amount - cappedRefundAmount;
+    const adjustedDifference = adjustedNewAmount - adj.previous_amount;
+
+    await admin
+      .from("eckcm_registration_adjustments")
+      .update({ new_amount: adjustedNewAmount, difference: adjustedDifference })
+      .eq("id", adjustmentId);
+
+    await admin
+      .from("eckcm_registrations")
+      .update({ total_amount_cents: adjustedNewAmount })
+      .eq("id", registrationId);
+  }
+
   // 4. Update adjustment record
   await processAdjustment(admin, adjustmentId, {
     actionTaken: action,
@@ -239,12 +260,12 @@ export async function POST(
 
   // 6. Send refund email in background (non-blocking)
   if (action === "refund" && adj.difference < 0) {
-    const refundAmountCents = Math.abs(adj.difference);
+    const actualRefund = cappedRefundAmount ?? Math.abs(adj.difference);
     const isFullRefund = adj.new_amount === 0;
     after(
       sendRefundEmail({
         registrationId,
-        refundAmountCents,
+        refundAmountCents: actualRefund,
         reason: adj.reason,
         isFullRefund,
         paymentMethod,

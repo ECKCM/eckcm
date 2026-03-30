@@ -168,7 +168,9 @@ export async function PATCH(request: Request) {
     .eq("id", registrationId)
     .single();
   if (regForSync) {
-    syncRegistration(regForSync.event_id, registrationId).catch(() => {});
+    syncRegistration(regForSync.event_id, registrationId).catch((err) =>
+      logger.error("[admin/registration/status] Google Sheets sync failed", { error: String(err) })
+    );
   }
 
   return NextResponse.json({ success: true });
