@@ -28,7 +28,9 @@ export async function GET(req: NextRequest) {
   }
 
   if (search) {
-    query = query.or(`to_email.ilike.%${search}%,subject.ilike.%${search}%`);
+    // Escape PostgREST special characters to prevent filter injection
+    const escaped = search.replace(/[,.()"\\]/g, (ch) => `\\${ch}`);
+    query = query.or(`to_email.ilike.%${escaped}%,subject.ilike.%${escaped}%`);
   }
 
   const { data, count, error } = await query;

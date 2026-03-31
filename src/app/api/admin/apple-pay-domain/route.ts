@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { getStripeForMode } from "@/lib/stripe/config";
 
 /**
@@ -10,21 +9,8 @@ import { getStripeForMode } from "@/lib/stripe/config";
  * Admin-only endpoint.
  */
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Check admin role
-  const admin = createAdminClient();
-  const { data: userRow } = await admin
-    .from("eckcm_users")
-    .select("role")
-    .eq("auth_user_id", user.id)
-    .single();
-
-  if (!userRow || !["SUPER_ADMIN", "ADMIN"].includes(userRow.role)) {
+  const auth = await requireAdmin();
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -50,20 +36,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const admin = createAdminClient();
-  const { data: userRow } = await admin
-    .from("eckcm_users")
-    .select("role")
-    .eq("auth_user_id", user.id)
-    .single();
-
-  if (!userRow || !["SUPER_ADMIN", "ADMIN"].includes(userRow.role)) {
+  const auth = await requireAdmin();
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

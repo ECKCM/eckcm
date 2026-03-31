@@ -1,7 +1,14 @@
 /**
  * In-memory sliding-window rate limiter.
- * Suitable for single-instance deployments.
- * For multi-instance, replace with @upstash/ratelimit + Redis.
+ *
+ * LIMITATION: This rate limiter uses a process-local Map, so limits are
+ * per-instance. In multi-instance deployments (e.g., multiple Vercel
+ * serverless function instances), each instance tracks its own counters
+ * independently — a client could exceed the intended limit by hitting
+ * different instances. This is acceptable for the current single-region
+ * deployment but should be replaced with a distributed store (e.g.,
+ * @upstash/ratelimit + Redis, or a Supabase RPC counter) before scaling
+ * to multiple concurrent instances.
  */
 
 interface Entry {

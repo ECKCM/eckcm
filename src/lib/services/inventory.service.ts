@@ -39,7 +39,7 @@ export async function recalculateInventory(
       id, status, registration_group_id,
       eckcm_groups(
         id,
-        preferences,
+        lodging_type,
         eckcm_group_memberships(person_id)
       )
     `
@@ -84,7 +84,7 @@ export async function recalculateInventory(
       if (feeCode.startsWith("LODGING_")) {
         // Count groups with matching lodging type
         for (const group of (reg as any).eckcm_groups ?? []) {
-          const lodgingType = group.preferences?.lodgingType;
+          const lodgingType = group.lodging_type;
           if (lodgingType === feeCode) {
             if (isHeld) held++;
             if (isReserved) reserved++;

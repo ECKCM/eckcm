@@ -1,3 +1,5 @@
+import { escapeHtml } from "../utils";
+
 interface RefundEmailProps {
   confirmationCode: string;
   eventName: string;
@@ -76,11 +78,11 @@ export function buildRefundEmail({
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
                 <tr>
                   <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Event</td>
-                  <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${eventName}</td>
+                  <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${escapeHtml(eventName)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Location</td>
-                  <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${eventLocation}</td>
+                  <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${escapeHtml(eventLocation)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Dates</td>
@@ -110,7 +112,7 @@ export function buildRefundEmail({
                 </tr>
                 <tr>
                   <td style="padding: 8px 12px; font-size: 13px; color: #6b7280; border-top: 1px solid #e5e7eb;">Reason</td>
-                  <td style="padding: 8px 12px; font-size: 13px; color: #111827; text-align: right; border-top: 1px solid #e5e7eb;">${reason}</td>
+                  <td style="padding: 8px 12px; font-size: 13px; color: #111827; text-align: right; border-top: 1px solid #e5e7eb;">${escapeHtml(reason)}</td>
                 </tr>
               </table>
 

@@ -83,6 +83,9 @@ export async function cancelRegistration(
     .update({ is_active: false })
     .eq("registration_id", registrationId);
 
+  // Recalculate inventory counts (cancellation frees up spots)
+  await recalculateInventorySafe(supabase);
+
   return { success: true };
 }
 
@@ -94,6 +97,20 @@ export async function deleteDraftRegistration(
   admin: SupabaseClient,
   registrationId: string
 ): Promise<void> {
+  // Verify registration is actually in DRAFT status before deleting
+  const { data: reg } = await admin
+    .from("eckcm_registrations")
+    .select("status")
+    .eq("id", registrationId)
+    .single();
+
+  if (!reg) {
+    throw new Error("Registration not found");
+  }
+  if (reg.status !== "DRAFT") {
+    throw new Error(`Cannot delete registration in ${reg.status} status — only DRAFT registrations can be deleted`);
+  }
+
   // Invoices → line items, payments
   const { data: invoices } = await admin
     .from("eckcm_invoices")

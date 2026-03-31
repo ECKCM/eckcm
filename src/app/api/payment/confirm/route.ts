@@ -162,21 +162,30 @@ export async function POST(request: Request) {
 
   const invoiceId = paymentIntent.metadata.invoiceId;
 
+    // Atomic guard: only update if still DRAFT (prevents race condition on double-submit)
     const { error: registrationError, data: registrationData } = await admin
       .from("eckcm_registrations")
       .update({ status: "PAID" })
       .select("id")
-      .eq("id", registrationId);
+      .eq("id", registrationId)
+      .eq("status", "DRAFT");
 
-    if (registrationError || !registrationData?.length) {
+    if (registrationError) {
       logger.error("[payment/confirm] Failed to update registration to PAID", {
         registrationId,
-        error: registrationError ? String(registrationError) : "no rows updated",
+        error: String(registrationError),
       });
       return NextResponse.json(
         { error: "Failed to finalize payment" },
         { status: 500 }
       );
+    }
+
+    // No rows updated = concurrent request already confirmed — treat as idempotent success
+    if (!registrationData?.length) {
+      logger.info("[payment/confirm] Registration already moved from DRAFT (concurrent confirm)", { registrationId });
+      await generateEPassAndSendEmail(admin, registrationId);
+      return NextResponse.json({ status: "already_confirmed" });
     }
 
     // Insert initial_payment adjustment (idempotent)

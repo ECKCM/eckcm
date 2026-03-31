@@ -5,6 +5,24 @@ All notable changes to the ECKCM Online Registration & Management System will be
 ## Unreleased (Development)
 
 ### Fixed
+- **Bugfix Sprint**: Critical Payment/Refund Atomicity & Data Integrity
+  - Webhook payment_failed no longer cancels PAID registrations (C1)
+  - Stripe refund order corrected: DB guard → Stripe call → rollback (C2, 3 endpoints)
+  - Payment confirm idempotency via atomic `.eq("status", "DRAFT")` guard (H1)
+  - Check/Zelle discount idempotency checks before insert (H2)
+  - Processing PaymentIntent path skips confirm, relies on webhook (H3)
+  - Adjustment service optimistic locking via amount field match (H4)
+  - cancelRegistration() now recalculates inventory safely (H5)
+  - deleteDraftRegistration() verifies DRAFT status before delete (H6)
+  - Room assignment atomic guard with conditional UPDATE + rollback (H7)
+  - Admin status transition rules enforce ALLOWED_TRANSITIONS map (H8)
+  - PostgREST filter escaping prevents injection in email log search (H9)
+  - HTML escape utility applied to 5 email templates (21 sites) prevents XSS (H10)
+  - Rate limiter limitations documented; per-instance constraint noted (H11)
+  - Apple Pay domain endpoint unified to requireAdmin() pattern (H12)
+  - 14/14 items completed, 100% design match rate, 166 tests passing, zero regression
+  - Affects: 20 files across stripe webhook, payment routes, services, email, admin
+
 - **Payment Complete**: Fix REG_FEE/EARLY_BIRD Age Filtering & MANUAL_PAYMENT_DISCOUNT Logic
   - Age-based registration fee eligibility now enforced (children under age_min are exempt)
   - Manual payment discounts now apply only to age-eligible, fee-paying participants

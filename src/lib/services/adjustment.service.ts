@@ -238,11 +238,22 @@ export async function createAdjustment(
     throw new Error(`Failed to create adjustment: ${error?.message}`);
   }
 
-  // 3. Update registration total_amount_cents
-  await admin
+  // 3. Update registration total_amount_cents (optimistic lock: only if amount hasn't changed)
+  const { data: updated } = await admin
     .from("eckcm_registrations")
     .update({ total_amount_cents: params.newAmount })
-    .eq("id", params.registrationId);
+    .eq("id", params.registrationId)
+    .eq("total_amount_cents", previousAmount)
+    .select("id");
+
+  if (!updated?.length) {
+    // Concurrent modification detected — remove the adjustment we just inserted
+    await admin
+      .from("eckcm_registration_adjustments")
+      .delete()
+      .eq("id", (adjustment as AdjustmentRecord).id);
+    throw new Error("Concurrent modification detected — please retry");
+  }
 
   return adjustment as AdjustmentRecord;
 }

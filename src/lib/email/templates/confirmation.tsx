@@ -1,3 +1,5 @@
+import { escapeHtml } from "../utils";
+
 interface ConfirmationEmailProps {
   confirmationCode: string;
   eventName: string;
@@ -48,7 +50,7 @@ export function buildConfirmationEmail({
       (p, i) => `
         <tr>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${i + 1}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${p.name}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(p.name)}</td>
           ${showEPass ? `<td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">
             <a href="${p.epassUrl}" style="color: #2563eb; text-decoration: underline;">View E-Pass</a>
           </td>` : ""}
@@ -98,11 +100,11 @@ export function buildConfirmationEmail({
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
                 <tr>
                   <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Event</td>
-                  <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${eventName}</td>
+                  <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${escapeHtml(eventName)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Location</td>
-                  <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${eventLocation}</td>
+                  <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${escapeHtml(eventLocation)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Dates</td>
@@ -141,7 +143,7 @@ export function buildConfirmationEmail({
                 </tr>
                 ${invoiceInfo.lineItems.map(item => `
                 <tr>
-                  <td style="padding: 8px 12px; border-top: 1px solid #e5e7eb; font-size: 13px;">${item.description}</td>
+                  <td style="padding: 8px 12px; border-top: 1px solid #e5e7eb; font-size: 13px;">${escapeHtml(item.description)}</td>
                   <td style="padding: 8px 12px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 13px;">${item.quantity}</td>
                   <td style="padding: 8px 12px; border-top: 1px solid #e5e7eb; text-align: right; font-size: 13px;">${item.unitPrice}</td>
                   <td style="padding: 8px 12px; border-top: 1px solid #e5e7eb; text-align: right; font-size: 13px;">${item.amount}</td>
@@ -163,11 +165,11 @@ export function buildConfirmationEmail({
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">1. Send with Zelle to:</td>
-                        <td style="padding: 4px 0; text-align: right;"><code style="font-size: 14px; font-family: monospace; font-weight: bold; color: #111827; background: #f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 2px 6px;">${zelleInfo.zelleEmail}</code></td>
+                        <td style="padding: 4px 0; text-align: right;"><code style="font-size: 14px; font-family: monospace; font-weight: bold; color: #111827; background: #f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 2px 6px;">${escapeHtml(zelleInfo.zelleEmail)}</code></td>
                       </tr>
                       <tr>
                         <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">2. Account Holder:</td>
-                        <td style="padding: 4px 0; color: #111827; font-size: 14px; font-weight: bold; text-align: right;">${zelleInfo.accountHolder}</td>
+                        <td style="padding: 4px 0; color: #111827; font-size: 14px; font-weight: bold; text-align: right;">${escapeHtml(zelleInfo.accountHolder)}</td>
                       </tr>
                       <tr>
                         <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">3. Amount:</td>
@@ -175,7 +177,7 @@ export function buildConfirmationEmail({
                       </tr>
                     </table>
                     <p style="font-size: 14px; color: #6b7280; margin: 12px 0 4px;">4. Memo/Note <span style="color: #dc2626; font-weight: bold;">(Required)</span>:</p>
-                    <code style="display: block; font-size: 14px; font-family: monospace; background: #f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 8px 12px; color: #111827; margin: 0 0 12px; word-break: break-all;">${zelleInfo.memo.replace(/@/g, "&#64;")}</code>
+                    <code style="display: block; font-size: 14px; font-family: monospace; background: #f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 8px 12px; color: #111827; margin: 0 0 12px; word-break: break-all;">${escapeHtml(zelleInfo.memo).replace(/@/g, "&#64;")}</code>
                     <p style="font-size: 12px; color: #7c3aed; margin: 0 0 12px;">Please copy and paste the memo exactly as shown so we can match your payment.</p>
                     <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 12px;">
                       <tr>

@@ -94,6 +94,18 @@ export async function assignRoom(
 ): Promise<{ success: boolean; error?: string }> {
   const { groupId, roomId, assignedBy, notes } = params;
 
+  // Atomic guard: only assign if group is still PENDING (prevents double-assignment race)
+  const { data: updated } = await supabase
+    .from("eckcm_groups")
+    .update({ room_assign_status: "ASSIGNED" })
+    .eq("id", groupId)
+    .eq("room_assign_status", "PENDING")
+    .select("id");
+
+  if (!updated?.length) {
+    return { success: false, error: "Group is not in PENDING status (may already be assigned)" };
+  }
+
   const { error: insertError } = await supabase
     .from("eckcm_room_assignments")
     .insert({
@@ -104,16 +116,12 @@ export async function assignRoom(
     });
 
   if (insertError) {
+    // Rollback group status
+    await supabase
+      .from("eckcm_groups")
+      .update({ room_assign_status: "PENDING" })
+      .eq("id", groupId);
     return { success: false, error: insertError.message };
-  }
-
-  const { error: updateError } = await supabase
-    .from("eckcm_groups")
-    .update({ room_assign_status: "ASSIGNED" })
-    .eq("id", groupId);
-
-  if (updateError) {
-    return { success: false, error: updateError.message };
   }
 
   return { success: true };

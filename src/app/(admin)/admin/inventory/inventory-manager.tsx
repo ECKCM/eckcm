@@ -187,6 +187,21 @@ export function InventoryManager() {
     setAdding(false);
   };
 
+  const handleRecalculate = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/inventory/recalculate", {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Recalculation failed");
+      toast.success("Inventory recalculated");
+      await loadInventory();
+    } catch {
+      toast.error("Failed to recalculate inventory");
+      setLoading(false);
+    }
+  };
+
   const handleToggleForceStop = async () => {
     if (!stopConfirm) return;
     const { row, action } = stopConfirm;
@@ -278,8 +293,9 @@ export function InventoryManager() {
             <Button
               variant="outline"
               size="icon"
-              onClick={loadInventory}
+              onClick={handleRecalculate}
               disabled={loading}
+              title="Recalculate inventory"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>

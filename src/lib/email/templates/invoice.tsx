@@ -1,3 +1,5 @@
+import { escapeHtml } from "../utils";
+
 interface InvoiceEmailProps {
   invoiceNumber: string;
   confirmationCode: string;
@@ -30,7 +32,7 @@ export function buildInvoiceEmail({
     .map(
       (item) => `
         <tr>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${item.description}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${escapeHtml(item.description)}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 14px;">${item.quantity}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-size: 14px;">${item.unitPrice}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-size: 14px;">${item.amount}</td>
@@ -71,7 +73,7 @@ export function buildInvoiceEmail({
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
                 <tr>
                   <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Event</td>
-                  <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${eventName}</td>
+                  <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${escapeHtml(eventName)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Confirmation</td>
@@ -95,7 +97,7 @@ export function buildInvoiceEmail({
                 </tr>
                 ${participants.map((name, i) => `
                 <tr>
-                  <td style="padding: 2px 0 2px 8px; color: #6b7280; font-size: 14px;">${i + 1}. ${name}</td>
+                  <td style="padding: 2px 0 2px 8px; color: #6b7280; font-size: 14px;">${i + 1}. ${escapeHtml(name)}</td>
                 </tr>`).join("")}
               </table>
               ` : ""}

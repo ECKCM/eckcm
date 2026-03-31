@@ -102,26 +102,37 @@ export async function POST(request: Request) {
     }
   }
 
-  // Apply discount: add negative line item and update invoice total
+  // Apply discount: add negative line item and update invoice total (idempotent)
   const discountedTotal = Math.max(0, invoice.total_cents - discountCents);
   if (discountCents > 0) {
-    await admin.from("eckcm_invoice_line_items").insert({
-      invoice_id: invoice.id,
-      description_en: "Manual Payment Discount (Check)",
-      description_ko: "수동 결제 할인 (수표)",
-      quantity: 1,
-      unit_price_cents: -discountCents,
-      total_cents: -discountCents,
-      sort_order: 999,
-    });
-    await admin
-      .from("eckcm_invoices")
-      .update({ total_cents: discountedTotal })
-      .eq("id", invoice.id);
-    await admin
-      .from("eckcm_registrations")
-      .update({ total_amount_cents: discountedTotal })
-      .eq("id", registrationId);
+    // Check if discount line item already exists (prevents duplicate on double-submit)
+    const { data: existingDiscount } = await admin
+      .from("eckcm_invoice_line_items")
+      .select("id")
+      .eq("invoice_id", invoice.id)
+      .eq("sort_order", 999)
+      .lt("total_cents", 0)
+      .maybeSingle();
+
+    if (!existingDiscount) {
+      await admin.from("eckcm_invoice_line_items").insert({
+        invoice_id: invoice.id,
+        description_en: "Manual Payment Discount (Check)",
+        description_ko: "수동 결제 할인 (수표)",
+        quantity: 1,
+        unit_price_cents: -discountCents,
+        total_cents: -discountCents,
+        sort_order: 999,
+      });
+      await admin
+        .from("eckcm_invoices")
+        .update({ total_cents: discountedTotal })
+        .eq("id", invoice.id);
+      await admin
+        .from("eckcm_registrations")
+        .update({ total_amount_cents: discountedTotal })
+        .eq("id", registrationId);
+    }
   }
 
   // Cancel any orphaned Stripe PaymentIntents (created if user visited card form first)

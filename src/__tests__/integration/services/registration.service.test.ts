@@ -1,4 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
+
+vi.mock("@/lib/services/inventory.service", () => ({
+  recalculateInventorySafe: vi.fn(),
+}));
+
 import {
   cancelRegistration,
   deleteDraftRegistration,
@@ -158,8 +163,14 @@ describe("deleteDraftRegistration", () => {
 
     const admin = {
       from: vi.fn((table: string) => ({
-        select: vi.fn(() => ({
+        select: vi.fn((cols?: string) => ({
           eq: vi.fn(() => {
+            // Status check for DRAFT verification (first call)
+            if (table === "eckcm_registrations" && cols === "status") {
+              return {
+                single: vi.fn(() => ({ data: { status: "DRAFT" }, error: null })),
+              };
+            }
             if (table === "eckcm_invoices")
               return { data: [{ id: "inv-1" }], error: null };
             if (table === "eckcm_groups")
@@ -212,8 +223,14 @@ describe("deleteDraftRegistration", () => {
   it("handles empty invoices gracefully", async () => {
     const admin = {
       from: vi.fn((table: string) => ({
-        select: vi.fn(() => ({
+        select: vi.fn((cols?: string) => ({
           eq: vi.fn(() => {
+            // Status check for DRAFT verification
+            if (table === "eckcm_registrations" && cols === "status") {
+              return {
+                single: vi.fn(() => ({ data: { status: "DRAFT" }, error: null })),
+              };
+            }
             if (table === "eckcm_groups")
               return { data: [{ id: "grp-1" }], error: null };
             if (table === "eckcm_group_memberships")
@@ -245,9 +262,17 @@ describe("deleteDraftRegistration", () => {
 
   it("handles null data from queries", async () => {
     const admin = {
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({ data: null, error: null })),
+      from: vi.fn((table: string) => ({
+        select: vi.fn((cols?: string) => ({
+          eq: vi.fn(() => {
+            // Status check for DRAFT verification
+            if (table === "eckcm_registrations" && cols === "status") {
+              return {
+                single: vi.fn(() => ({ data: { status: "DRAFT" }, error: null })),
+              };
+            }
+            return { data: null, error: null };
+          }),
           in: vi.fn(() => ({ data: null, error: null })),
         })),
         delete: vi.fn(() => ({
@@ -258,5 +283,21 @@ describe("deleteDraftRegistration", () => {
     } as unknown as import("@supabase/supabase-js").SupabaseClient;
 
     await expect(deleteDraftRegistration(admin, "reg-1")).resolves.toBeUndefined();
+  });
+
+  it("throws when registration is not in DRAFT status", async () => {
+    const admin = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(() => ({ data: { status: "PAID" }, error: null })),
+          })),
+        })),
+      })),
+    } as unknown as import("@supabase/supabase-js").SupabaseClient;
+
+    await expect(deleteDraftRegistration(admin, "reg-1")).rejects.toThrow(
+      "Cannot delete registration in PAID status"
+    );
   });
 });

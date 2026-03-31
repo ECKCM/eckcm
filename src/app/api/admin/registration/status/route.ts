@@ -10,12 +10,23 @@ import { syncRegistration } from "@/lib/services/google-sheets.service";
 
 const VALID_STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "PAID", "CANCELLED", "REFUNDED"];
 
+// Allowed status transitions — prevents invalid state changes (e.g., CANCELLED -> PAID)
+// APPROVED = $0 그룹의 최종 확인 상태 (결제 없이 확정). PAID와 동등한 터미널 상태.
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  DRAFT: ["SUBMITTED", "CANCELLED"],
+  SUBMITTED: ["APPROVED", "PAID", "CANCELLED"],
+  APPROVED: ["CANCELLED"],              // $0 확정 — PAID 전이 불필요
+  PAID: ["REFUNDED", "CANCELLED"],
+  CANCELLED: ["DRAFT"],                 // 재오픈 허용
+  REFUNDED: [],                         // 터미널 상태
+};
+
 export async function PATCH(request: Request) {
   const auth = await requireAdmin();
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  const { user } = auth;
+  const { user, roles } = auth;
 
   const { registrationId, status } = await request.json();
 
@@ -24,6 +35,50 @@ export async function PATCH(request: Request) {
   }
 
   const admin = createAdminClient();
+
+  // Load current status to validate transition
+  const { data: currentReg } = await admin
+    .from("eckcm_registrations")
+    .select("status")
+    .eq("id", registrationId)
+    .single();
+
+  if (!currentReg) {
+    return NextResponse.json({ error: "Registration not found" }, { status: 404 });
+  }
+
+  if (currentReg.status === status) {
+    return NextResponse.json({ success: true }); // No-op, already in target status
+  }
+
+  // SUPER_ADMIN override: bypass transition rules for manual/no-payment registrations
+  // Covers Zelle/Check/Manual payments AND $0 groups (APPROVED with no payment record)
+  const isSuperAdmin = roles.includes("SUPER_ADMIN");
+  let bypassTransitionRules = false;
+
+  if (isSuperAdmin) {
+    const MANUAL_METHODS = ["MANUAL", "CHECK", "ZELLE"];
+    const { data: payment } = await admin
+      .from("eckcm_payments")
+      .select("payment_method, eckcm_invoices!inner(registration_id)")
+      .eq("eckcm_invoices.registration_id", registrationId)
+      .limit(1)
+      .maybeSingle();
+
+    // Bypass when: no payment exists ($0 group) OR payment is manual method
+    bypassTransitionRules =
+      !payment || MANUAL_METHODS.includes(payment.payment_method);
+  }
+
+  if (!bypassTransitionRules) {
+    const allowed = ALLOWED_TRANSITIONS[currentReg.status] ?? [];
+    if (!allowed.includes(status)) {
+      return NextResponse.json(
+        { error: `Cannot change status from ${currentReg.status} to ${status}` },
+        { status: 400 }
+      );
+    }
+  }
 
   // Update registration status
   const { error: regError } = await admin

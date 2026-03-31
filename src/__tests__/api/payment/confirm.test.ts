@@ -225,6 +225,11 @@ describe("POST /api/payment/confirm", () => {
           update: vi.fn(() => ({
             select: vi.fn(() => ({
               eq: vi.fn(() => ({
+                // Second .eq("status", "DRAFT") in the chain
+                eq: vi.fn(() => ({
+                  data: [{ id: "reg-1" }],
+                  error: null,
+                })),
                 data: [{ id: "reg-1" }],
                 error: null,
               })),

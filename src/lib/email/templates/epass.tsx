@@ -1,3 +1,5 @@
+import { escapeHtml } from "../utils";
+
 interface EPassEmailProps {
   personName: string;
   koreanName?: string | null;
@@ -16,8 +18,8 @@ export function buildEPassEmail({
   confirmationCode,
 }: EPassEmailProps): string {
   const displayName = koreanName
-    ? `${personName} (${koreanName})`
-    : personName;
+    ? `${escapeHtml(personName)} (${escapeHtml(koreanName)})`
+    : escapeHtml(personName);
 
   return `
 <!DOCTYPE html>
@@ -31,7 +33,7 @@ export function buildEPassEmail({
     <tr>
       <td style="padding: 32px 24px; text-align: center; background: linear-gradient(135deg, #1e40af, #3b82f6);">
         <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Your E-Pass</h1>
-        <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">${eventName}</p>
+        <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">${escapeHtml(eventName)}</p>
       </td>
     </tr>
     <tr>
@@ -40,7 +42,7 @@ export function buildEPassEmail({
           Hello <strong>${displayName}</strong>,
         </p>
         <p style="margin: 0 0 24px; font-size: 14px; color: #6b7280; line-height: 1.6;">
-          Your E-Pass for <strong>${eventName}</strong> (${eventDates}) is ready.
+          Your E-Pass for <strong>${escapeHtml(eventName)}</strong> (${escapeHtml(eventDates)}) is ready.
           Present this at check-in.
         </p>
 

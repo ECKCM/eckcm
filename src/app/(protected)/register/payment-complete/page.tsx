@@ -43,7 +43,7 @@ export default function PaymentCompletePage() {
 
       const { status, registrationId, confirmationCode } = await res.json();
 
-      if (status === "succeeded" || status === "processing") {
+      if (status === "succeeded") {
         // Confirm payment server-side (generates E-Pass + sends email)
         try {
           const confirmRes = await fetch("/api/payment/confirm", {
@@ -67,6 +67,20 @@ export default function PaymentCompletePage() {
           const { eventId } = await eventRes.json();
           router.replace(
             `/register/${eventId}/confirmation?registrationId=${registrationId}&code=${confirmationCode || ""}`
+          );
+        } else {
+          router.replace("/dashboard");
+        }
+      } else if (status === "processing") {
+        // Payment is still processing (e.g., bank transfer) — don't call confirm.
+        // The webhook will handle it when the payment completes.
+        const eventRes = await fetch(
+          `/api/registration/${registrationId}/event-id`
+        );
+        if (eventRes.ok) {
+          const { eventId } = await eventRes.json();
+          router.replace(
+            `/register/${eventId}/confirmation?registrationId=${registrationId}&code=${confirmationCode || ""}&processing=true`
           );
         } else {
           router.replace("/dashboard");

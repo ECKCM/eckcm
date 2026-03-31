@@ -1,3 +1,5 @@
+import { escapeHtml } from "../utils";
+
 interface SessionAttendanceEmailProps {
   sessionName: string;
   sessionDate: string;
@@ -23,7 +25,7 @@ export function buildSessionAttendanceEmail({
       (a, i) => `
         <tr>
           <td style="padding: 6px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px;">${i + 1}</td>
-          <td style="padding: 6px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px;">${a.name}</td>
+          <td style="padding: 6px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px;">${escapeHtml(a.name)}</td>
           <td style="padding: 6px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">${a.checkedInAt}</td>
         </tr>`
     )
@@ -55,7 +57,7 @@ export function buildSessionAttendanceEmail({
           <tr>
             <td>
               <!-- Session Details -->
-              <h2 style="font-size: 18px; color: #111827; margin: 0 0 16px;">${sessionName}</h2>
+              <h2 style="font-size: 18px; color: #111827; margin: 0 0 16px;">${escapeHtml(sessionName)}</h2>
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
                 <tr>
                   <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Date</td>
@@ -67,7 +69,7 @@ export function buildSessionAttendanceEmail({
                 </tr>
                 <tr>
                   <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Location</td>
-                  <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${location}</td>
+                  <td style="padding: 4px 0; color: #111827; font-size: 14px; text-align: right;">${escapeHtml(location)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Total Attendees</td>
