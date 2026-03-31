@@ -265,23 +265,20 @@ export async function POST(request: Request) {
       failMessage,
     });
 
-    // Cancel registration when payment fails
+    // Check registration status — never cancel a PAID registration from a payment_failed event.
+    // Stripe can deliver payment_failed for a *previous* failed attempt even after a successful one.
     const { data: registration } = await admin
       .from("eckcm_registrations")
       .select("id, status")
       .eq("id", registrationId)
       .single();
 
-    if (registration && registration.status === "PAID") {
-      logger.warn("[stripe/webhook] Cancelling registration — payment failed", {
+    if (registration && (registration.status === "PAID" || registration.status === "REFUNDED")) {
+      logger.info("[stripe/webhook] Registration is already " + registration.status + " — ignoring payment_failed", {
         registrationId,
-        previousStatus: registration.status,
         piId: pi.id,
       });
-      await admin
-        .from("eckcm_registrations")
-        .update({ status: "CANCELLED" })
-        .eq("id", registrationId);
+      return NextResponse.json({ received: true });
     }
 
     // Update payment record to FAILED

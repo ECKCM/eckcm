@@ -122,8 +122,31 @@ export async function POST(request: Request) {
   const refundReason = reason || "Admin-initiated refund";
   let stripeRefundId: string | undefined;
 
-  // 7. For Stripe payments, issue refund via Stripe API
+  // 7. For Stripe payments: validate via DB guard FIRST, then issue Stripe refund
   if (payment.stripe_payment_intent_id) {
+    // Step 1: Reserve refund slot in DB (validates limits before touching Stripe)
+    let refundId: string;
+    try {
+      const result = await createRefundWithGuard(admin, {
+        paymentId: payment.id,
+        paymentAmountCents: payment.amount_cents,
+        amountCents: refundAmount,
+        reason: refundReason,
+        refundedBy: user.id,
+      });
+      refundId = result.refundId;
+    } catch (err) {
+      if (err instanceof RefundOverLimitError) {
+        return NextResponse.json({ error: err.message }, { status: 409 });
+      }
+      logger.error("[admin/refund] Refund guard failed", { error: String(err) });
+      return NextResponse.json(
+        { error: "Failed to validate refund" },
+        { status: 500 }
+      );
+    }
+
+    // Step 2: Issue Stripe refund (DB slot already reserved)
     try {
       const stripe = await getStripeForMode(stripeMode);
       const stripeRefund = await stripe.refunds.create({
@@ -133,15 +156,11 @@ export async function POST(request: Request) {
       });
       stripeRefundId = stripeRefund.id;
 
-      // Insert with post-insert guard to catch race conditions
-      await createRefundWithGuard(admin, {
-        paymentId: payment.id,
-        paymentAmountCents: payment.amount_cents,
-        amountCents: refundAmount,
-        stripeRefundId: stripeRefund.id,
-        reason: refundReason,
-        refundedBy: user.id,
-      });
+      // Step 3: Update DB record with Stripe refund ID
+      await admin
+        .from("eckcm_refunds")
+        .update({ stripe_refund_id: stripeRefund.id })
+        .eq("id", refundId);
 
       // Audit log
       await admin.from("eckcm_audit_logs").insert({
@@ -158,10 +177,9 @@ export async function POST(request: Request) {
         },
       });
     } catch (err) {
-      if (err instanceof RefundOverLimitError) {
-        return NextResponse.json({ error: err.message }, { status: 409 });
-      }
-      logger.error("[admin/refund] Stripe refund failed", { error: String(err) });
+      // Stripe failed — rollback the DB refund record
+      await admin.from("eckcm_refunds").delete().eq("id", refundId);
+      logger.error("[admin/refund] Stripe refund failed, DB record rolled back", { error: String(err) });
       return NextResponse.json(
         { error: err instanceof Error ? err.message : "Stripe refund failed" },
         { status: 500 }

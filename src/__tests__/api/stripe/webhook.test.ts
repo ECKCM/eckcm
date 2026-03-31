@@ -327,7 +327,7 @@ describe("Stripe webhook handler", () => {
     expect(json.received).toBe(true);
   });
 
-  it("processes payment_intent.payment_failed — cancels SUBMITTED registration", async () => {
+  it("processes payment_intent.payment_failed — does NOT cancel registration, only updates payment/invoice", async () => {
     const config = setupAppConfig();
     const event = makeFailedEvent();
 
@@ -383,14 +383,77 @@ describe("Stripe webhook handler", () => {
     const res = await POST(makeRequest("{}"));
     expect(res.status).toBe(200);
 
+    // Registration should NOT be cancelled — payment_failed must never cancel registrations
     const regUpdate = updates.find((u) => u.table === "eckcm_registrations");
-    expect(regUpdate?.data).toEqual({ status: "CANCELLED" });
+    expect(regUpdate).toBeUndefined();
 
     const payUpdate = updates.find((u) => u.table === "eckcm_payments");
     expect((payUpdate?.data as Record<string, unknown>)?.status).toBe("FAILED");
 
     const invUpdate = updates.find((u) => u.table === "eckcm_invoices");
     expect((invUpdate?.data as Record<string, unknown>)?.status).toBe("FAILED");
+  });
+
+  it("ignores payment_failed when registration is already PAID (late webhook)", async () => {
+    const config = setupAppConfig();
+    const event = makeFailedEvent();
+
+    mockConstructEvent.mockReturnValue(event);
+
+    const updates: Record<string, unknown>[] = [];
+
+    mockAdminFrom.mockImplementation((table: string) => {
+      if (table === "eckcm_app_config") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() => ({ data: config, error: null })),
+            })),
+          })),
+        };
+      }
+      if (table === "eckcm_registrations") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() => ({
+                data: { id: "reg-1", status: "PAID" },
+                error: null,
+              })),
+            })),
+          })),
+          update: vi.fn((data: unknown) => {
+            updates.push({ table, data });
+            return { eq: vi.fn(() => ({ data: null, error: null })) };
+          }),
+        };
+      }
+      if (table === "eckcm_payments") {
+        return {
+          update: vi.fn((data: unknown) => {
+            updates.push({ table, data });
+            return { eq: vi.fn(() => ({ data: null, error: null })) };
+          }),
+        };
+      }
+      if (table === "eckcm_invoices") {
+        return {
+          update: vi.fn((data: unknown) => {
+            updates.push({ table, data });
+            return { eq: vi.fn(() => ({ data: null, error: null })) };
+          }),
+        };
+      }
+      return {};
+    });
+
+    const res = await POST(makeRequest("{}"));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.received).toBe(true);
+
+    // No tables should be updated — PAID registration is protected
+    expect(updates).toHaveLength(0);
   });
 
   it("acknowledges unhandled event types", async () => {
