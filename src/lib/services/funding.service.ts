@@ -25,19 +25,21 @@ export interface FundingDiscount {
  */
 export async function loadFundingForGroup(
   supabase: SupabaseClient,
-  registrationGroupId: string
+  registrationGroupId: string,
+  nightsCount?: number
 ): Promise<FundingSource[]> {
   const { data, error } = await supabase
     .from("eckcm_fee_categories")
-    .select("id, code, name_en, name_ko, amount_cents, metadata")
+    .select("id, code, name_en, name_ko, amount_cents, min_nights, metadata")
     .eq("category", "FUNDING")
     .eq("is_active", true);
 
   if (error || !data) return [];
 
-  // Filter by registration_group_id in metadata (JSONB)
   return data.filter(
-    (f: any) => f.metadata?.registration_group_id === registrationGroupId
+    (f: any) =>
+      f.metadata?.registration_group_id === registrationGroupId &&
+      (f.min_nights == null || (nightsCount != null && nightsCount >= f.min_nights))
   );
 }
 

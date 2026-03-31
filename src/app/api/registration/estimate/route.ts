@@ -205,7 +205,7 @@ export async function POST(request: Request) {
     : {};
 
   // Load active funding sources targeting this registration group
-  const fundingSources = await loadFundingForGroup(supabase, registrationGroupId);
+  const fundingSources = await loadFundingForGroup(supabase, registrationGroupId, nightsCount);
   const fundingDiscounts = toFundingDiscounts(fundingSources);
 
   const estimate = calculateEstimate({
