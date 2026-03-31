@@ -176,6 +176,45 @@ export async function POST(request: Request) {
     }
   }
 
+  // 1c. Inventory check for lodging categories
+  {
+    const selectedLodgingCodes = roomGroups
+      .map((g) => g.lodgingType)
+      .filter((t): t is string => !!t && t.startsWith("LODGING_"));
+
+    const uniqueCodes = [...new Set(selectedLodgingCodes)];
+
+    if (uniqueCodes.length > 0) {
+      const { data: inventoryRows } = await admin
+        .from("eckcm_fee_category_inventory")
+        .select(
+          "total_quantity, held, reserved, is_force_stopped, eckcm_fee_categories!inner(code)"
+        )
+        .in("eckcm_fee_categories.code", uniqueCodes);
+
+      for (const row of (inventoryRows ?? []) as any[]) {
+        const code = row.eckcm_fee_categories.code;
+        const available = row.total_quantity - row.held - row.reserved;
+
+        if (row.is_force_stopped) {
+          return NextResponse.json(
+            { error: `Lodging type "${code}" is currently not available for registration.` },
+            { status: 409 }
+          );
+        }
+
+        const demandCount = selectedLodgingCodes.filter((c) => c === code).length;
+
+        if (available < demandCount) {
+          return NextResponse.json(
+            { error: `Lodging type "${code}" is sold out. Please select a different option.` },
+            { status: 409 }
+          );
+        }
+      }
+    }
+  }
+
   // 2. Process fee categories from parallel-loaded data
   const allLinkedFees = (allFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories)
     .filter((f: any) => f.min_nights == null || nightsCount >= f.min_nights);

@@ -40,6 +40,9 @@ export default function LodgingStep() {
   const [showSpecialPreferences, setShowSpecialPreferences] = useState(true);
   const [showKeyDeposit, setShowKeyDeposit] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [inventoryMap, setInventoryMap] = useState<
+    Record<string, { available: number; is_force_stopped: boolean }>
+  >({});
 
   useEffect(() => {
     if (!state.startDate) {
@@ -84,12 +87,39 @@ export default function LodgingStep() {
       setHasExtraFee(!!extra);
       setExtraFeeAmount(extra?.amount_cents ?? 0);
 
-      // Auto-select first (top) option as default if rooms exist
+      // Fetch inventory availability for lodging options
+      const lodgingCodes = selectable.map((o) => o.code);
+      const invMap: Record<string, { available: number; is_force_stopped: boolean }> = {};
+      if (lodgingCodes.length > 0) {
+        const { data: inventoryData } = await supabase
+          .from("eckcm_fee_category_inventory")
+          .select(
+            "total_quantity, held, reserved, is_force_stopped, eckcm_fee_categories!inner(code)"
+          )
+          .in("eckcm_fee_categories.code", lodgingCodes);
+
+        for (const row of (inventoryData ?? []) as any[]) {
+          const code = row.eckcm_fee_categories.code;
+          invMap[code] = {
+            available: row.total_quantity - row.held - row.reserved,
+            is_force_stopped: row.is_force_stopped ?? false,
+          };
+        }
+      }
+      setInventoryMap(invMap);
+
+      // Auto-select first available option as default if rooms exist
       if (selectable.length >= 1) {
         state.roomGroups.forEach((group, gi) => {
           if (!group.lodgingType) {
-            const updated = { ...group, lodgingType: selectable[0].code };
-            dispatch({ type: "UPDATE_ROOM_GROUP", index: gi, group: updated });
+            const firstAvailable = selectable.find((o) => {
+              const inv = invMap[o.code];
+              return !inv || (inv.available > 0 && !inv.is_force_stopped);
+            });
+            if (firstAvailable) {
+              const updated = { ...group, lodgingType: firstAvailable.code };
+              dispatch({ type: "UPDATE_ROOM_GROUP", index: gi, group: updated });
+            }
           }
         });
       }
@@ -166,7 +196,17 @@ export default function LodgingStep() {
               </h3>
 
               {/* Lodging Type Selection */}
-              {isSingleOption ? (
+              {isSingleOption && (() => {
+                const inv = inventoryMap[lodgingOptions[0].code];
+                const singleSoldOut = inv ? (inv.available <= 0 || inv.is_force_stopped) : false;
+                return singleSoldOut;
+              })() ? (
+                // Single option but sold out / force-stopped
+                <div className="rounded-lg border-2 border-destructive/50 bg-destructive/5 p-4 text-center">
+                  <p className="font-medium text-destructive">{t("registration.lodgingUnavailable")}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{t("registration.contactOrganizer")}</p>
+                </div>
+              ) : isSingleOption ? (
                 // Single option — auto-selected, show info card
                 <div className="rounded-lg border-2 border-primary bg-primary/5 p-4">
                   <div className="flex items-center justify-between">
@@ -192,16 +232,24 @@ export default function LodgingStep() {
                       option.pricing_type === "PER_NIGHT"
                         ? option.amount_cents * state.nightsCount
                         : option.amount_cents;
+                    const inv = inventoryMap[option.code];
+                    const isSoldOut = inv
+                      ? inv.available <= 0 || inv.is_force_stopped
+                      : false;
+                    const spotsLeft = inv?.available ?? null;
 
                     return (
                       <button
                         key={option.code}
                         type="button"
-                        onClick={() => selectLodging(gi, option.code)}
+                        onClick={() => !isSoldOut && selectLodging(gi, option.code)}
+                        disabled={isSoldOut}
                         className={`w-full rounded-lg border-2 p-4 text-left transition-colors ${
-                          isSelected
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/50"
+                          isSoldOut
+                            ? "opacity-50 cursor-not-allowed border-muted bg-muted/30"
+                            : isSelected
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50"
                         }`}
                       >
                         <div className="flex items-center justify-between">
@@ -214,13 +262,26 @@ export default function LodgingStep() {
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-semibold">
-                              {formatPrice(totalEstimate)}
-                            </p>
-                            {option.pricing_type === "PER_NIGHT" && (
-                              <p className="text-xs text-muted-foreground">
-                                {t("registration.nightCount", { count: state.nightsCount, s: state.nightsCount !== 1 ? "s" : "" })}
-                              </p>
+                            {isSoldOut ? (
+                              <span className="inline-block rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-semibold text-destructive">
+                                {t("registration.soldOut")}
+                              </span>
+                            ) : (
+                              <>
+                                <p className="font-semibold">
+                                  {formatPrice(totalEstimate)}
+                                </p>
+                                {option.pricing_type === "PER_NIGHT" && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {t("registration.nightCount", { count: state.nightsCount, s: state.nightsCount !== 1 ? "s" : "" })}
+                                  </p>
+                                )}
+                                {spotsLeft !== null && spotsLeft <= 5 && spotsLeft > 0 && (
+                                  <p className="text-xs font-medium text-orange-600 mt-0.5">
+                                    {t("registration.spotsLeft", { count: spotsLeft })}
+                                  </p>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>

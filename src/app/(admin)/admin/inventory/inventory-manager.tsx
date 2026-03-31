@@ -22,9 +22,19 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Plus } from "lucide-react";
+import { Loader2, RefreshCw, Plus, OctagonX, Play } from "lucide-react";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface InventoryRow {
   id: string;
@@ -33,6 +43,7 @@ interface InventoryRow {
   total_quantity: number;
   held: number;
   reserved: number;
+  is_force_stopped: boolean;
 }
 
 interface TrackableCategory {
@@ -49,6 +60,10 @@ export function InventoryManager() {
   const [editValue, setEditValue] = useState("");
   const [addableCategories, setAddableCategories] = useState<TrackableCategory[]>([]);
   const [adding, setAdding] = useState(false);
+  const [stopConfirm, setStopConfirm] = useState<{
+    row: InventoryRow;
+    action: "stop" | "resume";
+  } | null>(null);
 
   const loadInventory = useCallback(async () => {
     setLoading(true);
@@ -58,7 +73,7 @@ export function InventoryManager() {
       .from("eckcm_fee_category_inventory")
       .select(
         `
-        id, total_quantity, held, reserved,
+        id, total_quantity, held, reserved, is_force_stopped,
         eckcm_fee_categories!inner(code, name_en, is_inventory_trackable)
       `
       )
@@ -78,6 +93,7 @@ export function InventoryManager() {
       total_quantity: row.total_quantity,
       held: row.held,
       reserved: row.reserved,
+      is_force_stopped: row.is_force_stopped ?? false,
     }));
     setRows(inventoryRows);
 
@@ -171,10 +187,33 @@ export function InventoryManager() {
     setAdding(false);
   };
 
+  const handleToggleForceStop = async () => {
+    if (!stopConfirm) return;
+    const { row, action } = stopConfirm;
+    const newValue = action === "stop";
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("eckcm_fee_category_inventory")
+      .update({ is_force_stopped: newValue })
+      .eq("id", row.id);
+    if (error) {
+      toast.error("Failed to update: " + error.message);
+    } else {
+      toast.success(
+        newValue
+          ? `${row.fee_category_name} stopped`
+          : `${row.fee_category_name} resumed`
+      );
+      loadInventory();
+    }
+    setStopConfirm(null);
+  };
+
   const getAvailable = (row: InventoryRow) =>
     row.total_quantity - row.held - row.reserved;
 
   const getStatusVariant = (row: InventoryRow) => {
+    if (row.is_force_stopped) return "destructive" as const;
     const available = getAvailable(row);
     if (row.total_quantity === 0) return "secondary" as const;
     const pct = available / row.total_quantity;
@@ -184,6 +223,7 @@ export function InventoryManager() {
   };
 
   const getStatusLabel = (row: InventoryRow) => {
+    if (row.is_force_stopped) return "STOPPED";
     const available = getAvailable(row);
     if (row.total_quantity === 0) return "Not Set";
     const pct = Math.round((available / row.total_quantity) * 100);
@@ -266,6 +306,7 @@ export function InventoryManager() {
                 <SortableTableHead className="text-center w-[80px]" sortKey="reserved" sortConfig={sortConfig} onSort={requestSort}>Reserved</SortableTableHead>
                 <SortableTableHead className="text-center w-[80px]" sortKey="available_quantity" sortConfig={sortConfig} onSort={requestSort}>Available</SortableTableHead>
                 <SortableTableHead className="text-center w-[120px]" sortKey="status" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
+                <SortableTableHead className="text-center w-[100px]" sortKey="is_force_stopped" sortConfig={sortConfig} onSort={requestSort}>Action</SortableTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -274,13 +315,16 @@ export function InventoryManager() {
                 const isEditing = editingId === row.id;
 
                 return (
-                  <TableRow key={row.id}>
+                  <TableRow key={row.id} className={row.is_force_stopped ? "opacity-60" : ""}>
                     <TableCell>
-                      <div>
+                      <div className="flex items-center">
                         <span className="font-medium">{row.fee_category_name}</span>
                         <span className="ml-2 text-xs text-muted-foreground">
                           {row.fee_category_code}
                         </span>
+                        {row.is_force_stopped && (
+                          <Badge variant="destructive" className="ml-2 text-[10px]">STOPPED</Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
@@ -316,6 +360,29 @@ export function InventoryManager() {
                         {getStatusLabel(row)}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-center">
+                      {row.is_force_stopped ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setStopConfirm({ row, action: "resume" })}
+                          className="h-7 text-xs"
+                        >
+                          <Play className="h-3 w-3 mr-1" />
+                          Resume
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setStopConfirm({ row, action: "stop" })}
+                          className="h-7 text-xs"
+                        >
+                          <OctagonX className="h-3 w-3 mr-1" />
+                          STOP
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -323,6 +390,36 @@ export function InventoryManager() {
           </Table>
         )}
       </CardContent>
+
+      <AlertDialog open={!!stopConfirm} onOpenChange={(open) => !open && setStopConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {stopConfirm?.action === "stop"
+                ? `Force-stop ${stopConfirm?.row.fee_category_name}?`
+                : `Resume ${stopConfirm?.row.fee_category_name}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {stopConfirm?.action === "stop"
+                ? "New registrations will not be able to select this option. Existing registrations are not affected."
+                : "This option will become available for new registrations again (subject to inventory availability)."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggleForceStop}
+              className={
+                stopConfirm?.action === "stop"
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : ""
+              }
+            >
+              {stopConfirm?.action === "stop" ? "Force Stop" : "Resume"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

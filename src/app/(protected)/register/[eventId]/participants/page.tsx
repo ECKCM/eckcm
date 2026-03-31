@@ -1307,6 +1307,7 @@ export default function ParticipantsStep() {
                           day={p.birthDay}
                           labelClassName="text-xs"
                           error={!!errs.birthYear}
+                          referenceDate={eventDates ? new Date(eventDates.eventStartDate + "T00:00:00") : undefined}
                           onYearChange={(v) =>
                             updateParticipant(gi, pi, "birthYear", v)
                           }

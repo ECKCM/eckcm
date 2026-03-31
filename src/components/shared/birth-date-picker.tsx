@@ -23,6 +23,7 @@ interface BirthDatePickerProps {
   onDayChange: (day: number) => void;
   labelClassName?: string;
   error?: boolean;
+  referenceDate?: Date;
 }
 
 function getDaysInMonth(year: number, month: number): number {
@@ -41,6 +42,7 @@ export function BirthDatePicker({
   onDayChange,
   labelClassName,
   error,
+  referenceDate,
 }: BirthDatePickerProps) {
   const { t } = useI18n();
   const [yearInput, setYearInput] = useState(year?.toString() ?? "");
@@ -90,11 +92,11 @@ export function BirthDatePicker({
 
   const age = year && month && day
     ? (() => {
-        const today = new Date();
+        const ref = referenceDate ?? new Date();
         const birthDate = new Date(year, month - 1, day);
-        let a = today.getFullYear() - birthDate.getFullYear();
-        const monthDiff = today.getMonth() - birthDate.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        let a = ref.getFullYear() - birthDate.getFullYear();
+        const monthDiff = ref.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && ref.getDate() < birthDate.getDate())) {
           a--;
         }
         return a >= 0 && a <= 150 ? a : null;
