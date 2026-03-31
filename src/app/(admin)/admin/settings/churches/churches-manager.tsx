@@ -28,6 +28,8 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface Church {
   id: string;
@@ -151,6 +153,8 @@ export function ChurchesManager({
     logActivity({ action: "DELETE", entity_type: "church", entity_id: church.id });
   };
 
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(churches);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -215,14 +219,14 @@ export function ChurchesManager({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Korean</TableHead>
-            <TableHead>Status</TableHead>
+            <SortableTableHead sortKey="name_en" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
+            <SortableTableHead sortKey="name_ko" sortConfig={sortConfig} onSort={requestSort}>Korean</SortableTableHead>
+            <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {churches.map((church) => (
+          {sorted.map((church) => (
             <TableRow key={church.id}>
               <TableCell>
                 <div className="flex items-center gap-2">

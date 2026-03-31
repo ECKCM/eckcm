@@ -48,6 +48,8 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -140,6 +142,8 @@ export function LodgingManager() {
     fee_per_night_cents: 0,
     fee_category_code: "" as string,
   });
+
+  const { sortedData: sortedRooms, sortConfig, requestSort } = useTableSort(rooms);
 
   // ─── Load all lodging data ────────────────────────────────────
 
@@ -440,7 +444,7 @@ export function LodgingManager() {
     floors.filter((f) => f.building_id === buildingId);
 
   const roomsForFloor = (floorId: string) =>
-    rooms.filter((r) => r.floor_id === floorId);
+    sortedRooms.filter((r) => r.floor_id === floorId);
 
   const centsToStr = (c: number) => (c / 100).toFixed(2);
   const strToCents = (s: string) => Math.round(parseFloat(s || "0") * 100);
@@ -611,13 +615,13 @@ export function LodgingManager() {
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead>Room #</TableHead>
-                                <TableHead>Capacity</TableHead>
-                                <TableHead>Category</TableHead>
-                                <TableHead>A/C</TableHead>
-                                <TableHead>Fee/Night</TableHead>
-                                <TableHead>Accessible</TableHead>
-                                <TableHead>Available</TableHead>
+                                <SortableTableHead sortKey="room_number" sortConfig={sortConfig} onSort={requestSort}>Room #</SortableTableHead>
+                                <SortableTableHead sortKey="capacity" sortConfig={sortConfig} onSort={requestSort}>Capacity</SortableTableHead>
+                                <SortableTableHead sortKey="fee_category_code" sortConfig={sortConfig} onSort={requestSort}>Category</SortableTableHead>
+                                <SortableTableHead sortKey="has_ac" sortConfig={sortConfig} onSort={requestSort}>A/C</SortableTableHead>
+                                <SortableTableHead sortKey="fee_per_night_cents" sortConfig={sortConfig} onSort={requestSort}>Fee/Night</SortableTableHead>
+                                <SortableTableHead sortKey="is_accessible" sortConfig={sortConfig} onSort={requestSort}>Accessible</SortableTableHead>
+                                <SortableTableHead sortKey="is_available" sortConfig={sortConfig} onSort={requestSort}>Available</SortableTableHead>
                                 <TableHead className="text-right">
                                   Actions
                                 </TableHead>

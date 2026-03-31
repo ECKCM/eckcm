@@ -23,6 +23,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, Download, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
 import { GuardianConsentDetailSheet } from "./guardian-consent-detail-sheet";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface Event {
   id: string;
@@ -140,6 +142,8 @@ export function GuardianConsentsTable({ events }: { events: Event[] }) {
     );
   });
 
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(filtered);
+
   const totalSigned = consents.filter((c) => c.guardian_signature).length;
   const totalUnsigned = consents.filter((c) => !c.guardian_signature).length;
 
@@ -162,7 +166,7 @@ export function GuardianConsentsTable({ events }: { events: Event[] }) {
       "Church",
       "Registered",
     ];
-    const rows = filtered.map((c) => [
+    const rows = sorted.map((c) => [
       `${c.first_name_en} ${c.last_name_en}`,
       c.display_name_ko ?? "",
       c.gender,
@@ -253,7 +257,7 @@ export function GuardianConsentsTable({ events }: { events: Event[] }) {
           <RefreshCw className="size-4" />
         </Button>
 
-        <Button variant="outline" size="sm" onClick={exportCsv} disabled={filtered.length === 0}>
+        <Button variant="outline" size="sm" onClick={exportCsv} disabled={sorted.length === 0}>
           <Download className="size-4 mr-1" />
           CSV
         </Button>
@@ -282,7 +286,7 @@ export function GuardianConsentsTable({ events }: { events: Event[] }) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
-            {filtered.length} consent(s)
+            {sorted.length} consent(s)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -293,22 +297,22 @@ export function GuardianConsentsTable({ events }: { events: Event[] }) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">Participant</TableHead>
-                    <TableHead>Korean</TableHead>
-                    <TableHead>Age</TableHead>
-                    <TableHead>K-12</TableHead>
-                    <TableHead className="whitespace-nowrap">Guardian Name</TableHead>
-                    <TableHead className="whitespace-nowrap">Guardian Phone</TableHead>
-                    <TableHead className="text-center">Signature</TableHead>
-                    <TableHead>Reg Code</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Group</TableHead>
-                    <TableHead>Church</TableHead>
-                    <TableHead className="whitespace-nowrap">Registered</TableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="first_name_en" sortConfig={sortConfig} onSort={requestSort}>Participant</SortableTableHead>
+                    <SortableTableHead sortKey="display_name_ko" sortConfig={sortConfig} onSort={requestSort}>Korean</SortableTableHead>
+                    <SortableTableHead sortKey="age_at_event" sortConfig={sortConfig} onSort={requestSort}>Age</SortableTableHead>
+                    <SortableTableHead sortKey="is_k12" sortConfig={sortConfig} onSort={requestSort}>K-12</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="guardian_name" sortConfig={sortConfig} onSort={requestSort}>Guardian Name</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="guardian_phone" sortConfig={sortConfig} onSort={requestSort}>Guardian Phone</SortableTableHead>
+                    <SortableTableHead className="text-center" sortKey="guardian_signature" sortConfig={sortConfig} onSort={requestSort}>Signature</SortableTableHead>
+                    <SortableTableHead sortKey="confirmation_code" sortConfig={sortConfig} onSort={requestSort}>Reg Code</SortableTableHead>
+                    <SortableTableHead sortKey="registration_status" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
+                    <SortableTableHead sortKey="display_group_code" sortConfig={sortConfig} onSort={requestSort}>Group</SortableTableHead>
+                    <SortableTableHead sortKey="church_name" sortConfig={sortConfig} onSort={requestSort}>Church</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="created_at" sortConfig={sortConfig} onSort={requestSort}>Registered</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((c, i) => (
+                  {sorted.map((c, i) => (
                     <TableRow
                       key={`${c.person_id}-${i}`}
                       className="cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors"
@@ -360,7 +364,7 @@ export function GuardianConsentsTable({ events }: { events: Event[] }) {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filtered.length === 0 && (
+                  {sorted.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                         No guardian consents found.

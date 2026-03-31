@@ -34,6 +34,8 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface Session {
   id: string;
@@ -218,6 +220,8 @@ export function SessionsManager() {
     return `${h12}:${m} ${ampm}`;
   };
 
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(sessions);
+
   if (loading) {
     return <p className="text-center text-muted-foreground py-8">Loading...</p>;
   }
@@ -323,15 +327,15 @@ export function SessionsManager() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Time</TableHead>
-            <TableHead>Status</TableHead>
+            <SortableTableHead sortKey="name_en" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
+            <SortableTableHead sortKey="session_date" sortConfig={sortConfig} onSort={requestSort}>Date</SortableTableHead>
+            <SortableTableHead sortKey="start_time" sortConfig={sortConfig} onSort={requestSort}>Time</SortableTableHead>
+            <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sessions.length === 0 ? (
+          {sorted.length === 0 ? (
             <TableRow>
               <TableCell
                 colSpan={5}
@@ -341,7 +345,7 @@ export function SessionsManager() {
               </TableCell>
             </TableRow>
           ) : (
-            sessions.map((session) => (
+            sorted.map((session) => (
               <TableRow key={session.id}>
                 <TableCell>
                   <div>

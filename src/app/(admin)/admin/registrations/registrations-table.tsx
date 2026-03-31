@@ -24,6 +24,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Users, RefreshCw, ExternalLink, DollarSign, UserCheck, ShieldCheck } from "lucide-react";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 import {
   type Event,
@@ -329,6 +331,8 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
     );
   });
 
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(filtered);
+
   // ─── Summary stats ─────────────────────────────────────────────
 
   const totalPaid = registrations.filter((r) => r.status === "PAID").length;
@@ -417,7 +421,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
-            {filtered.length} registration(s)
+            {sorted.length} registration(s)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -430,38 +434,38 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                 <TableHeader>
                   <TableRow>
                     <TableHead className="whitespace-nowrap w-[120px]">Actions</TableHead>
-                    <TableHead className="whitespace-nowrap">No.</TableHead>
-                    <TableHead className="whitespace-nowrap">Code</TableHead>
-                    <TableHead className="whitespace-nowrap">Name</TableHead>
-                    <TableHead className="whitespace-nowrap">Email</TableHead>
-                    <TableHead className="whitespace-nowrap">Phone</TableHead>
-                    <TableHead className="whitespace-nowrap">Status</TableHead>
-                    <TableHead className="whitespace-nowrap">Type</TableHead>
-                    <TableHead className="whitespace-nowrap">Payment</TableHead>
-                    <TableHead className="whitespace-nowrap">Paid At</TableHead>
-                    <TableHead className="whitespace-nowrap text-center">C-IN</TableHead>
-                    <TableHead className="whitespace-nowrap text-center">C-OUT</TableHead>
-                    <TableHead className="whitespace-nowrap">Room</TableHead>
-                    <TableHead className="whitespace-nowrap">Lodging</TableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="confirmation_code" sortConfig={sortConfig} onSort={requestSort}>No.</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="confirmation_code" sortConfig={sortConfig} onSort={requestSort}>Code</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="registrant_name" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="status" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="payment_status" sortConfig={sortConfig} onSort={requestSort}>Payment</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="total_amount_cents" sortConfig={sortConfig} onSort={requestSort}>Amount</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="registration_group_name" sortConfig={sortConfig} onSort={requestSort}>Reg. Group</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="room_numbers" sortConfig={sortConfig} onSort={requestSort}>Room</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="registration_type" sortConfig={sortConfig} onSort={requestSort}>Type</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="registrant_email" sortConfig={sortConfig} onSort={requestSort}>Email</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="registrant_phone" sortConfig={sortConfig} onSort={requestSort}>Phone</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="paid_at" sortConfig={sortConfig} onSort={requestSort}>Paid At</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap text-center" sortKey="checked_in" sortConfig={sortConfig} onSort={requestSort}>C-IN</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap text-center" sortKey="checked_out" sortConfig={sortConfig} onSort={requestSort}>C-OUT</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="lodging_type" sortConfig={sortConfig} onSort={requestSort}>Lodging</SortableTableHead>
                     <TableHead className="whitespace-nowrap">Room Pref.</TableHead>
-                    <TableHead className="whitespace-nowrap text-center">People</TableHead>
-                    <TableHead className="whitespace-nowrap">Amount</TableHead>
-                    <TableHead className="whitespace-nowrap">Dates</TableHead>
-                    <TableHead className="whitespace-nowrap text-center">Nights</TableHead>
-                    <TableHead className="whitespace-nowrap">Church</TableHead>
-                    <TableHead className="whitespace-nowrap">Dept.</TableHead>
-                    <TableHead className="whitespace-nowrap">Guardian</TableHead>
-                    <TableHead className="whitespace-nowrap">Reg. Group</TableHead>
-                    <TableHead className="whitespace-nowrap">Invoice</TableHead>
+                    <SortableTableHead className="whitespace-nowrap text-center" sortKey="people_count" sortConfig={sortConfig} onSort={requestSort}>People</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="start_date" sortConfig={sortConfig} onSort={requestSort}>Dates</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap text-center" sortKey="nights_count" sortConfig={sortConfig} onSort={requestSort}>Nights</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="registrant_church" sortConfig={sortConfig} onSort={requestSort}>Church</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="registrant_department" sortConfig={sortConfig} onSort={requestSort}>Dept.</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="registrant_guardian_name" sortConfig={sortConfig} onSort={requestSort}>Guardian</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="invoice_number" sortConfig={sortConfig} onSort={requestSort}>Invoice</SortableTableHead>
                     <TableHead className="whitespace-nowrap">Stripe</TableHead>
-                    <TableHead className="whitespace-nowrap">Notes</TableHead>
-                    <TableHead className="whitespace-nowrap">Requests</TableHead>
-                    <TableHead className="whitespace-nowrap">Registered</TableHead>
-                    <TableHead className="whitespace-nowrap">Updated</TableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="notes" sortConfig={sortConfig} onSort={requestSort}>Notes</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="additional_requests" sortConfig={sortConfig} onSort={requestSort}>Requests</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="created_at" sortConfig={sortConfig} onSort={requestSort}>Registered</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="updated_at" sortConfig={sortConfig} onSort={requestSort}>Updated</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((r) => (
+                  {sorted.map((r) => (
                     <TableRow
                       key={r.id}
                       className="hover:bg-muted/50 transition-colors"
@@ -493,23 +497,11 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                           </div>
                         )}
                       </TableCell>
-                      {/* Email */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_email ?? "-"}
-                      </TableCell>
-                      {/* Phone */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_phone ?? "-"}
-                      </TableCell>
                       {/* Status */}
                       <TableCell>
                         <Badge variant={statusVariant[r.status] ?? "secondary"} className="text-xs">
                           {r.status}
                         </Badge>
-                      </TableCell>
-                      {/* Type */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registration_type}
                       </TableCell>
                       {/* Payment — combined method + status */}
                       <TableCell>
@@ -532,6 +524,30 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                           )}
                         </div>
                       </TableCell>
+                      {/* Amount */}
+                      <TableCell className="font-mono text-sm whitespace-nowrap">
+                        {formatMoney(r.total_amount_cents)}
+                      </TableCell>
+                      {/* Reg. Group */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registration_group_name ?? "-"}
+                      </TableCell>
+                      {/* Room */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.room_numbers.length > 0 ? r.room_numbers.join(", ") : "-"}
+                      </TableCell>
+                      {/* Type */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registration_type}
+                      </TableCell>
+                      {/* Email */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registrant_email ?? "-"}
+                      </TableCell>
+                      {/* Phone */}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {r.registrant_phone ?? "-"}
+                      </TableCell>
                       {/* Paid At */}
                       <TableCell className="text-xs whitespace-nowrap">
                         {r.paid_at ? formatTimestamp(r.paid_at) : "-"}
@@ -547,10 +563,6 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                         <Badge variant={r.checked_out ? "default" : "secondary"} className="text-xs">
                           {r.checked_out ? "Yes" : "No"}
                         </Badge>
-                      </TableCell>
-                      {/* Room */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.room_numbers.length > 0 ? r.room_numbers.join(", ") : "-"}
                       </TableCell>
                       {/* Lodging */}
                       <TableCell className="text-xs whitespace-nowrap">
@@ -572,10 +584,6 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                           <Users className="size-3" />
                           {r.people_count}
                         </span>
-                      </TableCell>
-                      {/* Amount */}
-                      <TableCell className="font-mono text-sm whitespace-nowrap">
-                        {formatMoney(r.total_amount_cents)}
                       </TableCell>
                       {/* Dates */}
                       <TableCell className="text-xs whitespace-nowrap">
@@ -603,10 +611,6 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                             )}
                           </div>
                         ) : "-"}
-                      </TableCell>
-                      {/* Reg. Group */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registration_group_name ?? "-"}
                       </TableCell>
                       {/* Invoice */}
                       <TableCell className="font-mono text-xs whitespace-nowrap">
@@ -648,7 +652,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filtered.length === 0 && (
+                  {sorted.length === 0 && (
                     <TableRow>
                       <TableCell
                         colSpan={30}

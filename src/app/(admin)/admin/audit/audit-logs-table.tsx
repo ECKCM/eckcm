@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface AuditLogRow {
   id: string;
@@ -96,6 +98,8 @@ export function AuditLogsTable() {
     );
   });
 
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(filtered);
+
   const actionColor: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     CREATE: "default",
     UPDATE: "secondary",
@@ -127,17 +131,17 @@ export function AuditLogsTable() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Entity</TableHead>
-                    <TableHead>Entity ID</TableHead>
-                    <TableHead>Actor</TableHead>
-                    <TableHead>Name</TableHead>
+                    <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={requestSort}>Time</SortableTableHead>
+                    <SortableTableHead sortKey="action" sortConfig={sortConfig} onSort={requestSort}>Action</SortableTableHead>
+                    <SortableTableHead sortKey="entity_type" sortConfig={sortConfig} onSort={requestSort}>Entity</SortableTableHead>
+                    <SortableTableHead sortKey="entity_id" sortConfig={sortConfig} onSort={requestSort}>Entity ID</SortableTableHead>
+                    <SortableTableHead sortKey="actor_email" sortConfig={sortConfig} onSort={requestSort}>Actor</SortableTableHead>
+                    <SortableTableHead sortKey="actor_name" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
                     <TableHead>Details</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((log) => (
+                  {sorted.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="text-xs whitespace-nowrap">
                         {new Date(log.created_at).toLocaleString()}
@@ -162,7 +166,7 @@ export function AuditLogsTable() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filtered.length === 0 && (
+                  {sorted.length === 0 && (
                     <TableRow>
                       <TableCell
                         colSpan={7}

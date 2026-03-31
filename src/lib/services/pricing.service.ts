@@ -653,7 +653,7 @@ export async function loadMemberGroupFees(
         .single(),
       supabase
         .from("eckcm_registration_group_fee_categories")
-        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
+        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max, min_nights)")
         .eq("registration_group_id", groupId),
     ]);
 

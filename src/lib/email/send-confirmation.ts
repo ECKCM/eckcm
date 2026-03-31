@@ -269,11 +269,11 @@ export async function sendConfirmationEmail(
       ?? (invoicePaid ? "both" : "invoice-only");
 
     const eventEndDate = reg.eckcm_events.event_end_date;
+    // English-only names for PDF (pdf-lib Helvetica cannot encode Korean glyphs)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pdfParticipants = (membershipsResult.data ?? []).map((m: any) => {
       const p = m.eckcm_people;
-      const fullName = `${p.first_name_en} ${p.last_name_en}`;
-      return p.display_name_ko ? `${fullName} (${p.display_name_ko})` : fullName;
+      return `${p.first_name_en} ${p.last_name_en}`;
     });
 
     const basePdfData = {

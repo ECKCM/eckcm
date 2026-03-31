@@ -150,6 +150,18 @@ export async function PATCH(request: Request) {
     });
   }
 
+  // When cancelling, delete all E-Pass tokens for this registration
+  if (status === "CANCELLED") {
+    const { error: epassError } = await admin
+      .from("eckcm_epass_tokens")
+      .delete()
+      .eq("registration_id", registrationId);
+
+    if (epassError) {
+      logger.error("[admin/registration/status] Failed to delete epass tokens", { error: String(epassError) });
+    }
+  }
+
   // Audit log
   await admin.from("eckcm_audit_logs").insert({
     user_id: user.id,

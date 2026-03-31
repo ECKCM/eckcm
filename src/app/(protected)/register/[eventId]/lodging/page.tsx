@@ -26,6 +26,7 @@ interface LodgingOption {
   name_en: string;
   pricing_type: string;
   amount_cents: number;
+  min_nights: number | null;
 }
 
 export default function LodgingStep() {
@@ -60,7 +61,7 @@ export default function LodgingStep() {
 
       const { data, error } = await supabase
         .from("eckcm_registration_group_fee_categories")
-        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, is_active)")
+        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, min_nights, is_active)")
         .eq("registration_group_id", state.registrationGroupId!)
         .like("eckcm_fee_categories.code", "LODGING_%")
         .eq("eckcm_fee_categories.is_active", true);
@@ -73,8 +74,10 @@ export default function LodgingStep() {
 
       const all = (data ?? []).map((row: any) => row.eckcm_fee_categories as LodgingOption);
 
-      // Separate selectable options from LODGING_EXTRA
-      const selectable = all.filter((o) => o.code !== "LODGING_EXTRA");
+      // Separate selectable options from LODGING_EXTRA, filter by min_nights
+      const selectable = all.filter(
+        (o) => o.code !== "LODGING_EXTRA" && (o.min_nights == null || state.nightsCount >= o.min_nights)
+      );
       const extra = all.find((o) => o.code === "LODGING_EXTRA");
 
       setLodgingOptions(selectable);

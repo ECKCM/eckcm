@@ -27,6 +27,8 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, ShieldCheck } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface Role {
   id: string;
@@ -309,6 +311,8 @@ export function RolesManager() {
     {}
   );
 
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(roles);
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   if (!mounted) {
@@ -392,15 +396,15 @@ export function RolesManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Description (EN)</TableHead>
-              <TableHead>Description (KO)</TableHead>
-              <TableHead>Type</TableHead>
+              <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
+              <SortableTableHead sortKey="description_en" sortConfig={sortConfig} onSort={requestSort}>Description (EN)</SortableTableHead>
+              <SortableTableHead sortKey="description_ko" sortConfig={sortConfig} onSort={requestSort}>Description (KO)</SortableTableHead>
+              <SortableTableHead sortKey="is_system" sortConfig={sortConfig} onSort={requestSort}>Type</SortableTableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {roles.length === 0 ? (
+            {sorted.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={5}
@@ -410,7 +414,7 @@ export function RolesManager() {
                 </TableCell>
               </TableRow>
             ) : (
-              roles.map((role) => (
+              sorted.map((role) => (
                 <TableRow key={role.id}>
                   <TableCell className="font-mono">{role.name}</TableCell>
                   <TableCell>{role.description_en ?? "—"}</TableCell>

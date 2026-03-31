@@ -54,6 +54,8 @@ import {
   Receipt,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 // ─── Settings Tab ───────────────────────────────────────────────────────────
 
@@ -897,6 +899,7 @@ function EmailLogTab() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
+  const { sortedData: sortedLogs, sortConfig: logSortConfig, requestSort: requestLogSort } = useTableSort(logs);
 
   const loadLogs = useCallback(async () => {
     setLoading(true);
@@ -958,15 +961,15 @@ function EmailLogTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>To</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Template</TableHead>
-                  <TableHead>Status</TableHead>
+                  <SortableTableHead sortKey="created_at" sortConfig={logSortConfig} onSort={requestLogSort}>Date</SortableTableHead>
+                  <SortableTableHead sortKey="to_email" sortConfig={logSortConfig} onSort={requestLogSort}>To</SortableTableHead>
+                  <SortableTableHead sortKey="subject" sortConfig={logSortConfig} onSort={requestLogSort}>Subject</SortableTableHead>
+                  <SortableTableHead sortKey="template" sortConfig={logSortConfig} onSort={requestLogSort}>Template</SortableTableHead>
+                  <SortableTableHead sortKey="status" sortConfig={logSortConfig} onSort={requestLogSort}>Status</SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {logs.map((log) => (
+                {sortedLogs.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                       {new Date(log.created_at).toLocaleString("en-US", {
@@ -996,7 +999,7 @@ function EmailLogTab() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {logs.length === 0 && (
+                {sortedLogs.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={5}

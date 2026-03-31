@@ -26,6 +26,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Plus, Star, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface Event {
   id: string;
@@ -59,6 +61,8 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
     _reloadTimer.current = setTimeout(() => router.refresh(), 500);
   });
   useChangeDetector("eckcm_events", () => router.refresh(), 5000);
+
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(events);
 
   const [deleteTarget, setDeleteTarget] = useState<Event | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -282,17 +286,17 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Year</TableHead>
-            <TableHead>Dates</TableHead>
-            <TableHead>Location</TableHead>
-            <TableHead>Default</TableHead>
-            <TableHead>Status</TableHead>
+            <SortableTableHead sortKey="name_en" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
+            <SortableTableHead sortKey="year" sortConfig={sortConfig} onSort={requestSort}>Year</SortableTableHead>
+            <SortableTableHead sortKey="event_start_date" sortConfig={sortConfig} onSort={requestSort}>Dates</SortableTableHead>
+            <SortableTableHead sortKey="location" sortConfig={sortConfig} onSort={requestSort}>Location</SortableTableHead>
+            <SortableTableHead sortKey="is_default" sortConfig={sortConfig} onSort={requestSort}>Default</SortableTableHead>
+            <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {events.length === 0 ? (
+          {sorted.length === 0 ? (
             <TableRow>
               <TableCell
                 colSpan={7}
@@ -302,7 +306,7 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
               </TableCell>
             </TableRow>
           ) : (
-            events.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((event) => (
+            sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((event) => (
               <TableRow key={event.id}>
                 <TableCell>
                   <div>
@@ -371,12 +375,12 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
         </TableBody>
       </Table>
 
-      {events.length > PAGE_SIZE && (
+      {sorted.length > PAGE_SIZE && (
         <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-          <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, events.length)} of {events.length}</span>
+          <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sorted.length)} of {sorted.length}</span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= events.length} onClick={() => setPage((p) => p + 1)}>Next</Button>
+            <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= sorted.length} onClick={() => setPage((p) => p + 1)}>Next</Button>
           </div>
         </div>
       )}

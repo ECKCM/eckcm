@@ -22,6 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, QrCode, Calendar } from "lucide-react";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface EventOption {
   id: string;
@@ -59,6 +61,8 @@ export function SessionListClient({
       .order("session_date", { ascending: true })
       .then(({ data }) => setSessions(data ?? []));
   }, [selectedEventId, events]);
+
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(sessions);
 
   const activeSessions = sessions.filter((s) => s.is_active);
   const inactiveSessions = sessions.filter((s) => !s.is_active);
@@ -113,15 +117,15 @@ export function SessionListClient({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Session</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Status</TableHead>
+                  <SortableTableHead sortKey="name_en" sortConfig={sortConfig} onSort={requestSort}>Session</SortableTableHead>
+                  <SortableTableHead sortKey="session_date" sortConfig={sortConfig} onSort={requestSort}>Date</SortableTableHead>
+                  <SortableTableHead sortKey="start_time" sortConfig={sortConfig} onSort={requestSort}>Time</SortableTableHead>
+                  <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sessions.map((session) => (
+                {sorted.map((session) => (
                   <TableRow key={session.id}>
                     <TableCell className="font-medium">
                       {session.name_en}

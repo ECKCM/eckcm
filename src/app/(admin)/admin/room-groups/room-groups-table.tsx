@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { DoorOpen, X } from "lucide-react";
 
 interface Event {
@@ -298,6 +300,8 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
     return g.department_id === departmentFilter;
   });
 
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(filtered);
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Room Groups</h1>
@@ -335,10 +339,10 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
-            {filtered.length} group(s)
-            {filtered.length > 0 && (
+            {sorted.length} group(s)
+            {sorted.length > 0 && (
               <span className="ml-2 text-sm font-normal text-muted-foreground">
-                ({filtered.filter((g) => g.room_assign_status === "ASSIGNED").length} assigned)
+                ({sorted.filter((g) => g.room_assign_status === "ASSIGNED").length} assigned)
               </span>
             )}
           </CardTitle>
@@ -351,19 +355,19 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Group Code</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Members</TableHead>
-                  <TableHead>Keys</TableHead>
+                  <SortableTableHead sortKey="display_group_code" sortConfig={sortConfig} onSort={requestSort}>Group Code</SortableTableHead>
+                  <SortableTableHead sortKey="department_name" sortConfig={sortConfig} onSort={requestSort}>Department</SortableTableHead>
+                  <SortableTableHead sortKey="member_count" sortConfig={sortConfig} onSort={requestSort}>Members</SortableTableHead>
+                  <SortableTableHead sortKey="key_count" sortConfig={sortConfig} onSort={requestSort}>Keys</SortableTableHead>
                   <TableHead>Preferences</TableHead>
-                  <TableHead>Room</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Reg Status</TableHead>
+                  <SortableTableHead sortKey="assigned_room" sortConfig={sortConfig} onSort={requestSort}>Room</SortableTableHead>
+                  <SortableTableHead sortKey="room_assign_status" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
+                  <SortableTableHead sortKey="registration_status" sortConfig={sortConfig} onSort={requestSort}>Reg Status</SortableTableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((g) => (
+                {sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((g) => (
                   <TableRow key={g.id}>
                     <TableCell className="font-mono text-sm">
                       {g.display_group_code}
@@ -437,7 +441,7 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
                     </TableCell>
                   </TableRow>
                 ))}
-                {filtered.length === 0 && (
+                {sorted.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={9}
@@ -449,12 +453,12 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
                 )}
               </TableBody>
             </Table>
-            {filtered.length > PAGE_SIZE && (
+            {sorted.length > PAGE_SIZE && (
               <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-                <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+                <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sorted.length)} of {sorted.length}</span>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-                  <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= filtered.length} onClick={() => setPage((p) => p + 1)}>Next</Button>
+                  <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= sorted.length} onClick={() => setPage((p) => p + 1)}>Next</Button>
                 </div>
               </div>
             )}

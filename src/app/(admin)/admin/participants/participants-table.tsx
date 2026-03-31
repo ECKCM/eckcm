@@ -22,6 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface Event {
   id: string;
@@ -188,6 +190,8 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
     );
   });
 
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(filtered);
+
   const statusVariant: Record<
     string,
     "default" | "secondary" | "destructive" | "outline"
@@ -252,7 +256,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
-            {filtered.length} participant(s)
+            {sorted.length} participant(s)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -266,39 +270,39 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">Name</TableHead>
-                    <TableHead>Korean</TableHead>
-                    <TableHead>Gender</TableHead>
-                    <TableHead>DOB</TableHead>
-                    <TableHead>Age</TableHead>
-                    <TableHead>K-12</TableHead>
-                    <TableHead>Grade</TableHead>
-                    <TableHead>Church</TableHead>
-                    <TableHead>Dept</TableHead>
-                    <TableHead>Group</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Reg Code</TableHead>
-                    <TableHead>P.Code</TableHead>
-                    <TableHead>Reg Status</TableHead>
-                    <TableHead>Check-in</TableHead>
-                    <TableHead>Check-out</TableHead>
-                    <TableHead>Nights</TableHead>
-                    <TableHead>Lodging</TableHead>
-                    <TableHead>Room</TableHead>
-                    <TableHead>Keys</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Guardian</TableHead>
-                    <TableHead>Guardian Phone</TableHead>
-                    <TableHead className="whitespace-nowrap">
+                    <SortableTableHead className="whitespace-nowrap" sortKey="first_name_en" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
+                    <SortableTableHead sortKey="display_name_ko" sortConfig={sortConfig} onSort={requestSort}>Korean</SortableTableHead>
+                    <SortableTableHead sortKey="gender" sortConfig={sortConfig} onSort={requestSort}>Gender</SortableTableHead>
+                    <SortableTableHead sortKey="date_of_birth" sortConfig={sortConfig} onSort={requestSort}>DOB</SortableTableHead>
+                    <SortableTableHead sortKey="age_at_event" sortConfig={sortConfig} onSort={requestSort}>Age</SortableTableHead>
+                    <SortableTableHead sortKey="is_k12" sortConfig={sortConfig} onSort={requestSort}>K-12</SortableTableHead>
+                    <SortableTableHead sortKey="grade" sortConfig={sortConfig} onSort={requestSort}>Grade</SortableTableHead>
+                    <SortableTableHead sortKey="church_name" sortConfig={sortConfig} onSort={requestSort}>Church</SortableTableHead>
+                    <SortableTableHead sortKey="department_name" sortConfig={sortConfig} onSort={requestSort}>Dept</SortableTableHead>
+                    <SortableTableHead sortKey="display_group_code" sortConfig={sortConfig} onSort={requestSort}>Group</SortableTableHead>
+                    <SortableTableHead sortKey="role_name" sortConfig={sortConfig} onSort={requestSort}>Role</SortableTableHead>
+                    <SortableTableHead sortKey="membership_status" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
+                    <SortableTableHead sortKey="confirmation_code" sortConfig={sortConfig} onSort={requestSort}>Reg Code</SortableTableHead>
+                    <SortableTableHead sortKey="participant_code" sortConfig={sortConfig} onSort={requestSort}>P.Code</SortableTableHead>
+                    <SortableTableHead sortKey="registration_status" sortConfig={sortConfig} onSort={requestSort}>Reg Status</SortableTableHead>
+                    <SortableTableHead sortKey="checked_in" sortConfig={sortConfig} onSort={requestSort}>Check-in</SortableTableHead>
+                    <SortableTableHead sortKey="checked_out" sortConfig={sortConfig} onSort={requestSort}>Check-out</SortableTableHead>
+                    <SortableTableHead sortKey="nights_count" sortConfig={sortConfig} onSort={requestSort}>Nights</SortableTableHead>
+                    <SortableTableHead sortKey="lodging_type" sortConfig={sortConfig} onSort={requestSort}>Lodging</SortableTableHead>
+                    <SortableTableHead sortKey="room_numbers" sortConfig={sortConfig} onSort={requestSort}>Room</SortableTableHead>
+                    <SortableTableHead sortKey="key_count" sortConfig={sortConfig} onSort={requestSort}>Keys</SortableTableHead>
+                    <SortableTableHead sortKey="total_amount_cents" sortConfig={sortConfig} onSort={requestSort}>Amount</SortableTableHead>
+                    <SortableTableHead sortKey="email" sortConfig={sortConfig} onSort={requestSort}>Email</SortableTableHead>
+                    <SortableTableHead sortKey="phone" sortConfig={sortConfig} onSort={requestSort}>Phone</SortableTableHead>
+                    <SortableTableHead sortKey="guardian_name" sortConfig={sortConfig} onSort={requestSort}>Guardian</SortableTableHead>
+                    <SortableTableHead sortKey="guardian_phone" sortConfig={sortConfig} onSort={requestSort}>Guardian Phone</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="created_at" sortConfig={sortConfig} onSort={requestSort}>
                       Registered
-                    </TableHead>
+                    </SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((p, i) => (
+                  {sorted.map((p, i) => (
                     <TableRow key={`${p.person_id}-${i}`}>
                       <TableCell className="font-medium whitespace-nowrap">
                         {p.first_name_en} {p.last_name_en}
@@ -381,7 +385,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filtered.length === 0 && (
+                  {sorted.length === 0 && (
                     <TableRow>
                       <TableCell
                         colSpan={27}

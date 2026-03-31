@@ -32,6 +32,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Shield, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { assignStaffRole, deleteUsers } from "./actions";
 
 interface User {
@@ -96,6 +98,8 @@ export function UsersManager({
     const matchesRole = roleFilter === "all" || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(filtered);
 
   const handleAssignStaffRole = async () => {
     if (!selectedUserId || !selectedEventId || !selectedRoleId) {
@@ -225,16 +229,16 @@ export function UsersManager({
                   />
                 </TableHead>
                 <TableHead>Actions</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
+                <SortableTableHead sortKey="role" sortConfig={sortConfig} onSort={requestSort}>Role</SortableTableHead>
+                <SortableTableHead sortKey="firstName" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
+                <SortableTableHead sortKey="email" sortConfig={sortConfig} onSort={requestSort}>Email</SortableTableHead>
                 <TableHead>Providers</TableHead>
                 <TableHead>Profile</TableHead>
-                <TableHead>Joined</TableHead>
+                <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={requestSort}>Joined</SortableTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
+              {sorted.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={8}
@@ -244,7 +248,7 @@ export function UsersManager({
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((user) => (
+                sorted.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
                       <Checkbox

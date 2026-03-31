@@ -16,7 +16,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -24,6 +23,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Plus } from "lucide-react";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface InventoryRow {
   id: string;
@@ -190,6 +191,8 @@ export function InventoryManager() {
     return `${pct}% Available`;
   };
 
+  const { sortedData: sortedRows, sortConfig, requestSort } = useTableSort(rows);
+
   if (!mounted) {
     return (
       <Card>
@@ -244,12 +247,12 @@ export function InventoryManager() {
         </div>
       </CardHeader>
       <CardContent>
-        {loading && rows.length === 0 ? (
+        {loading && sortedRows.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin mr-2" />
             Loading inventory...
           </div>
-        ) : rows.length === 0 ? (
+        ) : sortedRows.length === 0 ? (
           <p className="text-center py-12 text-muted-foreground">
             No inventory records found.
           </p>
@@ -257,16 +260,16 @@ export function InventoryManager() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Fee Category</TableHead>
-                <TableHead className="text-center w-[100px]">Total</TableHead>
-                <TableHead className="text-center w-[80px]">Held</TableHead>
-                <TableHead className="text-center w-[80px]">Reserved</TableHead>
-                <TableHead className="text-center w-[80px]">Available</TableHead>
-                <TableHead className="text-center w-[120px]">Status</TableHead>
+                <SortableTableHead sortKey="fee_category_name" sortConfig={sortConfig} onSort={requestSort}>Fee Category</SortableTableHead>
+                <SortableTableHead className="text-center w-[100px]" sortKey="total_quantity" sortConfig={sortConfig} onSort={requestSort}>Total</SortableTableHead>
+                <SortableTableHead className="text-center w-[80px]" sortKey="held" sortConfig={sortConfig} onSort={requestSort}>Held</SortableTableHead>
+                <SortableTableHead className="text-center w-[80px]" sortKey="reserved" sortConfig={sortConfig} onSort={requestSort}>Reserved</SortableTableHead>
+                <SortableTableHead className="text-center w-[80px]" sortKey="available_quantity" sortConfig={sortConfig} onSort={requestSort}>Available</SortableTableHead>
+                <SortableTableHead className="text-center w-[120px]" sortKey="status" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((row) => {
+              {sortedRows.map((row) => {
                 const available = getAvailable(row);
                 const isEditing = editingId === row.id;
 

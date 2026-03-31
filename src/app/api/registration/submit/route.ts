@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     admin.from("eckcm_registration_groups").select("*").eq("id", registrationGroupId).single(),
     admin.from("eckcm_app_config").select("*").eq("event_id", eventId).single(),
     admin.from("eckcm_registration_group_fee_categories")
-      .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
+      .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max, min_nights)")
       .eq("registration_group_id", registrationGroupId),
     admin.from("eckcm_events").select("event_start_date, event_end_date, early_registration_start, early_registration_end").eq("id", eventId).single(),
   ]);
@@ -177,7 +177,8 @@ export async function POST(request: Request) {
   }
 
   // 2. Process fee categories from parallel-loaded data
-  const allLinkedFees = (allFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
+  const allLinkedFees = (allFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories)
+    .filter((f: any) => f.min_nights == null || nightsCount >= f.min_nights);
 
   const regFeeCat = allLinkedFees.find((f: any) => f.code === "REG_FEE");
   const earlyBirdCat = allLinkedFees.find((f: any) => f.code === "EARLY_BIRD");
@@ -235,10 +236,11 @@ export async function POST(request: Request) {
       hasDefaultGroup = true;
       const { data: defaultFeeLinks } = await admin
         .from("eckcm_registration_group_fee_categories")
-        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
+        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max, min_nights)")
         .eq("registration_group_id", defaultGroup.id);
 
-      const defaultLinkedFees = (defaultFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
+      const defaultLinkedFees = (defaultFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories)
+        .filter((f: any) => f.min_nights == null || nightsCount >= f.min_nights);
 
       // Extract ALL default group fee parameters (for dual estimate + scope toggles)
       const defRegFeeCat = defaultLinkedFees.find((f: any) => f.code === "REG_FEE");

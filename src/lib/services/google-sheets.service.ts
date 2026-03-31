@@ -190,8 +190,6 @@ interface RegistrationRow {
   notes: string | null;
   created_at: string;
   updated_at: string;
-  cancelled_at: string | null;
-  cancellation_reason: string | null;
   registration_group: { name_en: string } | null;
   rep_first_name: string;
   rep_last_name: string;
@@ -208,19 +206,35 @@ interface RegistrationRow {
 async function fetchRegistrations(eventId: string): Promise<RegistrationRow[]> {
   const admin = createAdminClient();
 
-  const { data: registrations } = await admin
+  const { data: registrations, error: regError } = await admin
     .from("eckcm_registrations")
     .select(`
       id, confirmation_code, status, registration_type,
       start_date, end_date, nights_count, total_amount_cents,
       additional_requests, notes, created_at, updated_at,
-      cancelled_at, cancellation_reason,
       eckcm_registration_groups(name_en)
     `)
     .eq("event_id", eventId)
     .order("created_at", { ascending: true });
 
-  if (!registrations?.length) return [];
+  if (regError) {
+    logger.error("[google-sheets] fetchRegistrations query failed", {
+      eventId,
+      error: regError.message,
+      code: regError.code,
+    });
+    throw new Error(`Failed to fetch registrations: ${regError.message}`);
+  }
+
+  if (!registrations?.length) {
+    logger.warn("[google-sheets] No registrations found for event", { eventId });
+    return [];
+  }
+
+  logger.info("[google-sheets] Fetched registrations", {
+    eventId,
+    count: registrations.length,
+  });
 
   const regIds = registrations.map((r: any) => r.id);
 
@@ -244,6 +258,17 @@ async function fetchRegistrations(eventId: string): Promise<RegistrationRow[]> {
       `)
       .in("registration_id", regIds),
   ]);
+
+  if (groupsRes.error) {
+    logger.error("[google-sheets] fetchRegistrations groups query failed", {
+      error: groupsRes.error.message,
+    });
+  }
+  if (invoicesRes.error) {
+    logger.error("[google-sheets] fetchRegistrations invoices query failed", {
+      error: invoicesRes.error.message,
+    });
+  }
 
   const groups = groupsRes.data ?? [];
   const invoices = invoicesRes.data ?? [];
@@ -308,8 +333,6 @@ async function fetchRegistrations(eventId: string): Promise<RegistrationRow[]> {
       notes: reg.notes,
       created_at: reg.created_at,
       updated_at: reg.updated_at,
-      cancelled_at: reg.cancelled_at,
-      cancellation_reason: reg.cancellation_reason,
       registration_group: reg.eckcm_registration_groups,
       rep_first_name: repFirst,
       rep_last_name: repLast,
@@ -347,8 +370,8 @@ function registrationToRow(r: RegistrationRow): (string | number)[] {
     r.additional_requests ?? "",
     r.notes ?? "",
     r.registration_group?.name_en ?? "",
-    r.cancelled_at ?? "",
-    r.cancellation_reason ?? "",
+    "",
+    "",
     r.created_at,
     r.updated_at,
   ];

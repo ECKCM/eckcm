@@ -35,6 +35,8 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 type FeeTab = "all" | "GENERAL" | "LODGING" | "MEALS" | "FUNDING";
 
@@ -54,6 +56,7 @@ interface FeeCategory {
   age_min: number | null;
   age_max: number | null;
   is_inventory_trackable: boolean;
+  min_nights: number | null;
 }
 
 interface RegistrationGroup {
@@ -77,6 +80,7 @@ const emptyForm = {
   age_min: "",
   age_max: "",
   is_inventory_trackable: false,
+  min_nights: "",
   // Funding-specific fields (stored in metadata)
   funding_group_id: "",
   sponsor_name: "",
@@ -151,6 +155,7 @@ export function FeeCategoriesManager() {
       age_min: fee.age_min != null ? fee.age_min.toString() : "",
       age_max: fee.age_max != null ? fee.age_max.toString() : "",
       is_inventory_trackable: fee.is_inventory_trackable,
+      min_nights: fee.min_nights != null ? fee.min_nights.toString() : "",
       funding_group_id: (fee.metadata?.registration_group_id as string) ?? "",
       sponsor_name: (fee.metadata?.sponsor_name as string) ?? "",
       sponsor_contact: (fee.metadata?.sponsor_contact as string) ?? "",
@@ -190,6 +195,7 @@ export function FeeCategoriesManager() {
       age_min: form.age_min ? parseInt(form.age_min) : null,
       age_max: form.age_max ? parseInt(form.age_max) : null,
       is_inventory_trackable: form.is_inventory_trackable,
+      min_nights: form.min_nights ? parseInt(form.min_nights) : null,
       metadata,
     };
 
@@ -243,6 +249,8 @@ export function FeeCategoriesManager() {
   const filteredFees = activeTab === "all"
     ? fees
     : fees.filter((f) => f.category === activeTab);
+
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(filteredFees);
 
   if (!mounted) {
     return (
@@ -379,7 +387,7 @@ export function FeeCategoriesManager() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1">
                       <Label>Sponsor Name</Label>
                       <Input
@@ -398,6 +406,18 @@ export function FeeCategoriesManager() {
                           setForm({ ...form, sponsor_contact: e.target.value })
                         }
                         placeholder="Email or phone"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Min Nights</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={form.min_nights}
+                        onChange={(e) =>
+                          setForm({ ...form, min_nights: e.target.value })
+                        }
+                        placeholder="No minimum"
                       />
                     </div>
                   </div>
@@ -447,7 +467,7 @@ export function FeeCategoriesManager() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1">
                       <Label>Age Min</Label>
                       <Input
@@ -468,6 +488,18 @@ export function FeeCategoriesManager() {
                           setForm({ ...form, age_max: e.target.value })
                         }
                         placeholder="No maximum"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Min Nights</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={form.min_nights}
+                        onChange={(e) =>
+                          setForm({ ...form, min_nights: e.target.value })
+                        }
+                        placeholder="No minimum"
                       />
                     </div>
                   </div>
@@ -512,17 +544,17 @@ export function FeeCategoriesManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Code</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>{activeTab === "FUNDING" ? "Target Group" : "Age"}</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableTableHead sortKey="code" sortConfig={sortConfig} onSort={requestSort}>Code</SortableTableHead>
+              <SortableTableHead sortKey="name_en" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
+              <SortableTableHead sortKey="fee_type" sortConfig={sortConfig} onSort={requestSort}>Type</SortableTableHead>
+              <SortableTableHead sortKey="amount_cents" sortConfig={sortConfig} onSort={requestSort}>Amount</SortableTableHead>
+              <SortableTableHead sortKey="age_group" sortConfig={sortConfig} onSort={requestSort}>{activeTab === "FUNDING" ? "Target Group" : "Age"}</SortableTableHead>
+              <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredFees.length === 0 ? (
+            {sorted.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={7}
@@ -532,7 +564,7 @@ export function FeeCategoriesManager() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredFees.map((fee) => (
+              sorted.map((fee) => (
                 <TableRow key={fee.id}>
                   <TableCell className="font-mono text-sm">
                     {fee.code}
@@ -553,16 +585,24 @@ export function FeeCategoriesManager() {
                   <TableCell>${(fee.amount_cents / 100).toFixed(2)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {fee.category === "FUNDING" ? (
-                      <>
+                      <div>
                         {registrationGroups.find((g) => g.id === fee.metadata?.registration_group_id)?.name_en ?? "—"}
-                        {fee.metadata?.sponsor_name && (
-                          <p className="text-xs text-muted-foreground">Sponsor: {fee.metadata.sponsor_name as string}</p>
+                        {fee.metadata?.sponsor_name ? (
+                          <p className="text-xs text-muted-foreground">Sponsor: {String(fee.metadata.sponsor_name)}</p>
+                        ) : null}
+                        {fee.min_nights != null && (
+                          <p className="text-xs text-muted-foreground">≥{fee.min_nights} nights</p>
                         )}
-                      </>
+                      </div>
                     ) : (
-                      fee.age_min != null || fee.age_max != null
-                        ? `${fee.age_min ?? "0"}–${fee.age_max ?? "∞"}`
-                        : "—"
+                      <div>
+                        {fee.age_min != null || fee.age_max != null
+                          ? `Age ${fee.age_min ?? "0"}–${fee.age_max ?? "∞"}`
+                          : "—"}
+                        {fee.min_nights != null && (
+                          <p className="text-xs text-muted-foreground">≥{fee.min_nights} nights</p>
+                        )}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>

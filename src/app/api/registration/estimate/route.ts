@@ -66,10 +66,11 @@ export async function POST(request: Request) {
   // Load all linked fee categories for this registration group
   const { data: allFeeLinks } = await supabase
     .from("eckcm_registration_group_fee_categories")
-    .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
+    .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max, min_nights)")
     .eq("registration_group_id", registrationGroupId);
 
-  const allLinkedFees = (allFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
+  const allLinkedFees = (allFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories)
+    .filter((f: any) => f.min_nights == null || nightsCount >= f.min_nights);
 
   // Extract registration fees from linked fee categories
   const regFeeCat = allLinkedFees.find((f: any) => f.code === "REG_FEE");
@@ -134,10 +135,11 @@ export async function POST(request: Request) {
       hasDefaultGroup = true;
       const { data: defaultFeeLinks } = await supabase
         .from("eckcm_registration_group_fee_categories")
-        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max)")
+        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max, min_nights)")
         .eq("registration_group_id", defaultGroup.id);
 
-      const defaultLinkedFees = (defaultFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories);
+      const defaultLinkedFees = (defaultFeeLinks ?? []).map((row: any) => row.eckcm_fee_categories)
+        .filter((f: any) => f.min_nights == null || nightsCount >= f.min_nights);
 
       // Extract ALL default group fee parameters (for dual estimate + scope toggles)
       const defRegFeeCat = defaultLinkedFees.find((f: any) => f.code === "REG_FEE");

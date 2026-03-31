@@ -34,6 +34,8 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, PlaneLanding, PlaneTakeoff } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface AirportRide {
   id: string;
@@ -214,6 +216,8 @@ export function AirportRidesManager() {
     loadRides();
   };
 
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(rides);
+
   const formatDateTime = (iso: string) => {
     const dt = new Date(iso);
     return dt.toLocaleString("en-US", {
@@ -363,16 +367,16 @@ export function AirportRidesManager() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Direction</TableHead>
-            <TableHead>Route</TableHead>
-            <TableHead>Date & Time</TableHead>
-            <TableHead>Label</TableHead>
-            <TableHead>Status</TableHead>
+            <SortableTableHead sortKey="direction" sortConfig={sortConfig} onSort={requestSort}>Direction</SortableTableHead>
+            <SortableTableHead sortKey="origin" sortConfig={sortConfig} onSort={requestSort}>Route</SortableTableHead>
+            <SortableTableHead sortKey="scheduled_at" sortConfig={sortConfig} onSort={requestSort}>Date & Time</SortableTableHead>
+            <SortableTableHead sortKey="label" sortConfig={sortConfig} onSort={requestSort}>Label</SortableTableHead>
+            <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rides.length === 0 ? (
+          {sorted.length === 0 ? (
             <TableRow>
               <TableCell
                 colSpan={6}
@@ -382,7 +386,7 @@ export function AirportRidesManager() {
               </TableCell>
             </TableRow>
           ) : (
-            rides.map((ride) => (
+            sorted.map((ride) => (
               <TableRow key={ride.id}>
                 <TableCell>
                   <Badge

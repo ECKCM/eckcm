@@ -40,6 +40,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { MoreHorizontal, CreditCard, Loader2, Mail, FileText, Receipt, Download } from "lucide-react";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface Event {
   id: string;
@@ -158,6 +160,8 @@ export function InvoicesTable({ events }: { events: Event[] }) {
     );
   });
 
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(filtered);
+
   const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     SUCCEEDED: "default",
     PENDING: "outline",
@@ -271,7 +275,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
-            {filtered.length} invoice(s)
+            {sorted.length} invoice(s)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -282,19 +286,19 @@ export function InvoicesTable({ events }: { events: Event[] }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice #</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Registrant</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Issued</TableHead>
-                  <TableHead>Paid</TableHead>
+                  <SortableTableHead sortKey="invoice_number" sortConfig={sortConfig} onSort={requestSort}>Invoice #</SortableTableHead>
+                  <SortableTableHead sortKey="confirmation_code" sortConfig={sortConfig} onSort={requestSort}>Code</SortableTableHead>
+                  <SortableTableHead sortKey="registrant_email" sortConfig={sortConfig} onSort={requestSort}>Registrant</SortableTableHead>
+                  <SortableTableHead sortKey="total_cents" sortConfig={sortConfig} onSort={requestSort}>Amount</SortableTableHead>
+                  <SortableTableHead sortKey="payment_method" sortConfig={sortConfig} onSort={requestSort}>Method</SortableTableHead>
+                  <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
+                  <SortableTableHead sortKey="issued_at" sortConfig={sortConfig} onSort={requestSort}>Issued</SortableTableHead>
+                  <SortableTableHead sortKey="paid_at" sortConfig={sortConfig} onSort={requestSort}>Paid</SortableTableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((inv) => (
+                {sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((inv) => (
                   <TableRow key={inv.id}>
                     <TableCell className="font-mono text-sm">
                       {inv.invoice_number}
@@ -383,7 +387,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                     </TableCell>
                   </TableRow>
                 ))}
-                {filtered.length === 0 && (
+                {sorted.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={9}
@@ -395,12 +399,12 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                 )}
               </TableBody>
             </Table>
-            {filtered.length > PAGE_SIZE && (
+            {sorted.length > PAGE_SIZE && (
               <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-                <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+                <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sorted.length)} of {sorted.length}</span>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-                  <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= filtered.length} onClick={() => setPage((p) => p + 1)}>Next</Button>
+                  <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= sorted.length} onClick={() => setPage((p) => p + 1)}>Next</Button>
                 </div>
               </div>
             )}

@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { useTableSort } from "@/lib/hooks/use-table-sort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
 
@@ -158,6 +160,8 @@ export function DepartmentsManager() {
     loadDepartments();
   };
 
+  const { sortedData: sorted, sortConfig, requestSort } = useTableSort(departments);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
@@ -250,16 +254,16 @@ export function DepartmentsManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Short Code</TableHead>
-              <TableHead>Name (EN)</TableHead>
-              <TableHead>Name (KO)</TableHead>
-              <TableHead>Order</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableTableHead sortKey="short_code" sortConfig={sortConfig} onSort={requestSort}>Short Code</SortableTableHead>
+              <SortableTableHead sortKey="name_en" sortConfig={sortConfig} onSort={requestSort}>Name (EN)</SortableTableHead>
+              <SortableTableHead sortKey="name_ko" sortConfig={sortConfig} onSort={requestSort}>Name (KO)</SortableTableHead>
+              <SortableTableHead sortKey="sort_order" sortConfig={sortConfig} onSort={requestSort}>Order</SortableTableHead>
+              <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {departments.length === 0 ? (
+            {sorted.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={6}
@@ -269,7 +273,7 @@ export function DepartmentsManager() {
                 </TableCell>
               </TableRow>
             ) : (
-              departments.map((dept) => (
+              sorted.map((dept) => (
                 <TableRow key={dept.id}>
                   <TableCell className="font-mono">{dept.short_code}</TableCell>
                   <TableCell>{dept.name_en}</TableCell>
