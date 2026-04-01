@@ -283,7 +283,7 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
   for (let gi = 0; gi < input.roomGroups.length; gi++) {
     const group = input.roomGroups[gi];
     const rate = input.lodgingRates.find((r) => r.code === group.lodgingType);
-    if (rate && rate.amount_cents > 0) {
+    if (rate) {
       const groupLodging =
         rate.pricing_type === "PER_NIGHT"
           ? rate.amount_cents * input.nightsCount
