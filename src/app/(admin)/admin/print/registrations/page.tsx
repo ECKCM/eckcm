@@ -328,7 +328,7 @@ function RegistrationCard({
               <tr className="bg-slate-50 print:bg-gray-100">
                 <th className="text-left px-2 py-1.5 font-medium text-xs text-slate-500 border-b">#</th>
                 <th className="text-left px-2 py-1.5 font-medium text-xs text-slate-500 border-b">Name</th>
-                <th className="text-left px-2 py-1.5 font-medium text-xs text-slate-500 border-b">Korean</th>
+                <th className="text-left px-2 py-1.5 font-medium text-xs text-slate-500 border-b">Display Name</th>
                 <th className="text-left px-2 py-1.5 font-medium text-xs text-slate-500 border-b">Gender</th>
                 <th className="text-left px-2 py-1.5 font-medium text-xs text-slate-500 border-b">Age</th>
                 <th className="text-left px-2 py-1.5 font-medium text-xs text-slate-500 border-b">Church</th>

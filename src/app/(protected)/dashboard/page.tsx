@@ -76,11 +76,12 @@ export default async function DashboardPage() {
   // Fetch allow_duplicate_registration config
   const { data: appConfig } = await supabase
     .from("eckcm_app_config")
-    .select("allow_duplicate_registration")
+    .select("allow_duplicate_registration, booklet_url")
     .eq("id", 1)
     .single();
 
   const allowDuplicateRegistration = appConfig?.allow_duplicate_registration ?? false;
+  const bookletUrl = appConfig?.booklet_url ?? "";
 
   return (
     <DashboardContent
@@ -93,6 +94,7 @@ export default async function DashboardPage() {
       isAdmin={isAdmin}
       registeredEventIds={Array.from(registeredEventIds)}
       allowDuplicateRegistration={allowDuplicateRegistration}
+      bookletUrl={bookletUrl}
     />
   );
 }

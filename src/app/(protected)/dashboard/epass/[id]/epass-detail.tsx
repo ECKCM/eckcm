@@ -52,9 +52,9 @@ export function EPassDetail({ token }: EPassDetailProps) {
   const meal = getMealCategory(person.birth_date, reg.start_date);
 
   const mealLabel: Record<string, string> = {
-    adult: t("epass.adult"),
-    youth: t("epass.youth"),
-    free: t("common.free"),
+    adult: "General",
+    youth: "Youth",
+    free: "Free",
   };
 
   return (
@@ -91,7 +91,7 @@ export function EPassDetail({ token }: EPassDetailProps) {
               variant={token.is_active ? "default" : "destructive"}
               className="text-base px-3 py-1"
             >
-              {token.is_active ? t("epass.active") : t("epass.inactive")}
+              {token.is_active ? "Active" : "Inactive"}
             </Badge>
             {(person.gender === "MALE" || person.gender === "FEMALE") && (
               <Badge
@@ -102,7 +102,7 @@ export function EPassDetail({ token }: EPassDetailProps) {
                     : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
                 }`}
               >
-                {person.gender === "MALE" ? t("profile.male") : t("profile.female")}
+                {person.gender === "MALE" ? "Male" : "Female"}
               </Badge>
             )}
             <Badge

@@ -65,22 +65,27 @@ export default async function EPassPage({
 
   const participantCode = (membership as any)?.participant_code ?? null;
 
+  // Fetch app config for HMAC secret and booklet URL
+  const { data: appConfig } = await admin
+    .from("eckcm_app_config")
+    .select("epass_hmac_secret, booklet_url")
+    .eq("id", 1)
+    .single();
+
   // Sign participant code with HMAC if secret is configured
   let qrValue = participantCode;
   if (participantCode) {
-    const { data: config } = await admin
-      .from("eckcm_app_config")
-      .select("epass_hmac_secret")
-      .eq("id", 1)
-      .single();
-    const secret = (config as any)?.epass_hmac_secret;
+    const secret = (appConfig as any)?.epass_hmac_secret;
     if (secret) {
       qrValue = signParticipantCode(participantCode, secret);
     }
   }
 
+  const bookletUrl = (appConfig as any)?.booklet_url ?? "";
+
   return (
     <EPassViewer
+      bookletUrl={bookletUrl}
       epass={{
         id: data.id,
         isActive: data.is_active,

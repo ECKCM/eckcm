@@ -271,7 +271,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
                 <TableHeader>
                   <TableRow>
                     <SortableTableHead className="whitespace-nowrap" sortKey="first_name_en" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
-                    <SortableTableHead sortKey="display_name_ko" sortConfig={sortConfig} onSort={requestSort}>Korean</SortableTableHead>
+                    <SortableTableHead sortKey="display_name_ko" sortConfig={sortConfig} onSort={requestSort}>Display Name</SortableTableHead>
                     <SortableTableHead sortKey="gender" sortConfig={sortConfig} onSort={requestSort}>Gender</SortableTableHead>
                     <SortableTableHead sortKey="date_of_birth" sortConfig={sortConfig} onSort={requestSort}>DOB</SortableTableHead>
                     <SortableTableHead sortKey="age_at_event" sortConfig={sortConfig} onSort={requestSort}>Age</SortableTableHead>

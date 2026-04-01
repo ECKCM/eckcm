@@ -3,10 +3,12 @@
 import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ShieldCheck, BookOpen } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 
 interface EPassViewerProps {
+  bookletUrl?: string;
   epass: {
     id: string;
     isActive: boolean;
@@ -46,12 +48,12 @@ function getMealCategory(birthDate: string, eventDate: string): string {
   return "free";
 }
 
-export function EPassViewer({ epass }: EPassViewerProps) {
+export function EPassViewer({ epass, bookletUrl }: EPassViewerProps) {
   const { t } = useI18n();
   const { person, registration } = epass;
   const { event } = registration;
   const meal = getMealCategory(person.birthDate, event.startDate);
-  const mealLabel: Record<string, string> = { adult: t("epass.adult"), youth: t("epass.youth"), free: t("common.free") };
+  const mealLabel: Record<string, string> = { adult: "General", youth: "Youth", free: "Free" };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-950 dark:to-gray-900 flex items-center justify-center p-4">
@@ -76,7 +78,7 @@ export function EPassViewer({ epass }: EPassViewerProps) {
               variant={epass.isActive ? "default" : "destructive"}
               className="text-base px-3 py-1"
             >
-              {epass.isActive ? t("epass.active") : t("epass.inactive")}
+              {epass.isActive ? "Active" : "Inactive"}
             </Badge>
             {(person.gender === "MALE" || person.gender === "FEMALE") && (
               <Badge
@@ -87,7 +89,7 @@ export function EPassViewer({ epass }: EPassViewerProps) {
                     : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
                 }`}
               >
-                {person.gender === "MALE" ? t("profile.male") : t("profile.female")}
+                {person.gender === "MALE" ? "Male" : "Female"}
               </Badge>
             )}
             <Badge
@@ -139,6 +141,19 @@ export function EPassViewer({ epass }: EPassViewerProps) {
 
           </div>
         </CardContent>
+
+        {bookletUrl && (
+          <div className="px-6 pb-6">
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => window.open(bookletUrl, "_blank")}
+            >
+              <BookOpen className="size-4" />
+              Booklet
+            </Button>
+          </div>
+        )}
       </Card>
     </div>
   );

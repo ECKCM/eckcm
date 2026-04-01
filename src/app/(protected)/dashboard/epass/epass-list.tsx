@@ -176,9 +176,9 @@ function EPassCardList({
   const { t, locale } = useI18n();
 
   const mealLabel: Record<string, string> = {
-    adult: t("epass.adult"),
-    youth: t("epass.youth"),
-    free: t("common.free"),
+    adult: "General",
+    youth: "Youth",
+    free: "Free",
   };
 
   if (tokens.length === 0) {
@@ -226,7 +226,7 @@ function EPassCardList({
                   <CardTitle className="text-base">{displayName}</CardTitle>
                   <div className="flex items-center gap-1.5">
                     <Badge variant={token.is_active ? "default" : "secondary"}>
-                      {token.is_active ? t("epass.active") : t("epass.inactive")}
+                      {token.is_active ? "Active" : "Inactive"}
                     </Badge>
                     {(person.gender === "MALE" || person.gender === "FEMALE") && (
                       <Badge
@@ -237,7 +237,7 @@ function EPassCardList({
                             : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300"
                         }
                       >
-                        {person.gender === "MALE" ? t("profile.male") : t("profile.female")}
+                        {person.gender === "MALE" ? "Male" : "Female"}
                       </Badge>
                     )}
                     <Badge

@@ -80,7 +80,7 @@ export function GuardianConsentDetailSheet({
                 {c.first_name_en} {c.last_name_en}
               </InfoRow>
               {c.display_name_ko && (
-                <InfoRow label="Korean Name">{c.display_name_ko}</InfoRow>
+                <InfoRow label="Display Name">{c.display_name_ko}</InfoRow>
               )}
               <InfoRow label="Gender">{c.gender}</InfoRow>
               <InfoRow label="Age">

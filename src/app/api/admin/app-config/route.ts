@@ -13,7 +13,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("eckcm_app_config")
-    .select("color_theme, turnstile_enabled, allow_duplicate_email, allow_duplicate_registration, epass_hmac_secret")
+    .select("color_theme, turnstile_enabled, allow_duplicate_email, allow_duplicate_registration, epass_hmac_secret, booklet_url")
     .eq("id", 1)
     .single();
 
@@ -32,6 +32,7 @@ export async function GET() {
     turnstile_enabled: data.turnstile_enabled ?? true,
     allow_duplicate_email: data.allow_duplicate_email ?? false,
     allow_duplicate_registration: data.allow_duplicate_registration ?? false,
+    booklet_url: data.booklet_url ?? "",
     ...(isSuperAdmin
       ? {
           epass_hmac_secret: hmacSecret
@@ -96,6 +97,16 @@ export async function PATCH(request: Request) {
       );
     }
     updates.allow_duplicate_registration = body.allow_duplicate_registration;
+  }
+
+  if ("booklet_url" in body) {
+    if (typeof body.booklet_url !== "string") {
+      return NextResponse.json(
+        { error: "booklet_url must be a string" },
+        { status: 400 }
+      );
+    }
+    updates.booklet_url = body.booklet_url.trim() || null;
   }
 
   if ("epass_hmac_secret" in body) {

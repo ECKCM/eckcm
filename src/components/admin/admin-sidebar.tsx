@@ -31,6 +31,7 @@ import {
   Printer,
   HandCoins,
   Sheet,
+  BookOpen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -95,6 +96,7 @@ const settingsLinks = [
   { href: "/admin/settings/airport-rides", label: "Airport Rides", icon: Plane },
   { href: "/admin/settings/email", label: "Email", icon: Mail },
   { href: "/admin/settings/google-sheets", label: "Google Sheets", icon: Sheet },
+  { href: "/admin/settings/booklet", label: "Booklet", icon: BookOpen },
   { href: "/admin/settings/configuration", label: "Configuration", icon: Settings2 },
 ];
 

@@ -54,7 +54,10 @@ export interface PersonDetail {
   email: string | null;
   phone: string | null;
   phone_country: string | null;
+  church_id: string | null;
   church_name: string | null;
+  church_other: string | null;
+  department_id: string | null;
   department_name: string | null;
   guardian_name: string | null;
   guardian_phone: string | null;

@@ -62,6 +62,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ChurchCombobox } from "@/components/shared/church-combobox";
 import {
   type RegistrationRow,
   type PersonDetail,
@@ -95,11 +96,20 @@ export function RegistrationDetailSheet({
 }: RegistrationDetailSheetProps) {
   const [people, setPeople] = useState<PersonDetail[]>([]);
   const [loadingPeople, setLoadingPeople] = useState(false);
+  const [churches, setChurches] = useState<{ id: string; name_en: string; name_ko: string | null; is_other: boolean }[]>([]);
+  const [departments, setDepartments] = useState<{ id: string; name_en: string }[]>([]);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{
     status: string;
     label: string;
   } | null>(null);
+
+  // Load churches and departments once
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.from("eckcm_churches").select("id, name_en, name_ko, is_other").eq("is_active", true).order("is_other", { ascending: false }).order("name_en").then(({ data }) => setChurches(data ?? []));
+    supabase.from("eckcm_departments").select("id, name_en").order("name_en").then(({ data }) => setDepartments(data ?? []));
+  }, []);
 
   // Load participants when registration changes
   useEffect(() => {
@@ -121,10 +131,10 @@ export function RegistrationDetailSheet({
         eckcm_people!inner(
           id, first_name_en, last_name_en, display_name_ko,
           gender, birth_date, age_at_event, is_k12, grade,
-          email, phone, phone_country, church_other,
-          guardian_name, guardian_phone,
-          eckcm_churches(name_en),
-          eckcm_departments(name_en)
+          email, phone, phone_country, church_id, church_other,
+          department_id, guardian_name, guardian_phone,
+          eckcm_churches(id, name_en),
+          eckcm_departments(id, name_en)
         ),
         eckcm_groups!inner(display_group_code, registration_id)
       `)
@@ -145,10 +155,13 @@ export function RegistrationDetailSheet({
         email: m.eckcm_people.email,
         phone: m.eckcm_people.phone,
         phone_country: m.eckcm_people.phone_country,
+        church_id: m.eckcm_people.church_id ?? m.eckcm_people.eckcm_churches?.id ?? null,
         church_name:
           m.eckcm_people.church_other ||
           m.eckcm_people.eckcm_churches?.name_en ||
           null,
+        church_other: m.eckcm_people.church_other,
+        department_id: m.eckcm_people.department_id ?? m.eckcm_people.eckcm_departments?.id ?? null,
         department_name: m.eckcm_people.eckcm_departments?.name_en ?? null,
         guardian_name: m.eckcm_people.guardian_name,
         guardian_phone: m.eckcm_people.guardian_phone,
@@ -440,7 +453,7 @@ export function RegistrationDetailSheet({
                       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                         Representative
                       </h4>
-                      <PersonCard person={representative} onSaved={() => { loadPeople(reg.id); onRefresh(); }} />
+                      <PersonCard person={representative} onSaved={() => { loadPeople(reg.id); onRefresh(); }} churches={churches} departments={departments} />
                     </div>
                   )}
 
@@ -452,7 +465,7 @@ export function RegistrationDetailSheet({
                       </h4>
                       <div className="space-y-2">
                         {members.map((p, i) => (
-                          <PersonCard key={i} person={p} onSaved={() => { loadPeople(reg.id); onRefresh(); }} />
+                          <PersonCard key={i} person={p} onSaved={() => { loadPeople(reg.id); onRefresh(); }} churches={churches} departments={departments} />
                         ))}
                       </div>
                     </div>
@@ -469,7 +482,7 @@ export function RegistrationDetailSheet({
                         <TableHeader>
                           <TableRow>
                             <TableHead>Name</TableHead>
-                            <TableHead>Korean</TableHead>
+                            <TableHead>Display Name</TableHead>
                             <TableHead>Gender</TableHead>
                             <TableHead>DOB</TableHead>
                             <TableHead>Age</TableHead>
@@ -1246,9 +1259,15 @@ function InfoRow({
   );
 }
 
-function PersonCard({ person: p, onSaved }: { person: PersonDetail; onSaved: () => void }) {
+function PersonCard({ person: p, onSaved, churches, departments }: { person: PersonDetail; onSaved: () => void; churches: { id: string; name_en: string; name_ko: string | null; is_other: boolean }[]; departments: { id: string; name_en: string }[] }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const isChurchOther = (churchId: string | undefined) => {
+    if (!churchId) return false;
+    return churches.find((c) => c.id === churchId)?.is_other ?? false;
+  };
+
   const [form, setForm] = useState({
     first_name_en: p.first_name_en,
     last_name_en: p.last_name_en,
@@ -1257,6 +1276,11 @@ function PersonCard({ person: p, onSaved }: { person: PersonDetail; onSaved: () 
     phone: p.phone ?? "",
     gender: p.gender,
     birth_date: p.birth_date ?? "",
+    is_k12: p.is_k12,
+    grade: p.grade ?? "",
+    church_id: p.church_id ?? "",
+    church_other: p.church_other ?? "",
+    department_id: p.department_id ?? "",
     guardian_name: p.guardian_name ?? "",
     guardian_phone: p.guardian_phone ?? "",
   });
@@ -1270,6 +1294,11 @@ function PersonCard({ person: p, onSaved }: { person: PersonDetail; onSaved: () 
       phone: p.phone ?? "",
       gender: p.gender,
       birth_date: p.birth_date ?? "",
+      is_k12: p.is_k12,
+      grade: p.grade ?? "",
+      church_id: p.church_id ?? "",
+      church_other: p.church_other ?? "",
+      department_id: p.department_id ?? "",
       guardian_name: p.guardian_name ?? "",
       guardian_phone: p.guardian_phone ?? "",
     });
@@ -1278,10 +1307,26 @@ function PersonCard({ person: p, onSaved }: { person: PersonDetail; onSaved: () 
   const handleSave = async () => {
     setSaving(true);
     try {
+      const payload: Record<string, unknown> = {
+        first_name_en: form.first_name_en,
+        last_name_en: form.last_name_en,
+        display_name_ko: form.display_name_ko || null,
+        email: form.email || null,
+        phone: form.phone || null,
+        gender: form.gender,
+        birth_date: form.birth_date || null,
+        is_k12: form.is_k12,
+        grade: form.is_k12 ? (form.grade || null) : null,
+        church_id: form.church_id || null,
+        church_other: isChurchOther(form.church_id) ? (form.church_other || null) : null,
+        department_id: form.department_id || null,
+        guardian_name: form.guardian_name || null,
+        guardian_phone: form.guardian_phone || null,
+      };
       const res = await fetch(`/api/admin/people/${p.person_id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         toast.success("Participant updated");
@@ -1297,62 +1342,162 @@ function PersonCard({ person: p, onSaved }: { person: PersonDetail; onSaved: () 
     setSaving(false);
   };
 
-  const updateField = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
   if (editing) {
     return (
-      <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
+      <div className="rounded-lg border p-4 space-y-4 bg-muted/20">
         <div className="flex items-center justify-between">
           <Badge variant="outline" className="text-xs">{p.role}</Badge>
           <span className="font-mono text-xs text-muted-foreground">{p.group_code}</span>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-xs text-muted-foreground">First Name</label>
-            <Input value={form.first_name_en} onChange={(e) => updateField("first_name_en", e.target.value)} className="h-8 text-sm mt-0.5" />
+
+        {/* Name Section */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">First Name (Legal)</label>
+              <Input value={form.first_name_en} onChange={(e) => setForm({ ...form, first_name_en: e.target.value.toUpperCase() })} className="h-9 text-sm" placeholder="FIRST NAME" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Last Name (Legal)</label>
+              <Input value={form.last_name_en} onChange={(e) => setForm({ ...form, last_name_en: e.target.value.toUpperCase() })} className="h-9 text-sm" placeholder="LAST NAME" />
+            </div>
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Last Name</label>
-            <Input value={form.last_name_en} onChange={(e) => updateField("last_name_en", e.target.value)} className="h-8 text-sm mt-0.5" />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Korean Name</label>
-            <Input value={form.display_name_ko} onChange={(e) => updateField("display_name_ko", e.target.value)} className="h-8 text-sm mt-0.5" />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Gender</label>
-            <Select value={form.gender} onValueChange={(v) => updateField("gender", v)}>
-              <SelectTrigger className="h-8 text-sm mt-0.5"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="MALE">Male</SelectItem>
-                <SelectItem value="FEMALE">Female</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Email</label>
-            <Input value={form.email} onChange={(e) => updateField("email", e.target.value)} className="h-8 text-sm mt-0.5" />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Phone</label>
-            <Input value={form.phone} onChange={(e) => updateField("phone", e.target.value)} className="h-8 text-sm mt-0.5" />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Date of Birth</label>
-            <Input type="date" value={form.birth_date} onChange={(e) => updateField("birth_date", e.target.value)} className="h-8 text-sm mt-0.5" />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Guardian Name</label>
-            <Input value={form.guardian_name} onChange={(e) => updateField("guardian_name", e.target.value)} className="h-8 text-sm mt-0.5" />
-          </div>
-          <div className="col-span-2">
-            <label className="text-xs text-muted-foreground">Guardian Phone</label>
-            <Input value={form.guardian_phone} onChange={(e) => updateField("guardian_phone", e.target.value)} className="h-8 text-sm mt-0.5" />
+          <div className="space-y-1">
+            <label className="text-xs font-medium">Display Name</label>
+            <Input value={form.display_name_ko} onChange={(e) => setForm({ ...form, display_name_ko: e.target.value })} className="h-9 text-sm" placeholder="Name on badge" />
+            <p className="text-[0.625rem] text-muted-foreground">This name will be printed on the name badge.</p>
           </div>
         </div>
-        <div className="flex gap-2">
+
+        <Separator />
+
+        {/* Personal Info */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Personal Info</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Gender</label>
+              <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MALE">Male</SelectItem>
+                  <SelectItem value="FEMALE">Female</SelectItem>
+                  <SelectItem value="NON_BINARY">Non-binary</SelectItem>
+                  <SelectItem value="PREFER_NOT_TO_SAY">Prefer not to say</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Date of Birth</label>
+              <Input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} className="h-9 text-sm" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id={`k12-${p.person_id}`}
+              checked={form.is_k12}
+              onChange={(e) => setForm({ ...form, is_k12: e.target.checked, grade: e.target.checked ? form.grade : "" })}
+              className="size-4 rounded border-gray-300"
+            />
+            <label htmlFor={`k12-${p.person_id}`} className="text-xs">Pre-K/K-12 student (high school or younger)</label>
+          </div>
+          {form.is_k12 && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Grade</label>
+              <Select value={form.grade} onValueChange={(v) => setForm({ ...form, grade: v })}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select grade" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PRE_K">Pre-K</SelectItem>
+                  <SelectItem value="KINDERGARTEN">Kindergarten</SelectItem>
+                  <SelectItem value="GRADE_1">1st Grade</SelectItem>
+                  <SelectItem value="GRADE_2">2nd Grade</SelectItem>
+                  <SelectItem value="GRADE_3">3rd Grade</SelectItem>
+                  <SelectItem value="GRADE_4">4th Grade</SelectItem>
+                  <SelectItem value="GRADE_5">5th Grade</SelectItem>
+                  <SelectItem value="GRADE_6">6th Grade</SelectItem>
+                  <SelectItem value="GRADE_7">7th Grade</SelectItem>
+                  <SelectItem value="GRADE_8">8th Grade</SelectItem>
+                  <SelectItem value="GRADE_9">9th Grade</SelectItem>
+                  <SelectItem value="GRADE_10">10th Grade</SelectItem>
+                  <SelectItem value="GRADE_11">11th Grade</SelectItem>
+                  <SelectItem value="GRADE_12">12th Grade</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Contact */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Email</label>
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="h-9 text-sm" placeholder="email@example.com" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Phone</label>
+              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="h-9 text-sm" placeholder="Phone number" />
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Church & Department */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Church & Department</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Church</label>
+              <ChurchCombobox
+                churches={churches}
+                value={form.church_id}
+                onValueChange={(v) => setForm({ ...form, church_id: v, church_other: isChurchOther(v) ? form.church_other : "" })}
+                placeholder="Select church"
+                className="h-9 text-sm"
+              />
+              {isChurchOther(form.church_id) && (
+                <Input value={form.church_other} onChange={(e) => setForm({ ...form, church_other: e.target.value })} className="h-9 text-sm mt-1" placeholder="Enter church name" />
+              )}
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Department</label>
+              <Select value={form.department_id} onValueChange={(v) => setForm({ ...form, department_id: v === "__none__" ? "" : v })}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select department" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— None —</SelectItem>
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name_en}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Guardian */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Guardian</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Guardian Name</label>
+              <Input value={form.guardian_name} onChange={(e) => setForm({ ...form, guardian_name: e.target.value })} className="h-9 text-sm" placeholder="Full name" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Guardian Phone</label>
+              <Input value={form.guardian_phone} onChange={(e) => setForm({ ...form, guardian_phone: e.target.value })} className="h-9 text-sm" placeholder="Phone number" />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2">
           <Button size="sm" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
             Save

@@ -127,7 +127,11 @@
     "registerForOthersDesc": "You are about to register on behalf of another person or group. The registration will be linked to your account.",
     "signedInAs": "Signed in as {name} ({email})",
     "registerForOthersConfirm": "I understand that I am registering on behalf of someone else and that this registration will be linked to my account.",
-    "registerForOthersNote": "\"Register for Someone Else\" lets you register on behalf of others — this will not include you as a participant."
+    "registerForOthersNote": "\"Register for Someone Else\" lets you register on behalf of others — this will not include you as a participant.",
+    "contactSupport": "Contact Support",
+    "contactSupportDesc": "For any changes or cancellations, please contact the ECKCM registration team.",
+    "booklet": "Booklet",
+    "viewBooklet": "View event booklet"
   },
   "registration": {
     "eventNotFound": "Event not found.",
@@ -436,7 +440,7 @@
     "noEPassComplete": "No E-Pass available yet. Complete payment to receive your E-Pass.",
     "active": "Active",
     "inactive": "Inactive",
-    "adult": "Adult",
+    "adult": "General",
     "youth": "Youth",
     "notYourEPass": "Not Your E-Pass",
     "notYourEPassDesc": "This E-Pass belongs to {name}. You can open it here or copy the link to share with them.",

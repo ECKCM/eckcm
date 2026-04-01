@@ -150,7 +150,7 @@ export function GuardianConsentsTable({ events }: { events: Event[] }) {
   const exportCsv = () => {
     const headers = [
       "Participant Name",
-      "Korean Name",
+      "Display Name",
       "Gender",
       "DOB",
       "Age",
@@ -298,7 +298,7 @@ export function GuardianConsentsTable({ events }: { events: Event[] }) {
                 <TableHeader>
                   <TableRow>
                     <SortableTableHead className="whitespace-nowrap" sortKey="first_name_en" sortConfig={sortConfig} onSort={requestSort}>Participant</SortableTableHead>
-                    <SortableTableHead sortKey="display_name_ko" sortConfig={sortConfig} onSort={requestSort}>Korean</SortableTableHead>
+                    <SortableTableHead sortKey="display_name_ko" sortConfig={sortConfig} onSort={requestSort}>Display Name</SortableTableHead>
                     <SortableTableHead sortKey="age_at_event" sortConfig={sortConfig} onSort={requestSort}>Age</SortableTableHead>
                     <SortableTableHead sortKey="is_k12" sortConfig={sortConfig} onSort={requestSort}>K-12</SortableTableHead>
                     <SortableTableHead className="whitespace-nowrap" sortKey="guardian_name" sortConfig={sortConfig} onSort={requestSort}>Guardian Name</SortableTableHead>

@@ -6,7 +6,7 @@ export async function GET() {
   const { data, error } = await admin
     .from("eckcm_app_config")
     .select(
-      "color_theme, turnstile_enabled, allow_duplicate_email, allow_duplicate_registration"
+      "color_theme, turnstile_enabled, allow_duplicate_email, allow_duplicate_registration, booklet_url"
     )
     .eq("id", 1)
     .single();
@@ -23,5 +23,6 @@ export async function GET() {
     turnstile_enabled: data.turnstile_enabled ?? true,
     allow_duplicate_email: data.allow_duplicate_email ?? false,
     allow_duplicate_registration: data.allow_duplicate_registration ?? false,
+    booklet_url: data.booklet_url ?? "",
   });
 }

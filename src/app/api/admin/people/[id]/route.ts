@@ -13,6 +13,11 @@ const ALLOWED_FIELDS = [
   "birth_date",
   "guardian_name",
   "guardian_phone",
+  "is_k12",
+  "grade",
+  "church_id",
+  "church_other",
+  "department_id",
 ] as const;
 
 export async function PATCH(

@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 const defaultFields = [
   { name: "First Name", required: true, enabled: true },
   { name: "Last Name", required: true, enabled: true },
-  { name: "Korean Name", required: false, enabled: true },
+  { name: "Display Name", required: false, enabled: true },
   { name: "Gender", required: true, enabled: true },
   { name: "Birth Date", required: true, enabled: true },
   { name: "Phone", required: false, enabled: true },

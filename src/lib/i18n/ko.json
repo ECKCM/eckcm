@@ -127,7 +127,11 @@
     "registerForOthersDesc": "다른 사람 또는 그룹을 대신하여 등록하려고 합니다. 등록은 귀하의 계정에 연결됩니다.",
     "signedInAs": "{name} ({email})로 로그인됨",
     "registerForOthersConfirm": "다른 사람을 대신하여 등록하며, 이 등록이 제 계정에 연결됨을 이해합니다.",
-    "registerForOthersNote": "\"다른 사람 대신 등록\"은 다른 사람을 대신하여 등록하는 것으로, 등록자 본인은 참가자에 포함되지 않습니다."
+    "registerForOthersNote": "\"다른 사람 대신 등록\"은 다른 사람을 대신하여 등록하는 것으로, 등록자 본인은 참가자에 포함되지 않습니다.",
+    "contactSupport": "문의하기",
+    "contactSupportDesc": "모든 변경사항이나 취소는 야영회 등록팀에게 문의해 주세요.",
+    "booklet": "책자",
+    "viewBooklet": "야영회 책자 보기"
   },
   "registration": {
     "eventNotFound": "행사를 찾을 수 없습니다.",
@@ -436,8 +440,8 @@
     "noEPassComplete": "아직 E-Pass가 없습니다. 결제를 완료하시면 E-Pass를 받으실 수 있습니다.",
     "active": "활성",
     "inactive": "비활성",
-    "adult": "성인",
-    "youth": "청소년",
+    "adult": "General",
+    "youth": "Youth",
     "notYourEPass": "본인의 E-Pass가 아닙니다",
     "notYourEPassDesc": "이 E-Pass는 {name}님의 것입니다. 여기서 열거나 링크를 복사하여 공유할 수 있습니다.",
     "copy": "복사",

@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, QrCode, Receipt, ClipboardList, Check, Shield, LifeBuoy, Heart } from "lucide-react";
+import { Loader2, QrCode, Receipt, ClipboardList, Check, Shield, LifeBuoy, Heart, BookOpen } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 
 function formatShortDate(dateStr: string): string {
@@ -55,6 +55,7 @@ interface DashboardContentProps {
   isAdmin?: boolean;
   registeredEventIds: string[];
   allowDuplicateRegistration: boolean;
+  bookletUrl?: string;
 }
 
 type RegistrationType = "self" | "others";
@@ -66,6 +67,7 @@ export function DashboardContent({
   registeredEventIds,
   allowDuplicateRegistration,
   isAdmin,
+  bookletUrl,
 }: DashboardContentProps) {
   const router = useRouter();
   const { t, locale } = useI18n();
@@ -136,34 +138,53 @@ export function DashboardContent({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Already registered banner */}
-                {isRegistered && (
-                  <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-                    <Check className="size-4 shrink-0" />
-                    <span className="font-medium">{t("dashboard.alreadyRegistered")}</span>
-                  </div>
+                {isRegistered ? (
+                  <>
+                    {/* Already registered banner */}
+                    <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                      <Check className="size-4 shrink-0" />
+                      <span className="font-medium">{t("dashboard.alreadyRegistered")}</span>
+                    </div>
+
+                    {/* Contact support message */}
+                    <p className="text-sm text-muted-foreground">
+                      {t("dashboard.contactSupportDesc")}
+                    </p>
+
+                    {/* Contact Support button */}
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => window.open("/support", "_blank")}
+                    >
+                      <LifeBuoy className="mr-2 size-4" />
+                      {t("dashboard.contactSupport")}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {/* Register Now button */}
+                    <Button
+                      className="w-full text-lg font-bold tracking-wide"
+                      size="lg"
+                      onClick={() => handleRegister(event.id)}
+                      disabled={navigatingTo === event.id}
+                    >
+                      {navigatingTo === event.id && currentType === "self" ? (
+                        <>
+                          <Loader2 className="mr-2 size-5 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        t("dashboard.registerNow")
+                      )}
+                    </Button>
+                  </>
                 )}
 
-                {/* Register Now button */}
+                {/* Register for someone else — always visible */}
                 <Button
-                  className="w-full text-lg font-bold tracking-wide"
-                  size="lg"
-                  onClick={() => handleRegister(event.id)}
-                  disabled={selfDisabled || navigatingTo === event.id}
-                >
-                  {navigatingTo === event.id && currentType === "self" ? (
-                    <>
-                      <Loader2 className="mr-2 size-5 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    t("dashboard.registerNow")
-                  )}
-                </Button>
-
-                {/* Register for someone else */}
-                <Button
-                  variant="outline"
+                  variant={isRegistered ? "default" : "outline"}
                   className="w-full"
                   onClick={() => handleTypeSelect(event.id, "others")}
                   disabled={navigatingTo === event.id}
@@ -239,6 +260,17 @@ export function DashboardContent({
           <span className="text-lg">{t("dashboard.donation")}</span>
           <span className="text-xs text-muted-foreground">{t("dashboard.makeDonation")}</span>
         </Button>
+        {bookletUrl && (
+          <Button
+            variant="outline"
+            className="h-auto py-4 flex-col"
+            onClick={() => window.open(bookletUrl, "_blank")}
+          >
+            <BookOpen className="h-5 w-5" />
+            <span className="text-lg">{t("dashboard.booklet")}</span>
+            <span className="text-xs text-muted-foreground">{t("dashboard.viewBooklet")}</span>
+          </Button>
+        )}
         <Button
           variant="outline"
           className="h-auto py-4 flex-col"
