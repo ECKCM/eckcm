@@ -134,6 +134,7 @@ async function buildScenario(
           accountHolder: emailConfig.zelleAccountHolder ?? "EMPOWER MINISTRY GROUP, INC",
           memo: `${MOCK_BASE.confirmationCode} - John Kim - 2125550100 - john@example.com`,
         },
+        checkInfo: null,
         invoiceInfo: {
           ...MOCK_INVOICE,
           paymentDate: "-",
@@ -163,6 +164,7 @@ async function buildScenario(
         participants: MOCK_PARTICIPANTS_WITH_EPASS,
         paymentMethod: "ZELLE",
         zelleInfo: null,
+        checkInfo: null,
         invoiceInfo: { ...MOCK_INVOICE, paymentDate: MOCK_INVOICE.paymentDate },
       });
       const pdfs: PdfAttachment[] = [];
@@ -182,7 +184,68 @@ async function buildScenario(
       };
     }
 
-    // 5. Invoice PDF only (pending invoice, not yet paid)
+    // 5. Check pending (submitted, not yet paid — Invoice PDF only)
+    case "confirmation_check_pending": {
+      const html = buildConfirmationEmail({
+        ...MOCK_BASE,
+        participants: MOCK_PARTICIPANTS_NO_EPASS,
+        paymentMethod: "CHECK",
+        zelleInfo: null,
+        checkInfo: {
+          payableTo: "ECKCM",
+          mailingAddress: ["ECKCM", "574 Mountain Shadow Ln", "Maryville, TN 37803"],
+          memo: MOCK_BASE.confirmationCode,
+        },
+        invoiceInfo: {
+          ...MOCK_INVOICE,
+          paymentDate: "-",
+        },
+      });
+      const pdfs: PdfAttachment[] = [];
+      try {
+        const buf = await withTimeout(
+          generateInvoicePdf({ ...MOCK_PDF_BASE, isPaid: false, paymentMethod: "-", paymentDate: "-" }),
+          15_000, "Invoice PDF timeout"
+        );
+        pdfs.push({ filename: "eckcm-invoice-INV-2026-0001.pdf", content: buf.toString("base64") });
+      } catch {
+        // send without PDF
+      }
+      return {
+        subject: `ECKCM Registration Submitted — ${MOCK_BASE.confirmationCode} [TEST]`,
+        html,
+        pdfs,
+      };
+    }
+
+    // 6. Check confirmed (admin approved payment — Receipt PDF only)
+    case "confirmation_check_paid": {
+      const html = buildConfirmationEmail({
+        ...MOCK_BASE,
+        participants: MOCK_PARTICIPANTS_WITH_EPASS,
+        paymentMethod: "CHECK",
+        zelleInfo: null,
+        checkInfo: null,
+        invoiceInfo: { ...MOCK_INVOICE, paymentDate: MOCK_INVOICE.paymentDate },
+      });
+      const pdfs: PdfAttachment[] = [];
+      try {
+        const buf = await withTimeout(
+          generateInvoicePdf({ ...MOCK_PDF_BASE, isPaid: true, paymentMethod: "CHECK", paymentDate: MOCK_INVOICE.paymentDate }),
+          15_000, "Receipt PDF timeout"
+        );
+        pdfs.push({ filename: "eckcm-receipt-RCT-2026-0001.pdf", content: buf.toString("base64") });
+      } catch {
+        // send without PDF
+      }
+      return {
+        subject: `ECKCM Registration Confirmed — ${MOCK_BASE.confirmationCode} [TEST]`,
+        html,
+        pdfs,
+      };
+    }
+
+    // 7. Invoice PDF only (pending invoice, not yet paid)
     case "invoice_pdf": {
       const html = buildConfirmationEmail({
         ...MOCK_BASE,
@@ -242,6 +305,8 @@ export async function POST(request: Request) {
     "confirmation_stripe",
     "confirmation_zelle_pending",
     "confirmation_zelle_paid",
+    "confirmation_check_pending",
+    "confirmation_check_paid",
     "invoice_pdf",
   ];
   if (!VALID_SCENARIOS.includes(scenario)) {

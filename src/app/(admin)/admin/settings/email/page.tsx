@@ -353,6 +353,20 @@ const TEST_SCENARIOS = [
     pdfCount: 1,
   },
   {
+    id: "confirmation_check_pending",
+    label: "Check — Pending",
+    description: "Registration submitted, awaiting check payment. Includes mailing instructions and Invoice PDF. No E-Pass links.",
+    badge: "PDF",
+    pdfCount: 1,
+  },
+  {
+    id: "confirmation_check_paid",
+    label: "Check — Confirmed",
+    description: "Admin confirmed check payment. Includes Receipt PDF only and E-Pass links.",
+    badge: "PDF",
+    pdfCount: 1,
+  },
+  {
     id: "invoice_pdf",
     label: "Invoice PDF",
     description: "Unpaid invoice with Invoice PDF attachment. Tests PDF generation speed.",
@@ -673,6 +687,11 @@ const TEMPLATES = [
     name: "Zelle Payment Instructions",
     description: "Sent after Zelle registration with payment instructions and pending status.",
   },
+  {
+    id: "check",
+    name: "Check Payment Instructions",
+    description: "Sent after Check registration with mailing instructions and pending status.",
+  },
 ];
 
 function TemplatesTab() {
@@ -735,6 +754,7 @@ function TemplatePreview({ templateId }: { templateId: string | null }) {
     epass: buildEpassPreview(),
     announcement: buildAnnouncementPreview(),
     zelle: buildZellePreview(),
+    check: buildCheckPreview(),
   };
 
   const html = previewData[templateId] || "<p>No preview available</p>";
@@ -871,6 +891,51 @@ function buildZellePreview(): string {
 <table width="100%" style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:12px;">
 <tr><td><p style="font-size:13px;font-weight:bold;color:#92400e;margin:0 0 4px;">Important</p>
 <p style="font-size:12px;color:#a16207;margin:0;">Your registration will remain in &ldquo;Pending Payment&rdquo; status until your Zelle payment is received and verified. This may take 1-3 business days. Room assignments will not be made until payment is confirmed.</p>
+</td></tr></table>
+</td></tr></table>
+<p style="font-size:13px;color:#6b7280;margin:0;">E-Pass links will be sent in a separate email once your payment is confirmed.</p>
+</td></tr></table>
+<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Camp Meeting</p></td></tr></table>
+</td></tr></table></body></html>`;
+}
+
+function buildCheckPreview(): string {
+  return `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:sans-serif;background:#f9fafb;">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;padding:20px;">
+<tr><td>
+<table width="100%" style="background:#0f172a;border-radius:8px 8px 0 0;padding:24px;text-align:center;">
+<tr><td><h1 style="color:#fff;margin:0;font-size:24px;">ECKCM</h1><p style="color:#94a3b8;margin:8px 0 0;font-size:14px;">Registration Submitted</p></td></tr>
+</table>
+<table width="100%" style="background:#fff;padding:32px;border:1px solid #e5e7eb;">
+<tr><td>
+<p style="font-size:16px;color:#111827;">Your registration has been submitted!</p>
+<table width="100%" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px;">
+<tr><td><p style="font-size:12px;color:#6b7280;margin:0;">Confirmation Code</p><p style="font-size:32px;font-family:monospace;font-weight:bold;color:#111827;margin:8px 0 0;letter-spacing:4px;">R26KIM0001</p></td></tr>
+</table>
+<table width="100%" style="margin-bottom:24px;">
+<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">Event</td><td style="padding:4px 0;color:#111827;font-size:14px;text-align:right;">ECKCM Summer Camp 2026</td></tr>
+<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">Location</td><td style="padding:4px 0;color:#111827;font-size:14px;text-align:right;">Camp Berkshire, NY</td></tr>
+<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">Amount Due</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:bold;text-align:right;">$450.00</td></tr>
+</table>
+<h3 style="font-size:14px;color:#6b7280;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">Check Payment Instructions</h3>
+<table width="100%" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;margin-bottom:24px;">
+<tr><td>
+<p style="font-size:14px;color:#166534;margin:0 0 12px;">Please mail your check using the details below:</p>
+<table width="100%">
+<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">1. Make check payable to:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:bold;text-align:right;">ECKCM</td></tr>
+<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">2. Amount:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:bold;text-align:right;">$450.00</td></tr>
+</table>
+<p style="font-size:14px;color:#6b7280;margin:12px 0 4px;">3. On the memo line, write <span style="color:#dc2626;font-weight:bold;">(Required)</span>:</p>
+<p style="font-size:14px;font-family:monospace;background:#ffffff;border:1px solid #bbf7d0;border-radius:4px;padding:8px 12px;color:#111827;margin:0 0 12px;">R26KIM0001</p>
+<p style="font-size:14px;color:#6b7280;margin:12px 0 4px;">4. Mail to:</p>
+<div style="font-size:14px;font-weight:600;color:#111827;padding-left:20px;margin:0 0 12px;">
+<p style="margin:0;">ECKCM</p>
+<p style="margin:0;">574 Mountain Shadow Ln</p>
+<p style="margin:0;">Maryville, TN 37803</p>
+</div>
+<table width="100%" style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:12px;">
+<tr><td><p style="font-size:13px;font-weight:bold;color:#92400e;margin:0 0 4px;">Important</p>
+<p style="font-size:12px;color:#a16207;margin:0;">Your registration will remain in &ldquo;Pending Payment&rdquo; status until your check is received and verified. This may take 5&ndash;10 business days. Room assignments will not be made until payment is confirmed.</p>
 </td></tr></table>
 </td></tr></table>
 <p style="font-size:13px;color:#6b7280;margin:0;">E-Pass links will be sent in a separate email once your payment is confirmed.</p>

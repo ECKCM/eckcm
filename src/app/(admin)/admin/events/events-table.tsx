@@ -25,6 +25,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Plus, Star, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
@@ -65,6 +75,7 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
   const { sortedData: sorted, sortConfig, requestSort } = useTableSort(events);
 
   const [deleteTarget, setDeleteTarget] = useState<Event | null>(null);
+  const [toggleTarget, setToggleTarget] = useState<Event | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -117,7 +128,11 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
     router.refresh();
   };
 
-  const toggleActive = async (event: Event) => {
+  const confirmToggleActive = async () => {
+    if (!toggleTarget) return;
+    const event = toggleTarget;
+    setToggleTarget(null);
+
     const supabase = createClient();
     const { error } = await supabase
       .from("eckcm_events")
@@ -345,7 +360,7 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => toggleActive(event)}
+                    onClick={() => setToggleTarget(event)}
                   >
                     {event.is_active ? "Deactivate" : "Activate"}
                   </Button>
@@ -384,6 +399,33 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
           </div>
         </div>
       )}
+
+      {/* Activate / Deactivate confirmation */}
+      <AlertDialog open={!!toggleTarget} onOpenChange={(open) => { if (!open) setToggleTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {toggleTarget?.is_active ? "Deactivate" : "Activate"} &ldquo;{toggleTarget?.name_en}&rdquo;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {toggleTarget?.is_active
+                ? "Deactivating this event will hide it from public registration. Existing registrations will not be deleted, but new registrations will be blocked."
+                : "Activating this event will make it available for public registration. Make sure all settings (fees, sessions, dates) are configured before activating."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmToggleActive}
+              className={toggleTarget?.is_active
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : ""}
+            >
+              {toggleTarget?.is_active ? "Deactivate" : "Activate"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {mounted && (
         <ConfirmDeleteDialog

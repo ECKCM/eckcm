@@ -154,6 +154,7 @@ export const donationCreateIntentSchema = z.object({
   donorName: z.string().max(200).optional(),
   donorEmail: z.string().email().max(255).optional(),
   coversFees: z.boolean().optional(),
+  departmentId: z.string().uuid().optional(),
 });
 
 export const donationConfirmSchema = z.object({

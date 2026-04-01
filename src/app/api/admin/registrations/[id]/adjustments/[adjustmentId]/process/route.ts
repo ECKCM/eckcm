@@ -207,11 +207,12 @@ export async function POST(
               .eq("id", paymentWithInvoice.invoice_id);
           }
 
-          // Full refund → update registration status & deactivate epass
-          if (refundStatus === "REFUNDED") {
+          // Full refund (or capped-for-fee but admin intended $0) → update registration status
+          const adminIntendedZero = adj.new_amount === 0;
+          if (refundStatus === "REFUNDED" || adminIntendedZero) {
             await admin
               .from("eckcm_registrations")
-              .update({ status: "REFUNDED" })
+              .update({ status: "CANCELLED" })
               .eq("id", registrationId);
 
             await admin
@@ -240,21 +241,9 @@ export async function POST(
     }
   }
 
-  // 3b. Correct adjustment amounts if refund was capped (processing fee deducted)
-  if (action === "refund" && cappedRefundAmount !== undefined && cappedRefundAmount !== Math.abs(adj.difference)) {
-    const adjustedNewAmount = adj.previous_amount - cappedRefundAmount;
-    const adjustedDifference = adjustedNewAmount - adj.previous_amount;
-
-    await admin
-      .from("eckcm_registration_adjustments")
-      .update({ new_amount: adjustedNewAmount, difference: adjustedDifference })
-      .eq("id", adjustmentId);
-
-    await admin
-      .from("eckcm_registrations")
-      .update({ total_amount_cents: adjustedNewAmount })
-      .eq("id", registrationId);
-  }
+  // 3b. Stripe fee is Stripe's money, not ours.
+  // Registration total stays at admin's intent (e.g. $0 for full refund).
+  // Actual Stripe refund amount (capped for fee) is tracked via eckcm_refunds + stripe_refund_id.
 
   // 4. Update adjustment record
   await processAdjustment(admin, adjustmentId, {

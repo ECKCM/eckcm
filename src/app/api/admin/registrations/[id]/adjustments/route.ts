@@ -259,10 +259,10 @@ export async function POST(
     }
   }
 
-  // When refund is capped (processing fee deducted), adjustment must reflect actual refund
-  const adjustedNewAmount = (action_taken === "refund" && cappedRefundAmount !== undefined)
-    ? currentAmount - cappedRefundAmount
-    : new_amount;
+  // Registration amount reflects admin's intent (e.g. $0 for full refund).
+  // Stripe fee is Stripe's money, not ours — it should not remain as the registration amount.
+  // The actual Stripe refund amount (capped for fee) is tracked via stripe_refund_id.
+  const adjustedNewAmount = new_amount;
 
   try {
     const adjustment = await createAdjustment(admin, {

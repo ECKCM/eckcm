@@ -29,20 +29,25 @@ export interface RegistrationRow {
   registrant_guardian_name: string | null;
   registrant_guardian_phone: string | null;
   registration_group_name: string | null;
+  invoice_id: string | null;
   invoice_number: string | null;
   payment_status: string | null;
   payment_method: string | null;
   stripe_payment_intent_id: string | null;
+  payment_amount_cents: number;
   paid_at: string | null;
   checked_in: boolean;
   checked_out: boolean;
   room_numbers: string[];
   lodging_type: string | null;
   preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null;
+  is_highlighted: boolean;
 }
 
 export interface PersonDetail {
   person_id: string;
+  membership_id: string;
+  group_id: string;
   first_name_en: string;
   last_name_en: string;
   display_name_ko: string | null;

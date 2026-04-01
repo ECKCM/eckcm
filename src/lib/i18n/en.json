@@ -110,7 +110,7 @@
     "registerNow": "Register Now",
     "registerForOthers": "Register for Someone Else",
     "alreadyRegistered": "You are already registered",
-    "noActiveEvents": "No active events at this time.",
+    "noActiveEvents": "Registration is temporarily unavailable at the moment. Please check back again later.",
     "admin": "Admin",
     "manageEvents": "Manage events",
     "epass": "E-Pass",
@@ -515,7 +515,9 @@
     "makeAnother": "Make Another Donation",
     "networkError": "Network error. Please try again.",
     "failedInit": "Failed to initialize payment",
-    "minAmountError": "Please enter an amount of at least $1.00"
+    "minAmountError": "Please enter an amount of at least $1.00",
+    "department": "Support a Department",
+    "selectDepartment": "Choose a department to support"
   },
   "support": {
     "title": "Support Center",

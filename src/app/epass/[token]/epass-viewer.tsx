@@ -142,18 +142,17 @@ export function EPassViewer({ epass, bookletUrl }: EPassViewerProps) {
           </div>
         </CardContent>
 
-        {bookletUrl && (
-          <div className="px-6 pb-6">
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => window.open(bookletUrl, "_blank")}
-            >
-              <BookOpen className="size-4" />
-              Booklet
-            </Button>
-          </div>
-        )}
+        <div className="px-6 pb-6">
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            disabled={!bookletUrl}
+            onClick={() => bookletUrl && window.open(bookletUrl, "_blank")}
+          >
+            <BookOpen className="size-4" />
+            Booklet
+          </Button>
+        </div>
       </Card>
     </div>
   );

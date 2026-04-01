@@ -15,12 +15,23 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import {
+  AlertTriangle,
   Eye,
   EyeOff,
   Loader2,
   Save,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -74,6 +85,11 @@ export function StripeConfigManager() {
     testWebhook: false,
     liveWebhook: false,
   });
+  const [pendingToggle, setPendingToggle] = useState<{
+    action: () => void;
+    title: string;
+    description: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchConfig();
@@ -308,7 +324,17 @@ export function StripeConfigManager() {
             </div>
             <Switch
               checked={deductFees}
-              onCheckedChange={handleToggleDeductFees}
+              onCheckedChange={(checked) =>
+                setPendingToggle({
+                  action: () => handleToggleDeductFees(checked),
+                  title: checked
+                    ? "Enable Stripe Fee Deduction?"
+                    : "Disable Stripe Fee Deduction?",
+                  description: checked
+                    ? "Refunds will deduct Stripe processing fees (2.9% + $0.30). Registrants will receive less than the original payment amount."
+                    : "Full refund amounts will be issued. Note that Stripe does not refund their processing fees to you.",
+                })
+              }
             />
           </div>
         </CardContent>
@@ -335,10 +361,16 @@ export function StripeConfigManager() {
             <Switch
               checked={donorCoversRegistration}
               onCheckedChange={(checked) =>
-                handleToggleDonorCoversFees(
-                  "donor_covers_fees_registration",
-                  checked
-                )
+                setPendingToggle({
+                  action: () =>
+                    handleToggleDonorCoversFees("donor_covers_fees_registration", checked),
+                  title: checked
+                    ? "Enable Donor Fee Coverage for Registration?"
+                    : "Disable Donor Fee Coverage for Registration?",
+                  description: checked
+                    ? "A checkbox will appear on the registration checkout page allowing payers to cover processing fees."
+                    : "The fee coverage option will be removed from the registration checkout page.",
+                })
               }
             />
           </div>
@@ -353,7 +385,16 @@ export function StripeConfigManager() {
             <Switch
               checked={donorCoversDonation}
               onCheckedChange={(checked) =>
-                handleToggleDonorCoversFees("donor_covers_fees_donation", checked)
+                setPendingToggle({
+                  action: () =>
+                    handleToggleDonorCoversFees("donor_covers_fees_donation", checked),
+                  title: checked
+                    ? "Enable Donor Fee Coverage for Donations?"
+                    : "Disable Donor Fee Coverage for Donations?",
+                  description: checked
+                    ? "A checkbox will appear on the donation payment page allowing donors to cover processing fees."
+                    : "The fee coverage option will be removed from the donation payment page.",
+                })
               }
             />
           </div>
@@ -391,6 +432,32 @@ export function StripeConfigManager() {
         onSave={() => handleSave("live")}
         saving={saving}
       />
+
+      <AlertDialog open={!!pendingToggle} onOpenChange={(open) => { if (!open) setPendingToggle(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {pendingToggle?.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingToggle?.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                pendingToggle?.action();
+                setPendingToggle(null);
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

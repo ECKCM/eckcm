@@ -66,9 +66,18 @@ export async function getAdjustments(
   const nameMap = new Map(
     (profiles ?? []).map((p: { id: string; display_name_en: string | null }) => [
       p.id,
-      p.display_name_en ?? "Unknown",
+      p.display_name_en ?? null,
     ])
   );
+
+  // Fallback: for user IDs missing from profiles or with null name, try auth user email
+  const missingIds = userIds.filter((id) => !nameMap.get(id));
+  for (const uid of missingIds) {
+    const { data: { user } } = await admin.auth.admin.getUserById(uid);
+    if (user) {
+      nameMap.set(uid, user.email ?? user.user_metadata?.full_name ?? "Admin");
+    }
+  }
 
   return data.map((a: AdjustmentRecord) => ({
     ...a,

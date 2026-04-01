@@ -16,6 +16,11 @@ interface ConfirmationEmailProps {
     accountHolder: string;
     memo: string;
   } | null;
+  checkInfo?: {
+    payableTo: string;
+    mailingAddress: string[];
+    memo: string;
+  } | null;
   invoiceInfo?: {
     invoiceNumber: string;
     lineItems: Array<{
@@ -39,9 +44,11 @@ export function buildConfirmationEmail({
   totalAmount,
   paymentMethod,
   zelleInfo,
+  checkInfo,
   invoiceInfo,
 }: ConfirmationEmailProps): string {
   const isZellePending = paymentMethod === "ZELLE" && !!zelleInfo;
+  const isCheckPending = paymentMethod === "CHECK" && !!checkInfo;
   const isManualPending = (paymentMethod === "ZELLE" || paymentMethod === "CHECK") && !invoiceInfo;
   const isPaid = !!invoiceInfo;
   const showEPass = !isManualPending;
@@ -184,6 +191,42 @@ export function buildConfirmationEmail({
                         <td>
                           <p style="font-size: 13px; font-weight: bold; color: #92400e; margin: 0 0 4px;">Important</p>
                           <p style="font-size: 12px; color: #a16207; margin: 0;">Your registration will remain in &ldquo;Pending Payment&rdquo; status until your Zelle payment is received and verified. This may take 1-3 business days. Room assignments will not be made until payment is confirmed.</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              ` : ""}
+
+              ${isCheckPending && checkInfo ? `
+              <!-- Check Payment Instructions -->
+              <h3 style="font-size: 14px; color: #6b7280; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px;">Check Payment Instructions</h3>
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                <tr>
+                  <td>
+                    <p style="font-size: 14px; color: #166534; margin: 0 0 12px;">Please mail your check using the details below:</p>
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">1. Make check payable to:</td>
+                        <td style="padding: 4px 0; color: #111827; font-size: 14px; font-weight: bold; text-align: right;">${escapeHtml(checkInfo.payableTo)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 4px 0; color: #6b7280; font-size: 14px;">2. Amount:</td>
+                        <td style="padding: 4px 0; color: #111827; font-size: 14px; font-weight: bold; text-align: right;">${totalAmount}</td>
+                      </tr>
+                    </table>
+                    <p style="font-size: 14px; color: #6b7280; margin: 12px 0 4px;">3. On the memo line, write <span style="color: #dc2626; font-weight: bold;">(Required)</span>:</p>
+                    <code style="display: block; font-size: 14px; font-family: monospace; background: #ffffff; border: 1px solid #bbf7d0; border-radius: 4px; padding: 8px 12px; color: #111827; margin: 0 0 12px;">${escapeHtml(checkInfo.memo)}</code>
+                    <p style="font-size: 14px; color: #6b7280; margin: 12px 0 4px;">4. Mail to:</p>
+                    <div style="font-size: 14px; font-weight: 600; color: #111827; padding-left: 20px; margin: 0 0 12px;">
+                      ${checkInfo.mailingAddress.map(line => `<p style="margin: 0;">${escapeHtml(line)}</p>`).join("")}
+                    </div>
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 12px;">
+                      <tr>
+                        <td>
+                          <p style="font-size: 13px; font-weight: bold; color: #92400e; margin: 0 0 4px;">Important</p>
+                          <p style="font-size: 12px; color: #a16207; margin: 0;">Your registration will remain in &ldquo;Pending Payment&rdquo; status until your check is received and verified. This may take 5&ndash;10 business days. Room assignments will not be made until payment is confirmed.</p>
                         </td>
                       </tr>
                     </table>

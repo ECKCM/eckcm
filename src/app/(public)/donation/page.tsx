@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Elements,
   PaymentElement,
@@ -9,11 +9,18 @@ import {
 } from "@stripe/react-stripe-js";
 import type { StripePaymentElementChangeEvent } from "@stripe/stripe-js";
 import { getStripe } from "@/lib/stripe/client";
+import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import Link from "next/link";
 import {
@@ -42,7 +49,23 @@ const STRIPE_APPEARANCE = {
 const PRESET_AMOUNTS = [2000, 5000, 10000, 30000]; // $20, $50, $100, $300
 
 export default function DonationPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+
+  /* ---- departments ---- */
+  const [departments, setDepartments] = useState<{ id: string; name_en: string; name_ko: string }[]>([]);
+  const [departmentId, setDepartmentId] = useState<string>("");
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("eckcm_departments")
+      .select("id, name_en, name_ko")
+      .eq("is_active", true)
+      .order("sort_order")
+      .then(({ data }) => {
+        if (data) setDepartments(data);
+      });
+  }, []);
 
   /* ---- amount input ---- */
   const [amountInput, setAmountInput] = useState("");
@@ -53,7 +76,7 @@ export default function DonationPage() {
   const [donorEmail, setDonorEmail] = useState("");
 
   /* ---- fees ---- */
-  const [coversFees, setCoversFees] = useState(false);
+  const [coversFees, setCoversFees] = useState(true);
   const [feeCents, setFeeCents] = useState(0);
   const [chargeAmount, setChargeAmount] = useState(0);
 
@@ -111,6 +134,7 @@ export default function DonationPage() {
           donorName: donorName || undefined,
           donorEmail: donorEmail || undefined,
           coversFees,
+          departmentId: departmentId || undefined,
         }),
       });
 
@@ -154,6 +178,7 @@ export default function DonationPage() {
                   setDonationId(null);
                   setDonorName("");
                   setDonorEmail("");
+                  setDepartmentId("");
                   setCoversFees(false);
                 }}
                 variant="outline"
@@ -262,6 +287,23 @@ export default function DonationPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              {departments.length > 0 && (
+                <div>
+                  <Label>{t("donation.department")}</Label>
+                  <Select value={departmentId} onValueChange={setDepartmentId}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder={t("donation.selectDepartment")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {locale === "ko" ? d.name_ko : d.name_en}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div>
                 <Label htmlFor="donorName">{t("donation.donorName")}</Label>
                 <Input

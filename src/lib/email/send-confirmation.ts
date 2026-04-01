@@ -198,6 +198,7 @@ export async function sendConfirmationEmail(
   const isManualPayment = isZelle || isCheck;
   const invoicePaid = invoiceData?.status === "SUCCEEDED";
   const isZellePending = isZelle && !invoicePaid;
+  const isCheckPending = isCheck && !invoicePaid;
   const isManualPending = isManualPayment && !invoicePaid;
 
   // Build Zelle info only for pending Zelle (not yet confirmed by admin)
@@ -209,6 +210,15 @@ export async function sendConfirmationEmail(
         zelleEmail: emailConfig.zelleEmail ?? "",
         accountHolder: emailConfig.zelleAccountHolder ?? "",
         memo: `${reg.confirmation_code}-${firstMember?.eckcm_people?.first_name_en || ""}${firstMember?.eckcm_people?.last_name_en || ""}-${registrantPhone}-${user.email.replace(/[@.]/g, "")}`,
+      }
+    : null;
+
+  // Build Check info only for pending Check (not yet confirmed by admin)
+  const checkInfo = isCheckPending
+    ? {
+        payableTo: "ECKCM",
+        mailingAddress: ["ECKCM", "574 Mountain Shadow Ln", "Maryville, TN 37803"],
+        memo: reg.confirmation_code,
       }
     : null;
 
@@ -248,6 +258,7 @@ export async function sendConfirmationEmail(
     totalAmount,
     paymentMethod,
     zelleInfo,
+    checkInfo,
     invoiceInfo: includeInvoice,
   });
   const subject = isManualPending

@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, Check, Copy, Key, Loader2, Palette, RefreshCw, Shield, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, Copy, Key, Loader2, Palette, Shield, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useColorTheme } from "@/components/shared/color-theme-provider";
 import { Switch } from "@/components/ui/switch";
@@ -258,7 +258,13 @@ function SecuritySection() {
   const [hmacDraft, setHmacDraft] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [hmacSaving, setHmacSaving] = useState(false);
+  const [hmacWarningOpen, setHmacWarningOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [pendingToggle, setPendingToggle] = useState<{
+    action: () => void;
+    title: string;
+    description: string;
+  } | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/app-config")
@@ -267,7 +273,12 @@ function SecuritySection() {
         setTurnstileEnabled(data.turnstile_enabled ?? true);
         setAllowDuplicateEmail(data.allow_duplicate_email ?? false);
         setAllowDuplicateRegistration(data.allow_duplicate_registration ?? false);
-        if (data.epass_hmac_secret) setHmacStatus(data.epass_hmac_secret);
+        if (data.epass_hmac_secret) {
+          setHmacStatus(data.epass_hmac_secret);
+          if (!data.epass_hmac_secret.is_set) setHmacWarningOpen(true);
+        } else {
+          setHmacWarningOpen(true);
+        }
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
@@ -308,6 +319,7 @@ function SecuritySection() {
   if (!loaded) return null;
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -328,7 +340,15 @@ function SecuritySection() {
           </div>
           <Switch
             checked={turnstileEnabled}
-            onCheckedChange={(checked) => handleToggle("turnstile_enabled", checked)}
+            onCheckedChange={(checked) =>
+              setPendingToggle({
+                action: () => handleToggle("turnstile_enabled", checked),
+                title: checked ? "Enable Cloudflare Turnstile?" : "Disable Cloudflare Turnstile?",
+                description: checked
+                  ? "This will enable CAPTCHA verification on login, signup, and forgot-password pages."
+                  : "Disabling Turnstile removes CAPTCHA protection from authentication pages. Your site will be more vulnerable to bot attacks.",
+              })
+            }
             disabled={isSaving}
           />
         </div>
@@ -363,7 +383,15 @@ function SecuritySection() {
           </div>
           <Switch
             checked={allowDuplicateEmail}
-            onCheckedChange={(checked) => handleToggle("allow_duplicate_email", checked)}
+            onCheckedChange={(checked) =>
+              setPendingToggle({
+                action: () => handleToggle("allow_duplicate_email", checked),
+                title: checked ? "Allow Duplicate Emails?" : "Restore Duplicate Email Check?",
+                description: checked
+                  ? "Multiple participants will be able to register with the same email address. Only enable this for testing."
+                  : "New registrations with already-used email addresses will be blocked.",
+              })
+            }
             disabled={isSaving}
           />
         </div>
@@ -388,7 +416,15 @@ function SecuritySection() {
           </div>
           <Switch
             checked={allowDuplicateRegistration}
-            onCheckedChange={(checked) => handleToggle("allow_duplicate_registration", checked)}
+            onCheckedChange={(checked) =>
+              setPendingToggle({
+                action: () => handleToggle("allow_duplicate_registration", checked),
+                title: checked ? "Allow Duplicate Registrations?" : "Restore Duplicate Registration Check?",
+                description: checked
+                  ? "The same account will be able to register multiple times for the same event. Only enable this for testing."
+                  : "Users will be prevented from creating multiple registrations for the same event.",
+              })
+            }
             disabled={isSaving}
           />
         </div>
@@ -426,21 +462,9 @@ function SecuritySection() {
               type="text"
               value={hmacDraft}
               onChange={(e) => setHmacDraft(e.target.value)}
-              placeholder={hmacStatus.is_set ? "Enter new key to replace..." : "Generate or paste a key..."}
+              placeholder={hmacStatus.is_set ? "Enter new key to replace..." : "Paste a key..."}
               className="font-mono text-sm"
             />
-            <Button
-              variant="outline"
-              size="icon"
-              title="Generate random key"
-              onClick={() => {
-                const arr = new Uint8Array(16);
-                crypto.getRandomValues(arr);
-                setHmacDraft(Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join(""));
-              }}
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
             {hmacDraft && (
               <Button
                 variant="outline"
@@ -493,15 +517,66 @@ function SecuritySection() {
             </Button>
           )}
 
-          {!hmacStatus.is_set && !hmacDraft && (
-            <div className="rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-800 dark:text-amber-300">
-              <strong>Not configured:</strong> QR codes are not signed. Generate
-              a key to enable QR forgery protection.
+          {!hmacStatus.is_set && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+              <strong>Warning:</strong> QR signing key is not configured. QR codes are not protected against forgery.
             </div>
           )}
         </div>
       </CardContent>
     </Card>
+
+    <AlertDialog open={!!pendingToggle} onOpenChange={(open) => { if (!open) setPendingToggle(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            {pendingToggle?.title}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {pendingToggle?.description}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              pendingToggle?.action();
+              setPendingToggle(null);
+            }}
+          >
+            Confirm
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog open={hmacWarningOpen} onOpenChange={setHmacWarningOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            E-Pass QR Signing Key Not Configured
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3">
+              <p>
+                The QR signing key (HMAC secret) is <strong>not configured</strong>.
+                Without this key, QR codes on E-Passes are not signed and can be forged by anyone.
+              </p>
+              <p className="font-medium text-destructive">
+                You must set a QR signing key in the Security section below before E-Passes can be used safely.
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction>Understood</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 

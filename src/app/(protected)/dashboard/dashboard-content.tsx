@@ -236,6 +236,16 @@ export function DashboardContent({
         <Button
           variant="outline"
           className="h-auto py-4 flex-col"
+          disabled={!bookletUrl}
+          onClick={() => bookletUrl && window.open(bookletUrl, "_blank")}
+        >
+          <BookOpen className="h-5 w-5" />
+          <span className="text-lg">{t("dashboard.booklet")}</span>
+          <span className="text-xs text-muted-foreground">{t("dashboard.viewBooklet")}</span>
+        </Button>
+        <Button
+          variant="outline"
+          className="h-auto py-4 flex-col"
           onClick={() => router.push("/dashboard/registrations")}
         >
           <ClipboardList className="h-5 w-5" />
@@ -260,17 +270,6 @@ export function DashboardContent({
           <span className="text-lg">{t("dashboard.donation")}</span>
           <span className="text-xs text-muted-foreground">{t("dashboard.makeDonation")}</span>
         </Button>
-        {bookletUrl && (
-          <Button
-            variant="outline"
-            className="h-auto py-4 flex-col"
-            onClick={() => window.open(bookletUrl, "_blank")}
-          >
-            <BookOpen className="h-5 w-5" />
-            <span className="text-lg">{t("dashboard.booklet")}</span>
-            <span className="text-xs text-muted-foreground">{t("dashboard.viewBooklet")}</span>
-          </Button>
-        )}
         <Button
           variant="outline"
           className="h-auto py-4 flex-col"

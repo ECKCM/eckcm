@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { amountCents, donorName, donorEmail, coversFees } = parsed.data;
+    const { amountCents, donorName, donorEmail, coversFees, departmentId } = parsed.data;
 
     const admin = createAdminClient();
 
@@ -37,6 +37,18 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     const stripeMode = (event?.stripe_mode as "test" | "live") ?? "test";
+
+    // Look up department name if provided
+    let departmentName: string | null = null;
+    if (departmentId) {
+      const { data: dept } = await admin
+        .from("eckcm_departments")
+        .select("name_en")
+        .eq("id", departmentId)
+        .eq("is_active", true)
+        .single();
+      departmentName = dept?.name_en ?? null;
+    }
 
     // Calculate charge amount with optional fee coverage (2.9% + $0.30)
     const chargeAmount = coversFees
@@ -75,6 +87,9 @@ export async function POST(request: Request) {
         covers_fees: !!coversFees,
         payment_method: "CARD",
         status: "PENDING",
+        metadata: {
+          ...(departmentId ? { departmentId, departmentName } : {}),
+        },
       })
       .select("id")
       .single();
@@ -90,16 +105,22 @@ export async function POST(request: Request) {
     }
 
     // Create Stripe PaymentIntent
+    const description = departmentName
+      ? `ECKCM Donation — Supporting ${departmentName}`
+      : "ECKCM Donation";
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: chargeAmount,
       currency: "usd",
-      description: "ECKCM Donation",
+      description,
+      statement_descriptor_suffix: "DONATION",
       ...(stripeCustomerId ? { customer: stripeCustomerId } : {}),
       receipt_email: donorEmail || undefined,
       metadata: {
         donationId: donation.id,
         type: "donation",
         coversFees: coversFees ? "true" : "false",
+        ...(departmentName ? { department: departmentName } : {}),
       },
       payment_method_types: ["card"],
     });

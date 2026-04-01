@@ -60,6 +60,9 @@ import {
   Pencil,
   Save,
   X,
+  Trash2,
+  ArrowRightLeft,
+  BedDouble,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ChurchCombobox } from "@/components/shared/church-combobox";
@@ -103,21 +106,77 @@ export function RegistrationDetailSheet({
     status: string;
     label: string;
   } | null>(null);
+  // All registrations for transfer dropdown
+  const [allRegistrations, setAllRegistrations] = useState<{ id: string; confirmation_code: string; registrant_name: string; status: string }[]>([]);
+  // Groups for this registration (for room change)
+  const [groups, setGroups] = useState<{ id: string; display_group_code: string; room_number: string | null; room_id: string | null; lodging_type: string | null }[]>([]);
+  // All rooms for room change dropdown
+  const [allRooms, setAllRooms] = useState<{ id: string; room_number: string; building_name: string; floor_number: string }[]>([]);
+  // Available lodging options for this event's registration group
+  const [lodgingOptions, setLodgingOptions] = useState<{ code: string; name_en: string }[]>([]);
 
-  // Load churches and departments once
+  // Load churches, departments, all registrations, and rooms once
   useEffect(() => {
     const supabase = createClient();
     supabase.from("eckcm_churches").select("id, name_en, name_ko, is_other").eq("is_active", true).order("is_other", { ascending: false }).order("name_en").then(({ data }) => setChurches(data ?? []));
     supabase.from("eckcm_departments").select("id, name_en").order("name_en").then(({ data }) => setDepartments(data ?? []));
-  }, []);
+    // Load all registrations for transfer (exclude cancelled/refunded)
+    supabase
+      .from("eckcm_registrations")
+      .select(`id, confirmation_code, status, eckcm_groups(eckcm_group_memberships(role, eckcm_people(first_name_en, last_name_en)))`)
+      .eq("event_id", eventId)
+      .in("status", ["DRAFT", "SUBMITTED", "APPROVED", "PAID"])
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rows = (data ?? []).map((r: any) => {
+          let registrantName = "-";
+          for (const g of r.eckcm_groups ?? []) {
+            for (const m of g.eckcm_group_memberships ?? []) {
+              if (m.role === "REPRESENTATIVE" && m.eckcm_people) {
+                registrantName = `${m.eckcm_people.first_name_en} ${m.eckcm_people.last_name_en}`;
+              }
+            }
+          }
+          return { id: r.id, confirmation_code: r.confirmation_code, registrant_name: registrantName, status: r.status };
+        });
+        setAllRegistrations(rows);
+      });
+    // Load all rooms
+    supabase
+      .from("eckcm_rooms")
+      .select("id, room_number, is_available, eckcm_floors!inner(floor_number, name_en, eckcm_buildings!inner(name_en))")
+      .eq("is_available", true)
+      .order("room_number")
+      .then(({ data }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setAllRooms((data ?? []).map((r: any) => ({
+          id: r.id,
+          room_number: r.room_number,
+          building_name: r.eckcm_floors?.eckcm_buildings?.name_en ?? "",
+          floor_number: r.eckcm_floors?.floor_number ?? "",
+        })));
+      });
+    // Load all lodging fee categories for this event
+    supabase
+      .from("eckcm_fee_categories")
+      .select("code, name_en")
+      .like("code", "LODGING_%")
+      .neq("code", "LODGING_EXTRA")
+      .eq("is_active", true)
+      .order("code")
+      .then(({ data }) => setLodgingOptions(data ?? []));
+  }, [eventId]);
 
-  // Load participants when registration changes
+  // Load participants and groups when registration changes
   useEffect(() => {
     if (!registration) {
       setPeople([]);
+      setGroups([]);
       return;
     }
     loadPeople(registration.id);
+    loadGroups(registration.id);
   }, [registration?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadPeople = async (regId: string) => {
@@ -126,6 +185,8 @@ export function RegistrationDetailSheet({
     const { data } = await supabase
       .from("eckcm_group_memberships")
       .select(`
+        id,
+        group_id,
         role,
         participant_code,
         eckcm_people!inner(
@@ -136,7 +197,7 @@ export function RegistrationDetailSheet({
           eckcm_churches(id, name_en),
           eckcm_departments(id, name_en)
         ),
-        eckcm_groups!inner(display_group_code, registration_id)
+        eckcm_groups!inner(id, display_group_code, registration_id)
       `)
       .eq("eckcm_groups.registration_id", regId);
 
@@ -144,6 +205,8 @@ export function RegistrationDetailSheet({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mapped: PersonDetail[] = data.map((m: any) => ({
         person_id: m.eckcm_people.id,
+        membership_id: m.id,
+        group_id: m.group_id,
         first_name_en: m.eckcm_people.first_name_en,
         last_name_en: m.eckcm_people.last_name_en,
         display_name_ko: m.eckcm_people.display_name_ko,
@@ -172,6 +235,31 @@ export function RegistrationDetailSheet({
       setPeople(mapped);
     }
     setLoadingPeople(false);
+  };
+
+  const loadGroups = async (regId: string) => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("eckcm_groups")
+      .select(`
+        id, display_group_code, lodging_type,
+        eckcm_room_assignments(eckcm_rooms(id, room_number))
+      `)
+      .eq("registration_id", regId);
+
+    if (data) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setGroups(data.map((g: any) => {
+        const ra = g.eckcm_room_assignments?.[0];
+        return {
+          id: g.id,
+          display_group_code: g.display_group_code,
+          lodging_type: g.lodging_type ?? null,
+          room_number: ra?.eckcm_rooms?.room_number ?? null,
+          room_id: ra?.eckcm_rooms?.id ?? null,
+        };
+      }));
+    }
   };
 
   const handleStatusChange = async (newStatus: string) => {
@@ -300,7 +388,15 @@ export function RegistrationDetailSheet({
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-lg border p-3 text-center">
                   <p className="text-2xl font-bold">
-                    {formatMoney(reg.total_amount_cents)}
+                    {(() => {
+                      if (reg.status === "CANCELLED" || reg.status === "REFUNDED") return formatMoney(0);
+                      if (
+                        (reg.payment_status === "PARTIALLY_REFUNDED" || reg.payment_status === "REFUNDED") &&
+                        reg.total_amount_cents > 0 &&
+                        reg.total_amount_cents <= calculateProcessingFee(reg.payment_amount_cents, reg.payment_method)
+                      ) return formatMoney(0);
+                      return formatMoney(reg.total_amount_cents);
+                    })()}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Total Amount
@@ -330,16 +426,38 @@ export function RegistrationDetailSheet({
                     {reg.paid_at ? formatTimestamp(reg.paid_at) : "-"}
                   </InfoRow>
                   <InfoRow label="Invoice">
-                    <span className="font-mono">
-                      {reg.invoice_number ?? "-"}
-                    </span>
+                    {reg.invoice_id ? (
+                      <a
+                        href={`/api/invoice/${reg.invoice_id}/pdf?type=invoice`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 font-mono text-blue-600 hover:underline"
+                      >
+                        {reg.invoice_number}
+                        <ExternalLink className="size-3" />
+                      </a>
+                    ) : (
+                      <span className="font-mono">{reg.invoice_number ?? "-"}</span>
+                    )}
                   </InfoRow>
                   <InfoRow label="Receipt">
-                    <span className="font-mono">
-                      {reg.invoice_number
-                        ? reg.invoice_number.replace(/^INV-/, "RCT-")
-                        : "-"}
-                    </span>
+                    {reg.invoice_id && reg.payment_status === "SUCCEEDED" ? (
+                      <a
+                        href={`/api/invoice/${reg.invoice_id}/pdf?type=receipt`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 font-mono text-green-600 hover:underline"
+                      >
+                        {reg.invoice_number?.replace(/^INV-/, "RCT-")}
+                        <ExternalLink className="size-3" />
+                      </a>
+                    ) : (
+                      <span className="font-mono">
+                        {reg.invoice_number
+                          ? reg.invoice_number.replace(/^INV-/, "RCT-")
+                          : "-"}
+                      </span>
+                    )}
                   </InfoRow>
                   {stripeUrl && (
                     <InfoRow label="Stripe" className="col-span-2">
@@ -355,6 +473,14 @@ export function RegistrationDetailSheet({
                     </InfoRow>
                   )}
                 </div>
+                {/* Manual payment status changer */}
+                {reg.payment_method && ["ZELLE", "CHECK", "MANUAL", "MANUAL_PAYMENT"].includes(reg.payment_method.toUpperCase()) && (
+                  <ManualPaymentStatusChanger
+                    registrationId={reg.id}
+                    currentStatus={reg.payment_status}
+                    onChanged={onRefresh}
+                  />
+                )}
               </section>
 
               <Separator />
@@ -402,11 +528,6 @@ export function RegistrationDetailSheet({
                 <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                   <InfoRow label="Check-in">{reg.start_date}</InfoRow>
                   <InfoRow label="Check-out">{reg.end_date}</InfoRow>
-                  <InfoRow label="Room">
-                    {reg.room_numbers.length > 0
-                      ? reg.room_numbers.join(", ")
-                      : "-"}
-                  </InfoRow>
                   <InfoRow label="Reg. Group">
                     {reg.registration_group_name ?? "-"}
                   </InfoRow>
@@ -415,6 +536,32 @@ export function RegistrationDetailSheet({
                   </InfoRow>
                   <InfoRow label="Groups">{reg.group_count}</InfoRow>
                 </div>
+
+                {/* Room assignments & lodging per group */}
+                {groups.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <BedDouble className="size-3" />
+                      Room &amp; Lodging
+                    </h4>
+                    {groups.map((g) => (
+                      <div key={g.id} className="space-y-1">
+                        <RoomAssignRow
+                          group={g}
+                          registrationId={reg.id}
+                          allRooms={allRooms}
+                          onChanged={() => { loadGroups(reg.id); onRefresh(); }}
+                        />
+                        <LodgingTypeRow
+                          group={g}
+                          registrationId={reg.id}
+                          lodgingOptions={lodgingOptions}
+                          onChanged={() => { loadGroups(reg.id); onRefresh(); }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
 
               {/* Notes */}
@@ -453,7 +600,15 @@ export function RegistrationDetailSheet({
                       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                         Representative
                       </h4>
-                      <PersonCard person={representative} onSaved={() => { loadPeople(reg.id); onRefresh(); }} churches={churches} departments={departments} />
+                      <PersonCard
+                        person={representative}
+                        registrationId={reg.id}
+                        totalPeople={people.length}
+                        allRegistrations={allRegistrations}
+                        onSaved={() => { loadPeople(reg.id); loadGroups(reg.id); onRefresh(); }}
+                        churches={churches}
+                        departments={departments}
+                      />
                     </div>
                   )}
 
@@ -464,8 +619,17 @@ export function RegistrationDetailSheet({
                         Members ({members.length})
                       </h4>
                       <div className="space-y-2">
-                        {members.map((p, i) => (
-                          <PersonCard key={i} person={p} onSaved={() => { loadPeople(reg.id); onRefresh(); }} churches={churches} departments={departments} />
+                        {members.map((p) => (
+                          <PersonCard
+                            key={p.membership_id}
+                            person={p}
+                            registrationId={reg.id}
+                            totalPeople={people.length}
+                            allRegistrations={allRegistrations}
+                            onSaved={() => { loadPeople(reg.id); loadGroups(reg.id); onRefresh(); }}
+                            churches={churches}
+                            departments={departments}
+                          />
                         ))}
                       </div>
                     </div>
@@ -893,6 +1057,7 @@ function AdjustmentsPanel({
                 <TableHead className="text-xs">Type</TableHead>
                 <TableHead className="text-xs text-right">Diff</TableHead>
                 <TableHead className="text-xs">Action</TableHead>
+                <TableHead className="text-xs">Reason</TableHead>
                 <TableHead className="text-xs">By</TableHead>
                 <TableHead className="text-xs w-[60px]"></TableHead>
               </TableRow>
@@ -927,6 +1092,9 @@ function AdjustmentsPanel({
                     >
                       {adj.action_taken}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs truncate max-w-[120px]" title={adj.reason}>
+                    {adj.reason}
                   </TableCell>
                   <TableCell className="text-xs truncate max-w-[80px]">
                     {adj.adjusted_by_name}
@@ -1235,6 +1403,237 @@ function NotesSection({
   );
 }
 
+// ─── Room Assignment Row ────────────────────────────────────
+
+function RoomAssignRow({
+  group,
+  registrationId,
+  allRooms,
+  onChanged,
+}: {
+  group: { id: string; display_group_code: string; room_number: string | null; room_id: string | null };
+  registrationId: string;
+  allRooms: { id: string; room_number: string; building_name: string; floor_number: string }[];
+  onChanged: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [selectedRoomId, setSelectedRoomId] = useState(group.room_id ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/room`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          groupId: group.id,
+          roomId: selectedRoomId && selectedRoomId !== "__none__" ? selectedRoomId : null,
+        }),
+      });
+      if (res.ok) {
+        toast.success(selectedRoomId ? "Room changed" : "Room unassigned");
+        setEditing(false);
+        onChanged();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to change room");
+      }
+    } catch {
+      toast.error("Failed to change room");
+    }
+    setSaving(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <span className="font-mono text-xs text-muted-foreground shrink-0">{group.display_group_code}:</span>
+        <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
+          <SelectTrigger className="h-7 text-xs flex-1">
+            <SelectValue placeholder="No room" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">— No room —</SelectItem>
+            {allRooms.map((r) => (
+              <SelectItem key={r.id} value={r.id}>
+                {r.room_number} ({r.building_name} {r.floor_number}F)
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button size="sm" className="h-7 px-2 text-xs" onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setEditing(false)}>
+          <X className="size-3" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span>
+        <span className="font-mono text-xs text-muted-foreground">{group.display_group_code}:</span>{" "}
+        <span className="font-medium">{group.room_number ?? <span className="text-muted-foreground italic">Unassigned</span>}</span>
+      </span>
+      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => { setSelectedRoomId(group.room_id ?? ""); setEditing(true); }}>
+        <Pencil className="size-3 mr-1" />
+        Change
+      </Button>
+    </div>
+  );
+}
+
+// ─── Lodging Type Changer ─────────────────────────────────
+
+function LodgingTypeRow({
+  group,
+  registrationId,
+  lodgingOptions,
+  onChanged,
+}: {
+  group: { id: string; display_group_code: string; lodging_type: string | null };
+  registrationId: string;
+  lodgingOptions: { code: string; name_en: string }[];
+  onChanged: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [selectedType, setSelectedType] = useState(group.lodging_type ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const formatLodging = (code: string | null) =>
+    code?.replace(/^LODGING_/, "").replace(/_/g, " ") ?? "None";
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/lodging`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          groupId: group.id,
+          lodgingType: selectedType && selectedType !== "__none__" ? selectedType : null,
+        }),
+      });
+      if (res.ok) {
+        toast.success("Lodging type updated");
+        setEditing(false);
+        onChanged();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to update lodging type");
+      }
+    } catch {
+      toast.error("Failed to update lodging type");
+    }
+    setSaving(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-2 text-sm pl-4">
+        <span className="text-xs text-muted-foreground shrink-0">Lodging:</span>
+        <Select value={selectedType} onValueChange={setSelectedType}>
+          <SelectTrigger className="h-7 text-xs flex-1">
+            <SelectValue placeholder="No lodging" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">— None —</SelectItem>
+            {lodgingOptions.map((o) => (
+              <SelectItem key={o.code} value={o.code}>
+                {o.name_en}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button size="sm" className="h-7 px-2 text-xs" onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setEditing(false)}>
+          <X className="size-3" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between text-sm pl-4">
+      <span>
+        <span className="text-xs text-muted-foreground">Lodging:</span>{" "}
+        <span className="text-xs">{formatLodging(group.lodging_type)}</span>
+      </span>
+      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => { setSelectedType(group.lodging_type ?? ""); setEditing(true); }}>
+        <Pencil className="size-3 mr-1" />
+        Change
+      </Button>
+    </div>
+  );
+}
+
+// ─── Manual Payment Status Changer ─────────────────────────
+
+const PAYMENT_STATUS_OPTIONS = [
+  { value: "PENDING", label: "Pending" },
+  { value: "SUCCEEDED", label: "Succeeded" },
+  { value: "FAILED", label: "Failed" },
+  { value: "REFUNDED", label: "Refunded" },
+];
+
+function ManualPaymentStatusChanger({
+  registrationId,
+  currentStatus,
+  onChanged,
+}: {
+  registrationId: string;
+  currentStatus: string | null;
+  onChanged: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+
+  const handleChange = async (newStatus: string) => {
+    if (newStatus === currentStatus) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/payment-status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        toast.success(`Payment status changed to ${newStatus}`);
+        onChanged();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to update payment status");
+      }
+    } catch {
+      toast.error("Failed to update payment status");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="flex items-center gap-2 mt-3 text-sm">
+      <span className="text-muted-foreground shrink-0">Payment Status:</span>
+      <Select value={currentStatus ?? ""} onValueChange={handleChange} disabled={saving}>
+        <SelectTrigger className="h-7 w-[150px] text-xs">
+          <SelectValue placeholder="Set status..." />
+        </SelectTrigger>
+        <SelectContent>
+          {PAYMENT_STATUS_OPTIONS.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {saving && <Loader2 className="size-3 animate-spin text-muted-foreground" />}
+    </div>
+  );
+}
+
 // ─── Sub-components ─────────────────────────────────────────
 
 function InfoRow({
@@ -1259,9 +1658,65 @@ function InfoRow({
   );
 }
 
-function PersonCard({ person: p, onSaved, churches, departments }: { person: PersonDetail; onSaved: () => void; churches: { id: string; name_en: string; name_ko: string | null; is_other: boolean }[]; departments: { id: string; name_en: string }[] }) {
+function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, onSaved, churches, departments }: {
+  person: PersonDetail;
+  registrationId: string;
+  totalPeople: number;
+  allRegistrations: { id: string; confirmation_code: string; registrant_name: string; status: string }[];
+  onSaved: () => void;
+  churches: { id: string; name_en: string; name_ko: string | null; is_other: boolean }[];
+  departments: { id: string; name_en: string }[];
+}) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferTarget, setTransferTarget] = useState("");
+  const [transferring, setTransferring] = useState(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/participants/${p.membership_id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success(`${p.first_name_en} ${p.last_name_en} removed`);
+        setConfirmDelete(false);
+        onSaved();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to remove participant");
+      }
+    } catch {
+      toast.error("Failed to remove participant");
+    }
+    setDeleting(false);
+  };
+
+  const handleTransfer = async () => {
+    if (!transferTarget) return;
+    setTransferring(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/participants/${p.membership_id}/transfer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetRegistrationId: transferTarget }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`Transferred to ${data.targetConfirmationCode}`);
+        setShowTransfer(false);
+        setTransferTarget("");
+        onSaved();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to transfer");
+      }
+    } catch {
+      toast.error("Failed to transfer");
+    }
+    setTransferring(false);
+  };
 
   const isChurchOther = (churchId: string | undefined) => {
     if (!churchId) return false;
@@ -1511,85 +1966,190 @@ function PersonCard({ person: p, onSaved, churches, departments }: { person: Per
     );
   }
 
+  const transferOptions = allRegistrations.filter((r) => r.id !== registrationId);
+
   return (
-    <div className="rounded-lg border p-3">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="font-medium text-sm">
-            {p.first_name_en} {p.last_name_en}
-            {p.display_name_ko && (
-              <span className="ml-1.5 text-muted-foreground font-normal">
-                ({p.display_name_ko})
+    <>
+      <div className="rounded-lg border p-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="font-medium text-sm">
+              {p.first_name_en} {p.last_name_en}
+              {p.display_name_ko && (
+                <span className="ml-1.5 text-muted-foreground font-normal">
+                  ({p.display_name_ko})
+                </span>
+              )}
+            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="outline" className="text-xs">
+                {p.role}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {p.gender} · {p.age_at_event ? `Age ${p.age_at_event}` : "-"}
+                {p.is_k12 && " · K-12"}
+                {p.grade && ` (${p.grade})`}
               </span>
-            )}
-          </p>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="outline" className="text-xs">
-              {p.role}
-            </Badge>
-            <span className="text-xs text-muted-foreground">
-              {p.gender} · {p.age_at_event ? `Age ${p.age_at_event}` : "-"}
-              {p.is_k12 && " · K-12"}
-              {p.grade && ` (${p.grade})`}
-            </span>
+            </div>
+          </div>
+          <div className="flex items-start gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => setEditing(true)}
+              title="Edit"
+            >
+              <Pencil className="size-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => setShowTransfer(true)}
+              title="Transfer to another registration"
+            >
+              <ArrowRightLeft className="size-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-destructive hover:text-destructive"
+              onClick={() => setConfirmDelete(true)}
+              title="Remove participant"
+              disabled={totalPeople <= 1}
+            >
+              <Trash2 className="size-3" />
+            </Button>
+            <div className="text-right ml-1">
+              <span className="font-mono text-xs text-muted-foreground">
+                {p.group_code}
+              </span>
+              {p.participant_code && (
+                <p className="font-mono text-xs text-muted-foreground">
+                  {p.participant_code}
+                </p>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex items-start gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={() => setEditing(true)}
-          >
-            <Pencil className="size-3" />
-          </Button>
-          <div className="text-right">
-            <span className="font-mono text-xs text-muted-foreground">
-              {p.group_code}
+
+        {/* Contact details */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+          {p.email && (
+            <span className="flex items-center gap-1">
+              <Mail className="size-3" />
+              {p.email}
             </span>
-            {p.participant_code && (
-              <p className="font-mono text-xs text-muted-foreground">
-                {p.participant_code}
-              </p>
-            )}
-          </div>
+          )}
+          {p.phone && (
+            <span className="flex items-center gap-1">
+              <Phone className="size-3" />
+              {p.phone}
+            </span>
+          )}
+          {p.church_name && (
+            <span className="flex items-center gap-1">
+              <Church className="size-3" />
+              {p.church_name}
+            </span>
+          )}
+          {p.department_name && (
+            <span className="flex items-center gap-1">
+              <Building2 className="size-3" />
+              {p.department_name}
+            </span>
+          )}
+          {p.guardian_name && (
+            <span className="flex items-center gap-1 col-span-2">
+              <ShieldCheck className="size-3" />
+              Guardian: {p.guardian_name}
+              {p.guardian_phone && ` (${p.guardian_phone})`}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Contact details */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
-        {p.email && (
-          <span className="flex items-center gap-1">
-            <Mail className="size-3" />
-            {p.email}
-          </span>
-        )}
-        {p.phone && (
-          <span className="flex items-center gap-1">
-            <Phone className="size-3" />
-            {p.phone}
-          </span>
-        )}
-        {p.church_name && (
-          <span className="flex items-center gap-1">
-            <Church className="size-3" />
-            {p.church_name}
-          </span>
-        )}
-        {p.department_name && (
-          <span className="flex items-center gap-1">
-            <Building2 className="size-3" />
-            {p.department_name}
-          </span>
-        )}
-        {p.guardian_name && (
-          <span className="flex items-center gap-1 col-span-2">
-            <ShieldCheck className="size-3" />
-            Guardian: {p.guardian_name}
-            {p.guardian_phone && ` (${p.guardian_phone})`}
-          </span>
-        )}
-      </div>
-    </div>
+      {/* Delete Confirmation */}
+      {confirmDelete && (
+        <AlertDialog open onOpenChange={(open) => !open && setConfirmDelete(false)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="size-5 text-destructive" />
+                Remove Participant
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Remove <strong>{p.first_name_en} {p.last_name_en}</strong> from this registration?
+                This will deactivate their E-Pass. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* Transfer Dialog */}
+      {showTransfer && (
+        <AlertDialog open onOpenChange={(open) => !open && setShowTransfer(false)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <ArrowRightLeft className="size-5" />
+                Transfer Participant
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Transfer <strong>{p.first_name_en} {p.last_name_en}</strong> to another registration.
+                They will be added as a MEMBER in the target group.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div>
+              <label className="text-sm font-medium">Target Registration</label>
+              <Select value={transferTarget} onValueChange={setTransferTarget}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select registration..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {transferOptions.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      <span className="font-mono">{r.confirmation_code}</span>
+                      <span className="ml-2 text-muted-foreground">
+                        {r.registrant_name}
+                      </span>
+                      <Badge variant="outline" className="ml-2 text-[10px]">{r.status}</Badge>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {totalPeople <= 1 && (
+                <p className="text-xs text-destructive mt-1.5">
+                  This is the last participant. Cannot transfer.
+                </p>
+              )}
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleTransfer}
+                disabled={!transferTarget || transferring || totalPeople <= 1}
+              >
+                {transferring && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
+                Transfer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </>
   );
 }

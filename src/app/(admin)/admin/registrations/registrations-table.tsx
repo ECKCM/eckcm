@@ -22,8 +22,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Users, RefreshCw, ExternalLink, DollarSign, UserCheck, ShieldCheck } from "lucide-react";
+import { Users, RefreshCw, ExternalLink, DollarSign, UserCheck, ShieldCheck, Star } from "lucide-react";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
@@ -36,6 +46,7 @@ import {
   formatMoney,
   formatTimestamp,
   extractSeqNumber,
+  calculateProcessingFee,
 } from "./registrations-types";
 import { RegistrationDetailSheet } from "./registration-detail-sheet";
 import { RegistrationActions } from "./registration-actions";
@@ -54,6 +65,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [registrations, setRegistrations] = useState<RegistrationRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [highlightFilter, setHighlightFilter] = useState(false);
 
   const [stripeAccountId, setStripeAccountId] = useState("");
 
@@ -110,14 +122,16 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         total_amount_cents,
         notes,
         additional_requests,
+        is_highlighted,
         created_at,
         updated_at,
         eckcm_registration_groups(name_en),
         eckcm_invoices(
+          id,
           invoice_number,
           status,
           paid_at,
-          eckcm_payments(payment_method, status, stripe_payment_intent_id)
+          eckcm_payments(payment_method, status, stripe_payment_intent_id, amount_cents)
         ),
         eckcm_groups(
           id,
@@ -214,6 +228,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         let paymentMethod: string | null = null;
         let paymentStatus: string | null = null;
         let stripePaymentIntentId: string | null = null;
+        let paymentAmountCents: number = 0;
         if (invoice) {
           const payments = invoice.eckcm_payments ?? [];
           const successPayment = payments.find((p: any) => p.status === "SUCCEEDED") ?? payments[0];
@@ -221,6 +236,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
             paymentMethod = successPayment.payment_method;
             paymentStatus = successPayment.status;
             stripePaymentIntentId = successPayment.stripe_payment_intent_id ?? null;
+            paymentAmountCents = successPayment.amount_cents ?? 0;
           }
         }
 
@@ -248,16 +264,19 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           registrant_guardian_name: registrantGuardianName,
           registrant_guardian_phone: registrantGuardianPhone,
           registration_group_name: r.eckcm_registration_groups?.name_en ?? null,
+          invoice_id: invoice?.id ?? null,
           invoice_number: invoice?.invoice_number ?? null,
           payment_status: paymentStatus ?? invoice?.status ?? null,
           payment_method: paymentMethod,
           stripe_payment_intent_id: stripePaymentIntentId,
+          payment_amount_cents: paymentAmountCents,
           paid_at: invoice?.paid_at ?? null,
           checked_in: checkedIn,
           checked_out: repPersonId ? checkoutSet.has(repPersonId) : false,
           room_numbers: roomNumbers,
           lodging_type: lodgingType,
           preferences,
+          is_highlighted: r.is_highlighted ?? false,
         };
       });
       setRegistrations(rows);
@@ -310,9 +329,35 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
     setUpdatingId(null);
   };
 
+  // ─── Highlight toggle ───────────────────────────────────────────
+  const [highlightConfirm, setHighlightConfirm] = useState<{ regId: string; current: boolean; name: string } | null>(null);
+
+  const executeHighlightToggle = async (regId: string, current: boolean) => {
+    const supabase = createClient();
+    const newVal = !current;
+    // Optimistic update
+    setRegistrations((prev) =>
+      prev.map((r) => (r.id === regId ? { ...r, is_highlighted: newVal } : r))
+    );
+    if (detailReg?.id === regId) {
+      setDetailReg((prev) => prev ? { ...prev, is_highlighted: newVal } : prev);
+    }
+    const { error } = await supabase
+      .from("eckcm_registrations")
+      .update({ is_highlighted: newVal })
+      .eq("id", regId);
+    if (error) {
+      setRegistrations((prev) =>
+        prev.map((r) => (r.id === regId ? { ...r, is_highlighted: current } : r))
+      );
+      toast.error("Failed to update highlight");
+    }
+  };
+
   // ─── Filter ────────────────────────────────────────────────────
 
   const filtered = registrations.filter((r) => {
+    if (highlightFilter && !r.is_highlighted) return false;
     if (statusFilter !== "ALL" && r.status !== statusFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
@@ -339,7 +384,15 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
   const totalApproved = registrations.filter((r) => r.status === "APPROVED").length;
   const totalAmount = registrations
     .filter((r) => r.status === "PAID")
-    .reduce((sum, r) => sum + r.total_amount_cents, 0);
+    .reduce((sum, r) => {
+      // Stripe fee residual after refund is not our money
+      if (
+        (r.payment_status === "PARTIALLY_REFUNDED" || r.payment_status === "REFUNDED") &&
+        r.total_amount_cents > 0 &&
+        r.total_amount_cents <= calculateProcessingFee(r.payment_amount_cents, r.payment_method)
+      ) return sum;
+      return sum + r.total_amount_cents;
+    }, 0);
   const totalPeople = registrations
     .filter((r) => r.status === "PAID" || r.status === "APPROVED")
     .reduce((sum, r) => sum + r.people_count, 0);
@@ -382,6 +435,21 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-[250px]"
         />
+
+        <Button
+          variant={highlightFilter ? "default" : "outline"}
+          size="sm"
+          onClick={() => setHighlightFilter(!highlightFilter)}
+          className="gap-1.5"
+        >
+          <Star className={`size-3.5 ${highlightFilter ? "fill-current" : ""}`} />
+          Highlighted
+          {highlightFilter && (
+            <span className="text-xs">
+              ({registrations.filter((r) => r.is_highlighted).length})
+            </span>
+          )}
+        </Button>
 
         <Button variant="ghost" size="icon" onClick={loadRegistrations}>
           <RefreshCw className="size-4" />
@@ -468,17 +536,26 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                   {sorted.map((r) => (
                     <TableRow
                       key={r.id}
-                      className="hover:bg-muted/50 transition-colors"
+                      className={`hover:bg-muted/50 transition-colors ${r.is_highlighted ? "!bg-yellow-50 dark:!bg-yellow-950/20" : ""}`}
                     >
                       {/* Actions */}
                       <TableCell>
-                        <RegistrationActions
-                          registration={r}
-                          onView={openDetail}
-                          onStatusChange={updateStatus}
-                          updatingId={updatingId}
-                          lockedBy={isLockedByOther(r.id)}
-                        />
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setHighlightConfirm({ regId: r.id, current: r.is_highlighted, name: r.registrant_name }); }}
+                            className="p-0.5 rounded hover:bg-muted transition-colors"
+                            title={r.is_highlighted ? "Remove highlight" : "Highlight"}
+                          >
+                            <Star className={`size-3.5 ${r.is_highlighted ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/40"}`} />
+                          </button>
+                          <RegistrationActions
+                            registration={r}
+                            onView={openDetail}
+                            onStatusChange={updateStatus}
+                            updatingId={updatingId}
+                            lockedBy={isLockedByOther(r.id)}
+                          />
+                        </div>
                       </TableCell>
                       {/* No. */}
                       <TableCell className="font-mono text-xs whitespace-nowrap text-muted-foreground">
@@ -524,9 +601,19 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                           )}
                         </div>
                       </TableCell>
-                      {/* Amount */}
+                      {/* Amount — Stripe fee is Stripe's money, not ours */}
                       <TableCell className="font-mono text-sm whitespace-nowrap">
-                        {formatMoney(r.total_amount_cents)}
+                        {(() => {
+                          // Cancelled/refunded registrations always $0
+                          if (r.status === "CANCELLED" || r.status === "REFUNDED") return formatMoney(0);
+                          // If remaining amount ≤ processing fee after refund, it's just the Stripe fee residual → $0
+                          if (
+                            (r.payment_status === "PARTIALLY_REFUNDED" || r.payment_status === "REFUNDED") &&
+                            r.total_amount_cents > 0 &&
+                            r.total_amount_cents <= calculateProcessingFee(r.payment_amount_cents, r.payment_method)
+                          ) return formatMoney(0);
+                          return formatMoney(r.total_amount_cents);
+                        })()}
                       </TableCell>
                       {/* Reg. Group */}
                       <TableCell className="text-xs whitespace-nowrap">
@@ -614,7 +701,31 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                       </TableCell>
                       {/* Invoice */}
                       <TableCell className="font-mono text-xs whitespace-nowrap">
-                        {r.invoice_number ?? "-"}
+                        {r.invoice_id ? (
+                          <div className="flex items-center gap-1.5">
+                            <span>{r.invoice_number}</span>
+                            <a
+                              href={`/api/invoice/${r.invoice_id}/pdf?type=invoice`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                              title="View Invoice"
+                            >
+                              <ExternalLink className="size-3" />
+                            </a>
+                            {r.payment_status === "SUCCEEDED" && (
+                              <a
+                                href={`/api/invoice/${r.invoice_id}/pdf?type=receipt`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-green-600 hover:underline"
+                                title="View Receipt"
+                              >
+                                <ExternalLink className="size-3" />
+                              </a>
+                            )}
+                          </div>
+                        ) : "-"}
                       </TableCell>
                       {/* Stripe Link */}
                       <TableCell className="text-xs whitespace-nowrap">
@@ -681,6 +792,37 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         onStatusChange={updateStatus}
         onRefresh={loadRegistrations}
       />
+
+      {/* Highlight Confirmation Dialog */}
+      {highlightConfirm && (
+        <AlertDialog open onOpenChange={(open) => !open && setHighlightConfirm(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <Star className={`size-5 ${highlightConfirm.current ? "text-muted-foreground" : "fill-yellow-400 text-yellow-400"}`} />
+                {highlightConfirm.current ? "Remove Highlight" : "Highlight Registration"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {highlightConfirm.current
+                  ? <>Remove highlight from <strong>{highlightConfirm.name}</strong>?</>
+                  : <>Highlight <strong>{highlightConfirm.name}</strong>? Highlighted registrations can be filtered using the Highlighted button.</>
+                }
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  executeHighlightToggle(highlightConfirm.regId, highlightConfirm.current);
+                  setHighlightConfirm(null);
+                }}
+              >
+                {highlightConfirm.current ? "Remove" : "Highlight"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
