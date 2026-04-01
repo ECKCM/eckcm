@@ -378,6 +378,9 @@ export default function PaymentStep() {
       }
     }
 
+    // Clear saved registration data so user starts fresh
+    sessionStorage.removeItem("eckcm_registration");
+
     router.push(`/register/${eventId}`);
   };
 
@@ -492,7 +495,7 @@ export default function PaymentStep() {
                   <Separator className="my-2" />
                 </>
               )}
-              {(payMode === "zelle") && manualPaymentDiscount > 0 && (
+              {(payMode === "zelle" || payMode === "check") && manualPaymentDiscount > 0 && (
                 <>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t("payment.subtotal")}</span>
@@ -508,7 +511,7 @@ export default function PaymentStep() {
               <div className="flex justify-between items-center">
                 <span className="font-medium">{t("payment.totalDue")}</span>
                 <span className="text-2xl font-bold">
-                  {payMode === "zelle" && manualPaymentDiscount > 0
+                  {(payMode === "zelle" || payMode === "check") && manualPaymentDiscount > 0
                     ? `$${(Math.max(0, (invoiceTotal || amount) - manualPaymentDiscount) / 100).toFixed(2)}`
                     : `$${(amount / 100).toFixed(2)}`}
                 </span>
@@ -667,11 +670,7 @@ export default function PaymentStep() {
               processing={processing}
               setProcessing={setProcessing}
               onSuccess={() => goToConfirmation()}
-              onCancel={() =>
-                router.push(
-                  `/register/${eventId}/review?registrationId=${registrationId}&code=${confirmationCode || ""}`
-                )
-              }
+              onCancel={cancelPaymentAndGoBack}
             />
           )}
         </>
