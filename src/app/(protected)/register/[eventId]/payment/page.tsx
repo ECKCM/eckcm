@@ -10,7 +10,7 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 import type { Stripe as StripeType } from "@stripe/stripe-js";
-import { getStripe, getStripeWithKey } from "@/lib/stripe/client";
+import { getStripeWithKey } from "@/lib/stripe/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -75,8 +75,8 @@ export default function PaymentStep() {
   /* ---- Stripe state (populated lazily when stripe mode is selected) ---- */
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const createIntentCalled = useRef(false);
-  const [stripePromise, setStripePromise] = useState<Promise<StripeType | null>>(
-    () => getStripe()
+  const [stripePromise, setStripePromise] = useState<Promise<StripeType | null> | null>(
+    null
   );
 
   /* ---- payment methods & fees ---- */
@@ -199,6 +199,10 @@ export default function PaymentStep() {
             (data.error as string) || "Failed to initialize payment"
           );
           return;
+        }
+        // Set publishable key before clientSecret so Elements mounts with correct mode
+        if (data.publishableKey) {
+          setStripePromise(getStripeWithKey(data.publishableKey));
         }
         setClientSecret(data.clientSecret as string);
         setAmount(data.amount as number);
@@ -610,7 +614,7 @@ export default function PaymentStep() {
 
           {/* === Stripe Payment Form (inside Elements, only when PI exists) === */}
           {payMode === "stripe" && stripeEnabled && (
-            clientSecret ? (
+            clientSecret && stripePromise ? (
               <Elements
                 stripe={stripePromise}
                 options={{ clientSecret, appearance: STRIPE_APPEARANCE }}

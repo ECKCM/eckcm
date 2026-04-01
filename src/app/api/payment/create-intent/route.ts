@@ -128,6 +128,17 @@ export async function POST(request: Request) {
   const stripeMode = (event?.stripe_mode as "test" | "live") ?? "test";
   const paymentTestMode = event?.payment_test_mode === true;
 
+  // Fetch publishable key matching the stripe mode
+  const { data: appConfig } = await admin
+    .from("eckcm_app_config")
+    .select("stripe_test_publishable_key, stripe_live_publishable_key")
+    .eq("id", 1)
+    .single();
+  const publishableKey =
+    (appConfig as Record<string, string | null> | null)?.[
+      stripeMode === "live" ? "stripe_live_publishable_key" : "stripe_test_publishable_key"
+    ] || null;
+
   // Calculate manual payment discount (only for reg-fee-billable participants)
   let manualPaymentDiscount = 0;
   {
@@ -193,6 +204,7 @@ export async function POST(request: Request) {
           feeCents: coversFees ? chargeAmount - baseChargeAmount : 0,
           invoiceTotal: amountCents,
           manualPaymentDiscount,
+          publishableKey,
         });
       }
     } catch {
@@ -296,6 +308,7 @@ export async function POST(request: Request) {
     feeCents: coversFees ? chargeAmount - baseChargeAmount : 0,
     invoiceTotal: amountCents,
     manualPaymentDiscount,
+    publishableKey,
   });
   } catch (err) {
     logger.error("[payment/create-intent] Unhandled error", { error: String(err) });
