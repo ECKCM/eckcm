@@ -10,7 +10,7 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 import type { Stripe as StripeType } from "@stripe/stripe-js";
-import { getStripe, getStripeWithKey } from "@/lib/stripe/client";
+import { getStripeWithKey } from "@/lib/stripe/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -116,25 +116,10 @@ export default function PaymentStep() {
       .catch(() => {});
   }, []);
 
-  // Fetch event-specific publishable key (MUST resolve before Elements renders)
+  // Mark stripe as ready — actual key comes from create-intent response
   useEffect(() => {
-    if (!eventId) return;
-    fetch(`/api/stripe/publishable-key?eventId=${eventId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.publishableKey) {
-          setStripePromise(getStripeWithKey(data.publishableKey));
-        } else {
-          setStripePromise(getStripe());
-        }
-        setStripeReady(true);
-      })
-      .catch(() => {
-        // Fallback to env var key
-        setStripePromise(getStripe());
-        setStripeReady(true);
-      });
-  }, [eventId]);
+    setStripeReady(true);
+  }, []);
 
   // Step 1: Load payment info (no Stripe PI created)
   useEffect(() => {
@@ -213,9 +198,10 @@ export default function PaymentStep() {
           return;
         }
         console.log("[Payment] create-intent response:", { amount: data.amount, paymentTestMode: data.paymentTestMode, publishableKey: !!data.publishableKey });
-        // Use the publishable key from create-intent to guarantee mode consistency
-        if (data.publishableKey) {
-          setStripePromise(getStripeWithKey(data.publishableKey));
+        // Set publishable key BEFORE clientSecret so Elements mounts with correct key
+        const pk = data.publishableKey || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+        if (pk) {
+          setStripePromise(getStripeWithKey(pk));
         }
         setClientSecret(data.clientSecret as string);
         setAmount(data.amount as number);

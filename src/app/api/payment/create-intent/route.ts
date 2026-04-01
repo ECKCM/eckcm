@@ -132,14 +132,20 @@ export async function POST(request: Request) {
   const publishableKeyField = stripeMode === "live"
     ? "stripe_live_publishable_key"
     : "stripe_test_publishable_key";
-  const { data: appConfig } = await admin
+  const { data: appConfig, error: appConfigError } = await admin
     .from("eckcm_app_config")
     .select("stripe_test_publishable_key, stripe_live_publishable_key")
     .eq("id", 1)
     .single();
-  const publishableKey =
+  if (appConfigError) {
+    logger.error("[create-intent] Failed to fetch app config", { error: appConfigError.message });
+  }
+  const dbPublishableKey =
     (appConfig as Record<string, string | null> | null)?.[publishableKeyField]
-    || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    || null;
+  // Only fallback to env var if mode matches (env var is typically a test key)
+  const resolvedPublishableKey = dbPublishableKey
+    || (stripeMode === "test" ? process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY : null)
     || null;
 
   // Calculate manual payment discount (only for reg-fee-billable participants)
@@ -208,7 +214,7 @@ export async function POST(request: Request) {
           feeCents: coversFees ? chargeAmount - baseChargeAmount : 0,
           invoiceTotal: amountCents,
           manualPaymentDiscount,
-          publishableKey,
+          publishableKey: resolvedPublishableKey,
         });
       }
     } catch {
@@ -316,7 +322,7 @@ export async function POST(request: Request) {
     feeCents: coversFees ? chargeAmount - baseChargeAmount : 0,
     invoiceTotal: amountCents,
     manualPaymentDiscount,
-    publishableKey,
+    publishableKey: resolvedPublishableKey,
   });
   } catch (err) {
     logger.error("[payment/create-intent] Unhandled error", { error: String(err) });
