@@ -103,10 +103,21 @@ export async function POST(request: Request) {
       },
     });
   } catch (err) {
-    logger.error("[update-method-discount] Stripe update failed", {
-      error: String(err),
-    });
     const msg = err instanceof Error ? err.message : "Stripe error";
+    // If PI is from a different mode (test/live mismatch), return current amount without updating
+    if (msg.includes("a similar object exists in")) {
+      logger.warn("[update-method-discount] PI mode mismatch, skipping Stripe update", {
+        paymentIntentId,
+        stripeMode,
+      });
+      return NextResponse.json({
+        amount: newAmount,
+        baseCents,
+      });
+    }
+    logger.error("[update-method-discount] Stripe update failed", {
+      error: msg,
+    });
     return NextResponse.json(
       { error: `Failed to update payment amount: ${msg}` },
       { status: 500 }

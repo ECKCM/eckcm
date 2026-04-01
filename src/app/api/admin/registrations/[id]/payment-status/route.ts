@@ -1,7 +1,10 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
 import { writeAuditLog } from "@/lib/services/audit.service";
+import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
+import { generateEPassToken } from "@/lib/services/epass.service";
+import { logger } from "@/lib/logger";
 
 const MANUAL_METHODS = ["ZELLE", "CHECK", "MANUAL", "MANUAL_PAYMENT"];
 const VALID_STATUSES = ["PENDING", "SUCCEEDED", "FAILED", "REFUNDED"];
@@ -78,7 +81,7 @@ export async function PATCH(
     .update({ status })
     .eq("id", invoice.id);
 
-  // If marked as SUCCEEDED, update registration to PAID and set paid_at
+  // If marked as SUCCEEDED, update registration to PAID, activate E-Pass, and send email
   if (status === "SUCCEEDED" && reg.status !== "PAID" && reg.status !== "CANCELLED" && reg.status !== "REFUNDED") {
     await supabase
       .from("eckcm_registrations")
@@ -89,6 +92,60 @@ export async function PATCH(
       .from("eckcm_invoices")
       .update({ paid_at: new Date().toISOString() })
       .eq("id", invoice.id);
+
+    // Activate E-Pass tokens
+    await supabase
+      .from("eckcm_epass_tokens")
+      .update({ is_active: true })
+      .eq("registration_id", registrationId)
+      .eq("is_active", false);
+
+    // Generate missing E-Pass tokens
+    const { data: memberships } = await supabase
+      .from("eckcm_group_memberships")
+      .select("person_id, eckcm_groups!inner(registration_id)")
+      .eq("eckcm_groups.registration_id", registrationId);
+
+    if (memberships && memberships.length > 0) {
+      const personIds = memberships.map((m) => m.person_id);
+      const { data: existingTokens } = await supabase
+        .from("eckcm_epass_tokens")
+        .select("person_id")
+        .eq("registration_id", registrationId)
+        .in("person_id", personIds);
+
+      const existingSet = new Set((existingTokens ?? []).map((t) => t.person_id));
+      const newTokens = memberships
+        .filter((m) => !existingSet.has(m.person_id))
+        .map((m) => {
+          const { token, tokenHash } = generateEPassToken();
+          return {
+            person_id: m.person_id,
+            registration_id: registrationId,
+            token,
+            token_hash: tokenHash,
+            is_active: true,
+          };
+        });
+
+      if (newTokens.length > 0) {
+        const { error: insertError } = await supabase
+          .from("eckcm_epass_tokens")
+          .insert(newTokens);
+        if (insertError) {
+          logger.error("[admin/payment-status] Failed to insert epass tokens", { error: String(insertError) });
+        }
+      }
+    }
+
+    // Send confirmation email (non-blocking)
+    after(async () => {
+      try {
+        await sendConfirmationEmail(registrationId);
+      } catch (err) {
+        logger.error("[admin/payment-status] Failed to send confirmation email", { error: String(err) });
+      }
+    });
   }
 
   // Audit log

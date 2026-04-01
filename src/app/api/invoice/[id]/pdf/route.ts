@@ -71,10 +71,13 @@ export async function GET(
     admin.auth.admin.getUserById(r.created_by_user_id),
     admin
       .from("eckcm_group_memberships")
-      .select("eckcm_people!inner(first_name_en, last_name_en, display_name_ko), eckcm_groups!inner(registration_id)")
+      .select("role, eckcm_people!inner(first_name_en, last_name_en, display_name_ko, email), eckcm_groups!inner(registration_id)")
       .eq("eckcm_groups.registration_id", inv.registration_id),
   ]);
-  const billTo = registrant?.email ?? user.email ?? "-";
+  // Use representative's email for "Bill To" (register-for-others flow)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const repMember = (memberships ?? []).find((m: any) => m.role === "REPRESENTATIVE") as any;
+  const billTo = repMember?.eckcm_people?.email ?? registrant?.email ?? user.email ?? "-";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const participants = (memberships ?? []).map((m: any) => {
     const p = m.eckcm_people;

@@ -116,8 +116,13 @@ export async function POST(req: NextRequest) {
   // Load participant names
   const { data: memberships } = await admin
     .from("eckcm_group_memberships")
-    .select("eckcm_people!inner(first_name_en, last_name_en, display_name_ko), eckcm_groups!inner(registration_id)")
+    .select("role, eckcm_people!inner(first_name_en, last_name_en, display_name_ko, email), eckcm_groups!inner(registration_id)")
     .eq("eckcm_groups.registration_id", registrationId);
+
+  // Use representative's email for "Bill To" (register-for-others flow)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const repMember = (memberships ?? []).find((m: any) => m.role === "REPRESENTATIVE") as any;
+  const billToEmail = repMember?.eckcm_people?.email || registrant.email;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const participantNames = (memberships ?? []).map((m: any) => {
@@ -163,7 +168,7 @@ export async function POST(req: NextRequest) {
       confirmationCode: reg.confirmation_code ?? "",
       eventName,
       issuedDate: new Date(inv.issued_at).toLocaleDateString("en-US"),
-      billTo: registrant.email,
+      billTo: billToEmail,
       dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
       participants: participantNamesEn,
       lineItems,

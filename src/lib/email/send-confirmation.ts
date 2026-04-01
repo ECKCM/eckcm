@@ -287,12 +287,17 @@ export async function sendConfirmationEmail(
       return `${p.first_name_en} ${p.last_name_en}`;
     });
 
+    // Use representative's email for "Bill To" (register-for-others flow)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const repMember = (membershipsResult.data ?? []).find((m: any) => m.role === "REPRESENTATIVE") as any;
+    const billToEmail = repMember?.eckcm_people?.email || user.email!;
+
     const basePdfData = {
       invoiceNumber: includeInvoice.invoiceNumber,
       confirmationCode: reg.confirmation_code,
       eventName: reg.eckcm_events.name_en,
       issuedDate: new Date().toLocaleDateString("en-US"),
-      billTo: user.email!,
+      billTo: billToEmail,
       dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
       participants: pdfParticipants,
       lineItems: includeInvoice.lineItems.map((li: { description: string; quantity: number; unitPrice: string; amount: string }) => ({

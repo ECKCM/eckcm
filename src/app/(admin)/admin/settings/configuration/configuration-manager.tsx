@@ -39,7 +39,7 @@ interface EventOption {
   year: number;
 }
 
-export function ConfigurationManager() {
+export function ConfigurationManager({ initialHmacStatus }: { initialHmacStatus: { is_set: boolean; last4: string } }) {
   const [events, setEvents] = useState<EventOption[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -118,7 +118,7 @@ export function ConfigurationManager() {
       <ThemeSection />
 
       {/* Security */}
-      <SecuritySection />
+      <SecuritySection initialHmacStatus={initialHmacStatus} />
 
       {/* Danger Zone */}
       <Card className="border-destructive/50">
@@ -250,15 +250,14 @@ export function ConfigurationManager() {
 
 /* ── Security Section ── */
 
-function SecuritySection() {
+function SecuritySection({ initialHmacStatus }: { initialHmacStatus: { is_set: boolean; last4: string } }) {
   const [turnstileEnabled, setTurnstileEnabled] = useState<boolean>(true);
   const [allowDuplicateEmail, setAllowDuplicateEmail] = useState<boolean>(false);
   const [allowDuplicateRegistration, setAllowDuplicateRegistration] = useState<boolean>(false);
-  const [hmacStatus, setHmacStatus] = useState<{ is_set: boolean; last4: string }>({ is_set: false, last4: "" });
+  const [hmacStatus, setHmacStatus] = useState(initialHmacStatus);
   const [hmacDraft, setHmacDraft] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [hmacSaving, setHmacSaving] = useState(false);
-  const [hmacWarningOpen, setHmacWarningOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [pendingToggle, setPendingToggle] = useState<{
     action: () => void;
@@ -275,9 +274,6 @@ function SecuritySection() {
         setAllowDuplicateRegistration(data.allow_duplicate_registration ?? false);
         if (data.epass_hmac_secret) {
           setHmacStatus(data.epass_hmac_secret);
-          if (!data.epass_hmac_secret.is_set) setHmacWarningOpen(true);
-        } else {
-          setHmacWarningOpen(true);
         }
         setLoaded(true);
       })
@@ -551,32 +547,6 @@ function SecuritySection() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-
-    <AlertDialog open={hmacWarningOpen} onOpenChange={setHmacWarningOpen}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" />
-            E-Pass QR Signing Key Not Configured
-          </AlertDialogTitle>
-          <AlertDialogDescription asChild>
-            <div className="space-y-3">
-              <p>
-                The QR signing key (HMAC secret) is <strong>not configured</strong>.
-                Without this key, QR codes on E-Passes are not signed and can be forged by anyone.
-              </p>
-              <p className="font-medium text-destructive">
-                You must set a QR signing key in the Security section below before E-Passes can be used safely.
-              </p>
-            </div>
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogAction>Understood</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-
     </>
   );
 }

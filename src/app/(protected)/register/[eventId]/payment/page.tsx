@@ -75,9 +75,10 @@ export default function PaymentStep() {
   /* ---- Stripe state (populated lazily when stripe mode is selected) ---- */
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const createIntentCalled = useRef(false);
-  const [stripePromise, setStripePromise] = useState<Promise<StripeType | null>>(
-    () => getStripe()
+  const [stripePromise, setStripePromise] = useState<Promise<StripeType | null> | null>(
+    null
   );
+  const [stripeReady, setStripeReady] = useState(false);
 
   /* ---- payment methods & fees ---- */
   const [enabledMethods, setEnabledMethods] = useState<string[]>([
@@ -115,15 +116,24 @@ export default function PaymentStep() {
       .catch(() => {});
   }, []);
 
-  // Fetch event-specific publishable key
+  // Fetch event-specific publishable key (MUST resolve before Elements renders)
   useEffect(() => {
     if (!eventId) return;
     fetch(`/api/stripe/publishable-key?eventId=${eventId}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.publishableKey) setStripePromise(getStripeWithKey(data.publishableKey));
+        if (data.publishableKey) {
+          setStripePromise(getStripeWithKey(data.publishableKey));
+        } else {
+          setStripePromise(getStripe());
+        }
+        setStripeReady(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        // Fallback to env var key
+        setStripePromise(getStripe());
+        setStripeReady(true);
+      });
   }, [eventId]);
 
   // Step 1: Load payment info (no Stripe PI created)
@@ -161,6 +171,7 @@ export default function PaymentStep() {
           return;
         }
 
+        console.log("[Payment] info response:", { amount: data.amount, invoiceTotal: data.invoiceTotal, paymentTestMode: data.paymentTestMode });
         setAmount(data.amount as number);
         setBaseAmount(data.amount as number);
         setInvoiceTotal((data.invoiceTotal as number) || 0);
@@ -178,9 +189,10 @@ export default function PaymentStep() {
     loadInfo();
   }, [registrationId]);
 
-  // Step 2: Create Stripe PI lazily ONLY when stripe mode is active
+  // Step 2: Create Stripe PI lazily ONLY when stripe mode is active AND key is resolved
   useEffect(() => {
     if (payMode !== "stripe") return;
+    if (!stripeReady) return;
     if (loading || error || freeRegistration || !registrationId) return;
     if (clientSecret || createIntentCalled.current) return;
     createIntentCalled.current = true;
@@ -200,6 +212,11 @@ export default function PaymentStep() {
           );
           return;
         }
+        console.log("[Payment] create-intent response:", { amount: data.amount, paymentTestMode: data.paymentTestMode, publishableKey: !!data.publishableKey });
+        // Use the publishable key from create-intent to guarantee mode consistency
+        if (data.publishableKey) {
+          setStripePromise(getStripeWithKey(data.publishableKey));
+        }
         setClientSecret(data.clientSecret as string);
         setAmount(data.amount as number);
         setBaseAmount(data.amount as number);
@@ -209,7 +226,7 @@ export default function PaymentStep() {
     }
 
     createIntent();
-  }, [payMode, loading, error, freeRegistration, registrationId, clientSecret]);
+  }, [payMode, stripeReady, loading, error, freeRegistration, registrationId, clientSecret]);
 
   // Keep ref in sync with clientSecret
   useEffect(() => {
@@ -608,9 +625,9 @@ export default function PaymentStep() {
             </div>
           )}
 
-          {/* === Stripe Payment Form (inside Elements, only when PI exists) === */}
+          {/* === Stripe Payment Form (inside Elements, only when PI exists + key resolved) === */}
           {payMode === "stripe" && stripeEnabled && (
-            clientSecret ? (
+            clientSecret && stripePromise ? (
               <Elements
                 stripe={stripePromise}
                 options={{ clientSecret, appearance: STRIPE_APPEARANCE }}
@@ -626,6 +643,7 @@ export default function PaymentStep() {
                     setStripeSelectedMethod(method);
                   }}
                   onAmountUpdate={(newAmount) => {
+                    console.log("[Payment] onAmountUpdate:", newAmount);
                     setAmount(newAmount);
                   }}
                   onSuccess={(piId) => goToConfirmation(piId)}
