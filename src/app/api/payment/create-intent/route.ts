@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       .maybeSingle(),
     admin
       .from("eckcm_events")
-      .select("title, stripe_mode, payment_test_mode")
+      .select("name_en, stripe_mode, payment_test_mode")
       .eq("id", registration.event_id)
       .single(),
   ]);
@@ -252,7 +252,7 @@ export async function POST(request: Request) {
   const paymentIntent = await stripe.paymentIntents.create({
     amount: chargeAmount,
     currency: "usd",
-    description: `${event?.title ?? "ECKCM"} Registration`,
+    description: `${event?.name_en ?? "ECKCM"} Registration`,
     ...(stripeCustomerId ? { customer: stripeCustomerId } : {}),
     receipt_email: customerEmail,
     metadata: {
