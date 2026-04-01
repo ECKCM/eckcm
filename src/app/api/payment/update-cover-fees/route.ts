@@ -127,21 +127,8 @@ export async function POST(request: Request) {
       metadata: { coversFees: coversFees ? "true" : "false" },
     });
   } catch (err) {
+    logger.error("[update-cover-fees] Stripe update failed", { error: String(err) });
     const msg = err instanceof Error ? err.message : "Stripe error";
-    // If PI is from a different mode (test/live mismatch), return calculated amount without Stripe update
-    if (msg.includes("a similar object exists in")) {
-      logger.warn("[update-cover-fees] PI mode mismatch, skipping Stripe update", {
-        stripePI,
-        stripeMode,
-      });
-      return NextResponse.json({
-        amount: newAmount,
-        baseCents,
-        feeCents,
-        coversFees,
-      });
-    }
-    logger.error("[update-cover-fees] Stripe update failed", { error: msg });
     return NextResponse.json(
       { error: `Failed to update payment amount: ${msg}` },
       { status: 500 }

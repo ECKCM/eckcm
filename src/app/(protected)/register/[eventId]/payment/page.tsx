@@ -10,7 +10,7 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 import type { Stripe as StripeType } from "@stripe/stripe-js";
-import { getStripeWithKey } from "@/lib/stripe/client";
+import { getStripe, getStripeWithKey } from "@/lib/stripe/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -75,10 +75,9 @@ export default function PaymentStep() {
   /* ---- Stripe state (populated lazily when stripe mode is selected) ---- */
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const createIntentCalled = useRef(false);
-  const [stripePromise, setStripePromise] = useState<Promise<StripeType | null> | null>(
-    null
+  const [stripePromise, setStripePromise] = useState<Promise<StripeType | null>>(
+    () => getStripe()
   );
-  const [stripeReady, setStripeReady] = useState(false);
 
   /* ---- payment methods & fees ---- */
   const [enabledMethods, setEnabledMethods] = useState<string[]>([
@@ -116,10 +115,16 @@ export default function PaymentStep() {
       .catch(() => {});
   }, []);
 
-  // Mark stripe as ready — actual key comes from create-intent response
+  // Fetch event-specific publishable key
   useEffect(() => {
-    setStripeReady(true);
-  }, []);
+    if (!eventId) return;
+    fetch(`/api/stripe/publishable-key?eventId=${eventId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.publishableKey) setStripePromise(getStripeWithKey(data.publishableKey));
+      })
+      .catch(() => {});
+  }, [eventId]);
 
   // Step 1: Load payment info (no Stripe PI created)
   useEffect(() => {
@@ -156,7 +161,6 @@ export default function PaymentStep() {
           return;
         }
 
-        console.log("[Payment] info response:", { amount: data.amount, invoiceTotal: data.invoiceTotal, paymentTestMode: data.paymentTestMode });
         setAmount(data.amount as number);
         setBaseAmount(data.amount as number);
         setInvoiceTotal((data.invoiceTotal as number) || 0);
@@ -174,10 +178,9 @@ export default function PaymentStep() {
     loadInfo();
   }, [registrationId]);
 
-  // Step 2: Create Stripe PI lazily ONLY when stripe mode is active AND key is resolved
+  // Step 2: Create Stripe PI lazily ONLY when stripe mode is active
   useEffect(() => {
     if (payMode !== "stripe") return;
-    if (!stripeReady) return;
     if (loading || error || freeRegistration || !registrationId) return;
     if (clientSecret || createIntentCalled.current) return;
     createIntentCalled.current = true;
@@ -197,12 +200,6 @@ export default function PaymentStep() {
           );
           return;
         }
-        console.log("[Payment] create-intent response:", { amount: data.amount, paymentTestMode: data.paymentTestMode, publishableKey: !!data.publishableKey });
-        // Set publishable key BEFORE clientSecret so Elements mounts with correct key
-        const pk = data.publishableKey || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-        if (pk) {
-          setStripePromise(getStripeWithKey(pk));
-        }
         setClientSecret(data.clientSecret as string);
         setAmount(data.amount as number);
         setBaseAmount(data.amount as number);
@@ -212,7 +209,7 @@ export default function PaymentStep() {
     }
 
     createIntent();
-  }, [payMode, stripeReady, loading, error, freeRegistration, registrationId, clientSecret]);
+  }, [payMode, loading, error, freeRegistration, registrationId, clientSecret]);
 
   // Keep ref in sync with clientSecret
   useEffect(() => {
@@ -611,9 +608,9 @@ export default function PaymentStep() {
             </div>
           )}
 
-          {/* === Stripe Payment Form (inside Elements, only when PI exists + key resolved) === */}
+          {/* === Stripe Payment Form (inside Elements, only when PI exists) === */}
           {payMode === "stripe" && stripeEnabled && (
-            clientSecret && stripePromise ? (
+            clientSecret ? (
               <Elements
                 stripe={stripePromise}
                 options={{ clientSecret, appearance: STRIPE_APPEARANCE }}
@@ -629,7 +626,6 @@ export default function PaymentStep() {
                     setStripeSelectedMethod(method);
                   }}
                   onAmountUpdate={(newAmount) => {
-                    console.log("[Payment] onAmountUpdate:", newAmount);
                     setAmount(newAmount);
                   }}
                   onSuccess={(piId) => goToConfirmation(piId)}

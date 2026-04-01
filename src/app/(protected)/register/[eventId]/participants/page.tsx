@@ -1587,7 +1587,19 @@ export default function ParticipantsStep() {
                                 <span className="ml-1 text-muted-foreground font-normal">(customized)</span>
                               )}
                             </Label>
-                            {p.isDateOverridden || dateOverrideConfirmed[panelKey] ? (
+                            {p.isRepresentative ? (
+                              /* Representative: read-only display, dates set in Step 1 */
+                              <div className="flex w-full items-center rounded-lg border bg-muted/50 px-3 py-2.5 text-sm">
+                                <CalendarIcon className="mr-2 size-4 shrink-0 text-muted-foreground" />
+                                <span className="font-medium">
+                                  {format(new Date(state.startDate + "T00:00:00"), "EEE, MMM d")}
+                                </span>
+                                <span className="flex-1 text-center text-muted-foreground">—</span>
+                                <span className="font-medium">
+                                  {format(new Date(state.endDate + "T00:00:00"), "EEE, MMM d")}
+                                </span>
+                              </div>
+                            ) : p.isDateOverridden || dateOverrideConfirmed[panelKey] ? (
                               <DateRangePicker
                                 startDate={p.checkInDate ?? state.startDate}
                                 endDate={p.checkOutDate ?? state.endDate}
