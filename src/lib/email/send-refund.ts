@@ -110,7 +110,7 @@ export async function sendRefundEmail(params: SendRefundEmailParams): Promise<vo
       "Refund Details:",
       `  Refund Amount: ${fmtCents(refundAmountCents)}`,
       `  Original Amount: ${fmtCents(originalAmountCents)}`,
-      ...(isFullRefund ? [] : [`  Remaining Balance: ${fmtCents(remainingCents)}`]),
+      ...(isFullRefund ? [] : [`  Remaining Balance/Stripe Processing Fee: ${fmtCents(remainingCents)}`]),
       `  Reason: ${reason}`,
       `  Date: ${new Date().toLocaleDateString("en-US")}`,
       "",

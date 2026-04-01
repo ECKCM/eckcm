@@ -103,7 +103,7 @@ export function buildRefundEmail({
                 </tr>
                 ${!isFullRefund ? `
                 <tr>
-                  <td style="padding: 8px 12px; font-size: 13px; color: #6b7280; border-top: 1px solid #e5e7eb;">Remaining Balance</td>
+                  <td style="padding: 8px 12px; font-size: 13px; color: #6b7280; border-top: 1px solid #e5e7eb;">Remaining Balance/Stripe Processing Fee</td>
                   <td style="padding: 8px 12px; font-size: 13px; color: #111827; font-weight: bold; text-align: right; border-top: 1px solid #e5e7eb;">${remainingBalanceFormatted}</td>
                 </tr>` : ""}
                 <tr>

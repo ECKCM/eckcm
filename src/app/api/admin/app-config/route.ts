@@ -4,6 +4,8 @@ import { COLOR_THEME_IDS } from "@/lib/color-theme";
 import type { ColorThemeId } from "@/lib/color-theme";
 import { requireAdmin, requireSuperAdmin } from "@/lib/auth/admin";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const auth = await requireAdmin();
   if (!auth) {
@@ -25,7 +27,6 @@ export async function GET() {
   }
 
   const hmacSecret = data.epass_hmac_secret as string | null;
-  const isSuperAdmin = auth.roles.includes("SUPER_ADMIN");
 
   return NextResponse.json({
     color_theme: data.color_theme,
@@ -33,13 +34,9 @@ export async function GET() {
     allow_duplicate_email: data.allow_duplicate_email ?? false,
     allow_duplicate_registration: data.allow_duplicate_registration ?? false,
     booklet_url: data.booklet_url ?? "",
-    ...(isSuperAdmin
-      ? {
-          epass_hmac_secret: hmacSecret
-            ? { is_set: true, last4: hmacSecret.slice(-4) }
-            : { is_set: false, last4: "" },
-        }
-      : {}),
+    epass_hmac_secret: hmacSecret
+      ? { is_set: true, last4: hmacSecret.slice(-4) }
+      : { is_set: false, last4: "" },
   });
 }
 

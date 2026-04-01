@@ -1,13 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Mail, HelpCircle, CreditCard, QrCode, UserPlus } from "lucide-react";
+import { ArrowLeft, Mail, MessageSquare, Copy, Check } from "lucide-react";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Accordion,
@@ -18,8 +16,48 @@ import {
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/context";
 
+const messageContacts = [
+  {
+    id: "reg-ko",
+    label: { en: "Registration (Korean)", ko: "등록 문의 (한국어)" },
+    phone: "2402334441",
+    body: "안녕하세요, ECKCM 등록 관련 문의드립니다.\n이름:\n문의 내용:",
+  },
+  {
+    id: "reg-en",
+    label: { en: "Registration (English)", ko: "등록 문의 (English)" },
+    phone: "2402334441",
+    body: "Hi, I have a question regarding ECKCM registration:\nName:\nQuestion:",
+  },
+  {
+    id: "em",
+    label: { en: "EM", ko: "EM" },
+    phone: "2035509209",
+    body: "Hi, I have a question regarding ECKCM EM:\nName:\nQuestion:",
+  },
+  {
+    id: "hansamo",
+    label: { en: "한사모", ko: "한사모" },
+    phone: "9519661889",
+    body: "안녕하세요, ECKCM 한사모 관련 문의드립니다.\n이름:\n문의 내용:",
+  },
+];
+
+const EMAIL = "myeckcm@gmail.com";
+
 export function SupportContent({ isLoggedIn }: { isLoggedIn: boolean }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyEmail = async () => {
+    await navigator.clipboard.writeText(EMAIL);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const getSmsUrl = (phone: string, body: string) => {
+    return `sms:+1${phone}?&body=${encodeURIComponent(body)}`;
+  };
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -37,46 +75,64 @@ export function SupportContent({ isLoggedIn }: { isLoggedIn: boolean }) {
         {t("support.subtitle")}
       </p>
 
-      {/* Quick Help Cards */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
+      {/* Contact - Message & Email */}
+      <div className="mb-8 space-y-4">
+        {/* Message */}
         <Card>
-          <CardHeader className="pb-2">
-            <UserPlus className="mb-1 h-5 w-5 text-primary" />
-            <CardTitle className="text-base">{t("support.registration")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CardDescription>
-              {t("support.registrationDesc")}
-            </CardDescription>
+          <CardContent className="pt-6">
+            <div className="mb-4 flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">{t("support.textUs")}</h2>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {messageContacts.map((contact) => (
+                <Button
+                  key={contact.id}
+                  variant="outline"
+                  className="h-auto justify-start py-3"
+                  asChild
+                >
+                  <a href={getSmsUrl(contact.phone, contact.body)}>
+                    <MessageSquare className="mr-2 h-4 w-4 shrink-0" />
+                    <span>{contact.label[locale as "en" | "ko"]}</span>
+                  </a>
+                </Button>
+              ))}
+            </div>
           </CardContent>
         </Card>
+
+        {/* Email */}
         <Card>
-          <CardHeader className="pb-2">
-            <CreditCard className="mb-1 h-5 w-5 text-primary" />
-            <CardTitle className="text-base">{t("support.payments")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CardDescription>
-              {t("support.paymentsDesc")}
-            </CardDescription>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <QrCode className="mb-1 h-5 w-5 text-primary" />
-            <CardTitle className="text-base">{t("support.epass")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CardDescription>
-              {t("support.epassDesc")}
-            </CardDescription>
+          <CardContent className="pt-6">
+            <div className="mb-4 flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">{t("support.emailUs")}</h2>
+            </div>
+            <Button
+              variant="outline"
+              className="h-auto py-3"
+              onClick={handleCopyEmail}
+            >
+              {copied ? (
+                <Check className="mr-2 h-4 w-4 text-green-500" />
+              ) : (
+                <Copy className="mr-2 h-4 w-4" />
+              )}
+              <span>{EMAIL}</span>
+              {copied && (
+                <span className="ml-2 text-xs text-green-500">
+                  {t("support.copied")}
+                </span>
+              )}
+            </Button>
           </CardContent>
         </Card>
       </div>
 
       {/* FAQ */}
       <h2 className="mb-4 text-xl font-semibold">{t("support.faq")}</h2>
-      <Accordion type="single" collapsible className="mb-8">
+      <Accordion type="single" collapsible>
         <AccordionItem value="register">
           <AccordionTrigger>{t("support.faqRegister")}</AccordionTrigger>
           <AccordionContent>{t("support.faqRegisterAnswer")}</AccordionContent>
@@ -102,34 +158,6 @@ export function SupportContent({ isLoggedIn }: { isLoggedIn: boolean }) {
           <AccordionContent>{t("support.faqCancelAnswer")}</AccordionContent>
         </AccordionItem>
       </Accordion>
-
-      {/* Contact */}
-      <h2 className="mb-4 text-xl font-semibold">{t("support.contactUs")}</h2>
-      <Card>
-        <CardContent className="flex flex-col gap-4 pt-6">
-          <div className="flex items-center gap-3">
-            <Mail className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">{t("support.email")}</p>
-              <a
-                href="mailto:support@eckcm.org"
-                className="text-sm text-primary hover:underline"
-              >
-                support@eckcm.org
-              </a>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <HelpCircle className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">{t("support.generalInquiries")}</p>
-              <p className="text-sm text-muted-foreground">
-                {t("support.generalInquiriesDesc")}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
