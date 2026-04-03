@@ -1,13 +1,74 @@
 {
-  "sessionCount": 522,
+  "sessionCount": 536,
   "lastSession": {
-    "startedAt": "2026-04-01T06:37:10.422Z",
+    "startedAt": "2026-04-03T17:03:23.089Z",
     "platform": "claude",
     "level": "Dynamic"
   },
   "currentFeature": "qr-checkin-system",
   "currentPhase": "check",
   "matchRate": 87,
+  "productionStatus": "LIVE",
+  "productionUrl": "my.eckcm.com",
+  "constraints": {
+    "database": {
+      "destructiveOps": "FORBIDDEN",
+      "allowedChanges": "ADDITIVE_ONLY",
+      "schemaChanges": "MIGRATION_FILES_ONLY",
+      "rules": [
+        "DROP TABLE, DELETE FROM, TRUNCATE 절대 금지",
+        "컬럼 삭제/rename 금지 — 새 컬럼 추가 + 점진적 마이그레이션으로",
+        "모든 schema 변경은 supabase migration new 으로 migration 파일 생성",
+        "rollback migration도 항상 같이 생성",
+        "기존 row backfill 필요 시 별도 script로 작성",
+        "supabase db push는 Claude Code가 절대 실행하지 않음 — 사용자가 직접 실행"
+      ]
+    },
+    "stripe": {
+      "mode": "LIVE",
+      "rules": [
+        "결제 관련 코드 수정 시 반드시 사용자에게 먼저 확인",
+        "webhook handler 변경 시 기존 이벤트 호환성 유지",
+        "개발/테스트는 Stripe test mode key로만"
+      ]
+    },
+    "deployment": {
+      "platform": "Vercel",
+      "workflow": "feature branch → Preview Deploy → 확인 → merge to main",
+      "rules": [
+        "main 브랜치 직접 push 금지",
+        "Preview Deploy에서 먼저 확인 후 merge",
+        "환경변수 변경 시 사용자 확인 필요"
+      ]
+    },
+    "supabase": {
+      "projects": "PRODUCTION_ONLY",
+      "localDev": false,
+      "cliConnectedTo": "production",
+      "workflow": {
+        "schemaChange": [
+          "1. supabase migration new <이름> → migration SQL 파일 생성",
+          "2. Claude Code가 SQL 내용 작성",
+          "3. supabase db diff로 현재 상태와 비교 (Claude Code 실행 가능)",
+          "4. 사용자에게 migration SQL 내용 보여주고 확인 요청",
+          "5. 사용자가 직접 supabase db push 실행"
+        ],
+        "dataQuery": "SELECT만 허용. INSERT/UPDATE/DELETE는 migration 또는 앱 코드를 통해서만",
+        "forbidden": [
+          "supabase db push (사용자 직접 실행)",
+          "supabase db reset",
+          "supabase db remote commit",
+          "production DB에 직접 INSERT/UPDATE/DELETE 쿼리 실행"
+        ]
+      },
+      "note": "staging 없음. CLI가 production에 직접 연결됨. migration 파일 생성까지만 Claude Code가 하고, push는 사용자가 직접."
+    },
+    "general": [
+      "backward compatibility 항상 유지",
+      "기존 API response 형식 변경 시 versioning 또는 optional field로",
+      "env 파일 직접 수정 금지"
+    ]
+  },
   "pdcaHistory": [
     {
       "action": "plan_created",
