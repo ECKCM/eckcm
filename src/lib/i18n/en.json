@@ -323,7 +323,7 @@
     "coverFees": "I'd like to cover the payment processing fee.",
     "loadingPayment": "Loading payment options...",
     "onlinePayment": "Online Payment",
-    "cardAmazon": "Card, Amazon Pay",
+    "cardAmazon": "Card, Apple Pay, Google Pay",
     "manualPayment": "Manual Payment",
     "zelleCheck": "Zelle, Check",
     "initializingPayment": "Initializing secure payment...",

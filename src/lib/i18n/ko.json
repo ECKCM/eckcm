@@ -323,7 +323,7 @@
     "coverFees": "결제 수수료를 부담하겠습니다.",
     "loadingPayment": "결제 옵션을 불러오는 중...",
     "onlinePayment": "온라인 결제",
-    "cardAmazon": "카드, Amazon Pay",
+    "cardAmazon": "카드, Apple Pay, Google Pay",
     "manualPayment": "수동 결제",
     "zelleCheck": "Zelle, 수표",
     "initializingPayment": "보안 결제를 초기화하는 중...",
