@@ -938,10 +938,7 @@ function StripePaymentForm({
                 radios: true,
                 spacedAccordionItems: true,
               },
-              paymentMethodOrder: [
-                "card",
-                "amazon_pay",
-              ],
+              paymentMethodOrder: ["card"],
               wallets: { applePay: "never", googlePay: "never" },
             }}
           />

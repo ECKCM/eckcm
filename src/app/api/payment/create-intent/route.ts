@@ -189,9 +189,10 @@ export async function POST(request: Request) {
         existing.status === "requires_confirmation" ||
         existing.status === "requires_action"
       ) {
-        // Update amount in case payment_test_mode changed
+        // Update amount & allowed payment methods in case config changed
         const updated = await stripe.paymentIntents.update(existing.id, {
           amount: chargeAmount,
+          payment_method_types: ["card"],
         });
         return NextResponse.json({
           clientSecret: updated.client_secret,
@@ -262,10 +263,7 @@ export async function POST(request: Request) {
       confirmationCode: registration.confirmation_code,
       coversFees: coversFees ? "true" : "false",
     },
-    payment_method_types: [
-      "card",
-      "amazon_pay",
-    ],
+    payment_method_types: ["card"],
   });
 
   // Create pending payment record
