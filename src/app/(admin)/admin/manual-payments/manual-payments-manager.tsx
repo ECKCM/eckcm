@@ -56,11 +56,12 @@ import { RegistrationCodeCombobox } from "@/components/shared/registration-code-
 interface ManualPayment {
   id: string;
   payment_type: "zelle" | "check";
-  status: "received" | "updated" | "refunded";
+  status: "received" | "updated" | "refunded" | "partially_refunded";
   registration_code: string | null;
   first_name: string;
   last_name: string;
   amount_cents: number;
+  refunded_cents: number;
   date_received: string;
   note: string | null;
   created_at: string;
@@ -113,6 +114,8 @@ function statusBadge(status: string) {
       return <Badge variant="default">Received</Badge>;
     case "updated":
       return <Badge className="bg-green-600 hover:bg-green-700 text-white">Updated</Badge>;
+    case "partially_refunded":
+      return <Badge className="bg-orange-600 hover:bg-orange-700 text-white">Partial Refund</Badge>;
     case "refunded":
       return <Badge variant="destructive">Refunded</Badge>;
     default:
@@ -138,6 +141,8 @@ export function ManualPaymentsManager() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [refundTarget, setRefundTarget] = useState<ManualPayment | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundSaving, setRefundSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ManualPayment | null>(null);
   const [registrationCodes, setRegistrationCodes] = useState<string[]>([]);
   // Edit mode
@@ -198,9 +203,9 @@ export function ManualPaymentsManager() {
   // Summary stats
   const stats = useMemo(() => {
     const active = payments.filter((p) => p.status !== "refunded");
-    const zelleTotal = active.filter((p) => p.payment_type === "zelle").reduce((s, p) => s + p.amount_cents, 0);
-    const checkTotal = active.filter((p) => p.payment_type === "check").reduce((s, p) => s + p.amount_cents, 0);
-    const refundedTotal = payments.filter((p) => p.status === "refunded").reduce((s, p) => s + p.amount_cents, 0);
+    const zelleTotal = active.filter((p) => p.payment_type === "zelle").reduce((s, p) => s + (p.amount_cents - (p.refunded_cents ?? 0)), 0);
+    const checkTotal = active.filter((p) => p.payment_type === "check").reduce((s, p) => s + (p.amount_cents - (p.refunded_cents ?? 0)), 0);
+    const refundedTotal = payments.reduce((s, p) => s + (p.refunded_cents ?? 0), 0);
     return { total: active.length, zelleTotal, checkTotal, refundedTotal };
   }, [payments]);
 
@@ -439,6 +444,7 @@ export function ManualPaymentsManager() {
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="received">Received</SelectItem>
             <SelectItem value="updated">Updated</SelectItem>
+            <SelectItem value="partially_refunded">Partial Refund</SelectItem>
             <SelectItem value="refunded">Refunded</SelectItem>
           </SelectContent>
         </Select>
@@ -509,7 +515,12 @@ export function ManualPaymentsManager() {
                     {p.first_name} {p.last_name}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {formatCents(p.amount_cents)}
+                    <div>{formatCents(p.amount_cents)}</div>
+                    {(p.refunded_cents ?? 0) > 0 && (
+                      <div className="text-xs text-destructive">
+                        -{formatCents(p.refunded_cents)}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>{typeBadge(p.payment_type)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -527,19 +538,19 @@ export function ManualPaymentsManager() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {p.status !== "refunded" && (
+                        {p.status !== "refunded" && p.status !== "partially_refunded" && (
                           <DropdownMenuItem onClick={() => openEdit(p)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
                         )}
-                        {p.status !== "updated" && p.status !== "refunded" && (
+                        {p.status !== "updated" && p.status !== "refunded" && p.status !== "partially_refunded" && (
                           <DropdownMenuItem onClick={() => updateStatus(p.id, "updated")}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Mark as Updated
                           </DropdownMenuItem>
                         )}
-                        {p.status !== "received" && p.status !== "refunded" && (
+                        {p.status !== "received" && p.status !== "refunded" && p.status !== "partially_refunded" && (
                           <DropdownMenuItem onClick={() => updateStatus(p.id, "received")}>
                             <DollarSign className="mr-2 h-4 w-4" />
                             Mark as Received
@@ -547,11 +558,15 @@ export function ManualPaymentsManager() {
                         )}
                         {p.status !== "refunded" && (
                           <DropdownMenuItem
-                            onClick={() => setRefundTarget(p)}
+                            onClick={() => {
+                              const remaining = p.amount_cents - (p.refunded_cents ?? 0);
+                              setRefundTarget(p);
+                              setRefundAmount((remaining / 100).toFixed(2));
+                            }}
                             className="text-destructive"
                           >
                             <Undo2 className="mr-2 h-4 w-4" />
-                            Refund
+                            {p.status === "partially_refunded" ? "Refund More" : "Refund"}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
@@ -763,23 +778,109 @@ export function ManualPaymentsManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Refund Confirmation */}
-      <ConfirmDeleteDialog
-        open={!!refundTarget}
-        onOpenChange={(open) => { if (!open) setRefundTarget(null); }}
-        onConfirm={() => {
-          if (refundTarget) {
-            updateStatus(refundTarget.id, "refunded");
-            setRefundTarget(null);
-          }
-        }}
-        title="Confirm Refund"
-        description={
-          refundTarget
-            ? `Are you sure you want to refund the ${refundTarget.payment_type === "zelle" ? "Zelle" : "Check"} payment of ${formatCents(refundTarget.amount_cents)} from ${refundTarget.first_name} ${refundTarget.last_name}? This action cannot be undone.`
-            : ""
-        }
-      />
+      {/* Refund Dialog */}
+      <Dialog open={!!refundTarget} onOpenChange={(open) => { if (!open) { setRefundTarget(null); setRefundAmount(""); } }}>
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Refund Payment</DialogTitle>
+          </DialogHeader>
+          {refundTarget && (() => {
+            const alreadyRefunded = refundTarget.refunded_cents ?? 0;
+            const remaining = refundTarget.amount_cents - alreadyRefunded;
+            const refundCents = Math.round(parseFloat(refundAmount || "0") * 100);
+            const isFullRefund = refundCents >= remaining;
+            return (
+              <div className="space-y-4">
+                <div className="rounded-md border p-3 space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Payee</span>
+                    <span className="font-medium">{refundTarget.first_name} {refundTarget.last_name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Type</span>
+                    <span>{refundTarget.payment_type === "zelle" ? "Zelle" : "Check"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Original Amount</span>
+                    <span className="font-medium">{formatCents(refundTarget.amount_cents)}</span>
+                  </div>
+                  {alreadyRefunded > 0 && (
+                    <div className="flex justify-between text-destructive">
+                      <span>Already Refunded</span>
+                      <span>-{formatCents(alreadyRefunded)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between border-t pt-1">
+                    <span className="text-muted-foreground">Remaining</span>
+                    <span className="font-bold">{formatCents(remaining)}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Refund Amount ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max={(remaining / 100).toFixed(2)}
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(e.target.value)}
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Max: {formatCents(remaining)}
+                    {isFullRefund && refundCents > 0 && " — This will be a full refund"}
+                  </p>
+                </div>
+
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  disabled={refundSaving || !refundAmount || refundCents <= 0 || refundCents > remaining}
+                  onClick={async () => {
+                    if (!refundTarget || refundCents <= 0 || refundCents > remaining) return;
+                    setRefundSaving(true);
+                    try {
+                      const supabase = createClient();
+                      const { data: session } = await supabase.auth.getSession();
+                      const res = await fetch("/api/admin/manual-payments", {
+                        method: "PATCH",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${session.session?.access_token}`,
+                        },
+                        body: JSON.stringify({
+                          id: refundTarget.id,
+                          refund_amount_cents: refundCents,
+                        }),
+                      });
+
+                      if (!res.ok) {
+                        const err = await res.json();
+                        toast.error(err.error || "Failed to refund");
+                        return;
+                      }
+
+                      toast.success(
+                        isFullRefund
+                          ? `Full refund of ${formatCents(refundCents)} processed`
+                          : `Partial refund of ${formatCents(refundCents)} processed`
+                      );
+                      setRefundTarget(null);
+                      setRefundAmount("");
+                      loadPayments();
+                    } finally {
+                      setRefundSaving(false);
+                    }
+                  }}
+                >
+                  {refundSaving ? "Processing..." : `Refund ${refundAmount && refundCents > 0 ? formatCents(refundCents) : ""}`}
+                </Button>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation */}
       <ConfirmDeleteDialog
