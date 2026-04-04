@@ -213,8 +213,8 @@ export function TopHeader({
 
         {/* Actions */}
         <div className="flex items-center gap-1">
-          {/* Theme Toggle */}
-          <ThemeToggle className="text-white hover:bg-white/15 hover:text-white" />
+          {/* Theme Toggle – temporarily hidden (dark mode disabled) */}
+          {/* <ThemeToggle className="text-white hover:bg-white/15 hover:text-white" /> */}
 
           {/* Language Switcher */}
           <LanguageSwitcher className="text-white hover:bg-white/15 hover:text-white" />

@@ -265,28 +265,7 @@ export function ProfileSettings({
                   )}
                 </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor="theme">{t("settings.theme")}</Label>
-                  {mounted ? (
-                    <Select
-                      value={theme ?? "light"}
-                      onValueChange={setTheme}
-                    >
-                      <SelectTrigger id="theme">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="light">{t("settings.light")}</SelectItem>
-                        <SelectItem value="dark">{t("settings.dark")}</SelectItem>
-                        <SelectItem value="system">{t("settings.system")}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 text-sm">
-                      {t("settings.light")}
-                    </div>
-                  )}
-                </div>
+                {/* Theme selector – temporarily hidden (dark mode disabled) */}
               </div>
             </ProfileForm>
           </CardContent>
