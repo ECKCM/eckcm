@@ -621,6 +621,7 @@ export default function PaymentStep() {
               <Elements
                 stripe={stripePromise}
                 options={{ clientSecret, appearance: STRIPE_APPEARANCE }}
+                key={clientSecret}
               >
                 <StripePaymentForm
                   clientSecret={clientSecret}
@@ -789,7 +790,6 @@ function StripePaymentForm({
 
       const returnUrl = `${window.location.origin}/register/payment-complete`;
 
-      // Suppress "Leave site?" dialog during redirect (Amazon Pay, etc.)
       suppressUnloadWarning.current = true;
       if (beforeUnloadHandlerRef.current) {
         window.removeEventListener("beforeunload", beforeUnloadHandlerRef.current);
@@ -810,7 +810,6 @@ function StripePaymentForm({
         redirect: "if_required",
       });
 
-      // If confirmPayment returned (no redirect, e.g. card), restore warnings
       suppressUnloadWarning.current = false;
       if (beforeUnloadHandlerRef.current) {
         window.addEventListener("beforeunload", beforeUnloadHandlerRef.current);
@@ -914,7 +913,7 @@ function StripePaymentForm({
         <Separator className="flex-1" />
       </div>
 
-      {/* PaymentElement — card, bank, etc. (wallets handled by ExpressCheckoutElement above) */}
+      {/* PaymentElement — card only (wallets handled by ExpressCheckoutElement above) */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">

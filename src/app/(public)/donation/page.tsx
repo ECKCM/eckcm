@@ -385,6 +385,7 @@ export default function DonationPage() {
                   clientSecret,
                   appearance: STRIPE_APPEARANCE,
                 }}
+                key={clientSecret}
               >
                 <DonationCheckoutForm
                   donationId={donationId!}
