@@ -184,15 +184,17 @@ export async function POST(request: Request) {
       const existing = await stripe.paymentIntents.retrieve(
         existingPayment.stripe_payment_intent_id
       );
+      const hasPmc =
+        (existing as unknown as Record<string, unknown>).payment_method_configuration_details;
       if (
-        existing.status === "requires_payment_method" ||
-        existing.status === "requires_confirmation" ||
-        existing.status === "requires_action"
+        (existing.status === "requires_payment_method" ||
+          existing.status === "requires_confirmation" ||
+          existing.status === "requires_action") &&
+        hasPmc
       ) {
-        // Update amount & allowed payment methods in case config changed
+        // Reuse only if PI already has PMC set (card-only)
         const updated = await stripe.paymentIntents.update(existing.id, {
           amount: chargeAmount,
-          payment_method_types: ["card"],
         });
         return NextResponse.json({
           clientSecret: updated.client_secret,
@@ -208,6 +210,15 @@ export async function POST(request: Request) {
           publishableKey,
         });
       }
+      // Old PI without card-only PMC — cancel and recreate
+      if (existing.status !== "succeeded" && existing.status !== "canceled") {
+        await stripe.paymentIntents.cancel(existing.id).catch(() => {});
+      }
+      await admin
+        .from("eckcm_payments")
+        .update({ status: "FAILED" })
+        .eq("stripe_payment_intent_id", existing.id)
+        .eq("status", "PENDING");
     } catch {
       // Existing intent invalid (e.g. test/live mode mismatch) — mark ALL pending
       // payments for this invoice as FAILED so none get reused
@@ -263,7 +274,9 @@ export async function POST(request: Request) {
       confirmationCode: registration.confirmation_code,
       coversFees: coversFees ? "true" : "false",
     },
-    payment_method_types: ["card"],
+    payment_method_configuration: stripeMode === "live"
+      ? "pmc_1TIYrzAHIcy4RD4RUlTrBtlE"
+      : "pmc_1TIYtSAHIcy4RD4R0iMHaWJu",
   });
 
   // Create pending payment record

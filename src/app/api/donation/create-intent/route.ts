@@ -122,7 +122,9 @@ export async function POST(request: Request) {
         coversFees: coversFees ? "true" : "false",
         ...(departmentName ? { department: departmentName } : {}),
       },
-      payment_method_types: ["card"],
+      payment_method_configuration: stripeMode === "live"
+        ? "pmc_1TIYrzAHIcy4RD4RUlTrBtlE"
+        : "pmc_1TIYtSAHIcy4RD4R0iMHaWJu",
     });
 
     // Update donation with Stripe PI ID
