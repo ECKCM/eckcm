@@ -1429,7 +1429,7 @@ export default function ParticipantsStep() {
                             <>
                               <Label className="text-xs">{t("profile.email")} <span className="text-destructive">*</span></Label>
                               {state.registrationType === "others" && p.isRepresentative && (
-                                <p className="text-xs text-muted-foreground">You may change this to the email of the person you are registering on behalf of.</p>
+                                <p className="text-xs text-muted-foreground">{t("profile.emailHintOthers")}</p>
                               )}
                               <Input
                                 type="email"

@@ -16,6 +16,7 @@ export default async function RegistrationsPage() {
       id,
       confirmation_code,
       status,
+      registration_type,
       start_date,
       end_date,
       nights_count,

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Mail, MessageSquare, Copy, Check } from "lucide-react";
+import { ArrowLeft, Mail, MessageSquare, Copy, Check, Info } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -158,6 +158,15 @@ export function SupportContent({ isLoggedIn }: { isLoggedIn: boolean }) {
           <AccordionContent>{t("support.faqCancelAnswer")}</AccordionContent>
         </AccordionItem>
       </Accordion>
+
+      <div className="mt-8 flex justify-center">
+        <Button variant="outline" asChild>
+          <Link href="/about">
+            <Info className="mr-2 h-4 w-4" />
+            {t("support.aboutCredits")}
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }

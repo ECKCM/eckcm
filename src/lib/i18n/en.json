@@ -123,6 +123,7 @@
     "makeDonation": "Make a donation",
     "support": "Support",
     "getHelp": "Get help",
+    "about": "About",
     "registerForOthersTitle": "Registering for Someone Else",
     "registerForOthersDesc": "You are about to register on behalf of another person or group. The registration will be linked to your account.",
     "signedInAs": "Signed in as {name} ({email})",
@@ -432,6 +433,7 @@
     "yearLabel": "Year",
     "age": "Age",
     "email": "Email",
+    "emailHintOthers": "You may change this to the email of the person you are registering on behalf of.",
     "selectChurch": "Select church",
     "noChurchFound": "No church found."
   },
@@ -469,7 +471,9 @@
   },
   "registrations": {
     "title": "Registrations",
-    "noRegistrations": "No registrations yet."
+    "noRegistrations": "No registrations yet.",
+    "myRegistration": "My Registration ({count})",
+    "registeredForOthers": "Registered for Others ({count})"
   },
   "receipts": {
     "title": "Receipts",
@@ -559,7 +563,17 @@
     "contactUs": "Contact Us",
     "email": "Email",
     "generalInquiries": "General Inquiries",
-    "generalInquiriesDesc": "For general questions, please email us and we will respond as soon as possible."
+    "generalInquiriesDesc": "For general questions, please email us and we will respond as soon as possible.",
+    "aboutTitle": "About my ECKCM",
+    "aboutDescription": "Meet the team behind this application.",
+    "aboutRole": "Role",
+    "aboutChurch": "Church",
+    "aboutPO": "PO, Lead Developer",
+    "aboutPM": "PM, QA Lead",
+    "aboutAdvisor": "Executive Advisor",
+    "aboutQA": "QA Tester",
+    "aboutSoliDeoGloria": "Soli Deo Gloria — To God alone be the glory.",
+    "aboutCredits": "Credits"
   },
   "settings": {
     "title": "Settings",
