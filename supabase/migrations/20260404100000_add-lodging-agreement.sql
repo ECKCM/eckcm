@@ -1,0 +1,6 @@
+-- Lodging agreement per fee category
+-- No schema changes needed. Agreement data is stored in existing
+-- eckcm_fee_categories.metadata JSONB column:
+--   metadata.show_agreement (boolean) - whether to show agreement on Step 4
+--   metadata.agreement_en (string)    - English agreement content (Markdown)
+--   metadata.agreement_ko (string)    - Korean agreement content (Markdown)

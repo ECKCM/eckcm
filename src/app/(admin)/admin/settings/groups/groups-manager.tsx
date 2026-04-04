@@ -69,6 +69,7 @@ interface RegistrationGroup {
   allow_add_members: boolean;
   show_special_preferences: boolean;
   show_key_deposit: boolean;
+
   show_tshirt_size: boolean;
   require_tshirt_size: boolean;
   only_one_person: boolean;
@@ -107,6 +108,7 @@ const emptyForm = {
   allow_add_members: true,
   show_special_preferences: true,
   show_key_deposit: true,
+
   show_tshirt_size: false,
   require_tshirt_size: false,
   only_one_person: false,

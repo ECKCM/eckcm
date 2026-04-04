@@ -15,6 +15,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MarkdownRenderer } from "@/components/shared/markdown-renderer";
 import { toast } from "sonner";
 import { Info } from "lucide-react";
 import { calculateAge } from "@/lib/utils/validators";
@@ -27,18 +29,21 @@ interface LodgingOption {
   pricing_type: string;
   amount_cents: number;
   min_nights: number | null;
+  metadata: Record<string, unknown> | null;
 }
 
 export default function LodgingStep() {
   const router = useRouter();
   const { eventId } = useParams<{ eventId: string }>();
   const { state, dispatch } = useRegistration();
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [lodgingOptions, setLodgingOptions] = useState<LodgingOption[]>([]);
   const [hasExtraFee, setHasExtraFee] = useState(false);
   const [extraFeeAmount, setExtraFeeAmount] = useState(0);
   const [showSpecialPreferences, setShowSpecialPreferences] = useState(true);
   const [showKeyDeposit, setShowKeyDeposit] = useState(true);
+  // Per-group agreement consent: keyed by room group index
+  const [agreedMap, setAgreedMap] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [inventoryMap, setInventoryMap] = useState<
     Record<string, { available: number; is_force_stopped: boolean }>
@@ -64,7 +69,7 @@ export default function LodgingStep() {
 
       const { data, error } = await supabase
         .from("eckcm_registration_group_fee_categories")
-        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, min_nights, is_active)")
+        .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, min_nights, is_active, metadata)")
         .eq("registration_group_id", state.registrationGroupId!)
         .like("eckcm_fee_categories.code", "LODGING_%")
         .eq("eckcm_fee_categories.is_active", true);
@@ -139,6 +144,8 @@ export default function LodgingStep() {
   const selectLodging = (groupIndex: number, code: string) => {
     const group = { ...state.roomGroups[groupIndex], lodgingType: code };
     dispatch({ type: "UPDATE_ROOM_GROUP", index: groupIndex, group });
+    // Reset agreement consent when switching lodging type
+    setAgreedMap((prev) => ({ ...prev, [groupIndex]: false }));
   };
 
   const updatePreference = (
@@ -155,6 +162,23 @@ export default function LodgingStep() {
     return `$${(cents / 100).toFixed(0)}`;
   };
 
+  // Helper: get agreement content for a lodging code
+  const getAgreement = (code: string | undefined): string | null => {
+    if (!code) return null;
+    const option = lodgingOptions.find((o) => o.code === code);
+    if (!option?.metadata?.show_agreement) return null;
+    const text = locale === "ko"
+      ? (option.metadata.agreement_ko as string)
+      : (option.metadata.agreement_en as string);
+    return text || null;
+  };
+
+  // Check if all room groups with agreements have been agreed to
+  const allAgreementsAccepted = state.roomGroups.every((group, gi) => {
+    const agreement = getAgreement(group.lodgingType);
+    return !agreement || agreedMap[gi];
+  });
+
   const handleNext = () => {
     // Validate: each room group must have a lodging type selected
     for (let i = 0; i < state.roomGroups.length; i++) {
@@ -162,6 +186,12 @@ export default function LodgingStep() {
         toast.error(t("registration.selectRoomType", { group: state.roomGroups.length > 1 ? ` ${i + 1}` : "" }));
         return;
       }
+    }
+
+    // Validate: lodging agreements must be accepted
+    if (!allAgreementsAccepted) {
+      toast.error(t("registration.lodgingAgreementRequired"));
+      return;
     }
 
     if (showKeyDeposit) {
@@ -321,6 +351,32 @@ export default function LodgingStep() {
                 );
               })()}
 
+              {/* Per-lodging Agreement */}
+              {(() => {
+                const agreement = getAgreement(group.lodgingType);
+                if (!agreement) return null;
+                return (
+                  <div className="space-y-3 pt-2 border-t">
+                    <p className="text-sm font-semibold">{t("registration.lodgingAgreementTitle")}</p>
+                    <div className="prose prose-sm dark:prose-invert max-w-none rounded-md p-3">
+                      <MarkdownRenderer content={agreement} />
+                    </div>
+                    <div className="flex items-center gap-3 rounded-lg border p-3">
+                      <Checkbox
+                        id={`agree-lodging-${gi}`}
+                        checked={agreedMap[gi] ?? false}
+                        onCheckedChange={(v) =>
+                          setAgreedMap((prev) => ({ ...prev, [gi]: v === true }))
+                        }
+                      />
+                      <Label htmlFor={`agree-lodging-${gi}`} className="cursor-pointer text-sm">
+                        {t("registration.lodgingAgreementCheck")}
+                      </Label>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Special Preferences */}
               {showSpecialPreferences && (
                 <div className="space-y-3 pt-2 border-t">
@@ -364,7 +420,7 @@ export default function LodgingStep() {
         >
           {t("common.back")}
         </Button>
-        <Button onClick={handleNext}>
+        <Button onClick={handleNext} disabled={!allAgreementsAccepted}>
           {showKeyDeposit ? t("registration.nextKeyDeposit") : t("registration.nextAirportPickup")}
         </Button>
       </div>
