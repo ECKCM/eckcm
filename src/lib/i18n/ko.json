@@ -469,7 +469,9 @@
   },
   "registrations": {
     "title": "등록 내역",
-    "noRegistrations": "등록 내역이 없습니다."
+    "noRegistrations": "등록 내역이 없습니다.",
+    "myRegistration": "내 등록 ({count})",
+    "registeredForOthers": "대리 등록 ({count})"
   },
   "receipts": {
     "title": "영수증",

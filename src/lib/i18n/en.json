@@ -469,7 +469,9 @@
   },
   "registrations": {
     "title": "Registrations",
-    "noRegistrations": "No registrations yet."
+    "noRegistrations": "No registrations yet.",
+    "myRegistration": "My Registration ({count})",
+    "registeredForOthers": "Registered for Others ({count})"
   },
   "receipts": {
     "title": "Receipts",
