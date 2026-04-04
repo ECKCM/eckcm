@@ -78,7 +78,7 @@ const emptyForm = {
 };
 
 function formatCents(cents: number): string {
-  return `$${(Math.abs(cents) / 100).toFixed(2)}`;
+  return `$${(Math.abs(cents) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /** Format date string (YYYY-MM-DD or ISO) as "MM. DD. YYYY" */

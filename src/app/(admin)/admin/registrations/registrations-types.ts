@@ -92,7 +92,7 @@ export const paymentStatusVariant: Record<string, "default" | "secondary" | "des
 };
 
 export function formatMoney(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
+  return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function formatTimestamp(ts: string) {
