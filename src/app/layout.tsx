@@ -92,7 +92,7 @@ export default async function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
-          enableSystem
+          forcedTheme="light"
           disableTransitionOnChange
         >
           <ColorThemeProvider initialTheme={colorTheme}>

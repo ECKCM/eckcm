@@ -16,7 +16,7 @@ export function Toolbar() {
   return (
     <div className="flex items-center gap-1">
       <LanguageSwitcher />
-      <ThemeToggle />
+      {/* <ThemeToggle /> — temporarily hidden (dark mode disabled) */}
     </div>
   );
 }
