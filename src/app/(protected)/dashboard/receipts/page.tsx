@@ -17,7 +17,8 @@ export default async function ReceiptsPage() {
   const { data: registrations } = await admin
     .from("eckcm_registrations")
     .select("id")
-    .eq("created_by_user_id", user.id);
+    .eq("created_by_user_id", user.id)
+    .neq("status", "DRAFT");
 
   const regIds = registrations?.map((r) => r.id) ?? [];
 
