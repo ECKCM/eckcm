@@ -35,6 +35,7 @@ import {
   QrCode,
   ClipboardList,
   Menu,
+  Info,
 } from "lucide-react";
 
 interface TopHeaderProps {
@@ -146,6 +147,14 @@ export function TopHeader({
               >
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
+              </Button>
+              <Button
+                variant="ghost"
+                className="justify-start"
+                onClick={() => navigateMobile("/about")}
+              >
+                <Info className="mr-2 h-4 w-4" />
+                About App
               </Button>
               {isAdmin && (
                 <Button
@@ -285,6 +294,12 @@ export function TopHeader({
                 >
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => router.push("/about")}
+                >
+                  <Info className="mr-2 h-4 w-4" />
+                  About App
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               {isAdmin && (
