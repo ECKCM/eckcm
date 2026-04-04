@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  const { registrationId } = parsed.data;
+  const { registrationId, zellePayerName, zellePayerPhone, zellePayerEmail } = parsed.data;
 
   const admin = createAdminClient();
 
@@ -253,7 +253,12 @@ export async function POST(request: Request) {
   // Send email with Zelle payment instructions (non-blocking — runs after response to avoid timeout)
   after(async () => {
     try {
-      await sendConfirmationEmail(registrationId, null, { paymentMethod: "ZELLE" });
+      await sendConfirmationEmail(registrationId, null, {
+        paymentMethod: "ZELLE",
+        zellePayerName,
+        zellePayerPhone,
+        zellePayerEmail,
+      });
     } catch (err) {
       logger.error("[payment/zelle-submit] Failed to send Zelle instructions email", { error: String(err) });
     }

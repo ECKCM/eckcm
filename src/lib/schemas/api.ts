@@ -136,6 +136,9 @@ export const confirmPaymentSchema = z.object({
 
 export const zelleSubmitSchema = z.object({
   registrationId: uuid,
+  zellePayerName: z.string().min(1).optional(),
+  zellePayerPhone: z.string().min(1).optional(),
+  zellePayerEmail: z.string().min(1).optional(),
 });
 
 export const emailConfirmationSchema = z.object({
