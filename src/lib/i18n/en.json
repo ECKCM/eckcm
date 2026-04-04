@@ -433,6 +433,7 @@
     "yearLabel": "Year",
     "age": "Age",
     "email": "Email",
+    "emailHintOthers": "You may change this to the email of the person you are registering on behalf of.",
     "selectChurch": "Select church",
     "noChurchFound": "No church found."
   },
