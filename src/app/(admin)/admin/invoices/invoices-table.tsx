@@ -64,13 +64,10 @@ interface InvoiceRow {
   registration_id: string | null;
 }
 
-const PAGE_SIZE = 7;
-
 export function InvoicesTable({ events }: { events: Event[] }) {
   const [mounted, setMounted] = useState(false);
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(0);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -267,7 +264,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
         <Input
           placeholder="Search invoice#, code, email..."
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+          onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
         />
       </div>
@@ -298,7 +295,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((inv) => (
+                {sorted.map((inv) => (
                   <TableRow key={inv.id}>
                     <TableCell className="font-mono text-sm">
                       {inv.invoice_number}
@@ -399,15 +396,6 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                 )}
               </TableBody>
             </Table>
-            {sorted.length > PAGE_SIZE && (
-              <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-                <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sorted.length)} of {sorted.length}</span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-                  <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= sorted.length} onClick={() => setPage((p) => p + 1)}>Next</Button>
-                </div>
-              </div>
-            )}
             </>
           )}
         </CardContent>

@@ -938,10 +938,7 @@ function StripePaymentForm({
                 radios: true,
                 spacedAccordionItems: true,
               },
-              paymentMethodOrder: [
-                "card",
-                "amazon_pay",
-              ],
+              paymentMethodOrder: ["card"],
               wallets: { applePay: "never", googlePay: "never" },
             }}
           />
@@ -1016,6 +1013,14 @@ function ManualPaymentForm({
   const { t } = useI18n();
   const [agreed, setAgreed] = useState(false);
 
+  /* ---- Zelle payer info (memo generator) ---- */
+  const [zellePayerName, setZellePayerName] = useState(registrantName);
+  const [zellePayerPhone, setZellePayerPhone] = useState(registrantPhone.replace(/\D/g, ""));
+  const [zellePayerEmail, setZellePayerEmail] = useState(registrantEmail);
+
+  const zellePayerValid = zellePayerName.trim() !== "" && zellePayerPhone.replace(/\D/g, "") !== "" && zellePayerEmail.trim() !== "";
+  const zelleMemo = `${confirmationCode}-${zellePayerName.replace(/\s+/g, "").toUpperCase()}-${zellePayerPhone.replace(/\D/g, "")}-${zellePayerEmail.replace(/[@.]/g, "").toLowerCase()}`;
+
   const handleMethodChange = (method: "zelle" | "check") => {
     setAgreed(false);
     setPayMode(method);
@@ -1032,7 +1037,14 @@ function ManualPaymentForm({
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ registrationId }),
+        body: JSON.stringify({
+          registrationId,
+          ...(payMode === "zelle" && {
+            zellePayerName: zellePayerName.trim(),
+            zellePayerPhone: zellePayerPhone.replace(/\D/g, ""),
+            zellePayerEmail: zellePayerEmail.trim(),
+          }),
+        }),
       });
 
       if (!res.ok) {
@@ -1082,6 +1094,23 @@ function ManualPaymentForm({
             </button>
             {payMode === "zelle" && (
               <div className="border-t px-4 pb-4 pt-3 space-y-3 bg-muted/20">
+                {/* Critical warning: must click button AFTER Zelle send */}
+                <div className="flex gap-2 rounded-lg border-2 border-red-400 bg-red-50 p-3 text-sm text-red-900">
+                  <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-red-600" />
+                  <div>
+                    <p className="font-bold">{t("payment.zelleFlowWarningTitle")}</p>
+                    <p className="mt-1 text-red-800">
+                      {t("payment.zelleFlowWarning1")}
+                    </p>
+                    <p className="mt-1 font-semibold text-red-900">
+                      {t("payment.zelleFlowWarning2")}
+                    </p>
+                    <p className="mt-1.5 text-xs text-red-700">
+                      {t("payment.zelleFlowWarning3")}
+                    </p>
+                  </div>
+                </div>
+
                 <div className="flex items-start gap-2">
                   <Clock className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
                   <p className="text-sm text-purple-800">
@@ -1096,14 +1125,63 @@ function ManualPaymentForm({
                   </p>
                   <p>{t("payment.zelleStep3")}</p>
                   <p>{t("payment.zelleStep4")} <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong></p>
-                  <div className="space-y-1">
-                    <p className="flex items-center gap-1 flex-wrap">
-                      <span>{t("payment.zelleStep5")}</span>
-                    </p>
-                    <div className="pl-5">
-                      <CopyButton text={`${confirmationCode}-${registrantName.replace(/\s+/g, "")}-${registrantPhone.replace(/\D/g, "")}-${registrantEmail.replace(/[@.]/g, "")}`} />
+
+                  {/* Zelle Memo Generator */}
+                  <div className="space-y-2">
+                    <p className="font-semibold">{t("payment.zelleStep5")}</p>
+
+                    {/* Payer info section */}
+                    <div className="rounded-lg border border-purple-200 bg-purple-50/50 p-3 space-y-2">
+                      <p className="text-xs font-semibold text-purple-800 flex items-center gap-1">
+                        <ZelleIcon className="h-3.5 w-3.5 shrink-0" />
+                        {t("payment.zellePayerInfo")}
+                      </p>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-xs font-medium text-purple-800">{t("payment.zellePayerName")}</label>
+                          <input
+                            type="text"
+                            value={zellePayerName}
+                            onChange={(e) => setZellePayerName(e.target.value)}
+                            className={`mt-0.5 w-full rounded-md border bg-white px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 ${
+                              zellePayerName.trim() === "" ? "border-red-400 focus:border-red-500 focus:ring-red-500" : "border-purple-300 focus:border-purple-500 focus:ring-purple-500"
+                            }`}
+                          />
+                          {zellePayerName.trim() === "" && <p className="text-xs text-red-500 mt-0.5">{t("payment.zellePayerRequired")}</p>}
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-purple-800">{t("payment.zellePayerPhone")}</label>
+                          <input
+                            type="tel"
+                            value={zellePayerPhone}
+                            onChange={(e) => setZellePayerPhone(e.target.value.replace(/\D/g, ""))}
+                            placeholder="19519661889"
+                            className={`mt-0.5 w-full rounded-md border bg-white px-2.5 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 ${
+                              zellePayerPhone.replace(/\D/g, "") === "" ? "border-red-400 focus:border-red-500 focus:ring-red-500" : "border-purple-300 focus:border-purple-500 focus:ring-purple-500"
+                            }`}
+                          />
+                          {zellePayerPhone.replace(/\D/g, "") === "" && <p className="text-xs text-red-500 mt-0.5">{t("payment.zellePayerRequired")}</p>}
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-purple-800">{t("payment.zellePayerEmail")}</label>
+                          <input
+                            type="email"
+                            value={zellePayerEmail}
+                            onChange={(e) => setZellePayerEmail(e.target.value)}
+                            className={`mt-0.5 w-full rounded-md border bg-white px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 ${
+                              zellePayerEmail.trim() === "" ? "border-red-400 focus:border-red-500 focus:ring-red-500" : "border-purple-300 focus:border-purple-500 focus:ring-purple-500"
+                            }`}
+                          />
+                          {zellePayerEmail.trim() === "" && <p className="text-xs text-red-500 mt-0.5">{t("payment.zellePayerRequired")}</p>}
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs text-purple-700 pl-5">
+
+                    {/* Generated memo with copy button */}
+                    <div className="pl-1">
+                      <CopyButton text={zelleMemo} />
+                    </div>
+                    <p className="text-xs text-purple-700 pl-1">
                       {t("payment.zelleMemoHint")}
                     </p>
                   </div>
@@ -1177,20 +1255,21 @@ function ManualPaymentForm({
               className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300"
             />
             <span className="text-sm">
-              {payMode === "check" ? (
-                <>
-                  I agree to mail a check for{" "}
-                  <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong>{" "}
-                  payable to ECKCM with confirmation code{" "}
-                  <strong>{confirmationCode}</strong> on the memo line.
-                </>
-              ) : (
-                <>
-                  I agree to send the Zelle payment of{" "}
-                  <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong>{" "}
-                  with the memo/note shown above.
-                </>
-              )}
+              {(() => {
+                const amt = `$${(manualAmount / 100).toFixed(2)}`;
+                const text = payMode === "check"
+                  ? t("payment.checkAgree", { amount: amt, code: confirmationCode })
+                  : t("payment.zelleAgree", { amount: amt });
+                const idx = text.indexOf(amt);
+                if (idx === -1) return text;
+                return (
+                  <>
+                    {text.slice(0, idx)}
+                    <strong className="font-mono">{amt}</strong>
+                    {text.slice(idx + amt.length)}
+                  </>
+                );
+              })()}
             </span>
           </label>
         </CardContent>
@@ -1199,7 +1278,7 @@ function ManualPaymentForm({
       {/* Submit button */}
       <Button
         type="submit"
-        disabled={!agreed || processing}
+        disabled={!agreed || processing || (payMode === "zelle" && !zellePayerValid)}
         className="w-full"
         size="lg"
       >

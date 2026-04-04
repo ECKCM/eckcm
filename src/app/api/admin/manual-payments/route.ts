@@ -84,13 +84,13 @@ export async function PATCH(request: Request) {
   const { user } = auth;
 
   const body = await request.json();
-  const { id, status, registration_code, first_name, last_name, amount_cents, date_received, note } = body;
+  const { id, status, registration_code, first_name, last_name, amount_cents, date_received, note, refund_amount_cents } = body;
 
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
-  if (status && !["received", "updated", "refunded"].includes(status)) {
+  if (status && !["received", "updated", "refunded", "partially_refunded"].includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
@@ -114,7 +114,30 @@ export async function PATCH(request: Request) {
   const updatePayload: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
-  if (status !== undefined) updatePayload.status = status;
+
+  // Handle partial/full refund
+  if (refund_amount_cents !== undefined) {
+    if (typeof refund_amount_cents !== "number" || refund_amount_cents <= 0) {
+      return NextResponse.json({ error: "Refund amount must be positive" }, { status: 400 });
+    }
+
+    const alreadyRefunded = old.refunded_cents ?? 0;
+    const remaining = old.amount_cents - alreadyRefunded;
+
+    if (refund_amount_cents > remaining) {
+      return NextResponse.json(
+        { error: `Refund amount ($${(refund_amount_cents / 100).toFixed(2)}) exceeds remaining balance ($${(remaining / 100).toFixed(2)})` },
+        { status: 400 }
+      );
+    }
+
+    const newRefundedTotal = alreadyRefunded + refund_amount_cents;
+    updatePayload.refunded_cents = newRefundedTotal;
+    updatePayload.status = newRefundedTotal >= old.amount_cents ? "refunded" : "partially_refunded";
+  } else {
+    if (status !== undefined) updatePayload.status = status;
+  }
+
   if (registration_code !== undefined) updatePayload.registration_code = registration_code;
   if (first_name !== undefined) updatePayload.first_name = first_name;
   if (last_name !== undefined) updatePayload.last_name = last_name;
@@ -133,11 +156,13 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const action = status === "refunded"
+  const action = refund_amount_cents !== undefined
     ? "MANUAL_PAYMENT_REFUND"
-    : status
-      ? "MANUAL_PAYMENT_STATUS"
-      : "MANUAL_PAYMENT_EDIT";
+    : status === "refunded"
+      ? "MANUAL_PAYMENT_REFUND"
+      : status
+        ? "MANUAL_PAYMENT_STATUS"
+        : "MANUAL_PAYMENT_EDIT";
 
   await admin.from("eckcm_audit_logs").insert({
     user_id: user.id,

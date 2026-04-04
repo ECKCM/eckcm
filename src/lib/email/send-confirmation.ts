@@ -15,6 +15,10 @@ export async function sendConfirmationEmail(
     paymentMethod?: string;
     /** Control which PDFs to attach: 'both' (default for Stripe paid), 'invoice-only' (pending), 'receipt-only' (manual payment confirmed) */
     pdfMode?: "both" | "invoice-only" | "receipt-only";
+    /** Zelle payer info for memo generation (if different from registrant) */
+    zellePayerName?: string;
+    zellePayerPhone?: string;
+    zellePayerEmail?: string;
   }
 ): Promise<void> {
   const admin = createAdminClient();
@@ -205,11 +209,15 @@ export async function sendConfirmationEmail(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const firstMember = (membershipsResult.data ?? [])[0] as any;
   const registrantPhone = firstMember?.eckcm_people?.phone?.replace(/\D/g, "") || "";
+  const zellePayerName = options?.zellePayerName
+    || `${firstMember?.eckcm_people?.first_name_en || ""}${firstMember?.eckcm_people?.last_name_en || ""}`;
+  const zellePayerPhone = options?.zellePayerPhone || registrantPhone;
+  const zellePayerEmail = options?.zellePayerEmail || user.email;
   const zelleInfo = isZellePending
     ? {
         zelleEmail: emailConfig.zelleEmail ?? "",
         accountHolder: emailConfig.zelleAccountHolder ?? "",
-        memo: `${reg.confirmation_code}-${firstMember?.eckcm_people?.first_name_en || ""}${firstMember?.eckcm_people?.last_name_en || ""}-${registrantPhone}-${user.email.replace(/[@.]/g, "")}`,
+        memo: `${reg.confirmation_code}-${zellePayerName.replace(/\s+/g, "").toUpperCase()}-${zellePayerPhone.replace(/\D/g, "")}-${zellePayerEmail.replace(/[@.]/g, "").toLowerCase()}`,
       }
     : null;
 
