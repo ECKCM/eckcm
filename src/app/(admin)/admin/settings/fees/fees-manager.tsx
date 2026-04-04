@@ -37,6 +37,7 @@ import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 type FeeTab = "all" | "GENERAL" | "LODGING" | "MEALS" | "FUNDING";
 
@@ -85,6 +86,10 @@ const emptyForm = {
   funding_group_id: "",
   sponsor_name: "",
   sponsor_contact: "",
+  // Lodging agreement fields (stored in metadata)
+  show_agreement: false,
+  agreement_en: "",
+  agreement_ko: "",
 };
 
 export function FeeCategoriesManager() {
@@ -98,6 +103,7 @@ export function FeeCategoriesManager() {
   const [form, setForm] = useState(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [registrationGroups, setRegistrationGroups] = useState<RegistrationGroup[]>([]);
+  const [agreementLang, setAgreementLang] = useState<"en" | "ko">("en");
 
   const loadRegistrationGroups = useCallback(async () => {
     const supabase = createClient();
@@ -159,6 +165,9 @@ export function FeeCategoriesManager() {
       funding_group_id: (fee.metadata?.registration_group_id as string) ?? "",
       sponsor_name: (fee.metadata?.sponsor_name as string) ?? "",
       sponsor_contact: (fee.metadata?.sponsor_contact as string) ?? "",
+      show_agreement: (fee.metadata?.show_agreement as boolean) ?? false,
+      agreement_en: (fee.metadata?.agreement_en as string) ?? "",
+      agreement_ko: (fee.metadata?.agreement_ko as string) ?? "",
     });
     setDialogOpen(true);
   };
@@ -175,12 +184,19 @@ export function FeeCategoriesManager() {
     setSaving(true);
     const supabase = createClient();
 
-    // Build metadata — include funding fields when category is FUNDING
+    // Build metadata
     const metadata: Record<string, unknown> = {};
     if (form.category === "FUNDING") {
       metadata.registration_group_id = form.funding_group_id;
       if (form.sponsor_name) metadata.sponsor_name = form.sponsor_name;
       if (form.sponsor_contact) metadata.sponsor_contact = form.sponsor_contact;
+    }
+    if (form.category === "LODGING") {
+      metadata.show_agreement = form.show_agreement;
+      if (form.show_agreement) {
+        metadata.agreement_en = form.agreement_en;
+        metadata.agreement_ko = form.agreement_ko;
+      }
     }
 
     const payload = {
@@ -279,7 +295,7 @@ export function FeeCategoriesManager() {
               New Fee
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingId ? "Edit Fee Category" : "Create Fee Category"}
@@ -525,6 +541,64 @@ export function FeeCategoriesManager() {
                   <Label>Inventory Trackable</Label>
                 </div>
               </div>
+
+              {/* Lodging Agreement — per fee category */}
+              {form.category === "LODGING" && (
+                <div className="space-y-3 rounded-lg border p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-medium">Lodging Agreement</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Shown on Step 4 — users must agree before proceeding
+                      </p>
+                    </div>
+                    <Switch
+                      checked={form.show_agreement}
+                      onCheckedChange={(checked) =>
+                        setForm({ ...form, show_agreement: checked })
+                      }
+                    />
+                  </div>
+                  {form.show_agreement && (
+                    <div className="space-y-2">
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant={agreementLang === "en" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setAgreementLang("en")}
+                        >
+                          English
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={agreementLang === "ko" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setAgreementLang("ko")}
+                        >
+                          Korean
+                        </Button>
+                      </div>
+                      {agreementLang === "en" ? (
+                        <MarkdownEditor
+                          value={form.agreement_en}
+                          onChange={(val) => setForm({ ...form, agreement_en: val })}
+                          height={200}
+                          placeholder="Enter English lodging agreement (Markdown)..."
+                        />
+                      ) : (
+                        <MarkdownEditor
+                          value={form.agreement_ko}
+                          onChange={(val) => setForm({ ...form, agreement_ko: val })}
+                          height={200}
+                          placeholder="Korean 숙소 동의서 내용 입력 (Markdown)..."
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Button
                 onClick={handleSave}
                 className="w-full"
@@ -614,6 +688,9 @@ export function FeeCategoriesManager() {
                       </Badge>
                       {fee.is_inventory_trackable && (
                         <Badge variant="outline">Inv</Badge>
+                      )}
+                      {fee.metadata?.show_agreement === true && (
+                        <Badge variant="outline">Agreement</Badge>
                       )}
                     </div>
                   </TableCell>
