@@ -1,9 +1,15 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
-import { BedDouble, Clock, CheckCircle, Building2 } from "lucide-react";
+import { BedDouble, Clock, CheckCircle, Building2, Hotel } from "lucide-react";
 
 const lodgingCards = [
+  {
+    href: "/admin/lodging/upj-rooms",
+    label: "UPJ Lodging Rooms",
+    icon: Hotel,
+    description: "View Event & Host lodging rooms with assignments and export to Excel",
+  },
   {
     href: "/admin/lodging/buildings",
     label: "Buildings & Rooms",
