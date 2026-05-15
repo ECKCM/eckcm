@@ -1346,6 +1346,11 @@ export default function ParticipantsStep() {
                         {p.isK12 && (
                           <div className="space-y-1">
                             <Label className="text-xs">{t("profile.grade")} <span className="text-destructive">*</span></Label>
+                            <p className="text-xs text-muted-foreground">
+                              {t("registration.gradeHintPrefix")}
+                              <strong className="font-semibold">{t("registration.gradeHintEmphasis")}</strong>
+                              {t("registration.gradeHintSuffix")}
+                            </p>
                             <Select
                               value={p.grade ?? ""}
                               onValueChange={(v) =>
