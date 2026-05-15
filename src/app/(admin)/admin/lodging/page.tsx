@@ -1,7 +1,7 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
-import { BedDouble, Clock, CheckCircle, Building2, Hotel } from "lucide-react";
+import { BedDouble, Clock, CheckCircle, Building2, Hotel, Map } from "lucide-react";
 
 const lodgingCards = [
   {
@@ -27,6 +27,12 @@ const lodgingCards = [
     label: "Assigned Rooms",
     icon: CheckCircle,
     description: "View current room assignments by building and floor",
+  },
+  {
+    href: "/admin/lodging/floorplan",
+    label: "Floor Plan Assignment",
+    icon: Map,
+    description: "Assign registrations directly from UPJ building floor plans",
   },
   {
     href: "/admin/settings/lodging",

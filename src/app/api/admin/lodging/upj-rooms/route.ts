@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
 import { ACTIVE_REGISTRATION_STATUSES } from "@/lib/utils/constants";
+import { parseAllBuildings } from "@/lib/services/upj-lodging";
 
 /**
  * GET /api/admin/lodging/upj-rooms
@@ -45,6 +46,31 @@ export async function GET() {
     categoryNames.set(fc.code, fc.name_en);
   }
 
+  const upjRoomMeta = new Map<
+    string,
+    {
+      type: string;
+      hostCapacity: number;
+      eventCapacity: number;
+      note: string;
+      isAvailable: boolean;
+    }
+  >();
+  try {
+    const parsedRooms = await parseAllBuildings();
+    for (const room of parsedRooms) {
+      upjRoomMeta.set(room.roomNumber, {
+        type: room.type,
+        hostCapacity: room.hostCapacity,
+        eventCapacity: room.eventCapacity,
+        note: room.note,
+        isAvailable: room.isAvailable,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to parse UPJ room metadata", error);
+  }
+
   // 2. Fetch room assignments with group + participant data
   const roomIds = roomsRaw.map((r: { id: string }) => r.id);
 
@@ -57,9 +83,8 @@ export async function GET() {
         id, room_id, group_id,
         eckcm_groups!inner(
           display_group_code,
-          eckcm_registrations!inner(start_date, end_date, status),
+          eckcm_registrations!inner(id, confirmation_code, start_date, end_date, status, notes, additional_requests),
           eckcm_group_memberships(
-            sort_order,
             eckcm_people(first_name_en, last_name_en, display_name_ko)
           )
         )
@@ -69,13 +94,17 @@ export async function GET() {
     assignmentsRaw = data ?? [];
   }
 
-  // Build assignment map: room_id → { groupCode, participants }
+  // Build assignment map: room_id → assignments. A room can hold multiple groups.
   const assignmentMap = new Map<string, {
     assignmentId: string;
     groupId: string;
     groupCode: string;
+    registrationId: string;
+    confirmationCode: string;
+    notes: string | null;
+    additionalRequests: string | null;
     participants: { firstName: string; lastName: string; displayNameKo: string | null; arrival: string | null; departure: string | null }[];
-  }>();
+  }[]>();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const a of assignmentsRaw as any[]) {
@@ -88,9 +117,7 @@ export async function GET() {
 
     const memberships = (group.eckcm_group_memberships ?? [])
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((m: any) => m.eckcm_people)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      .filter((m: any) => m.eckcm_people);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const participants = memberships.map((m: any) => ({
@@ -101,17 +128,18 @@ export async function GET() {
       departure: reg.end_date ?? null,
     }));
 
-    const existing = assignmentMap.get(a.room_id);
-    if (existing) {
-      existing.participants.push(...participants);
-    } else {
-      assignmentMap.set(a.room_id, {
-        assignmentId: a.id,
-        groupId: a.group_id,
-        groupCode: group.display_group_code ?? "",
-        participants,
-      });
-    }
+    const existing = assignmentMap.get(a.room_id) ?? [];
+    existing.push({
+      assignmentId: a.id,
+      groupId: a.group_id,
+      groupCode: group.display_group_code ?? "",
+      registrationId: reg.id ?? "",
+      confirmationCode: reg.confirmation_code ?? "",
+      notes: reg.notes ?? null,
+      additionalRequests: reg.additional_requests ?? null,
+      participants,
+    });
+    assignmentMap.set(a.room_id, existing);
   }
 
   // 3. Build response
@@ -121,9 +149,17 @@ export async function GET() {
     const building = floor?.eckcm_buildings;
     if (!building || !building.is_active) return null;
 
-    const assignment = assignmentMap.get(r.id);
+    const assignments = assignmentMap.get(r.id) ?? [];
+    const firstAssignment = assignments[0];
     const feeCode = r.fee_category_code ?? "";
-    const type = r.capacity <= 2 ? "Single" : "Double";
+    const meta = upjRoomMeta.get(r.room_number);
+    const type = meta?.type ?? (r.capacity <= 2 ? "Single" : "Double");
+    const participants = assignments.flatMap((assignment) => assignment.participants);
+    const notes = [
+      meta?.note ?? "",
+      r.is_accessible ? "ADA" : "",
+      !r.is_available || meta?.isAvailable === false ? "NOT AVAILABLE" : "",
+    ].filter(Boolean);
 
     return {
       dbRoomId: r.id,
@@ -134,21 +170,21 @@ export async function GET() {
       floorName: floor.name_en ?? `Floor ${floor.floor_number}`,
       type,
       capacity: r.capacity,
-      hostCapacity: type === "Double" ? 2 : 1,
-      eventCapacity: type === "Double" ? 6 : 2,
+      hostCapacity: meta?.hostCapacity ?? (type === "Double" ? 2 : 1),
+      eventCapacity: meta?.eventCapacity ?? (type === "Double" ? 6 : 2),
       hasAc: r.has_ac,
       isAccessible: r.is_accessible,
       isAvailable: r.is_available,
       lodgingCategory: feeCode,
       lodgingCategoryName: categoryNames.get(feeCode) ?? "",
-      note: [
-        r.is_accessible ? "ADA" : "",
-        !r.is_available ? "NOT AVAILABLE" : "",
-      ].filter(Boolean).join("; "),
-      assignmentId: assignment?.assignmentId ?? null,
-      groupId: assignment?.groupId ?? null,
-      groupCode: assignment?.groupCode ?? null,
-      participants: assignment?.participants ?? [],
+      note: Array.from(new Set(notes)).join("; "),
+      assignmentId: firstAssignment?.assignmentId ?? null,
+      groupId: firstAssignment?.groupId ?? null,
+      groupCode: assignments.length
+        ? assignments.map((assignment) => assignment.groupCode).filter(Boolean).join(", ")
+        : null,
+      participants,
+      assignments,
     };
   }).filter(Boolean);
 

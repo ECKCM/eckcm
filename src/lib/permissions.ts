@@ -32,6 +32,7 @@ const ROUTE_PERMISSIONS: [string, string][] = [
 
   // Lodging (specific before general)
   ["/admin/lodging/buildings", "lodging.manage"],
+  ["/admin/lodging/floorplan", "lodging.assign"],
   ["/admin/lodging/pending", "lodging.assign"],
   ["/admin/lodging/assigned", "lodging.read"],
   ["/admin/lodging", "lodging.read"],
