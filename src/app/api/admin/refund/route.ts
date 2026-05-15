@@ -6,6 +6,7 @@ import { getRefundSummary, createRefundWithGuard, RefundOverLimitError } from "@
 import { sendRefundEmail } from "@/lib/email/send-refund";
 import { logger } from "@/lib/logger";
 import { requireAdmin } from "@/lib/auth/admin";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface RefundBody {
   paymentId: string;
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
   if (refundAmount <= 0 || refundAmount > remainingCents) {
     return NextResponse.json(
       {
-        error: `Invalid refund amount. Remaining: $${(remainingCents / 100).toFixed(2)} (already refunded: $${(totalRefundedCents / 100).toFixed(2)} of $${(payment.amount_cents / 100).toFixed(2)})`,
+        error: `Invalid refund amount. Remaining: ${formatCurrency(remainingCents)} (already refunded: ${formatCurrency(totalRefundedCents)} of ${formatCurrency(payment.amount_cents)})`,
       },
       { status: 400 }
     );

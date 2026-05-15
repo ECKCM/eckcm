@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 /**
  * GET /api/admin/print/registrations?eventId=xxx&status=PAID
@@ -143,10 +144,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    const fmtCents = (c: number) =>
-      c < 0
-        ? `-$${(Math.abs(c) / 100).toFixed(2)}`
-        : `$${(c / 100).toFixed(2)}`;
+    const fmtCents = (c: number) => formatCurrency(c);
 
     const lineItems = inv
       ? (inv.eckcm_invoice_line_items ?? []).map(

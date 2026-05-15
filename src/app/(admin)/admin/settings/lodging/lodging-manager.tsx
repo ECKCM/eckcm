@@ -50,6 +50,7 @@ import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -647,7 +648,7 @@ export function LodgingManager() {
                                   </TableCell>
                                   <TableCell>
                                     {room.fee_per_night_cents > 0
-                                      ? `$${centsToStr(room.fee_per_night_cents)}`
+                                      ? formatCurrency(room.fee_per_night_cents)
                                       : "-"}
                                   </TableCell>
                                   <TableCell>

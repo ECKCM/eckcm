@@ -7,6 +7,7 @@ import { generateInvoicePdf } from "@/lib/pdf/generate";
 import { generateRegistrationSummaryPdf, type SummaryParticipant } from "@/lib/pdf/generate-summary";
 import { generateEPassToken } from "@/lib/services/epass.service";
 import { withTimeout } from "@/lib/utils/with-timeout";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 export async function sendConfirmationEmail(
   registrationId: string,
@@ -187,7 +188,7 @@ export async function sendConfirmationEmail(
   });
 
   const eventDates = `${reg.start_date} ~ ${reg.end_date}`;
-  const totalAmount = `$${(reg.total_amount_cents / 100).toFixed(2)}`;
+  const totalAmount = formatCurrency(reg.total_amount_cents);
 
   // Detect payment method: prefer explicit option, then DB lookup
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -237,7 +238,7 @@ export async function sendConfirmationEmail(
           invoiceNumber: invoiceData.invoice_number,
           lineItems: (invoiceData.eckcm_invoice_line_items ?? []).map(
             (li: { description_en: string; quantity: number; unit_price_cents: number; total_cents: number }) => {
-              const fmtCents = (c: number) => c < 0 ? `-$${(Math.abs(c) / 100).toFixed(2)}` : `$${(c / 100).toFixed(2)}`;
+              const fmtCents = (c: number) => formatCurrency(c);
               return {
                 description: li.description_en,
                 quantity: li.quantity,
@@ -246,8 +247,8 @@ export async function sendConfirmationEmail(
               };
             }
           ),
-          subtotal: `$${(invoiceData.total_cents / 100).toFixed(2)}`,
-          total: `$${(invoiceData.total_cents / 100).toFixed(2)}`,
+          subtotal: formatCurrency(invoiceData.total_cents),
+          total: formatCurrency(invoiceData.total_cents),
           paymentDate: invoiceData.paid_at
             ? new Date(invoiceData.paid_at).toLocaleDateString("en-US")
             : "-",

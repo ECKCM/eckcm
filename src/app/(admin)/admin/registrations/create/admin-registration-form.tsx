@@ -29,7 +29,7 @@ import {
   NAME_PATTERN,
 } from "@/lib/utils/field-helpers";
 import { calculateAge } from "@/lib/utils/validators";
-import { isK12ByBirthDate } from "@/lib/utils/formatters";
+import { isK12ByBirthDate, formatCurrency } from "@/lib/utils/formatters";
 
 interface EventOption {
   id: string;
@@ -558,7 +558,7 @@ export function AdminRegistrationForm() {
       }
 
       toast.success(
-        `Registration created! Code: ${data.confirmationCode} | Total: $${(data.total / 100).toFixed(2)}`
+        `Registration created! Code: ${data.confirmationCode} | Total: ${formatCurrency(data.total)}`
       );
       router.push("/admin/registrations");
     } catch {

@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 import { sanitizeEmailInput } from "@/lib/utils/field-helpers";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 const STRIPE_APPEARANCE = {
   theme: "stripe" as const,
@@ -163,7 +164,7 @@ export default function DonationPage() {
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
             <h2 className="text-2xl font-bold">{t("donation.thankYou")}</h2>
             <p className="text-muted-foreground">
-              {t("donation.donationReceivedAmount", { amount: `$${((amountCents ?? 0) / 100).toFixed(2)}` })}
+              {t("donation.donationReceivedAmount", { amount: formatCurrency(amountCents ?? 0) })}
             </p>
             <p className="text-sm text-muted-foreground">
               {t("donation.receiptSent")}
@@ -230,7 +231,7 @@ export default function DonationPage() {
                     onClick={() => handleAmountSelect(cents)}
                     className="text-sm"
                   >
-                    ${(cents / 100).toFixed(0)}
+                    {formatCurrency(cents, { decimals: 0 })}
                   </Button>
                 ))}
               </div>
@@ -351,7 +352,7 @@ export default function DonationPage() {
                 {t("donation.continueToPayment")}
                 {amountCents && amountCents >= 100 && (
                   <span className="ml-2">
-                    — ${(amountCents / 100).toFixed(2)}
+                    — {formatCurrency(amountCents)}
                   </span>
                 )}
               </>
@@ -369,12 +370,12 @@ export default function DonationPage() {
                   {t("donation.securePayment")}
                 </span>
                 <span className="text-2xl font-bold">
-                  ${(chargeAmount / 100).toFixed(2)}
+                  {formatCurrency(chargeAmount)}
                 </span>
               </CardTitle>
               {feeCents > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  {t("donation.includesFee", { amount: (feeCents / 100).toFixed(2) })}
+                  {t("donation.includesFee", { amount: (feeCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                 </p>
               )}
             </CardHeader>

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface AuditLogRow {
   id: string;
@@ -148,7 +149,7 @@ export function AuditLogsTable() {
 
     // Show key fields for common actions
     if (data.reason) parts.push(`reason: ${data.reason}`);
-    if (data.amount_cents != null) parts.push(`$${(Number(data.amount_cents) / 100).toFixed(2)}`);
+    if (data.amount_cents != null) parts.push(formatCurrency(Number(data.amount_cents)));
     if (data.status) parts.push(`status: ${data.status}`);
     if (data.payment_status) parts.push(`payment: ${data.payment_status}`);
     if (data.action_type) parts.push(`type: ${data.action_type}`);

@@ -112,7 +112,7 @@ export default function KeyDepositStep() {
             </div>
           ))}
           <p className="text-sm text-muted-foreground">
-            {t("registration.totalKeysDeposit", { keys: totalKeys, amount: (totalKeys * 65).toFixed(2) })}
+            {t("registration.totalKeysDeposit", { keys: totalKeys, amount: (totalKeys * 65).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
           </p>
         </CardContent>
       </Card>

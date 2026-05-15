@@ -6,6 +6,7 @@ import {
   generateRegistrationSummaryPdf,
   type RegistrationSummaryPdfData,
 } from "@/lib/pdf/generate-summary";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 /**
  * GET /api/admin/print/registrations/pdf?eventId=xxx&status=PAID
@@ -130,10 +131,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Build summary data for each registration
-  const fmtCents = (c: number) =>
-    c < 0
-      ? `-$${(Math.abs(c) / 100).toFixed(2)}`
-      : `$${(c / 100).toFixed(2)}`;
+  const fmtCents = (c: number) => formatCurrency(c);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const summaries: RegistrationSummaryPdfData[] = registrations.map((reg: any) => {

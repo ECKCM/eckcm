@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
 import { generateInvoicePdf } from "@/lib/pdf/generate";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 export async function GET(
   req: NextRequest,
@@ -105,8 +106,8 @@ export async function GET(
     (li: { description_en: string; quantity: number; unit_price_cents: number; total_cents: number }) => ({
       description: li.description_en,
       quantity: li.quantity,
-      unitPrice: `$${(li.unit_price_cents / 100).toFixed(2)}`,
-      amount: `$${(li.total_cents / 100).toFixed(2)}`,
+      unitPrice: formatCurrency(li.unit_price_cents),
+      amount: formatCurrency(li.total_cents),
     })
   );
 
@@ -123,8 +124,8 @@ export async function GET(
     dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
     participants,
     lineItems,
-    subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
-    total: `$${(inv.total_cents / 100).toFixed(2)}`,
+    subtotal: formatCurrency(inv.total_cents),
+    total: formatCurrency(inv.total_cents),
   });
 
   const docType = renderAsReceipt ? "receipt" : "invoice";

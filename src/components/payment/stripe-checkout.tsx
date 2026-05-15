@@ -11,6 +11,7 @@ import { getStripe } from "@/lib/stripe/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface StripeCheckoutProps {
   registrationId: string;
@@ -81,7 +82,7 @@ export function StripeCheckout({
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
           <span>Payment</span>
-          <span className="text-2xl">${(amount / 100).toFixed(2)}</span>
+          <span className="text-2xl">{formatCurrency(amount)}</span>
         </CardTitle>
       </CardHeader>
       <CardContent>

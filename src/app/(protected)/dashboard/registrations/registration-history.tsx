@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface Registration {
   id: string;
@@ -82,7 +83,7 @@ function RegistrationList({
               )}
               <span className="text-muted-foreground">{t("common.total")}</span>
               <span className="font-medium">
-                ${(reg.total_amount_cents / 100).toFixed(2)}
+                {formatCurrency(reg.total_amount_cents)}
               </span>
               <span className="text-muted-foreground">Created</span>
               <span>{new Date(reg.created_at).toLocaleDateString("en-US")}</span>

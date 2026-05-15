@@ -32,6 +32,7 @@ import { STRIPE_APPEARANCE } from "./_components/payment-constants";
 import { CopyButton } from "./_components/copy-button";
 import { useRegistration } from "@/lib/context/registration-context";
 import { useI18n } from "@/lib/i18n/context";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 /* ------------------------------------------------------------------ */
 /*  Zelle SVG icon                                                     */
@@ -486,11 +487,11 @@ export default function PaymentStep() {
                 <>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t("payment.subtotal")}</span>
-                    <span>${(baseAmount / 100).toFixed(2)}</span>
+                    <span>{formatCurrency(baseAmount)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>{t("payment.processingFee")}</span>
-                    <span>+${(feeCents / 100).toFixed(2)}</span>
+                    <span>+{formatCurrency(feeCents)}</span>
                   </div>
                   <Separator className="my-2" />
                 </>
@@ -499,11 +500,11 @@ export default function PaymentStep() {
                 <>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t("payment.subtotal")}</span>
-                    <span>${((invoiceTotal || amount) / 100).toFixed(2)}</span>
+                    <span>{formatCurrency(invoiceTotal || amount)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-green-700">
                     <span>{t("payment.manualDiscount")}</span>
-                    <span>-${(manualPaymentDiscount / 100).toFixed(2)}</span>
+                    <span>-{formatCurrency(manualPaymentDiscount)}</span>
                   </div>
                   <Separator className="my-2" />
                 </>
@@ -512,8 +513,8 @@ export default function PaymentStep() {
                 <span className="font-medium">{t("payment.totalDue")}</span>
                 <span className="text-2xl font-bold">
                   {(payMode === "zelle" || payMode === "check") && manualPaymentDiscount > 0
-                    ? `$${(Math.max(0, (invoiceTotal || amount) - manualPaymentDiscount) / 100).toFixed(2)}`
-                    : `$${(amount / 100).toFixed(2)}`}
+                    ? formatCurrency(Math.max(0, (invoiceTotal || amount) - manualPaymentDiscount))
+                    : formatCurrency(amount)}
                 </span>
               </div>
               {donorCoversFees && payMode === "stripe" && clientSecret && (
@@ -529,7 +530,7 @@ export default function PaymentStep() {
                     {t("payment.coverFees")}
                     {!coversFees && baseAmount > 0 && (
                       <span className="text-muted-foreground">
-                        {" "}(+${(Math.ceil((baseAmount + 30) / (1 - 0.029) - baseAmount) / 100).toFixed(2)})
+                        {" "}(+{formatCurrency(Math.ceil((baseAmount + 30) / (1 - 0.029) - baseAmount))})
                       </span>
                     )}
                   </span>
@@ -959,7 +960,7 @@ function StripePaymentForm({
         ) : (
           <>
             <Lock className="h-4 w-4 mr-2" />
-            Pay ${(amount / 100).toFixed(2)}
+            Pay {formatCurrency(amount)}
           </>
         )}
       </Button>
@@ -1123,7 +1124,7 @@ function ManualPaymentForm({
                     <CopyButton text="kimdani1@icloud.com" />
                   </p>
                   <p>{t("payment.zelleStep3")}</p>
-                  <p>{t("payment.zelleStep4")} <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong></p>
+                  <p>{t("payment.zelleStep4")} <strong className="font-mono">{formatCurrency(manualAmount)}</strong></p>
 
                   {/* Zelle Memo Generator */}
                   <div className="space-y-2">
@@ -1223,7 +1224,7 @@ function ManualPaymentForm({
                 </div>
                 <div className="space-y-2 text-sm text-emerald-900 pl-1">
                   <p>{t("payment.checkStep1")}</p>
-                  <p>{t("payment.checkStep2")} <strong className="font-mono">${(manualAmount / 100).toFixed(2)}</strong></p>
+                  <p>{t("payment.checkStep2")} <strong className="font-mono">{formatCurrency(manualAmount)}</strong></p>
                   <p>{t("payment.checkStep3")} <strong>{confirmationCode}</strong></p>
                   <p>{t("payment.checkStep4")}</p>
                   <div className="pl-5 text-sm font-medium">
@@ -1255,7 +1256,7 @@ function ManualPaymentForm({
             />
             <span className="text-sm">
               {(() => {
-                const amt = `$${(manualAmount / 100).toFixed(2)}`;
+                const amt = formatCurrency(manualAmount);
                 const text = payMode === "check"
                   ? t("payment.checkAgree", { amount: amt, code: confirmationCode })
                   : t("payment.zelleAgree", { amount: amt });

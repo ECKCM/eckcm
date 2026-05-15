@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, FileText, Receipt } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface LineItem {
   description_en: string;
@@ -151,10 +152,10 @@ function InvoiceCard({ inv, participants }: { inv: Invoice; participants?: strin
                   <span className="truncate">{li.description_en}</span>
                   <span className="text-right">{li.quantity}</span>
                   <span className="text-right">
-                    {li.total_cents === 0 ? t("common.free") : `$${(li.unit_price_cents / 100).toFixed(2)}`}
+                    {li.total_cents === 0 ? t("common.free") : formatCurrency(li.unit_price_cents)}
                   </span>
                   <span className="text-right">
-                    {li.total_cents === 0 ? t("common.free") : `$${(li.total_cents / 100).toFixed(2)}`}
+                    {li.total_cents === 0 ? t("common.free") : formatCurrency(li.total_cents)}
                   </span>
                 </div>
               ))}
@@ -162,7 +163,7 @@ function InvoiceCard({ inv, participants }: { inv: Invoice; participants?: strin
                 <span />
                 <span />
                 <span className="text-right">{t("common.total")}</span>
-                <span className="text-right">${(inv.total_cents / 100).toFixed(2)}</span>
+                <span className="text-right">{formatCurrency(inv.total_cents)}</span>
               </div>
             </div>
           </div>

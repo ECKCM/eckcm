@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Info } from "lucide-react";
 import { calculateAge } from "@/lib/utils/validators";
 import { INFANT_AGE_THRESHOLD } from "@/lib/utils/constants";
+import { formatCurrency } from "@/lib/utils/formatters";
 import { useI18n } from "@/lib/i18n/context";
 
 interface LodgingOption {
@@ -158,9 +159,7 @@ export default function LodgingStep() {
     dispatch({ type: "UPDATE_ROOM_GROUP", index: groupIndex, group });
   };
 
-  const formatPrice = (cents: number) => {
-    return `$${(cents / 100).toFixed(0)}`;
-  };
+  const formatPrice = (cents: number) => formatCurrency(cents, { decimals: 0 });
 
   // Helper: get agreement content for a lodging code
   const getAgreement = (code: string | undefined): string | null => {

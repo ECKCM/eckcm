@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { MoreHorizontal, CreditCard, Loader2, Mail, FileText, Receipt, Download } from "lucide-react";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface Event {
   id: string;
@@ -307,7 +308,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
                       {inv.registrant_email ?? "-"}
                     </TableCell>
                     <TableCell className="font-medium">
-                      ${((inv.payment_amount_cents ?? inv.total_cents) / 100).toFixed(2)}
+                      {formatCurrency(inv.payment_amount_cents ?? inv.total_cents)}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {inv.payment_method ?? "-"}
@@ -407,7 +408,7 @@ export function InvoicesTable({ events }: { events: Event[] }) {
           <DialogHeader>
             <DialogTitle>Record Manual Payment</DialogTitle>
             <DialogDescription>
-              Invoice {manualPayTarget?.invoice_number} &middot; ${((manualPayTarget?.total_cents ?? 0) / 100).toFixed(2)}
+              Invoice {manualPayTarget?.invoice_number} &middot; {formatCurrency(manualPayTarget?.total_cents ?? 0)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

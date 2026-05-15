@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -126,7 +127,7 @@ export async function PATCH(request: Request) {
 
     if (refund_amount_cents > remaining) {
       return NextResponse.json(
-        { error: `Refund amount ($${(refund_amount_cents / 100).toFixed(2)}) exceeds remaining balance ($${(remaining / 100).toFixed(2)})` },
+        { error: `Refund amount (${formatCurrency(refund_amount_cents)}) exceeds remaining balance (${formatCurrency(remaining)})` },
         { status: 400 }
       );
     }

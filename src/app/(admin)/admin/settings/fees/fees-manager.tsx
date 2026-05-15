@@ -38,6 +38,7 @@ import { logActivity } from "@/lib/audit-client";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 type FeeTab = "all" | "GENERAL" | "LODGING" | "MEALS" | "FUNDING";
 
@@ -656,7 +657,7 @@ export function FeeCategoriesManager() {
                   <TableCell>
                     <Badge variant="outline">{fee.pricing_type}</Badge>
                   </TableCell>
-                  <TableCell>${(fee.amount_cents / 100).toFixed(2)}</TableCell>
+                  <TableCell>{formatCurrency(fee.amount_cents)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {fee.category === "FUNDING" ? (
                       <div>
