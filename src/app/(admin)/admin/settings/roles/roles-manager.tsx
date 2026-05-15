@@ -37,6 +37,8 @@ interface Role {
   description_ko: string | null;
   is_system: boolean;
   created_at: string;
+  department_id?: string | null;
+  department_name?: string | null;
 }
 
 interface Permission {
@@ -55,6 +57,7 @@ const emptyForm = {
 const CATEGORY_LABELS: Record<string, string> = {
   audit: "Audit",
   checkin: "Check-in",
+  department: "Departments",
   event: "Events",
   group: "Groups",
   invoice: "Invoices",
@@ -91,11 +94,30 @@ export function RolesManager() {
   const loadRoles = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
-    const { data } = await supabase
+
+    // Try to include department info; fall back if column not yet migrated.
+    let result = await supabase
       .from("eckcm_roles")
-      .select("*")
+      .select("*, eckcm_departments(name_en)")
       .order("name");
-    setRoles(data ?? []);
+
+    if (result.error) {
+      const fallback = await supabase
+        .from("eckcm_roles")
+        .select("*")
+        .order("name");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result = fallback as any;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = (result.data ?? []).map((r: any) => ({
+      ...r,
+      department_id: r.department_id ?? null,
+      department_name: r.eckcm_departments?.name_en ?? null,
+    })) as Role[];
+
+    setRoles(rows);
     setLoading(false);
   }, []);
 
@@ -397,6 +419,7 @@ export function RolesManager() {
           <TableHeader>
             <TableRow>
               <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
+              <SortableTableHead sortKey="department_name" sortConfig={sortConfig} onSort={requestSort}>Department</SortableTableHead>
               <SortableTableHead sortKey="description_en" sortConfig={sortConfig} onSort={requestSort}>Description (EN)</SortableTableHead>
               <SortableTableHead sortKey="description_ko" sortConfig={sortConfig} onSort={requestSort}>Description (KO)</SortableTableHead>
               <SortableTableHead sortKey="is_system" sortConfig={sortConfig} onSort={requestSort}>Type</SortableTableHead>
@@ -407,7 +430,7 @@ export function RolesManager() {
             {sorted.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="text-center text-muted-foreground py-8"
                 >
                   No roles yet.
@@ -417,6 +440,13 @@ export function RolesManager() {
               sorted.map((role) => (
                 <TableRow key={role.id}>
                   <TableCell className="font-mono">{role.name}</TableCell>
+                  <TableCell>
+                    {role.department_name ? (
+                      <Badge variant="secondary">{role.department_name}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>{role.description_en ?? "—"}</TableCell>
                   <TableCell>{role.description_ko ?? "—"}</TableCell>
                   <TableCell>

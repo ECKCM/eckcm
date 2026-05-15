@@ -59,9 +59,19 @@ interface AdminSidebarProps {
   permissions: string[];
 }
 
-const navLinks = [
+// Permission can be a single code or any-of array for the link to be visible.
+type NavLinkDef = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  exact: boolean;
+  permission: string | string[];
+};
+
+const navLinks: NavLinkDef[] = [
   { href: "/admin/registrations", label: "Registrations", icon: FileText, exact: true, permission: "participant.read" },
   { href: "/admin/participants", label: "Participants", icon: UserCheck, exact: false, permission: "participant.read" },
+  { href: "/admin/department-view", label: "Department View", icon: Building2, exact: false, permission: ["participant.read", "department.view"] },
   { href: "/admin/registrations/create", label: "Manual Registration", icon: ClipboardPlus, exact: true, permission: "participant.update" },
   { href: "/admin/events", label: "Events", icon: Calendar, exact: false, permission: "event.manage" },
   { href: "/admin/room-groups", label: "Room Assignment", icon: BedDouble, exact: false, permission: "group.read" },
@@ -71,7 +81,7 @@ const navLinks = [
   { href: "/admin/checkin", label: "Check-in", icon: ScanLine, exact: false, permission: "checkin.main" },
   { href: "/admin/settings/links", label: "Links", icon: Link2, exact: false, permission: "links.manage" },
   { href: "/admin/guardian-consents", label: "Guardian Consents", icon: ShieldCheck, exact: false, permission: "participant.read" },
-  { href: "/admin/manual-payments", label: "Zelle / Check", icon: DollarSign, exact: false, permission: "settings.manage" },
+  { href: "/admin/manual-payments", label: "Zelle / Check", icon: DollarSign, exact: false, permission: ["settings.manage", "participant.update"] },
   { href: "/admin/funding", label: "Funding Tracker", icon: HandCoins, exact: false, permission: "settings.manage" },
   { href: "/admin/audit", label: "Audit Logs", icon: ScrollText, exact: false, permission: "audit.read" },
   { href: "/admin/users", label: "Users", icon: Users, exact: false, permission: "user.manage" },
@@ -128,8 +138,11 @@ function NavLink({
 
 export function AdminSidebar({ events, permissions }: AdminSidebarProps) {
   const pathname = usePathname();
-  const hasPermission = (code: string | null) =>
-    code === null || permissions.includes(code);
+  const hasPermission = (code: string | string[] | null) => {
+    if (code === null) return true;
+    if (Array.isArray(code)) return code.some((c) => permissions.includes(c));
+    return permissions.includes(code);
+  };
   const showSettings = permissions.includes("settings.manage");
 
   return (

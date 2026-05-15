@@ -54,11 +54,38 @@ export default async function UsersPage() {
     };
   });
 
-  // Fetch roles for filter + assign dialog
-  const { data: roles } = await supabase
+  // Fetch roles for filter + assign dialog. Try with department_id (post-migration);
+  // fall back to schema without it so the page works pre-migration too.
+  let rolesQuery = await supabase
     .from("eckcm_roles")
-    .select("id, name, description_en")
+    .select("id, name, description_en, department_id, eckcm_departments(name_en, name_ko)")
     .order("name");
+
+  if (rolesQuery.error) {
+    const fallback = await supabase
+      .from("eckcm_roles")
+      .select("id, name, description_en")
+      .order("name");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rolesQuery = fallback as any;
+  }
+
+  const roles = (rolesQuery.data ?? []).map((r: unknown) => {
+    const row = r as {
+      id: string;
+      name: string;
+      description_en: string | null;
+      department_id?: string | null;
+      eckcm_departments?: { name_en: string; name_ko: string | null } | null;
+    };
+    return {
+      id: row.id,
+      name: row.name,
+      description_en: row.description_en,
+      department_id: row.department_id ?? null,
+      department_name: row.eckcm_departments?.name_en ?? null,
+    };
+  });
 
   // Fetch events for assign dialog
   const { data: events } = await supabase
@@ -77,7 +104,7 @@ export default async function UsersPage() {
       <div className="p-6">
         <UsersManager
           users={users}
-          roles={roles ?? []}
+          roles={roles}
           events={events ?? []}
         />
       </div>
