@@ -19,6 +19,7 @@ import {
 import { MarkdownRenderer } from "@/components/shared/markdown-renderer";
 import { Sparkles, X } from "lucide-react";
 import Image from "next/image";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface FeeCategory {
   code: string;
@@ -36,7 +37,9 @@ const FEE_GROUPS: { title: string; codes: string[] }[] = [
 
 function formatFeeAmount(fee: FeeCategory): string {
   const isDiscount = fee.code.includes("DISCOUNT");
-  const dollars = `$${(fee.amount_cents / 100).toFixed(fee.amount_cents % 100 === 0 ? 0 : 2)}`;
+  const dollars = formatCurrency(fee.amount_cents, {
+    decimals: fee.amount_cents % 100 === 0 ? 0 : 2,
+  });
   const prefix = isDiscount ? "-" : "";
   const suffix = isDiscount ? " / person" : "";
   switch (fee.pricing_type) {

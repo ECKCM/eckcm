@@ -19,6 +19,7 @@ import { WizardStepper } from "@/components/registration/wizard-stepper";
 import type { PriceEstimate, PriceLineItem } from "@/lib/types/registration";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/context";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 export default function ReviewStep() {
   const router = useRouter();
@@ -138,8 +139,7 @@ export default function ReviewStep() {
     0
   );
 
-  const formatDollars = (cents: number) =>
-    cents < 0 ? `-$${(Math.abs(cents) / 100).toFixed(2)}` : `$${(cents / 100).toFixed(2)}`;
+  const formatDollars = (cents: number) => formatCurrency(cents);
 
   /** YYYY-MM-DD → MM.DD.YYYY */
   const formatDate = (d: string) => {

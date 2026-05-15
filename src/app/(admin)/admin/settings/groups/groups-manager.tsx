@@ -44,6 +44,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, RefreshCw, Copy, Check } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 function generateAccessCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/O/0/1 to avoid confusion
@@ -445,7 +446,7 @@ export function RegistrationGroupsManager() {
 
   const formatCents = (cents: number | null) => {
     if (cents == null) return "-";
-    return `$${(cents / 100).toFixed(2)}`;
+    return formatCurrency(cents);
   };
 
   const getLinkedFeeNames = (groupId: string) => {
@@ -613,14 +614,14 @@ export function RegistrationGroupsManager() {
                         .filter((f) => f.category === "GENERAL")
                         .map((fee) => (
                           <SelectItem key={fee.id} value={fee.id}>
-                            {fee.name_en} (${(fee.amount_cents / 100).toFixed(0)})
+                            {fee.name_en} ({formatCurrency(fee.amount_cents, { decimals: 0 })})
                           </SelectItem>
                         ))}
                     </SelectContent>
                   </Select>
                   {form.global_early_bird_fee_cents && (
                     <p className="text-xs text-muted-foreground">
-                      = ${(parseInt(form.global_early_bird_fee_cents) / 100).toFixed(2)}
+                      = {formatCurrency(parseInt(form.global_early_bird_fee_cents))}
                     </p>
                   )}
                 </div>
@@ -763,7 +764,7 @@ export function RegistrationGroupsManager() {
                                 <span className="text-sm">{fee.name_en}</span>
                               </div>
                               <span className="text-xs text-muted-foreground tabular-nums">
-                                ${(fee.amount_cents / 100).toFixed(2)}
+                                {formatCurrency(fee.amount_cents)}
                               </span>
                             </div>
                           ))}

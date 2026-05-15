@@ -1,10 +1,19 @@
 /**
- * Format cents to dollar string
+ * Format cents to dollar string with thousands separators.
+ * e.g. formatCurrency(15269000) -> "$152,690.00"
+ *      formatCurrency(-15269000) -> "-$152,690.00"
+ *      formatCurrency(15269000, { decimals: 0 }) -> "$152,690"
  */
-export function formatCurrency(cents: number): string {
+export function formatCurrency(
+  cents: number,
+  options?: { decimals?: number }
+): string {
+  const decimals = options?.decimals ?? 2;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   }).format(cents / 100);
 }
 

@@ -52,6 +52,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { RegistrationCodeCombobox } from "@/components/shared/registration-code-combobox";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface ManualPayment {
   id: string;
@@ -78,7 +79,7 @@ const emptyForm = {
 };
 
 function formatCents(cents: number): string {
-  return `$${(Math.abs(cents) / 100).toFixed(2)}`;
+  return formatCurrency(Math.abs(cents));
 }
 
 /** Format date string (YYYY-MM-DD or ISO) as "MM. DD. YYYY" */

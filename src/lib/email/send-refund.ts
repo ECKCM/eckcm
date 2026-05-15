@@ -4,6 +4,7 @@ import { getEmailConfig, getEmailHeaders } from "@/lib/email/email-config";
 import { logEmail } from "@/lib/email/email-log.service";
 import { buildRefundEmail } from "@/lib/email/templates/refund";
 import { logger } from "@/lib/logger";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface SendRefundEmailParams {
   registrationId: string;
@@ -67,7 +68,7 @@ export async function sendRefundEmail(params: SendRefundEmailParams): Promise<vo
       return;
     }
 
-    const fmtCents = (c: number) => `$${(c / 100).toFixed(2)}`;
+    const fmtCents = (c: number) => formatCurrency(c);
     const remainingCents = regData.total_amount_cents;
     const originalAmountCents = remainingCents + refundAmountCents;
 

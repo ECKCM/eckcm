@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface Event {
   id: string;
@@ -214,7 +215,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
 
   function formatMoney(cents: number | null) {
     if (cents == null) return "-";
-    return `$${(cents / 100).toFixed(2)}`;
+    return formatCurrency(cents);
   }
 
   function formatTimestamp(ts: string | null) {

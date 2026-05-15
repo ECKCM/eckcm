@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ChevronDown, ChevronRight, DollarSign, Users, FileText } from "lucide-react";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface FundingSource {
   id: string;
@@ -48,7 +49,7 @@ interface FundingAllocation {
 }
 
 function formatCents(cents: number): string {
-  return `$${(Math.abs(cents) / 100).toFixed(2)}`;
+  return formatCurrency(Math.abs(cents));
 }
 
 export function FundingTracker() {

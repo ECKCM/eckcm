@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { MealSelection } from "@/lib/types/registration";
 import type { MealType } from "@/lib/types/database";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 const MEAL_TYPES: { type: MealType; label: string }[] = [
   { type: "BREAKFAST", label: "Breakfast" },
@@ -80,7 +81,7 @@ function buildSelections(
 }
 
 function formatPrice(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  return formatCurrency(cents);
 }
 
 export function MealSelectionGrid({

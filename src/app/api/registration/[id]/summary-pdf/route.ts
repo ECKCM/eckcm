@@ -6,6 +6,7 @@ import {
   generateRegistrationSummaryPdf,
   type SummaryParticipant,
 } from "@/lib/pdf/generate-summary";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 export async function GET(
   _req: NextRequest,
@@ -121,8 +122,7 @@ export async function GET(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const inv = invoiceResult.data as any;
-  const fmtCents = (c: number) =>
-    c < 0 ? `-$${(Math.abs(c) / 100).toFixed(2)}` : `$${(c / 100).toFixed(2)}`;
+  const fmtCents = (c: number) => formatCurrency(c);
 
   const lineItems = inv
     ? (inv.eckcm_invoice_line_items ?? []).map(
@@ -140,10 +140,8 @@ export async function GET(
       )
     : [];
 
-  const totalAmount = `$${(reg.total_amount_cents / 100).toFixed(2)}`;
-  const subtotal = inv
-    ? `$${(inv.total_cents / 100).toFixed(2)}`
-    : totalAmount;
+  const totalAmount = formatCurrency(reg.total_amount_cents);
+  const subtotal = inv ? formatCurrency(inv.total_cents) : totalAmount;
 
   const pdfBuffer = await generateRegistrationSummaryPdf({
     confirmationCode: reg.confirmation_code,

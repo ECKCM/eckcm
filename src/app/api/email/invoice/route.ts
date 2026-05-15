@@ -10,6 +10,7 @@ import { generateRegistrationSummaryPdf, type SummaryParticipant } from "@/lib/p
 import { emailInvoiceSchema } from "@/lib/schemas/api";
 import { rateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -98,8 +99,8 @@ export async function POST(req: NextRequest) {
     (li: { description_en: string; quantity: number; unit_price_cents: number; total_cents: number }) => ({
       description: li.description_en,
       quantity: li.quantity,
-      unitPrice: `$${(li.unit_price_cents / 100).toFixed(2)}`,
-      amount: `$${(li.total_cents / 100).toFixed(2)}`,
+      unitPrice: formatCurrency(li.unit_price_cents),
+      amount: formatCurrency(li.total_cents),
     })
   );
 
@@ -139,8 +140,8 @@ export async function POST(req: NextRequest) {
     eventName,
     participants: participantNames,
     lineItems,
-    subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
-    total: `$${(inv.total_cents / 100).toFixed(2)}`,
+    subtotal: formatCurrency(inv.total_cents),
+    total: formatCurrency(inv.total_cents),
     paymentMethod: payment?.payment_method ?? "-",
     paymentDate: inv.paid_at
       ? new Date(inv.paid_at).toLocaleDateString("en-US")
@@ -164,8 +165,8 @@ export async function POST(req: NextRequest) {
       dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
       participants: participantNamesEn,
       lineItems,
-      subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
-      total: `$${(inv.total_cents / 100).toFixed(2)}`,
+      subtotal: formatCurrency(inv.total_cents),
+      total: formatCurrency(inv.total_cents),
     };
 
     // Always attach Invoice PDF (PENDING PAYMENT)
@@ -238,7 +239,7 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    const totalAmount = `$${(r.total_amount_cents / 100).toFixed(2)}`;
+    const totalAmount = formatCurrency(r.total_amount_cents);
     const summaryPdfBuffer = await generateRegistrationSummaryPdf({
       confirmationCode: r.confirmation_code ?? "",
       eventName,
@@ -252,8 +253,8 @@ export async function POST(req: NextRequest) {
       totalAmount,
       participants: summaryParticipants,
       lineItems,
-      subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
-      total: `$${(inv.total_cents / 100).toFixed(2)}`,
+      subtotal: formatCurrency(inv.total_cents),
+      total: formatCurrency(inv.total_cents),
     });
     pdfAttachments.push({
       filename: `eckcm-summary-${r.confirmation_code ?? "reg"}.pdf`,

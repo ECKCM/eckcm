@@ -1,3 +1,5 @@
+import { formatCurrency } from "@/lib/utils/formatters";
+
 export interface Event {
   id: string;
   name_en: string;
@@ -92,7 +94,7 @@ export const paymentStatusVariant: Record<string, "default" | "secondary" | "des
 };
 
 export function formatMoney(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
+  return formatCurrency(cents);
 }
 
 export function formatTimestamp(ts: string) {

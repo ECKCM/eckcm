@@ -9,6 +9,7 @@ import { buildInvoiceEmail } from "@/lib/email/templates/invoice";
 import { generateInvoicePdf } from "@/lib/pdf/generate";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 const schema = z.object({
   registrationId: z.string().uuid(),
@@ -108,8 +109,8 @@ export async function POST(req: NextRequest) {
     (li: { description_en: string; quantity: number; unit_price_cents: number; total_cents: number }) => ({
       description: li.description_en,
       quantity: li.quantity,
-      unitPrice: `$${(li.unit_price_cents / 100).toFixed(2)}`,
-      amount: `$${(li.total_cents / 100).toFixed(2)}`,
+      unitPrice: formatCurrency(li.unit_price_cents),
+      amount: formatCurrency(li.total_cents),
     })
   );
 
@@ -148,8 +149,8 @@ export async function POST(req: NextRequest) {
     eventName,
     participants: participantNames,
     lineItems,
-    subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
-    total: `$${(inv.total_cents / 100).toFixed(2)}`,
+    subtotal: formatCurrency(inv.total_cents),
+    total: formatCurrency(inv.total_cents),
     paymentMethod: isReceiptType ? (payment?.payment_method ?? "-") : "-",
     paymentDate: isReceiptType && inv.paid_at
       ? new Date(inv.paid_at).toLocaleDateString("en-US")
@@ -172,8 +173,8 @@ export async function POST(req: NextRequest) {
       dateDue: eventEndDate ? new Date(eventEndDate + "T00:00:00").toLocaleDateString("en-US") : undefined,
       participants: participantNamesEn,
       lineItems,
-      subtotal: `$${(inv.total_cents / 100).toFixed(2)}`,
-      total: `$${(inv.total_cents / 100).toFixed(2)}`,
+      subtotal: formatCurrency(inv.total_cents),
+      total: formatCurrency(inv.total_cents),
     };
 
     if (isReceiptType) {

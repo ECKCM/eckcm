@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 export interface RefundRecord {
   id: string;
@@ -84,7 +85,7 @@ export async function createRefundWithGuard(
     // Race condition detected: total refunds exceed payment amount — rollback
     await admin.from("eckcm_refunds").delete().eq("id", inserted.id);
     throw new RefundOverLimitError(
-      `Refund rejected: total refunds ($${(totalRefundedCents / 100).toFixed(2)}) would exceed payment amount ($${(params.paymentAmountCents / 100).toFixed(2)}). Another refund may have been processed concurrently.`
+      `Refund rejected: total refunds (${formatCurrency(totalRefundedCents)}) would exceed payment amount (${formatCurrency(params.paymentAmountCents)}). Another refund may have been processed concurrently.`
     );
   }
 
