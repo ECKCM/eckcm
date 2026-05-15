@@ -1,6 +1,9 @@
-// Route → required permission code mapping.
+// Route → required permission(s) mapping.
 // Order matters: more-specific prefixes must come before shorter ones.
-const ROUTE_PERMISSIONS: [string, string][] = [
+// A route can require either a single permission or any-of a list.
+type RouteRule = string | string[];
+
+const ROUTE_PERMISSIONS: [string, RouteRule][] = [
   // Registrations
   ["/admin/registrations/adjustments", "participant.update"],
   ["/admin/registrations/create", "participant.update"],
@@ -11,6 +14,10 @@ const ROUTE_PERMISSIONS: [string, string][] = [
   ["/admin/participants", "participant.read"],
   ["/admin/inventory", "participant.read"],
   ["/admin/airport", "participant.read"],
+
+  // Department View — full readers and department-scoped admins both see it.
+  // Per-department access is enforced inside the page against x-user-department-ids.
+  ["/admin/department-view", ["participant.read", "department.view"]],
 
   // Events
   ["/admin/events", "event.manage"],
@@ -41,8 +48,8 @@ const ROUTE_PERMISSIONS: [string, string][] = [
   ["/admin/print/lanyard", "print.lanyard"],
   ["/admin/print/qr-cards", "print.qrcard"],
 
-  // Manual Payments (Zelle / Check)
-  ["/admin/manual-payments", "settings.manage"],
+  // Manual Payments (Zelle / Check) — SUPER_ADMIN or EVENT_ADMIN (any write-capable admin)
+  ["/admin/manual-payments", ["settings.manage", "participant.update"]],
 
   // Funding
   ["/admin/funding", "settings.manage"],
@@ -57,14 +64,25 @@ const ROUTE_PERMISSIONS: [string, string][] = [
 ];
 
 /**
- * Returns the permission code required to access the given pathname,
- * or null if the route is unrestricted (e.g. /admin, /admin/unauthorized).
+ * Returns the permission rule required for a path: a single code, an array
+ * (any-of), or null if the route is unrestricted.
  */
-export function getRequiredPermission(pathname: string): string | null {
-  for (const [prefix, permission] of ROUTE_PERMISSIONS) {
+export function getRequiredPermission(pathname: string): RouteRule | null {
+  for (const [prefix, rule] of ROUTE_PERMISSIONS) {
     if (pathname === prefix || pathname.startsWith(prefix + "/")) {
-      return permission;
+      return rule;
     }
   }
   return null;
+}
+
+/** True if `permissions` satisfies `rule` (single string or any-of list). */
+export function hasRequiredPermission(
+  rule: RouteRule,
+  permissions: string[]
+): boolean {
+  if (Array.isArray(rule)) {
+    return rule.some((code) => permissions.includes(code));
+  }
+  return permissions.includes(rule);
 }

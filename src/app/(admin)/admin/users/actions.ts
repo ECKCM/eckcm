@@ -46,14 +46,24 @@ export async function assignStaffRole(
 
   const admin = createAdminClient();
 
-  // Remove any existing assignment for this user+event (one role per user per event)
-  await admin
-    .from("eckcm_staff_assignments")
-    .delete()
-    .eq("user_id", targetUserId)
-    .eq("event_id", eventId);
+  // For DEPARTMENT_ADMIN, the role row itself is scoped to a department, so
+  // we keep one assignment per (user, event, role). Non-scoped roles get the
+  // legacy one-per-(user, event) behaviour.
+  if (roleName === "DEPARTMENT_ADMIN") {
+    await admin
+      .from("eckcm_staff_assignments")
+      .delete()
+      .eq("user_id", targetUserId)
+      .eq("event_id", eventId)
+      .eq("role_id", roleId);
+  } else {
+    await admin
+      .from("eckcm_staff_assignments")
+      .delete()
+      .eq("user_id", targetUserId)
+      .eq("event_id", eventId);
+  }
 
-  // Insert new staff assignment
   const { error: insertError } = await admin
     .from("eckcm_staff_assignments")
     .insert({ user_id: targetUserId, event_id: eventId, role_id: roleId });
@@ -62,13 +72,11 @@ export async function assignStaffRole(
     return { error: insertError.message };
   }
 
-  // Sync eckcm_users.role to reflect the assigned staff role
   await admin
     .from("eckcm_users")
     .update({ role: roleName })
     .eq("id", targetUserId);
 
-  // Audit log
   await admin.from("eckcm_audit_logs").insert({
     user_id: auth.user.id,
     action: "ASSIGN_STAFF_ROLE",

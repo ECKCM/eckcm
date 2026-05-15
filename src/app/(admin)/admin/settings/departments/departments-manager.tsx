@@ -29,6 +29,7 @@ import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
+import { ensureDepartmentRole } from "./actions";
 
 interface Department {
   id: string;
@@ -113,6 +114,8 @@ export function DepartmentsManager() {
       is_active: form.is_active,
     };
 
+    let savedId: string | null = editingId;
+
     if (editingId) {
       const { error } = await supabase
         .from("eckcm_departments")
@@ -136,8 +139,19 @@ export function DepartmentsManager() {
         setSaving(false);
         return;
       }
+      savedId = created?.id ?? null;
       toast.success("Department created");
       logActivity({ action: "CREATE", entity_type: "department", entity_id: created?.id, new_data: payload });
+    }
+
+    // Ensure a matching DEPARTMENT_ADMIN role row exists. This keeps
+    // /admin/settings/roles in sync with the department list automatically.
+    if (savedId) {
+      const result = await ensureDepartmentRole(savedId);
+      if (result.error) {
+        // Non-fatal: dept saved fine, but warn about the role pairing.
+        toast.warning(`Department saved, but role sync failed: ${result.error}`);
+      }
     }
 
     setSaving(false);

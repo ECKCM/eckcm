@@ -51,6 +51,8 @@ interface Role {
   id: string;
   name: string;
   description_en: string | null;
+  department_id?: string | null;
+  department_name?: string | null;
 }
 
 interface Event {
@@ -76,6 +78,8 @@ export function UsersManager({
   const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedEventId, setSelectedEventId] = useState(events[0]?.id ?? "");
   const [selectedRoleId, setSelectedRoleId] = useState("");
+
+  const selectedRole = roles.find((r) => r.id === selectedRoleId);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -107,7 +111,7 @@ export function UsersManager({
       return;
     }
 
-    const roleName = roles.find((r) => r.id === selectedRoleId)?.name ?? "";
+    const roleName = selectedRole?.name ?? "";
     const result = await assignStaffRole(
       selectedUserId,
       selectedEventId,
@@ -120,7 +124,10 @@ export function UsersManager({
       return;
     }
 
-    toast.success("Staff role assigned");
+    const deptSuffix = selectedRole?.department_name
+      ? ` (${selectedRole.department_name})`
+      : "";
+    toast.success(`Staff role assigned${deptSuffix}`);
     setAssignOpen(false);
     setUsers((prev) =>
       prev.map((u) =>
@@ -305,16 +312,27 @@ export function UsersManager({
                                   <SelectValue placeholder="Select role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {roles.map((r) => (
-                                    <SelectItem key={r.id} value={r.id}>
-                                      {r.name}
-                                      {r.description_en
-                                        ? ` - ${r.description_en}`
-                                        : ""}
-                                    </SelectItem>
-                                  ))}
+                                  {roles.map((r) => {
+                                    const label = r.department_name
+                                      ? `${r.name} — ${r.department_name}`
+                                      : r.name;
+                                    return (
+                                      <SelectItem key={r.id} value={r.id}>
+                                        {label}
+                                        {r.description_en && !r.department_name
+                                          ? ` - ${r.description_en}`
+                                          : ""}
+                                      </SelectItem>
+                                    );
+                                  })}
                                 </SelectContent>
                               </Select>
+                              {selectedRole?.department_name && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Scoped to <strong>{selectedRole.department_name}</strong>.
+                                  Re-run with a different role to add another department.
+                                </p>
+                              )}
                             </div>
                             <Button
                               onClick={handleAssignStaffRole}
