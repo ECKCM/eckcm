@@ -12,8 +12,9 @@ export async function GET() {
     .single();
 
   if (error || !data) {
+    console.error("[/api/app-config] fetch failed:", error);
     return NextResponse.json(
-      { error: "Failed to fetch config" },
+      { error: error?.message ?? "Failed to fetch config" },
       { status: 500 }
     );
   }
