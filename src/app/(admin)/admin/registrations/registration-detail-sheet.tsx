@@ -250,7 +250,8 @@ export function RegistrationDetailSheet({
     if (data) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setGroups(data.map((g: any) => {
-        const ra = g.eckcm_room_assignments?.[0];
+        const raRaw = g.eckcm_room_assignments;
+        const ra = Array.isArray(raRaw) ? raRaw[0] : raRaw ?? null;
         return {
           id: g.id,
           display_group_code: g.display_group_code,

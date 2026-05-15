@@ -121,7 +121,8 @@ export function RoomGroupsTable({ events }: { events: Event[] }) {
     if (data) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rows: GroupRow[] = data.map((g: any) => {
-        const assignment = g.eckcm_room_assignments?.[0];
+        const raRaw = g.eckcm_room_assignments;
+        const assignment = Array.isArray(raRaw) ? raRaw[0] : raRaw ?? null;
         const memberships = g.eckcm_group_memberships ?? [];
 
         // Find the representative's department (or first member with a department)

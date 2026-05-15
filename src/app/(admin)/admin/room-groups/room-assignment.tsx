@@ -175,7 +175,8 @@ export function RoomAssignment({
       if (lt && lt !== activeTab) continue;
       totalForTab++;
 
-      const hasAssignment = (g.eckcm_room_assignments ?? []).length > 0;
+      const raRaw = g.eckcm_room_assignments;
+      const hasAssignment = Array.isArray(raRaw) ? raRaw.length > 0 : !!raRaw;
       if (hasAssignment) {
         assignedForTab++;
         continue;

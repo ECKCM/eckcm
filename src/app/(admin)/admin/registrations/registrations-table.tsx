@@ -194,8 +194,10 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           if (!lodgingType && g.lodging_type) lodgingType = g.lodging_type;
           if (!preferences && g.preferences) preferences = g.preferences as typeof preferences;
 
-          // Room assignments
-          const roomAssignments = g.eckcm_room_assignments ?? [];
+          // Room assignments — PostgREST returns single object when target FK has a UNIQUE
+          // constraint (group_id), so normalize to array before iterating.
+          const raRaw = g.eckcm_room_assignments;
+          const roomAssignments = Array.isArray(raRaw) ? raRaw : raRaw ? [raRaw] : [];
           for (const ra of roomAssignments) {
             if (ra.eckcm_rooms?.room_number) {
               roomNumbers.push(ra.eckcm_rooms.room_number);
