@@ -32,6 +32,8 @@ import {
   HandCoins,
   Sheet,
   BookOpen,
+  Hotel,
+  Map,
 } from "lucide-react";
 import {
   Sidebar,
@@ -75,6 +77,8 @@ const navLinks: NavLinkDef[] = [
   { href: "/admin/registrations/create", label: "Manual Registration", icon: ClipboardPlus, exact: true, permission: "participant.update" },
   { href: "/admin/events", label: "Events", icon: Calendar, exact: false, permission: "event.manage" },
   { href: "/admin/room-groups", label: "Room Assignment", icon: BedDouble, exact: false, permission: "group.read" },
+  { href: "/admin/lodging/upj-rooms", label: "UPJ Lodging", icon: Hotel, exact: false, permission: "group.read" },
+  { href: "/admin/lodging/floorplan", label: "Floor Plan", icon: Map, exact: false, permission: "group.read" },
   { href: "/admin/invoices", label: "Invoices", icon: FileText, exact: false, permission: "invoice.read" },
   { href: "/admin/inventory", label: "Inventory", icon: Package, exact: false, permission: "participant.read" },
   { href: "/admin/airport", label: "Airport", icon: Plane, exact: false, permission: "participant.read" },

@@ -54,3 +54,6 @@ export const GRADE_LABELS: Record<string, { en: string; ko: string }> = {
   GRADE_11: { en: "11th Grade", ko: "11학년" },
   GRADE_12: { en: "12th Grade", ko: "12학년" },
 };
+
+/** Registration statuses considered active for assignment/display purposes */
+export const ACTIVE_REGISTRATION_STATUSES = ["SUBMITTED", "APPROVED", "PAID"] as const;
