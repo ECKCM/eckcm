@@ -123,6 +123,34 @@ export function calculateProcessingFee(amountCents: number, paymentMethod: strin
   return Math.round(amountCents * 0.029) + 30;
 }
 
+/**
+ * Calculate the proportional, non-refundable processing fee for a *partial*
+ * refund. Stripe doesn't return the original processing fee on refunds, so
+ * the church should withhold the share of the fee that belongs to the
+ * refunded portion — otherwise the church eats the fee on every partial.
+ *
+ *   percent_part = refund * 2.9%
+ *   fixed_part   = (refund / original_payment) * $0.30    (prorated)
+ *
+ * For Zelle/Check/Manual payments this returns 0.
+ */
+export function calculateProportionalProcessingFee(
+  refundCents: number,
+  paymentAmountCents: number,
+  paymentMethod: string | null,
+): number {
+  if (!paymentMethod) return 0;
+  const method = paymentMethod.toUpperCase();
+  if (["ZELLE", "CHECK", "MANUAL", "MANUAL_PAYMENT"].includes(method)) {
+    return 0;
+  }
+  if (refundCents <= 0 || paymentAmountCents <= 0) return 0;
+
+  const percentFee = Math.round(refundCents * 0.029);
+  const fixedFee = Math.round((Math.min(refundCents, paymentAmountCents) / paymentAmountCents) * 30);
+  return percentFee + fixedFee;
+}
+
 export function extractSeqNumber(code: string | null): string {
   if (!code || code.length < 4) return "-";
   return code.slice(-4);
