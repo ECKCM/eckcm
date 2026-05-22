@@ -77,6 +77,7 @@ import {
   VALID_STATUSES,
   calculateProcessingFee,
   calculateProportionalProcessingFee,
+  MIN_REFUND_CENTS,
 } from "./registrations-types";
 
 interface RegistrationDetailSheetProps {
@@ -983,6 +984,11 @@ function AdjustmentsPanel({
   const newAmountCents = isRefundAction ? currentAmount - stripeRefund : inputCents;
   const diff = newAmountCents - currentAmount;
   const refundExceedsTotal = isRefundAction && inputCents > currentAmount;
+  // Minimum: customer must receive at least $1 (Stripe's own floor is ~$0.50;
+  // the extra leeway protects against micro-refund noise). Only flag when admin
+  // has actually started typing — empty/zero shouldn't show a "below min" error.
+  const refundBelowMinimum =
+    isRefundAction && inputCents > 0 && stripeRefund > 0 && stripeRefund < MIN_REFUND_CENTS;
 
   if (loading) {
     return (
@@ -1196,6 +1202,14 @@ function AdjustmentsPanel({
                       Cannot refund more than current amount ({formatMoney(currentAmount)})
                     </p>
                   )}
+                  {refundBelowMinimum && !refundExceedsTotal && (
+                    <p className="text-destructive">
+                      Minimum refund: {formatMoney(MIN_REFUND_CENTS)} to customer
+                      {proportionalRefundFee > 0 && (
+                        <> (fee {formatMoney(proportionalRefundFee)} is withheld — type a bit more)</>
+                      )}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground mt-1">
@@ -1251,7 +1265,7 @@ function AdjustmentsPanel({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCreate}
-              disabled={!reason.trim() || submitting || refundExceedsTotal || (isRefundAction && availableRefund <= 0)}
+              disabled={!reason.trim() || submitting || refundExceedsTotal || refundBelowMinimum || (isRefundAction && availableRefund <= 0)}
             >
               {submitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
               Confirm Adjustment

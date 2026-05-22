@@ -124,6 +124,13 @@ export function calculateProcessingFee(amountCents: number, paymentMethod: strin
 }
 
 /**
+ * Minimum allowed refund amount (Stripe refund / customer-received), in cents.
+ * Refunds below this are rejected — Stripe enforces ~$0.50 anyway and
+ * micro-refunds aren't worth the ledger noise.
+ */
+export const MIN_REFUND_CENTS = 100;
+
+/**
  * Calculate the proportional, non-refundable processing fee for a *partial*
  * refund. Stripe doesn't return the original processing fee on refunds, so
  * the church should withhold the share of the fee that belongs to the

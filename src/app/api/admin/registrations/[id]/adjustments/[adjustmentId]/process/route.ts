@@ -12,7 +12,7 @@ import {
   processAdjustment,
   getAdjustmentsWithSummary,
 } from "@/lib/services/adjustment.service";
-import { calculateProcessingFee } from "@/app/(admin)/admin/registrations/registrations-types";
+import { calculateProcessingFee, MIN_REFUND_CENTS } from "@/app/(admin)/admin/registrations/registrations-types";
 import { writeAuditLog } from "@/lib/services/audit.service";
 import { sendRefundEmail } from "@/lib/email/send-refund";
 import { logger } from "@/lib/logger";
@@ -142,6 +142,15 @@ export async function POST(
       if (cappedRefundAmount <= 0) {
         return NextResponse.json(
           { error: "No refundable amount remaining (processing fee already exceeds balance)" },
+          { status: 400 }
+        );
+      }
+
+      // Defense-in-depth: same minimum as creation route. Catches legacy/edge
+      // PENDING adjustments where rawRefundAmount or the cap landed below $1.
+      if (cappedRefundAmount < MIN_REFUND_CENTS) {
+        return NextResponse.json(
+          { error: `Minimum refund is ${(MIN_REFUND_CENTS / 100).toFixed(2)} to customer` },
           { status: 400 }
         );
       }

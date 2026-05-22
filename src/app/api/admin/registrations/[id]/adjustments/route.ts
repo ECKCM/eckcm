@@ -13,7 +13,7 @@ import {
   getAdjustmentsWithSummary,
   createAdjustment,
 } from "@/lib/services/adjustment.service";
-import { calculateProcessingFee } from "@/app/(admin)/admin/registrations/registrations-types";
+import { calculateProcessingFee, MIN_REFUND_CENTS } from "@/app/(admin)/admin/registrations/registrations-types";
 import { sendRefundEmail } from "@/lib/email/send-refund";
 import { logger } from "@/lib/logger";
 import type { AdjustmentType, AdjustmentAction } from "@/lib/types/database";
@@ -128,6 +128,16 @@ export async function POST(
   // Calculate refund amount (difference between current total and new amount)
   const currentAmount = reg.total_amount_cents;
   const refundAmountCents = currentAmount - new_amount; // positive when refunding
+
+  // Enforce minimum refund (customer-received). Applies to both Stripe and
+  // Zelle/Check — sub-$1 refunds add ledger noise and Stripe itself rejects
+  // anything under ~$0.50 anyway.
+  if (action_taken === "refund" && refundAmountCents > 0 && refundAmountCents < MIN_REFUND_CENTS) {
+    return NextResponse.json(
+      { error: `Minimum refund is ${(MIN_REFUND_CENTS / 100).toFixed(2)} to customer` },
+      { status: 400 }
+    );
+  }
 
   // ─── Stripe refund for direct "refund" action ───
   let stripeRefundId: string | undefined;
