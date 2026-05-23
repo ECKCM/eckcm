@@ -13,7 +13,7 @@ import {
   getAdjustmentsWithSummary,
   createAdjustment,
 } from "@/lib/services/adjustment.service";
-import { calculateProcessingFee } from "@/app/(admin)/admin/registrations/registrations-types";
+import { calculateProcessingFee, MIN_REFUND_CENTS } from "@/app/(admin)/admin/registrations/registrations-types";
 import { sendRefundEmail } from "@/lib/email/send-refund";
 import { logger } from "@/lib/logger";
 import type { AdjustmentType, AdjustmentAction } from "@/lib/types/database";
@@ -129,6 +129,16 @@ export async function POST(
   const currentAmount = reg.total_amount_cents;
   const refundAmountCents = currentAmount - new_amount; // positive when refunding
 
+  // Enforce minimum refund (customer-received). Applies to both Stripe and
+  // Zelle/Check — sub-$1 refunds add ledger noise and Stripe itself rejects
+  // anything under ~$0.50 anyway.
+  if (action_taken === "refund" && refundAmountCents > 0 && refundAmountCents < MIN_REFUND_CENTS) {
+    return NextResponse.json(
+      { error: `Minimum refund is ${(MIN_REFUND_CENTS / 100).toFixed(2)} to customer` },
+      { status: 400 }
+    );
+  }
+
   // ─── Stripe refund for direct "refund" action ───
   let stripeRefundId: string | undefined;
   let paymentMethod: string | null = null;
@@ -163,13 +173,17 @@ export async function POST(
           paymentMethod = "CARD";
         }
 
-        // Cap refund at processing fee limit
+        // `refundAmountCents` is what the customer actually receives — the UI has
+        // already deducted the proportional Stripe fee (admin types $30, UI sends
+        // Stripe refund $29.04 as the registration drop). API just caps for safety
+        // so the total customer-received refunds never exceed (payment − full fee).
         const { summary } = await getAdjustmentsWithSummary(admin, registrationId);
         const feeBase = summary.original_amount > 0 ? summary.original_amount : currentAmount;
-        const fee = calculateProcessingFee(feeBase, paymentMethod);
-        cappedRefundAmount = fee > 0
-          ? Math.min(refundAmountCents, Math.max(0, feeBase - fee - summary.total_refunded))
-          : refundAmountCents;
+        const totalFee = calculateProcessingFee(feeBase, paymentMethod);
+        const maxTotalRefundable = totalFee > 0
+          ? Math.max(0, feeBase - totalFee - summary.total_refunded)
+          : Math.max(0, feeBase - summary.total_refunded);
+        cappedRefundAmount = Math.min(refundAmountCents, maxTotalRefundable);
 
         if (cappedRefundAmount <= 0) {
           return NextResponse.json(
@@ -233,8 +247,13 @@ export async function POST(
                 .eq("id", payment.invoice_id);
             }
 
-            // Full refund → update registration status & deactivate epass
-            if (refundStatus === "REFUNDED") {
+            // Full refund — customer has been refunded the maximum possible (= payment − fee).
+            // With proportional fee deduction, `new_amount` lands on the fee amount, not 0,
+            // so detect "fully refunded" by checking whether the remaining balance is just
+            // the non-refundable fee.
+            const stripeFee = calculateProcessingFee(payment.amount_cents, paymentMethod);
+            const fullyRefunded = postSummary.remainingCents <= stripeFee;
+            if (refundStatus === "REFUNDED" || fullyRefunded) {
               await admin
                 .from("eckcm_registrations")
                 .update({ status: "REFUNDED" })

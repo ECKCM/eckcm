@@ -76,6 +76,8 @@ import {
   formatTimestamp,
   VALID_STATUSES,
   calculateProcessingFee,
+  calculateProportionalProcessingFee,
+  MIN_REFUND_CENTS,
 } from "./registrations-types";
 
 interface RegistrationDetailSheetProps {
@@ -898,10 +900,12 @@ function AdjustmentsPanel({
     if (!reason.trim()) return;
     setSubmitting(true);
     try {
-      const inputCents = Math.round(parseFloat(newAmountDollars) * 100);
+      const localInput = Math.round(parseFloat(newAmountDollars) * 100);
+      // For refund: registration drops by the amount the customer actually receives
+      // (admin intent − proportional fee), so new_total reflects "money remaining in Stripe".
       const apiNewAmount = newAction === "refund"
-        ? Math.max(0, currentAmount - inputCents)
-        : inputCents;
+        ? Math.max(0, currentAmount - stripeRefund)
+        : localInput;
       const res = await fetch(`/api/admin/registrations/${registrationId}/adjustments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -960,19 +964,31 @@ function AdjustmentsPanel({
 
   const inputCents = Math.round(parseFloat(newAmountDollars) * 100) || 0;
   const isRefundAction = newAction === "refund";
-  // When action is "refund", input = refund amount; otherwise input = new total
-  const newAmountCents = isRefundAction ? currentAmount - inputCents : inputCents;
-  const diff = newAmountCents - currentAmount;
 
   // Refund limit: processing fee is non-refundable
   const feeBase = summary && summary.original_amount > 0 ? summary.original_amount : currentAmount;
   const processingFee = feeBase > 0 ? calculateProcessingFee(feeBase, paymentMethod) : 0;
   const maxRefundTotal = feeBase - processingFee;
   const availableRefund = summary ? Math.max(0, maxRefundTotal - summary.total_refunded) : 0;
-  // Stripe refund is capped at availableRefund; registration total goes to 0 on full refund
-  const stripeRefund = isRefundAction ? Math.min(inputCents, availableRefund) : 0;
+  // Proportional fee deducted from THIS partial refund (so the church doesn't eat the fee).
+  const proportionalRefundFee = isRefundAction && inputCents > 0
+    ? calculateProportionalProcessingFee(inputCents, feeBase, paymentMethod)
+    : 0;
+  // Stripe refund = admin intent − proportional fee, capped at remaining refundable balance.
+  // This is what the customer actually receives back.
+  const stripeRefund = isRefundAction
+    ? Math.max(0, Math.min(inputCents - proportionalRefundFee, availableRefund))
+    : 0;
+  // "New Total" reflects how much money remains in Stripe for this registration —
+  // i.e. it drops by the actual Stripe refund (customer received), not by admin intent.
+  const newAmountCents = isRefundAction ? currentAmount - stripeRefund : inputCents;
+  const diff = newAmountCents - currentAmount;
   const refundExceedsTotal = isRefundAction && inputCents > currentAmount;
-  const refundExceedsAvailable = isRefundAction && processingFee > 0 && inputCents > availableRefund;
+  // Minimum: customer must receive at least $1 (Stripe's own floor is ~$0.50;
+  // the extra leeway protects against micro-refund noise). Only flag when admin
+  // has actually started typing — empty/zero shouldn't show a "below min" error.
+  const refundBelowMinimum =
+    isRefundAction && inputCents > 0 && stripeRefund > 0 && stripeRefund < MIN_REFUND_CENTS;
 
   if (loading) {
     return (
@@ -1168,20 +1184,30 @@ function AdjustmentsPanel({
                 <div className="text-xs mt-1 space-y-0.5">
                   <p className="text-muted-foreground">
                     New Total: {formatMoney(Math.max(0, newAmountCents))}
-                    {processingFee > 0 && inputCents > 0 && (
+                    {inputCents > 0 && (
                       <> · Stripe refund: {formatMoney(stripeRefund)}
-                        {inputCents > availableRefund && ` (fee ${formatMoney(processingFee)} non-refundable)`}
+                        {proportionalRefundFee > 0 && (
+                          <> (fee {formatMoney(proportionalRefundFee)} withheld)</>
+                        )}
                       </>
                     )}
                   </p>
-                  {refundExceedsAvailable && !refundExceedsTotal && (
+                  {availableRefund <= 0 && (
                     <p className="text-destructive">
-                      Max refundable: {formatMoney(availableRefund)} (fee {formatMoney(processingFee)} non-refundable)
+                      No refundable amount remaining (fee {formatMoney(processingFee)} already exceeds balance)
                     </p>
                   )}
                   {refundExceedsTotal && (
                     <p className="text-destructive">
                       Cannot refund more than current amount ({formatMoney(currentAmount)})
+                    </p>
+                  )}
+                  {refundBelowMinimum && !refundExceedsTotal && (
+                    <p className="text-destructive">
+                      Minimum refund: {formatMoney(MIN_REFUND_CENTS)} to customer
+                      {proportionalRefundFee > 0 && (
+                        <> (fee {formatMoney(proportionalRefundFee)} is withheld — type a bit more)</>
+                      )}
                     </p>
                   )}
                 </div>
@@ -1202,9 +1228,10 @@ function AdjustmentsPanel({
               <Select value={newAction} onValueChange={(val) => {
                 setNewAction(val);
                 if (val === "refund") {
-                  // Auto-fill with max refundable (processing fee deducted)
-                  const maxRefund = availableRefund > 0 ? availableRefund : currentAmount;
-                  setNewAmountDollars((maxRefund / 100).toFixed(2));
+                  // Auto-fill with the current registration total — admin's intent
+                  // for a "full refund". Fee is deducted from the actual Stripe refund
+                  // (shown beneath the input), not from this intent value.
+                  setNewAmountDollars((currentAmount / 100).toFixed(2));
                 } else if (newAction === "refund") {
                   setNewAmountDollars((currentAmount / 100).toFixed(2));
                 }
@@ -1238,7 +1265,7 @@ function AdjustmentsPanel({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCreate}
-              disabled={!reason.trim() || submitting || refundExceedsTotal || refundExceedsAvailable}
+              disabled={!reason.trim() || submitting || refundExceedsTotal || refundBelowMinimum || (isRefundAction && availableRefund <= 0)}
             >
               {submitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
               Confirm Adjustment
@@ -1276,12 +1303,17 @@ function AdjustmentsPanel({
                   <SelectItem value="credit">Credit</SelectItem>
                 </SelectContent>
               </Select>
-              {processAction === "refund" && processingAdj && processingFee > 0 && (
-                <p className="text-xs mt-1.5 text-muted-foreground">
-                  Actual refund: {formatMoney(Math.min(Math.abs(processingAdj.difference), availableRefund))}{" "}
-                  (fee {formatMoney(processingFee)} non-refundable)
-                </p>
-              )}
+              {processAction === "refund" && processingAdj && (() => {
+                // adj.difference is the customer-received amount for new-style
+                // adjustments (UI deducted the fee at creation time). Cap for safety.
+                const rawRefund = Math.abs(processingAdj.difference);
+                const actual = Math.max(0, Math.min(rawRefund, availableRefund));
+                return (
+                  <p className="text-xs mt-1.5 text-muted-foreground">
+                    Stripe refund: {formatMoney(actual)}
+                  </p>
+                );
+              })()}
             </div>
 
             <AlertDialogFooter>

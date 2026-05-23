@@ -12,7 +12,7 @@ import {
   processAdjustment,
   getAdjustmentsWithSummary,
 } from "@/lib/services/adjustment.service";
-import { calculateProcessingFee } from "@/app/(admin)/admin/registrations/registrations-types";
+import { calculateProcessingFee, MIN_REFUND_CENTS } from "@/app/(admin)/admin/registrations/registrations-types";
 import { writeAuditLog } from "@/lib/services/audit.service";
 import { sendRefundEmail } from "@/lib/email/send-refund";
 import { logger } from "@/lib/logger";
@@ -126,18 +126,31 @@ export async function POST(
         }
       }
 
-      // Cap refund at max refundable (processing fee is non-refundable)
+      // For new-style adjustments, adj.difference is already the customer-received
+      // amount (UI deducted the proportional fee at adjustment creation time).
+      // For legacy adjustments, it's the gross amount; the cap below still protects
+      // against over-refund either way.
       const { summary } = await getAdjustmentsWithSummary(admin, registrationId);
       const feeBase = summary.original_amount > 0 ? summary.original_amount : (adj.previous_amount + Math.abs(adj.difference));
-      const fee = calculateProcessingFee(feeBase, paymentMethod);
+      const totalFee = calculateProcessingFee(feeBase, paymentMethod);
       const rawRefundAmount = Math.abs(adj.difference);
-      cappedRefundAmount = fee > 0
-        ? Math.min(rawRefundAmount, Math.max(0, feeBase - fee - summary.total_refunded))
-        : rawRefundAmount;
+      const maxTotalRefundable = totalFee > 0
+        ? Math.max(0, feeBase - totalFee - summary.total_refunded)
+        : Math.max(0, feeBase - summary.total_refunded);
+      cappedRefundAmount = Math.min(rawRefundAmount, maxTotalRefundable);
 
       if (cappedRefundAmount <= 0) {
         return NextResponse.json(
           { error: "No refundable amount remaining (processing fee already exceeds balance)" },
+          { status: 400 }
+        );
+      }
+
+      // Defense-in-depth: same minimum as creation route. Catches legacy/edge
+      // PENDING adjustments where rawRefundAmount or the cap landed below $1.
+      if (cappedRefundAmount < MIN_REFUND_CENTS) {
+        return NextResponse.json(
+          { error: `Minimum refund is ${(MIN_REFUND_CENTS / 100).toFixed(2)} to customer` },
           { status: 400 }
         );
       }
@@ -207,9 +220,13 @@ export async function POST(
               .eq("id", paymentWithInvoice.invoice_id);
           }
 
-          // Full refund (or capped-for-fee but admin intended $0) → update registration status
-          const adminIntendedZero = adj.new_amount === 0;
-          if (refundStatus === "REFUNDED" || adminIntendedZero) {
+          // Full refund — customer has been refunded the maximum possible (= payment − fee).
+          // With proportional fee deduction, `new_amount` lands on the fee amount, not 0,
+          // so detect "fully refunded" by checking whether the remaining balance is just
+          // the non-refundable fee.
+          const stripeFee = calculateProcessingFee(payment.amount_cents, paymentMethod);
+          const fullyRefunded = postSummary.remainingCents <= stripeFee;
+          if (refundStatus === "REFUNDED" || fullyRefunded) {
             await admin
               .from("eckcm_registrations")
               .update({ status: "CANCELLED" })
