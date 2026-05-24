@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 
 interface Orphan {
@@ -61,11 +59,9 @@ export default function OrphansPage() {
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-14 items-center gap-2 border-b px-4">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
+      <div className="flex items-center gap-2 border-b px-4 py-3">
         <h1 className="text-lg font-semibold">Orphan Payments Audit</h1>
-      </header>
+      </div>
       <div className="p-6 space-y-4 max-w-4xl">
         <div className="rounded border p-4 space-y-3 bg-muted/30">
           <p className="text-sm text-muted-foreground">

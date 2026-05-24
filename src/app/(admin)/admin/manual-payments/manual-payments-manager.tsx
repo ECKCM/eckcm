@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -431,11 +432,11 @@ export function ManualPaymentsManager() {
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Input
+        <SearchInput
           placeholder="Search by name, code, or note..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs"
+          onValueChange={setSearch}
+          containerClassName="max-w-xs"
         />
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[140px]">

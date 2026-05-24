@@ -24,7 +24,12 @@ export async function GET() {
 
     const sourceIds = fundingSources.map((s: any) => s.id);
 
-    // Load all allocations with registration details
+    // Load all allocations with registration details.
+    // Only count active commitments: SUBMITTED (pending payment), APPROVED ($0 confirmed), PAID.
+    // Exclude DRAFT (re-opened from CANCELLED — stale rows), CANCELLED, REFUNDED.
+    // Allocations are inserted on submit and not deleted on cancel/refund/reopen,
+    // so we filter by registration status here rather than relying on row cleanup.
+    const ACTIVE_FUNDING_STATUSES = ["SUBMITTED", "APPROVED", "PAID"];
     const { data: allocations } = await admin
       .from("eckcm_funding_allocations")
       .select(`
@@ -43,6 +48,7 @@ export async function GET() {
         )
       `)
       .in("funding_fee_category_id", sourceIds)
+      .in("eckcm_registrations.status", ACTIVE_FUNDING_STATUSES)
       .order("created_at", { ascending: false });
 
     // Load registration group names for display

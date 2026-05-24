@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -262,11 +263,11 @@ export function InvoicesTable({ events }: { events: Event[] }) {
           </SelectContent>
         </Select>
 
-        <Input
+        <SearchInput
           placeholder="Search invoice#, code, email..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs"
+          onValueChange={setSearch}
+          containerClassName="max-w-xs"
         />
       </div>
 

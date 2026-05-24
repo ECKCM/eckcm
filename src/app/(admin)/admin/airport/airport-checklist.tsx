@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import {
   Select,
   SelectContent,
@@ -24,7 +25,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { PlaneLanding, PlaneTakeoff, Users, Plane, Search } from "lucide-react";
+import { PlaneLanding, PlaneTakeoff, Users, Plane } from "lucide-react";
 
 interface EventOption {
   id: string;
@@ -272,15 +273,12 @@ export function AirportChecklist() {
           </SelectContent>
         </Select>
 
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Search name, phone, code, flight..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          placeholder="Search name, phone, code, flight..."
+          value={searchQuery}
+          onValueChange={setSearchQuery}
+          containerClassName="flex-1 min-w-[200px] max-w-sm"
+        />
       </div>
 
       {rides.length === 0 ? (

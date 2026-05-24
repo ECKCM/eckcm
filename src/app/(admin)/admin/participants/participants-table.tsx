@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -246,11 +247,11 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
           </SelectContent>
         </Select>
 
-        <Input
+        <SearchInput
           placeholder="Search name, email, phone, church, code..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
+          onValueChange={setSearch}
+          containerClassName="max-w-sm"
         />
       </div>
 

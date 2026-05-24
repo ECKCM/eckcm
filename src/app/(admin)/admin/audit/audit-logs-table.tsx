@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import {
   Table,
   TableBody,
@@ -165,11 +166,11 @@ export function AuditLogsTable() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Audit Logs</h1>
 
-      <Input
+      <SearchInput
         placeholder="Search action, entity, actor, registration code..."
         value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-        className="max-w-sm"
+        onValueChange={(v) => { setSearch(v); setPage(0); }}
+        containerClassName="max-w-sm"
       />
 
       <Card>

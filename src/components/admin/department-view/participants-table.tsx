@@ -51,14 +51,17 @@ interface ParticipantRow {
   guardian_phone: string | null;
   confirmation_code: string | null;
   registration_status: string;
+  registration_created_at: string | null;
   registration_start: string | null;
   registration_end: string | null;
   nights_count: number | null;
+  additional_requests: string | null;
   group_role: string;
   membership_status: string;
   display_group_code: string;
   participant_code: string | null;
   lodging_type: string | null;
+  room_number: string | null;
 }
 
 export function DepartmentParticipantsTable({
@@ -99,9 +102,14 @@ export function DepartmentParticipantsTable({
           display_group_code,
           event_id,
           preferences,
+          lodging_type,
           eckcm_registrations!inner(
             confirmation_code, status,
-            start_date, end_date, nights_count
+            created_at, start_date, end_date, nights_count,
+            additional_requests
+          ),
+          eckcm_room_assignments(
+            eckcm_rooms(room_number)
           )
         )
       `)
@@ -114,7 +122,14 @@ export function DepartmentParticipantsTable({
       const rows: ParticipantRow[] = data.map((m: any) => {
         const prefs = m.eckcm_groups.preferences;
         const lodgingType =
-          prefs && typeof prefs === "object" ? prefs.lodgingType ?? null : null;
+          m.eckcm_groups.lodging_type ??
+          (prefs && typeof prefs === "object" ? prefs.lodgingType ?? null : null);
+
+        // Room assignment may be 0..1 (returned as array by PostgREST)
+        const raRaw = m.eckcm_groups.eckcm_room_assignments;
+        const assignment = Array.isArray(raRaw) ? raRaw[0] : raRaw ?? null;
+        const roomNumber = assignment?.eckcm_rooms?.room_number ?? null;
+
         return {
           person_id: m.person_id,
           first_name_en: m.eckcm_people.first_name_en,
@@ -135,14 +150,18 @@ export function DepartmentParticipantsTable({
           guardian_phone: m.eckcm_people.guardian_phone ?? null,
           confirmation_code: m.eckcm_groups.eckcm_registrations.confirmation_code,
           registration_status: m.eckcm_groups.eckcm_registrations.status,
+          registration_created_at: m.eckcm_groups.eckcm_registrations.created_at,
           registration_start: m.eckcm_groups.eckcm_registrations.start_date,
           registration_end: m.eckcm_groups.eckcm_registrations.end_date,
           nights_count: m.eckcm_groups.eckcm_registrations.nights_count,
+          additional_requests:
+            m.eckcm_groups.eckcm_registrations.additional_requests ?? null,
           group_role: m.role,
           membership_status: m.status,
           display_group_code: m.eckcm_groups.display_group_code,
           participant_code: m.participant_code,
           lodging_type: lodgingType,
+          room_number: roomNumber,
         };
       });
       setParticipants(rows);
@@ -164,6 +183,7 @@ export function DepartmentParticipantsTable({
     _reload
   );
   useRealtime({ table: "eckcm_group_memberships", event: "*" }, _reload);
+  useRealtime({ table: "eckcm_room_assignments", event: "*" }, _reload);
   useChangeDetector("eckcm_group_memberships", loadParticipants, 5000);
 
   const filtered = participants.filter((p) => {
@@ -179,13 +199,15 @@ export function DepartmentParticipantsTable({
       (p.participant_code?.toLowerCase().includes(q) ?? false) ||
       p.display_group_code.toLowerCase().includes(q) ||
       (p.church_name?.toLowerCase().includes(q) ?? false) ||
-      (p.guardian_name?.toLowerCase().includes(q) ?? false)
+      (p.guardian_name?.toLowerCase().includes(q) ?? false) ||
+      (p.room_number?.toLowerCase().includes(q) ?? false) ||
+      (p.additional_requests?.toLowerCase().includes(q) ?? false)
     );
   });
 
   const { sortedData: sorted, sortConfig, requestSort } = useTableSort(filtered);
 
-  // Stats — computed from filtered (so search narrows the totals too).
+  // Stats — Total / Male / Female only (Other/N/A intentionally dropped).
   const stats = useMemo(() => {
     const total = filtered.length;
     let male = 0;
@@ -296,10 +318,21 @@ export function DepartmentParticipantsTable({
     return d;
   }
 
+  function formatRegDate(iso: string | null) {
+    if (!iso) return "-";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "-";
+    return d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  }
+
   return (
     <div className="space-y-4">
       {/* Stats summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <StatCard label="Total" value={stats.total} icon={Users} />
         <StatCard
           label="Male"
@@ -313,7 +346,6 @@ export function DepartmentParticipantsTable({
           icon={UserCheck}
           accent="text-pink-600"
         />
-        <StatCard label="Other / N/A" value={stats.other} icon={User} accent="text-muted-foreground" />
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">
@@ -331,7 +363,7 @@ export function DepartmentParticipantsTable({
         </Select>
 
         <Input
-          placeholder="Search name, email, phone, church, code..."
+          placeholder="Search name, email, phone, church, code, room..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
@@ -387,10 +419,13 @@ export function DepartmentParticipantsTable({
                     <SortableTableHead sortKey="confirmation_code" sortConfig={sortConfig} onSort={requestSort}>Reg Code</SortableTableHead>
                     <SortableTableHead sortKey="participant_code" sortConfig={sortConfig} onSort={requestSort}>P.Code</SortableTableHead>
                     <SortableTableHead sortKey="registration_status" sortConfig={sortConfig} onSort={requestSort}>Reg Status</SortableTableHead>
+                    <SortableTableHead sortKey="registration_created_at" sortConfig={sortConfig} onSort={requestSort}>Registered</SortableTableHead>
                     <SortableTableHead sortKey="registration_start" sortConfig={sortConfig} onSort={requestSort}>Check-in</SortableTableHead>
                     <SortableTableHead sortKey="registration_end" sortConfig={sortConfig} onSort={requestSort}>Check-out</SortableTableHead>
                     <SortableTableHead sortKey="nights_count" sortConfig={sortConfig} onSort={requestSort}>Nights</SortableTableHead>
                     <SortableTableHead sortKey="lodging_type" sortConfig={sortConfig} onSort={requestSort}>Lodging</SortableTableHead>
+                    <SortableTableHead sortKey="room_number" sortConfig={sortConfig} onSort={requestSort}>Room</SortableTableHead>
+                    <SortableTableHead sortKey="additional_requests" sortConfig={sortConfig} onSort={requestSort}>Request</SortableTableHead>
                     <SortableTableHead sortKey="email" sortConfig={sortConfig} onSort={requestSort}>Email</SortableTableHead>
                     <SortableTableHead sortKey="phone" sortConfig={sortConfig} onSort={requestSort}>Phone</SortableTableHead>
                     <SortableTableHead sortKey="guardian_name" sortConfig={sortConfig} onSort={requestSort}>Guardian</SortableTableHead>
@@ -424,10 +459,18 @@ export function DepartmentParticipantsTable({
                           {p.registration_status}
                         </Badge>
                       </TableCell>
+                      <TableCell className="whitespace-nowrap text-xs">{formatRegDate(p.registration_created_at)}</TableCell>
                       <TableCell className="whitespace-nowrap text-xs">{formatDate(p.registration_start)}</TableCell>
                       <TableCell className="whitespace-nowrap text-xs">{formatDate(p.registration_end)}</TableCell>
                       <TableCell>{p.nights_count ?? "-"}</TableCell>
                       <TableCell className="whitespace-nowrap text-xs">{formatLodging(p.lodging_type)}</TableCell>
+                      <TableCell className="whitespace-nowrap font-mono text-xs">{p.room_number ?? "-"}</TableCell>
+                      <TableCell
+                        className="text-xs max-w-[220px] truncate"
+                        title={p.additional_requests ?? ""}
+                      >
+                        {p.additional_requests ?? "-"}
+                      </TableCell>
                       <TableCell className="text-xs">{p.email ?? "-"}</TableCell>
                       <TableCell className="text-xs whitespace-nowrap">{p.phone ?? "-"}</TableCell>
                       <TableCell className="text-xs whitespace-nowrap">{p.guardian_name ?? "-"}</TableCell>
@@ -436,7 +479,7 @@ export function DepartmentParticipantsTable({
                   ))}
                   {sorted.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={22} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={25} className="text-center text-muted-foreground py-8">
                         No participants found in this department.
                       </TableCell>
                     </TableRow>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -180,11 +181,11 @@ export function UsersManager({
 
   return (
     <div className="space-y-4">
-      <Input
+      <SearchInput
         placeholder="Search by name or email..."
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
+        onValueChange={setSearch}
+        containerClassName="max-w-sm"
       />
       <div className="flex items-center gap-2 flex-wrap">
         <Button
