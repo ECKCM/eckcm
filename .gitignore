@@ -53,3 +53,9 @@ supabase/.temp/
 next-env.d.ts
 
 certificates
+
+# Playwright
+node_modules/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

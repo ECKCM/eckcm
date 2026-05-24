@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -102,11 +100,9 @@ export default function BookletSettingsPage() {
   if (loading) {
     return (
       <div className="flex flex-col">
-        <header className="flex h-14 items-center gap-2 border-b px-4">
-          <SidebarTrigger />
-          <Separator orientation="vertical" className="h-6" />
+        <div className="flex items-center gap-2 border-b px-4 py-3">
           <h1 className="text-lg font-semibold">Booklet</h1>
-        </header>
+        </div>
         <div className="flex items-center justify-center p-12">
           <p className="text-muted-foreground">Loading...</p>
         </div>
@@ -116,11 +112,9 @@ export default function BookletSettingsPage() {
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-14 items-center gap-2 border-b px-4">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
+      <div className="flex items-center gap-2 border-b px-4 py-3">
         <h1 className="text-lg font-semibold">Booklet</h1>
-      </header>
+      </div>
       <div className="mx-auto w-full max-w-2xl space-y-6 p-6">
         {/* PDF Upload */}
         <Card>

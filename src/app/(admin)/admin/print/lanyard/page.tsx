@@ -1,16 +1,12 @@
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export default function PrintLanyardPage() {
   return (
     <div className="flex flex-col">
-      <header className="flex h-14 items-center gap-2 border-b px-4">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
+      <div className="flex items-center gap-2 border-b px-4 py-3">
         <h1 className="text-lg font-semibold">Print Lanyards</h1>
-      </header>
+      </div>
       <div className="mx-auto w-full max-w-2xl p-6">
         <Card>
           <CardHeader>

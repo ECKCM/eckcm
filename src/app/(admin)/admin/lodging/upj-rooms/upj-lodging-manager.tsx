@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -23,7 +24,6 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import {
-  Search,
   Download,
   Building2,
   Eye,
@@ -273,15 +273,13 @@ export function UPJLodgingManager() {
             </SelectContent>
           </Select>
 
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search rooms, names, category..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9 text-sm"
-            />
-          </div>
+          <SearchInput
+            placeholder="Search rooms, names, category..."
+            value={search}
+            onValueChange={setSearch}
+            containerClassName="flex-1 max-w-xs h-9"
+            className="text-sm"
+          />
 
           <div className="flex items-center gap-2 ml-auto">
             <Button

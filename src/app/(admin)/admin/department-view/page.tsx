@@ -1,8 +1,6 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2 } from "lucide-react";
 
@@ -36,11 +34,9 @@ export default async function DepartmentViewPage() {
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-14 items-center gap-2 border-b px-4">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
+      <div className="flex items-center gap-2 border-b px-4 py-3">
         <h1 className="text-lg font-semibold">Department View</h1>
-      </header>
+      </div>
 
       <div className="p-6 space-y-4">
         <p className="text-sm text-muted-foreground">

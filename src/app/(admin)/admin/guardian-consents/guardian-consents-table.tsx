@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -246,11 +247,11 @@ export function GuardianConsentsTable({ events }: { events: Event[] }) {
           </SelectContent>
         </Select>
 
-        <Input
+        <SearchInput
           placeholder="Search name, guardian, phone, code..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-[250px]"
+          onValueChange={setSearch}
+          containerClassName="max-w-[250px]"
         />
 
         <Button variant="ghost" size="icon" onClick={loadConsents}>

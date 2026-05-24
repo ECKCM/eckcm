@@ -1,5 +1,3 @@
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { BedDouble, Clock, CheckCircle, Building2, Hotel, Map } from "lucide-react";
 
@@ -45,11 +43,9 @@ const lodgingCards = [
 export default function LodgingOverviewPage() {
   return (
     <div className="flex flex-col">
-      <header className="flex h-14 items-center gap-2 border-b px-4">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
+      <div className="flex items-center gap-2 border-b px-4 py-3">
         <h1 className="text-lg font-semibold">Lodging</h1>
-      </header>
+      </div>
       <div className="p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {lodgingCards.map((card) => (

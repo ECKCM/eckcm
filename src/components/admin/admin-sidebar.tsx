@@ -151,7 +151,7 @@ export function AdminSidebar({ events, permissions }: AdminSidebarProps) {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b px-4 py-3">
+      <SidebarHeader className="h-14 flex-row items-center justify-start border-b px-4 py-0">
         <Link href="/admin" className="flex items-center gap-2">
           <span className="text-lg font-bold">ECKCM Admin</span>
         </Link>

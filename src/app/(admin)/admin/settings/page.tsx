@@ -1,5 +1,3 @@
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import {
   Layers,
@@ -32,11 +30,9 @@ const settingsCards = [
 export default function SettingsOverviewPage() {
   return (
     <div className="flex flex-col">
-      <header className="flex h-14 items-center gap-2 border-b px-4">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
+      <div className="flex items-center gap-2 border-b px-4 py-3">
         <h1 className="text-lg font-semibold">Settings</h1>
-      </header>
+      </div>
       <div className="p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {settingsCards.map((card) => (

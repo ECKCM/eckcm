@@ -2,8 +2,6 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { DepartmentParticipantsTable } from "@/components/admin/department-view/participants-table";
@@ -45,23 +43,20 @@ export default async function DepartmentParticipantsPage({
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-14 items-center gap-2 border-b px-4">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
+      <div className="flex items-center gap-2 border-b px-4 py-3">
         <Button asChild variant="ghost" size="sm" className="gap-1">
           <Link href="/admin/department-view">
             <ArrowLeft className="size-4" />
             Departments
           </Link>
         </Button>
-        <Separator orientation="vertical" className="h-6" />
         <h1 className="text-lg font-semibold">
           {dept.name_en}
           <span className="ml-2 text-sm font-normal text-muted-foreground">
             {dept.name_ko}
           </span>
         </h1>
-      </header>
+      </div>
       <div className="p-6">
         <DepartmentParticipantsTable
           departmentId={dept.id}

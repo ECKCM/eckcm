@@ -1,6 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { CheckoutClient } from "./checkout-client";
 
 export default async function CheckoutPage() {
@@ -15,11 +13,9 @@ export default async function CheckoutPage() {
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-14 items-center gap-2 border-b px-4">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
+      <div className="flex items-center gap-2 border-b px-4 py-3">
         <h1 className="text-lg font-semibold">Check-out</h1>
-      </header>
+      </div>
       <div className="p-6">
         <CheckoutClient events={events ?? []} />
       </div>

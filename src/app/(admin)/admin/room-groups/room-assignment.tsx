@@ -16,6 +16,7 @@ import {
 } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -35,7 +36,6 @@ import {
   Layers,
   X,
   GripVertical,
-  Search,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -573,15 +573,13 @@ export function RoomAssignment({
               <div className="text-sm font-medium">
                 Unassigned ({filteredGroups.length})
               </div>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search groups..."
-                  value={groupSearch}
-                  onChange={(e) => setGroupSearch(e.target.value)}
-                  className="pl-8 h-8 text-sm"
-                />
-              </div>
+              <SearchInput
+                placeholder="Search groups..."
+                value={groupSearch}
+                onValueChange={setGroupSearch}
+                containerClassName="h-8"
+                className="text-sm"
+              />
             </div>
 
             <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -645,15 +643,13 @@ export function RoomAssignment({
           {/* Right Panel — Rooms */}
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="p-3 border-b flex items-center gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search rooms..."
-                  value={roomSearch}
-                  onChange={(e) => setRoomSearch(e.target.value)}
-                  className="pl-8 h-8 text-sm"
-                />
-              </div>
+              <SearchInput
+                placeholder="Search rooms..."
+                value={roomSearch}
+                onValueChange={setRoomSearch}
+                containerClassName="flex-1 h-8"
+                className="text-sm"
+              />
               <div className="flex items-center gap-2">
                 <Switch
                   id="empty-only"

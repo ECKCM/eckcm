@@ -1,6 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { RoomAssignment } from "./room-assignment";
 
 export default async function RoomAssignmentPage() {
@@ -22,12 +20,10 @@ export default async function RoomAssignmentPage() {
   ]);
 
   return (
-    <div className="flex flex-col h-dvh">
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
+    <div className="flex flex-col h-[calc(100dvh-3.5rem)]">
+      <div className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
         <h1 className="text-lg font-semibold">Room Assignment</h1>
-      </header>
+      </div>
       <div className="flex-1 min-h-0 overflow-hidden">
         <RoomAssignment
           events={events ?? []}

@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -13,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -1005,14 +1004,14 @@ function EmailLogTab() {
             <CardTitle>Email Log</CardTitle>
             <CardDescription>{total} email(s) sent</CardDescription>
           </div>
-          <Input
+          <SearchInput
             placeholder="Search email or subject..."
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
+            onValueChange={(v) => {
+              setSearch(v);
               setPage(1);
             }}
-            className="max-w-xs"
+            containerClassName="max-w-xs"
           />
         </div>
       </CardHeader>
@@ -1289,11 +1288,9 @@ function AnnouncementTab() {
 export default function EmailSettingsPage() {
   return (
     <div className="flex flex-col">
-      <header className="flex h-14 items-center gap-2 border-b px-4">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
+      <div className="flex items-center gap-2 border-b px-4 py-3">
         <h1 className="text-lg font-semibold">Email Settings</h1>
-      </header>
+      </div>
       <div className="mx-auto w-full max-w-3xl p-6">
         <Tabs defaultValue="settings">
           <TabsList className="mb-6">
