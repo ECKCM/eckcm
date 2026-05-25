@@ -153,6 +153,7 @@ export default function AirportPickupStep() {
       weekday: "short",
       month: "short",
       day: "numeric",
+      timeZone: "America/New_York",
     });
   };
 
@@ -162,6 +163,7 @@ export default function AirportPickupStep() {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
+      timeZone: "America/New_York",
     });
   };
 

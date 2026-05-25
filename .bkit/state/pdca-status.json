@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-05-24T21:57:35.942Z",
+  "lastUpdated": "2026-05-24T23:48:01.475Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -156,7 +156,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T19:43:28.971Z",
-        "lastUpdated": "2026-03-26T19:43:59.606Z"
+        "lastUpdated": "2026-05-24T23:35:35.311Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/airport-pickup/page.tsx"
     },
@@ -962,7 +962,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T15:06:00.983Z",
-        "lastUpdated": "2026-03-30T15:06:18.940Z"
+        "lastUpdated": "2026-05-24T23:35:26.880Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/airport-rides/airport-rides-manager.tsx"
     },
@@ -1443,7 +1443,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-23T18:58:29.657Z",
-        "lastUpdated": "2026-05-23T18:58:46.476Z"
+        "lastUpdated": "2026-05-24T23:48:01.475Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/airport/airport-checklist.tsx"
     },
@@ -1482,7 +1482,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-05-24T21:57:35.942Z"
+    "lastActivity": "2026-05-24T23:48:01.475Z"
   },
   "history": [
     {
@@ -7482,6 +7482,72 @@
     {
       "timestamp": "2026-05-24T21:57:35.942Z",
       "feature": "funding",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-24T23:35:17.485Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-24T23:35:26.880Z",
+      "feature": "airport-rides",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-24T23:35:35.311Z",
+      "feature": "airport-pickup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-24T23:44:55.252Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-24T23:45:14.516Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-24T23:45:29.035Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-24T23:45:38.059Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-24T23:46:01.343Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-24T23:46:26.551Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-24T23:46:48.926Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-24T23:48:01.475Z",
+      "feature": "airport",
       "phase": "do",
       "action": "updated"
     }
