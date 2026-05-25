@@ -506,7 +506,14 @@ export async function POST(request: Request) {
 
   // Batch 2: Insert all people at once (track group index for membership mapping)
   const personInserts: Record<string, unknown>[] = [];
-  const personGroupMap: { groupIdx: number; isRep: boolean }[] = [];
+  const personGroupMap: {
+    groupIdx: number;
+    isRep: boolean;
+    isDateOverridden: boolean;
+    checkInDate: string | null;
+    checkOutDate: string | null;
+    mealSelections: { date: string; mealType: string; selected: boolean }[];
+  }[] = [];
 
   for (let gi = 0; gi < roomGroups.length; gi++) {
     for (const participant of roomGroups[gi].participants) {
@@ -542,7 +549,14 @@ export async function POST(request: Request) {
         guardian_phone_country: participant.guardianPhoneCountry || null,
         guardian_signature: participant.guardianSignature || null,
       });
-      personGroupMap.push({ groupIdx: gi, isRep: !!participant.isRepresentative });
+      personGroupMap.push({
+        groupIdx: gi,
+        isRep: !!participant.isRepresentative,
+        isDateOverridden: !!participant.isDateOverridden,
+        checkInDate: participant.checkInDate ?? null,
+        checkOutDate: participant.checkOutDate ?? null,
+        mealSelections: participant.mealSelections ?? [],
+      });
     }
   }
 
@@ -557,9 +571,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to create participants" }, { status: 500 });
   }
 
-  // Batch 3: Insert all memberships at once
+  // Batch 3: Insert all memberships at once (with optional per-participant stay dates)
   const membershipInserts = people.map((person, i) => {
-    const { groupIdx, isRep } = personGroupMap[i];
+    const { groupIdx, isRep, isDateOverridden, checkInDate, checkOutDate } = personGroupMap[i];
     const participantCode = availableCodes[i] || generateSafeConfirmationCode();
     return {
       group_id: groups[groupIdx].id,
@@ -567,6 +581,8 @@ export async function POST(request: Request) {
       role: isRep ? "REPRESENTATIVE" : "MEMBER",
       status: "ACTIVE",
       participant_code: participantCode,
+      stay_start_date: isDateOverridden && checkInDate ? checkInDate : null,
+      stay_end_date: isDateOverridden && checkOutDate ? checkOutDate : null,
     };
   });
 
@@ -582,6 +598,39 @@ export async function POST(request: Request) {
       people.map((person) => person.id)
     );
     return NextResponse.json({ error: "Failed to create memberships" }, { status: 500 });
+  }
+
+  // Batch 3b: Persist meal selections (full grid, both selected and not).
+  // The wizard collects a full grid of (date × meal_type) with a `selected`
+  // boolean for each — we store the entire grid so the admin UI can tell
+  // "user explicitly opted out" apart from "never initialized" (no rows).
+  const mealInserts: Record<string, unknown>[] = [];
+  for (let i = 0; i < people.length; i++) {
+    const personId = people[i].id;
+    for (const sel of personGroupMap[i].mealSelections) {
+      if (sel.mealType !== "BREAKFAST" && sel.mealType !== "LUNCH" && sel.mealType !== "DINNER") continue;
+      mealInserts.push({
+        registration_id: registration.id,
+        person_id: personId,
+        meal_date: sel.date,
+        meal_type: sel.mealType,
+        is_selected: !!sel.selected,
+      });
+    }
+  }
+  if (mealInserts.length > 0) {
+    const { error: mealError } = await admin
+      .from("eckcm_meal_selections")
+      .insert(mealInserts);
+    if (mealError) {
+      // Non-fatal: meals are nice-to-have, the registration itself is intact.
+      // Log loudly so we notice and can backfill.
+      logger.error("[registration/submit] Meal selections insert failed", {
+        error: String(mealError),
+        registrationId: registration.id,
+        count: mealInserts.length,
+      });
+    }
   }
 
   // 7. Airport rides (batch insert)

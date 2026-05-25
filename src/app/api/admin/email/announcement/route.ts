@@ -1,64 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getResendClient } from "@/lib/email/resend";
 import { getEmailConfig, getBulkEmailHeaders } from "@/lib/email/email-config";
 import { logEmail } from "@/lib/email/email-log.service";
+import { resolveParticipantEmails } from "@/lib/email/recipients";
+import { sanitizeEmailHtml, htmlToPlainText } from "@/lib/email/sanitize";
+import { buildAnnouncementHtml } from "@/lib/email/templates/announcement";
 import { logger } from "@/lib/logger";
-import { z } from "zod";
 
 const schema = z.object({
   eventId: z.string().uuid(),
-  subject: z.string().min(1).max(200),
-  body: z.string().min(1).max(50000),
-  testOnly: z.boolean().optional(),
+  subject: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(50000),
+  departmentIds: z.array(z.string().uuid()).max(50).optional().default([]),
+  testOnly: z.boolean().optional().default(false),
 });
-
-function buildAnnouncementEmail(subject: string, body: string, eventName: string): string {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f9fafb;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <tr>
-      <td>
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f172a; border-radius: 8px 8px 0 0; padding: 24px; text-align: center;">
-          <tr>
-            <td>
-              <h1 style="color: #ffffff; margin: 0; font-size: 24px;">ECKCM</h1>
-              <p style="color: #94a3b8; margin: 8px 0 0; font-size: 14px;">${eventName}</p>
-            </td>
-          </tr>
-        </table>
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb;">
-          <tr>
-            <td>
-              <h2 style="font-size: 20px; color: #111827; margin: 0 0 16px;">${subject}</h2>
-              <div style="font-size: 15px; color: #374151; line-height: 1.6;">
-                ${body}
-              </div>
-            </td>
-          </tr>
-        </table>
-        <table width="100%" cellpadding="0" cellspacing="0" style="padding: 16px; text-align: center;">
-          <tr>
-            <td>
-              <p style="font-size: 12px; color: #9ca3af; margin: 0;">
-                East Coast Korean Camp Meeting
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
-}
 
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin();
@@ -75,24 +33,39 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { eventId, subject, body, testOnly } = parsed.data;
+  const { eventId, subject, body, departmentIds, testOnly } = parsed.data;
   const admin = createAdminClient();
 
-  // Load event name
   const { data: event } = await admin
     .from("eckcm_events")
     .select("name_en")
     .eq("id", eventId)
     .single();
-
   if (!event) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
-  const emailConfig = await getEmailConfig();
-  const html = buildAnnouncementEmail(subject, body, event.name_en);
+  const cleanBody = sanitizeEmailHtml(body);
+  if (!cleanBody.trim()) {
+    return NextResponse.json(
+      { error: "Body is empty after sanitization" },
+      { status: 400 }
+    );
+  }
 
-  // Test mode: send only to admin's own email
+  const emailConfig = await getEmailConfig();
+  const unsubscribeEmail = emailConfig.replyTo || "contact@eckcm.com";
+  const html = buildAnnouncementHtml({
+    subject,
+    bodyHtml: cleanBody,
+    eventName: event.name_en,
+    unsubscribeEmail,
+  });
+  const text = htmlToPlainText(html);
+  const headers = getBulkEmailHeaders(emailConfig.replyTo);
+
+  const resend = await getResendClient();
+
   if (testOnly) {
     const adminEmail = auth.user.email;
     if (!adminEmail) {
@@ -100,14 +73,14 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const resend = await getResendClient();
       const { data: sendResult, error } = await resend.emails.send({
         from: emailConfig.from,
         to: adminEmail,
         ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
         subject: `[TEST] ${subject}`,
         html,
-        headers: getBulkEmailHeaders(emailConfig.replyTo),
+        text,
+        headers,
       });
 
       if (error) {
@@ -132,35 +105,29 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Bulk send: get all unique registrant emails for the event
-  const { data: registrations } = await admin
-    .from("eckcm_registrations")
-    .select("id, created_by_user_id")
-    .eq("event_id", eventId)
-    .in("status", ["PAID", "SUBMITTED"]);
-
-  if (!registrations || registrations.length === 0) {
-    return NextResponse.json({ error: "No registrations found for this event" }, { status: 404 });
+  let recipientEmails: string[];
+  try {
+    recipientEmails = await resolveParticipantEmails({
+      admin,
+      eventId,
+      departmentIds,
+    });
+  } catch (error) {
+    logger.error("[admin/email/announcement] Recipient resolve failed", { error: String(error) });
+    return NextResponse.json({ error: "Failed to resolve recipients" }, { status: 500 });
   }
 
-  // Batch fetch all user emails in parallel (instead of N+1 sequential lookups)
-  const userIds = [...new Set(registrations.map((r) => r.created_by_user_id))];
-  const userResults = await Promise.all(
-    userIds.map((id) => admin.auth.admin.getUserById(id))
-  );
-  const uniqueEmails = [...new Set(
-    userResults
-      .map((r) => r.data?.user?.email)
-      .filter((e): e is string => !!e)
-  )];
-
-  if (uniqueEmails.length === 0) {
-    return NextResponse.json({ error: "No valid email addresses found" }, { status: 404 });
+  if (recipientEmails.length === 0) {
+    return NextResponse.json(
+      { error: "No participants match the selected filter" },
+      { status: 404 }
+    );
   }
 
-  // Send emails with concurrency control (5 at a time to avoid rate limits)
+  // Send in small concurrent batches so we stay well under Resend's per-second
+  // rate limit and give downstream MTAs (Gmail, Outlook) a steadier ramp than
+  // firing every message at once.
   const CONCURRENCY = 5;
-  const resend = await getResendClient();
   let sentCount = 0;
   let failCount = 0;
 
@@ -172,7 +139,8 @@ export async function POST(req: NextRequest) {
         ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
         subject,
         html,
-        headers: getBulkEmailHeaders(emailConfig.replyTo),
+        text,
+        headers,
       });
 
       if (error) {
@@ -200,23 +168,28 @@ export async function POST(req: NextRequest) {
           sentBy: adminUserId,
         });
       }
-    } catch {
+    } catch (err) {
       failCount++;
+      logger.error("[admin/email/announcement] Send threw", { error: String(err), email });
     }
   }
 
-  // Process in batches of CONCURRENCY
-  for (let i = 0; i < uniqueEmails.length; i += CONCURRENCY) {
-    const batch = uniqueEmails.slice(i, i + CONCURRENCY);
+  for (let i = 0; i < recipientEmails.length; i += CONCURRENCY) {
+    const batch = recipientEmails.slice(i, i + CONCURRENCY);
     await Promise.all(batch.map(sendOne));
   }
 
-  logger.info("[admin/email/announcement] Bulk send complete", { sentCount, failCount, total: uniqueEmails.length });
+  logger.info("[admin/email/announcement] Bulk send complete", {
+    sentCount,
+    failCount,
+    total: recipientEmails.length,
+    departmentIds: departmentIds.length > 0 ? departmentIds : "ALL",
+  });
 
   return NextResponse.json({
     success: true,
     sentCount,
     failCount,
-    total: uniqueEmails.length,
+    total: recipientEmails.length,
   });
 }

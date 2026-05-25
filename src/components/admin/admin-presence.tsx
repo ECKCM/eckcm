@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Users } from "lucide-react";
+import { Users } from "lucide-react";
 
 interface PresenceUser {
   user_id: string;
@@ -33,7 +33,6 @@ const AVATAR_COLORS = [
 
 const STALE_THRESHOLD_MS = 2 * 60 * 1000;   // 2 min
 const HEARTBEAT_INTERVAL_MS = 30 * 1000;     // 30 s
-const MAX_AVATAR_STACK = 3;
 
 function getAvatarColor(userId: string): string {
   let hash = 0;
@@ -61,8 +60,6 @@ export function AdminPresence({
     display_name: currentUserName,
     last_seen_at: new Date().toISOString(),
   }]);
-  const [open, setOpen] = useState(false);
-  const hoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadSeqRef = useRef(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -153,74 +150,21 @@ export function AdminPresence({
     return a.last_seen_at.localeCompare(b.last_seen_at);
   });
 
-  const stacked = sorted.slice(0, MAX_AVATAR_STACK);
-  const extra = Math.max(0, sorted.length - MAX_AVATAR_STACK);
   const count = sorted.length;
 
-  const handleEnter = () => {
-    if (hoverCloseTimer.current) {
-      clearTimeout(hoverCloseTimer.current);
-      hoverCloseTimer.current = null;
-    }
-    setOpen(true);
-  };
-
-  const handleLeave = () => {
-    if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current);
-    hoverCloseTimer.current = setTimeout(() => setOpen(false), 150);
-  };
-
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
           size="sm"
-          className="h-9 gap-1.5 px-2"
-          onMouseEnter={handleEnter}
-          onMouseLeave={handleLeave}
+          className="h-9 px-2 text-xs text-muted-foreground"
           aria-label={`${count} admin${count === 1 ? "" : "s"} online`}
         >
-          <div className="flex items-center -space-x-2">
-            {stacked.map((user, index) => {
-              const colorClass = getAvatarColor(user.user_id);
-              const initials = getInitials(user.display_name);
-              return (
-                <div
-                  key={user.user_id}
-                  className={[
-                    "relative flex items-center justify-center",
-                    "w-6 h-6 rounded-full text-white text-[10px] font-bold",
-                    "ring-2 ring-background select-none shrink-0",
-                    colorClass,
-                  ].join(" ")}
-                  style={{ zIndex: 10 + stacked.length - index }}
-                >
-                  {initials}
-                </div>
-              );
-            })}
-            {extra > 0 && (
-              <div
-                className="relative flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-[10px] font-bold ring-2 ring-background select-none shrink-0"
-                style={{ zIndex: 9 }}
-              >
-                +{extra}
-              </div>
-            )}
-          </div>
-          <span className="hidden sm:inline text-xs text-muted-foreground">
-            {count} online
-          </span>
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          {count} online
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="w-64"
-        onMouseEnter={handleEnter}
-        onMouseLeave={handleLeave}
-      >
+      <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
           <span>{count} admin{count === 1 ? "" : "s"} online</span>

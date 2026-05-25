@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -37,6 +36,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { sanitizeEmailInput } from "@/lib/utils/field-helpers";
 import { toast } from "sonner";
@@ -51,10 +56,16 @@ import {
   KeyRound,
   FileText,
   Receipt,
+  ChevronDown,
+  Save,
+  Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { buildAnnouncementHtml } from "@/lib/email/templates/announcement";
 
 // ─── Settings Tab ───────────────────────────────────────────────────────────
 
@@ -838,23 +849,14 @@ function buildEpassPreview(): string {
 }
 
 function buildAnnouncementPreview(): string {
-  return `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:sans-serif;background:#f9fafb;">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;padding:20px;">
-<tr><td>
-<table width="100%" style="background:#0f172a;border-radius:8px 8px 0 0;padding:24px;text-align:center;">
-<tr><td><h1 style="color:#fff;margin:0;font-size:24px;">ECKCM</h1><p style="color:#94a3b8;margin:8px 0 0;font-size:14px;">ECKCM Summer Camp 2026</p></td></tr>
-</table>
-<table width="100%" style="background:#fff;padding:32px;border:1px solid #e5e7eb;">
-<tr><td>
-<h2 style="font-size:20px;color:#111827;margin:0 0 16px;">Important Update</h2>
-<div style="font-size:15px;color:#374151;line-height:1.6;">
-<p>Dear Campers,</p>
+  return buildAnnouncementHtml({
+    subject: "Important Update",
+    bodyHtml: `<p>Dear Campers,</p>
 <p>We are excited to announce that registration for ECKCM Summer Camp 2026 is now open! Please visit our website to complete your registration.</p>
-<p>We look forward to seeing you at Camp Berkshire!</p>
-</div>
-</td></tr></table>
-<table width="100%" style="padding:16px;text-align:center;"><tr><td><p style="font-size:12px;color:#9ca3af;">East Coast Korean Camp Meeting</p></td></tr></table>
-</td></tr></table></body></html>`;
+<p>We look forward to seeing you at Camp Berkshire!</p>`,
+    eventName: "ECKCM Summer Camp 2026",
+    unsubscribeEmail: "contact@eckcm.com",
+  });
 }
 
 function buildZellePreview(): string {
@@ -1113,11 +1115,44 @@ interface EventOption {
   year: number;
 }
 
+interface DepartmentOption {
+  id: string;
+  name_en: string;
+  name_ko: string | null;
+  short_code: string | null;
+}
+
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body_html: string;
+  department_ids: string[];
+  updated_at: string;
+}
+
+interface RecipientPreview {
+  count: number;
+  sample: string[];
+}
+
 function AnnouncementTab() {
   const [events, setEvents] = useState<EventOption[]>([]);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [eventId, setEventId] = useState("");
+  const [selectedDeptIds, setSelectedDeptIds] = useState<string[]>([]);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [templateName, setTemplateName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [saveAsOpen, setSaveAsOpen] = useState(false);
+  const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<RecipientPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [unsubscribeEmail, setUnsubscribeEmail] = useState("contact@eckcm.com");
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [result, setResult] = useState<{
@@ -1126,6 +1161,7 @@ function AnnouncementTab() {
     total: number;
   } | null>(null);
 
+  // ── Load reference data ────────────────────────────────────────────────
   useEffect(() => {
     const supabase = createClient();
     supabase
@@ -1139,11 +1175,205 @@ function AnnouncementTab() {
           if (data.length > 0) setEventId(data[0].id);
         }
       });
+
+    supabase
+      .from("eckcm_departments")
+      .select("id, name_en, name_ko, short_code")
+      .eq("is_active", true)
+      .order("sort_order")
+      .then(({ data }) => {
+        if (data) setDepartments(data);
+      });
+
+    // Pull the reply-to address so the live preview footer matches what
+    // the server will inject when the email is actually sent.
+    fetch("/api/admin/email/config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.email_reply_to) setUnsubscribeEmail(data.email_reply_to);
+      })
+      .catch(() => {
+        // non-fatal — preview just shows the default
+      });
   }, []);
 
+  const loadTemplates = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/email/templates");
+      if (!res.ok) return;
+      const data = await res.json();
+      setTemplates(data.templates ?? []);
+    } catch {
+      // ignore — templates are non-blocking
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
+
+  // ── Recipient count preview ────────────────────────────────────────────
+  useEffect(() => {
+    if (!eventId) {
+      setPreview(null);
+      return;
+    }
+    let cancelled = false;
+    setPreviewLoading(true);
+    setPreviewError(null);
+    const params = new URLSearchParams({ eventId });
+    if (selectedDeptIds.length > 0) {
+      params.set("departmentIds", selectedDeptIds.join(","));
+    }
+    const handle = setTimeout(() => {
+      fetch(`/api/admin/email/recipients?${params}`)
+        .then((r) => r.json().then((j) => ({ ok: r.ok, json: j })))
+        .then(({ ok, json }) => {
+          if (cancelled) return;
+          if (!ok) {
+            setPreviewError(json.error ?? "Failed to load preview");
+            setPreview(null);
+          } else {
+            setPreview({ count: json.count ?? 0, sample: json.sample ?? [] });
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setPreviewError("Network error");
+        })
+        .finally(() => {
+          if (!cancelled) setPreviewLoading(false);
+        });
+    }, 200);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [eventId, selectedDeptIds]);
+
+  // ── Template helpers ───────────────────────────────────────────────────
+  const activeTemplate = useMemo(
+    () => templates.find((t) => t.id === activeTemplateId) ?? null,
+    [templates, activeTemplateId]
+  );
+
+  function loadTemplate(id: string) {
+    const t = templates.find((x) => x.id === id);
+    if (!t) return;
+    setActiveTemplateId(t.id);
+    setTemplateName(t.name);
+    setSubject(t.subject);
+    setBody(t.body_html);
+    setSelectedDeptIds(t.department_ids ?? []);
+    toast.success(`Loaded template "${t.name}"`);
+  }
+
+  function newTemplate() {
+    setActiveTemplateId(null);
+    setTemplateName("");
+    setSubject("");
+    setBody("");
+    setSelectedDeptIds([]);
+    toast.message("Cleared composer");
+  }
+
+  async function handleSaveAs() {
+    const name = templateName.trim();
+    if (!name) {
+      toast.error("Template name is required");
+      return;
+    }
+    if (!subject.trim() || !body.trim()) {
+      toast.error("Subject and body are required");
+      return;
+    }
+    setSavingTemplate(true);
+    try {
+      const res = await fetch("/api/admin/email/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          subject,
+          body_html: body,
+          department_ids: selectedDeptIds,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to save template");
+      } else {
+        toast.success(`Saved template "${data.template.name}"`);
+        await loadTemplates();
+        setActiveTemplateId(data.template.id);
+        setSaveAsOpen(false);
+      }
+    } catch {
+      toast.error("Network error");
+    }
+    setSavingTemplate(false);
+  }
+
+  async function handleUpdateTemplate() {
+    if (!activeTemplate) return;
+    if (!subject.trim() || !body.trim()) {
+      toast.error("Subject and body are required");
+      return;
+    }
+    setSavingTemplate(true);
+    try {
+      const res = await fetch(
+        `/api/admin/email/templates/${activeTemplate.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: templateName.trim() || activeTemplate.name,
+            subject,
+            body_html: body,
+            department_ids: selectedDeptIds,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to update template");
+      } else {
+        toast.success(`Updated "${data.template.name}"`);
+        await loadTemplates();
+      }
+    } catch {
+      toast.error("Network error");
+    }
+    setSavingTemplate(false);
+  }
+
+  async function handleDeleteTemplate() {
+    if (!deleteTemplateId) return;
+    try {
+      const res = await fetch(
+        `/api/admin/email/templates/${deleteTemplateId}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to delete");
+      } else {
+        toast.success("Template deleted");
+        if (activeTemplateId === deleteTemplateId) {
+          newTemplate();
+        }
+        await loadTemplates();
+      }
+    } catch {
+      toast.error("Network error");
+    }
+    setDeleteTemplateId(null);
+  }
+
+  // ── Send ───────────────────────────────────────────────────────────────
   async function handleSend(testOnly: boolean) {
-    if (!eventId || !subject || !body) {
-      toast.error("Please fill in all fields");
+    if (!eventId || !subject.trim() || !body.trim()) {
+      toast.error("Please fill in event, subject, and body");
       return;
     }
     setSending(true);
@@ -1152,7 +1382,13 @@ function AnnouncementTab() {
       const res = await fetch("/api/admin/email/announcement", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId, subject, body, testOnly }),
+        body: JSON.stringify({
+          eventId,
+          subject,
+          body,
+          departmentIds: selectedDeptIds,
+          testOnly,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1170,16 +1406,107 @@ function AnnouncementTab() {
     setConfirmOpen(false);
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────
+  const selectedDeptLabel = useMemo(() => {
+    if (selectedDeptIds.length === 0) return "All departments";
+    if (selectedDeptIds.length === departments.length)
+      return `All departments (${departments.length})`;
+    if (selectedDeptIds.length <= 2) {
+      return departments
+        .filter((d) => selectedDeptIds.includes(d.id))
+        .map((d) => d.short_code || d.name_en)
+        .join(", ");
+    }
+    return `${selectedDeptIds.length} departments selected`;
+  }, [selectedDeptIds, departments]);
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Send Announcement</CardTitle>
           <CardDescription>
-            Send a bulk email to all registrants of a selected event.
+            Bulk email participants of an event. Filter by department, compose
+            with a rich editor, save reusable templates.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
+          {/* Template picker */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label>Template</Label>
+              {activeTemplate && (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                  onClick={newTemplate}
+                >
+                  New / clear
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Select
+                value={activeTemplateId ?? "__none"}
+                onValueChange={(v) => {
+                  if (v === "__none") {
+                    newTemplate();
+                  } else {
+                    loadTemplate(v);
+                  }
+                }}
+              >
+                <SelectTrigger className="flex-1 min-w-[220px]">
+                  <SelectValue placeholder="Load a saved template…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— No template —</SelectItem>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                  {templates.length === 0 && (
+                    <SelectItem value="__empty" disabled>
+                      No saved templates yet
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSaveAsOpen(true)}
+                disabled={savingTemplate || !subject || !body}
+              >
+                <Save className="mr-1 size-3" />
+                Save as…
+              </Button>
+              {activeTemplate && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUpdateTemplate}
+                    disabled={savingTemplate}
+                  >
+                    <RefreshCw className="mr-1 size-3" />
+                    Update
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDeleteTemplateId(activeTemplate.id)}
+                  >
+                    <Trash2 className="mr-1 size-3" />
+                    Delete
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Event */}
           <div className="space-y-1">
             <Label>Event</Label>
             <Select value={eventId} onValueChange={setEventId}>
@@ -1196,40 +1523,117 @@ function AnnouncementTab() {
             </Select>
           </div>
 
+          {/* Department multi-select */}
+          <div className="space-y-1">
+            <Label>Departments</Label>
+            <DepartmentMultiSelect
+              departments={departments}
+              selected={selectedDeptIds}
+              onChange={setSelectedDeptIds}
+              triggerLabel={selectedDeptLabel}
+            />
+            <p className="text-xs text-muted-foreground">
+              Empty selection sends to <b>all</b> participants of the event.
+              Filtering matches each participant&rsquo;s <i>own</i> department.
+            </p>
+          </div>
+
+          {/* Recipient preview */}
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+            {previewLoading ? (
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="size-3.5 animate-spin" />
+                Calculating recipients…
+              </span>
+            ) : previewError ? (
+              <span className="text-red-600">{previewError}</span>
+            ) : preview ? (
+              <div className="space-y-1">
+                <p>
+                  <b>{preview.count}</b> unique participant email
+                  {preview.count === 1 ? "" : "s"} will receive this.
+                </p>
+                {preview.sample.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Sample: {preview.sample.join(", ")}
+                    {preview.count > preview.sample.length && " …"}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <span className="text-muted-foreground">
+                Select an event to see recipient count.
+              </span>
+            )}
+          </div>
+
+          {/* Subject */}
           <div className="space-y-1">
             <Label>Subject</Label>
             <Input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Important Update from ECKCM"
+              placeholder="Important update from ECKCM"
+              maxLength={200}
             />
+            <p className="text-xs text-muted-foreground">
+              Keep under ~70 characters for best inbox display.{" "}
+              <span className={subject.length > 70 ? "text-yellow-600" : ""}>
+                {subject.length}/200
+              </span>
+            </p>
           </div>
 
+          {/* Body */}
           <div className="space-y-1">
-            <Label>Body (HTML supported)</Label>
-            <Textarea
+            <Label>Body</Label>
+            <RichTextEditor
               value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="<p>Dear Campers,</p><p>We are excited to announce...</p>"
-              rows={8}
+              onChange={setBody}
+              placeholder="Dear Campers, …"
+              minHeight={260}
             />
+            <p className="text-xs text-muted-foreground">
+              HTML is sanitized server-side before sending. Links open in a new
+              tab; scripts and unsafe attributes are stripped.
+            </p>
           </div>
 
-          <div className="flex gap-2">
+          {/* Live preview */}
+          <AnnouncementLivePreview
+            subject={subject}
+            body={body}
+            eventName={
+              events.find((e) => e.id === eventId)?.name_en ?? "ECKCM Event"
+            }
+            unsubscribeEmail={unsubscribeEmail}
+          />
+
+          {/* Send buttons */}
+          <div className="flex flex-wrap gap-2 border-t pt-4">
             <Button
               variant="outline"
               onClick={() => handleSend(true)}
               disabled={sending || !subject || !body}
             >
               <Send className="mr-1 size-3" />
-              {sending ? "Sending..." : "Send Test to Me"}
+              {sending ? "Sending…" : "Send test to me"}
             </Button>
             <Button
               onClick={() => setConfirmOpen(true)}
-              disabled={sending || !subject || !body || !eventId}
+              disabled={
+                sending ||
+                !subject ||
+                !body ||
+                !eventId ||
+                !preview ||
+                preview.count === 0
+              }
             >
               <Send className="mr-1 size-3" />
-              Send to All Registrants
+              {preview
+                ? `Send to ${preview.count} participant${preview.count === 1 ? "" : "s"}`
+                : "Send to all participants"}
             </Button>
           </div>
 
@@ -1248,22 +1652,33 @@ function AnnouncementTab() {
         </CardContent>
       </Card>
 
+      {/* Confirm send dialog */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="size-5 text-yellow-500" />
-              Confirm Bulk Send
+              Confirm bulk send
             </DialogTitle>
             <DialogDescription>
-              This will send an email to <b>all registrants</b> of the selected
-              event. This action cannot be undone.
+              This will send to {preview?.count ?? "?"} unique participant
+              email{preview?.count === 1 ? "" : "s"}. This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-md border p-3 text-sm space-y-1">
             <p>
               <b>Event:</b>{" "}
               {events.find((e) => e.id === eventId)?.name_en ?? ""}
+            </p>
+            <p>
+              <b>Departments:</b>{" "}
+              {selectedDeptIds.length === 0
+                ? "All"
+                : departments
+                    .filter((d) => selectedDeptIds.includes(d.id))
+                    .map((d) => d.name_en)
+                    .join(", ")}
             </p>
             <p>
               <b>Subject:</b> {subject}
@@ -1274,12 +1689,263 @@ function AnnouncementTab() {
               Cancel
             </Button>
             <Button onClick={() => handleSend(false)} disabled={sending}>
-              {sending ? "Sending..." : "Confirm Send"}
+              {sending ? "Sending…" : "Confirm send"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Save-as dialog */}
+      <Dialog open={saveAsOpen} onOpenChange={setSaveAsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save as template</DialogTitle>
+            <DialogDescription>
+              Templates are shared across admins and store the subject, body,
+              and department filter.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Template name</Label>
+            <Input
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="e.g. Hansamo welcome 2026"
+              maxLength={120}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveAsOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveAs}
+              disabled={savingTemplate || !templateName.trim()}
+            >
+              {savingTemplate ? "Saving…" : "Save template"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <Dialog
+        open={!!deleteTemplateId}
+        onOpenChange={(open) => !open && setDeleteTemplateId(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete template?</DialogTitle>
+            <DialogDescription>
+              This permanently removes the template for everyone. The
+              composer&rsquo;s current contents are kept.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTemplateId(null)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteTemplate}>
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// ─── Announcement live preview ──────────────────────────────────────────────
+
+interface AnnouncementLivePreviewProps {
+  subject: string;
+  body: string;
+  eventName: string;
+  unsubscribeEmail: string;
+}
+
+/**
+ * Mirrors the wrapper that the server applies in
+ * /api/admin/email/announcement before handing the payload to Resend.
+ * Renders inside an iframe so the email's own styles never leak into
+ * the admin UI (and vice versa).
+ *
+ * The body is run through DOMPurify client-side too — purely for the
+ * preview. The server re-sanitizes before sending, so this is just to
+ * keep the iframe honest while the admin is composing.
+ */
+function AnnouncementLivePreview({
+  subject,
+  body,
+  eventName,
+  unsubscribeEmail,
+}: AnnouncementLivePreviewProps) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  const srcDoc = useMemo(() => {
+    // Empty-state preview so the admin can still see the chrome.
+    const subjectForRender = subject.trim() || "(your subject here)";
+    const bodyForRender =
+      body.trim() ||
+      '<p style="color:#9ca3af;font-style:italic;">Start typing in the editor above — your message will appear here exactly as recipients will see it.</p>';
+
+    return buildAnnouncementHtml({
+      subject: subjectForRender,
+      bodyHtml: bodyForRender,
+      eventName,
+      unsubscribeEmail,
+    });
+  }, [subject, body, eventName, unsubscribeEmail]);
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <Label>Preview</Label>
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+        >
+          {collapsed ? "Show preview" : "Hide preview"}
+        </button>
+      </div>
+      {!collapsed && (
+        <div className="rounded-md border bg-muted/30 p-3">
+          <iframe
+            srcDoc={srcDoc}
+            title="Announcement preview"
+            sandbox=""
+            className="w-full h-[480px] rounded border bg-white"
+          />
+          <p className="mt-2 text-xs text-muted-foreground">
+            This is exactly how the email will render. The header, footer, and
+            unsubscribe line are added automatically — only the body you typed
+            above is editable.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Department multi-select ────────────────────────────────────────────────
+
+interface DepartmentMultiSelectProps {
+  departments: DepartmentOption[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+  triggerLabel: string;
+}
+
+function DepartmentMultiSelect({
+  departments,
+  selected,
+  onChange,
+  triggerLabel,
+}: DepartmentMultiSelectProps) {
+  const [open, setOpen] = useState(false);
+  const allSelected =
+    departments.length > 0 && selected.length === departments.length;
+  const noneSelected = selected.length === 0;
+
+  function toggle(id: string) {
+    if (selected.includes(id)) {
+      onChange(selected.filter((x) => x !== id));
+    } else {
+      onChange([...selected, id]);
+    }
+  }
+
+  function selectAll() {
+    onChange(departments.map((d) => d.id));
+  }
+  function clearAll() {
+    onChange([]);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+        >
+          <span className="truncate text-left">{triggerLabel}</span>
+          <ChevronDown className="ml-2 size-4 shrink-0 text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-[--radix-popover-trigger-width] min-w-[280px] p-0"
+      >
+        <div className="flex items-center justify-between border-b px-3 py-2 text-xs">
+          <span className="text-muted-foreground">
+            {selected.length} of {departments.length} selected
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="text-foreground hover:underline underline-offset-2 disabled:opacity-40"
+              onClick={selectAll}
+              disabled={allSelected}
+            >
+              Select all
+            </button>
+            <span className="text-muted-foreground">·</span>
+            <button
+              type="button"
+              className="text-foreground hover:underline underline-offset-2 disabled:opacity-40"
+              onClick={clearAll}
+              disabled={noneSelected}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+        <div className="max-h-[280px] overflow-y-auto py-1">
+          {departments.length === 0 ? (
+            <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+              No departments
+            </div>
+          ) : (
+            departments.map((d) => {
+              const checked = selected.includes(d.id);
+              return (
+                <label
+                  key={d.id}
+                  className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent"
+                >
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={() => toggle(d.id)}
+                  />
+                  <span className="flex-1 truncate">
+                    {d.short_code ? (
+                      <span className="text-muted-foreground">
+                        {d.short_code}:{" "}
+                      </span>
+                    ) : null}
+                    {d.name_en}
+                    {d.name_ko ? (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        ({d.name_ko})
+                      </span>
+                    ) : null}
+                  </span>
+                </label>
+              );
+            })
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

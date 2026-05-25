@@ -73,6 +73,9 @@ export interface PersonDetail {
   group_code: string;
   role: string;
   participant_code: string | null;
+  stay_start_date: string | null;
+  stay_end_date: string | null;
+  meal_selections: { meal_date: string; meal_type: string; is_selected: boolean }[];
 }
 
 export const STATUS_OPTIONS = ["ALL", "PAID", "APPROVED", "SUBMITTED", "DRAFT", "CANCELLED", "REFUNDED"];

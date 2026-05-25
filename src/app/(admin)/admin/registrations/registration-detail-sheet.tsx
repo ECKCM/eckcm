@@ -73,6 +73,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ChurchCombobox } from "@/components/shared/church-combobox";
+import { MealSelectionGrid } from "@/components/registration/meal-selection-grid";
+import type { MealSelection } from "@/lib/types/registration";
+import type { MealType } from "@/lib/types/database";
 import {
   type RegistrationRow,
   type PersonDetail,
@@ -129,6 +132,8 @@ export function RegistrationDetailSheet({
   }[]>([]);
   // Registration groups for this event (for editable dropdown)
   const [registrationGroups, setRegistrationGroups] = useState<{ id: string; name_en: string }[]>([]);
+  // Event start/end dates (for meal grid: excludes arrival/departure days)
+  const [eventDates, setEventDates] = useState<{ start: string; end: string } | null>(null);
   // All rooms for room change dropdown
   const [allRooms, setAllRooms] = useState<{ id: string; room_number: string; building_name: string; floor_number: string }[]>([]);
   // Available lodging options for this event's registration group
@@ -192,6 +197,15 @@ export function RegistrationDetailSheet({
       .eq("event_id", eventId)
       .order("name_en")
       .then(({ data }) => setRegistrationGroups(data ?? []));
+    // Event start/end (used by MealSelectionGrid to skip arrival/departure)
+    supabase
+      .from("eckcm_events")
+      .select("event_start_date, event_end_date")
+      .eq("id", eventId)
+      .single()
+      .then(({ data }) => {
+        if (data) setEventDates({ start: data.event_start_date, end: data.event_end_date });
+      });
   }, [eventId]);
 
   // Load participants and groups when registration changes
@@ -208,24 +222,59 @@ export function RegistrationDetailSheet({
   const loadPeople = async (regId: string) => {
     setLoadingPeople(true);
     const supabase = createClient();
-    const { data } = await supabase
-      .from("eckcm_group_memberships")
-      .select(`
+    const buildSelect = (includeChurchRole: boolean) => `
         id,
         group_id,
         role,
         participant_code,
+        stay_start_date,
+        stay_end_date,
         eckcm_people!inner(
           id, first_name_en, last_name_en, display_name_ko,
           gender, birth_date, age_at_event, is_k12, grade,
-          email, phone, phone_country, church_id, church_other, church_role,
+          email, phone, phone_country, church_id, church_other${includeChurchRole ? ", church_role" : ""},
           department_id, guardian_name, guardian_phone,
           eckcm_churches(id, name_en),
           eckcm_departments(id, name_en)
         ),
         eckcm_groups!inner(id, display_group_code, registration_id)
-      `)
+      `;
+
+    // Try with church_role; if the column doesn't exist yet (migration not
+    // applied), retry without it so the rest of the panel still works.
+    let { data, error } = await supabase
+      .from("eckcm_group_memberships")
+      .select(buildSelect(true))
       .eq("eckcm_groups.registration_id", regId);
+
+    if (error && /church_role/i.test(error.message ?? "")) {
+      console.warn("[loadPeople] church_role column missing; retrying without it. Apply migration 20260525130000.");
+      ({ data, error } = await supabase
+        .from("eckcm_group_memberships")
+        .select(buildSelect(false))
+        .eq("eckcm_groups.registration_id", regId));
+    }
+
+    if (error) {
+      console.error("[loadPeople] query failed:", error);
+      toast.error(`Failed to load participants: ${error.message}`);
+    }
+
+    // Load all meal selections for this registration in a single query;
+    // grouped by person_id below so each PersonCard gets its own subset.
+    const { data: mealRows, error: mealError } = await supabase
+      .from("eckcm_meal_selections")
+      .select("person_id, meal_date, meal_type, is_selected")
+      .eq("registration_id", regId);
+    if (mealError) {
+      console.warn("[loadPeople] meal selections query failed:", mealError);
+    }
+    const mealsByPerson = new Map<string, { meal_date: string; meal_type: string; is_selected: boolean }[]>();
+    for (const r of mealRows ?? []) {
+      const arr = mealsByPerson.get(r.person_id) ?? [];
+      arr.push({ meal_date: r.meal_date, meal_type: r.meal_type, is_selected: !!r.is_selected });
+      mealsByPerson.set(r.person_id, arr);
+    }
 
     if (data) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -258,6 +307,9 @@ export function RegistrationDetailSheet({
         group_code: m.eckcm_groups.display_group_code,
         role: m.role,
         participant_code: m.participant_code,
+        stay_start_date: m.stay_start_date ?? null,
+        stay_end_date: m.stay_end_date ?? null,
+        meal_selections: mealsByPerson.get(m.eckcm_people.id) ?? [],
       }));
       setPeople(mapped);
     }
@@ -631,6 +683,10 @@ export function RegistrationDetailSheet({
                       <PersonCard
                         person={representative}
                         registrationId={reg.id}
+                        regStartDate={reg.start_date}
+                        regEndDate={reg.end_date}
+                        eventStartDate={eventDates?.start ?? null}
+                        eventEndDate={eventDates?.end ?? null}
                         totalPeople={people.length}
                         allRegistrations={allRegistrations}
                         onSaved={() => { loadPeople(reg.id); loadGroups(reg.id); onRefresh(); }}
@@ -652,6 +708,10 @@ export function RegistrationDetailSheet({
                             key={p.membership_id}
                             person={p}
                             registrationId={reg.id}
+                            regStartDate={reg.start_date}
+                            regEndDate={reg.end_date}
+                            eventStartDate={eventDates?.start ?? null}
+                            eventEndDate={eventDates?.end ?? null}
                             totalPeople={people.length}
                             allRegistrations={allRegistrations}
                             onSaved={() => { loadPeople(reg.id); loadGroups(reg.id); onRefresh(); }}
@@ -1351,6 +1411,284 @@ function AdjustmentsPanel({
           </AlertDialogContent>
         </AlertDialog>
       )}
+    </div>
+  );
+}
+
+// ─── Stay Dates + Meals (per participant, editable) ─────────
+// Reuses MealSelectionGrid from the registration wizard so admin and user
+// see the exact same grid — same arrival/departure exclusion, same partial
+// vs full-day rules, same default-all-checked behavior.
+
+function formatShortDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function StayAndMealsEditor({
+  person,
+  registrationId,
+  regStartDate,
+  regEndDate,
+  eventStartDate,
+  eventEndDate,
+  onSaved,
+}: {
+  person: PersonDetail;
+  registrationId: string;
+  regStartDate: string;
+  regEndDate: string;
+  eventStartDate: string | null;
+  eventEndDate: string | null;
+  onSaved: () => void;
+}) {
+  const hasOverride = !!(person.stay_start_date && person.stay_end_date);
+  const effectiveStart = person.stay_start_date ?? regStartDate;
+  const effectiveEnd = person.stay_end_date ?? regEndDate;
+
+  // ─── Stay dates editor state ─────────────────────────────
+  const [editingDates, setEditingDates] = useState(false);
+  const [savingDates, setSavingDates] = useState(false);
+  const [useOverride, setUseOverride] = useState(hasOverride);
+  const [draftStart, setDraftStart] = useState(effectiveStart);
+  const [draftEnd, setDraftEnd] = useState(effectiveEnd);
+
+  useEffect(() => {
+    setEditingDates(false);
+    setUseOverride(hasOverride);
+    setDraftStart(effectiveStart);
+    setDraftEnd(effectiveEnd);
+  }, [person.membership_id, person.stay_start_date, person.stay_end_date, effectiveStart, effectiveEnd, hasOverride]);
+
+  const handleSaveDates = async () => {
+    if (useOverride && new Date(draftEnd) < new Date(draftStart)) {
+      toast.error("Check-out must be on or after check-in");
+      return;
+    }
+    setSavingDates(true);
+    try {
+      const res = await fetch(
+        `/api/admin/registrations/${registrationId}/participants/${person.membership_id}/stay-dates`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            useOverride
+              ? { stay_start_date: draftStart, stay_end_date: draftEnd }
+              : { stay_start_date: null, stay_end_date: null },
+          ),
+        },
+      );
+      if (res.ok) {
+        toast.success("Stay dates saved");
+        setEditingDates(false);
+        onSaved();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to save stay dates");
+      }
+    } catch {
+      toast.error("Failed to save stay dates");
+    }
+    setSavingDates(false);
+  };
+
+  // ─── Meals editor state ──────────────────────────────────
+  // Convert DB rows to MealSelection[] preserving each row's is_selected so
+  // admin "unchecked" state survives. Absence of any rows is treated as
+  // "uninitialized" — the grid fills it with defaults (all selected).
+  const dbToSelections = (rows: { meal_date: string; meal_type: string; is_selected: boolean }[]): MealSelection[] =>
+    rows.map((r) => ({ date: r.meal_date, mealType: r.meal_type as MealType, selected: r.is_selected }));
+
+  const initialSelections = dbToSelections(person.meal_selections);
+  const [mealSelections, setMealSelections] = useState<MealSelection[]>(initialSelections);
+  const [savingMeals, setSavingMeals] = useState(false);
+  const [editingMeals, setEditingMeals] = useState(false);
+
+  useEffect(() => {
+    setMealSelections(dbToSelections(person.meal_selections));
+    setEditingMeals(false);
+  }, [person.membership_id, person.meal_selections]);
+
+  const handleMealsChange = (next: MealSelection[]) => {
+    setMealSelections(next);
+  };
+
+  // Dirty = the set of *selected* meals differs from what DB has selected.
+  // Both sides treat absence as "not selected" when comparing, so the
+  // grid's initial auto-fill of defaults shows as dirty for pre-fix
+  // registrations (admin can Save to commit those defaults).
+  const selectedKeySet = (rows: { date?: string; meal_date?: string; mealType?: string; meal_type?: string; selected?: boolean; is_selected?: boolean }[]) => {
+    const out = new Set<string>();
+    for (const r of rows) {
+      const date = r.date ?? r.meal_date;
+      const type = r.mealType ?? r.meal_type;
+      const sel = r.selected ?? r.is_selected;
+      if (date && type && sel) out.add(`${date}|${type}`);
+    }
+    return out;
+  };
+  const currentSet = selectedKeySet(mealSelections);
+  const dbSet = selectedKeySet(person.meal_selections);
+  const dirty = currentSet.size !== dbSet.size || [...currentSet].some((k) => !dbSet.has(k));
+
+  const handleSaveMeals = async () => {
+    // Send the full grid (both selected and not). Storing unselected rows
+    // lets admin opt-outs survive a reload — see API doc comment.
+    const selections = mealSelections.map((s) => ({
+      meal_date: s.date,
+      meal_type: s.mealType,
+      is_selected: s.selected,
+    }));
+    setSavingMeals(true);
+    try {
+      const res = await fetch(
+        `/api/admin/registrations/${registrationId}/participants/${person.membership_id}/meals`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selections }),
+        },
+      );
+      if (res.ok) {
+        const selectedCount = selections.filter((s) => s.is_selected).length;
+        toast.success(`Saved ${selectedCount} meal(s) for ${person.first_name_en}`);
+        setEditingMeals(false);
+        onSaved();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to save meals");
+      }
+    } catch {
+      toast.error("Failed to save meals");
+    }
+    setSavingMeals(false);
+  };
+
+  const handleCancelMeals = () => {
+    setMealSelections(dbToSelections(person.meal_selections));
+    setEditingMeals(false);
+  };
+
+  const eventReady = !!(eventStartDate && eventEndDate);
+
+  return (
+    <div className="mt-3 pt-3 border-t space-y-3">
+      {/* Stay dates row */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="size-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium">Stay Dates</span>
+          {!hasOverride && !editingDates && (
+            <span className="text-[10px] text-muted-foreground">(using registration default)</span>
+          )}
+          {!editingDates && (
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs ml-auto" onClick={() => setEditingDates(true)}>
+              <Pencil className="size-3 mr-1" />
+              Edit
+            </Button>
+          )}
+        </div>
+        {editingDates ? (
+          <div className="space-y-2 pl-5">
+            <label className="flex items-center gap-1.5 text-xs">
+              <input
+                type="checkbox"
+                checked={useOverride}
+                onChange={(e) => setUseOverride(e.target.checked)}
+              />
+              Override registration dates for this participant
+            </label>
+            {useOverride && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-0.5">
+                  <label className="text-[10px] text-muted-foreground">Check-in</label>
+                  <Input type="date" value={draftStart} onChange={(e) => setDraftStart(e.target.value)} className="h-8 text-xs" />
+                </div>
+                <div className="space-y-0.5">
+                  <label className="text-[10px] text-muted-foreground">Check-out</label>
+                  <Input type="date" value={draftEnd} onChange={(e) => setDraftEnd(e.target.value)} className="h-8 text-xs" />
+                </div>
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground">
+              Changing dates does not recalculate fees. Use the Adjustments tab for any monetary delta.
+            </p>
+            <div className="flex gap-1.5">
+              <Button size="sm" className="h-7 px-2" onClick={handleSaveDates} disabled={savingDates}>
+                {savingDates ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
+                Save
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => {
+                setUseOverride(hasOverride);
+                setDraftStart(effectiveStart);
+                setDraftEnd(effectiveEnd);
+                setEditingDates(false);
+              }}>
+                <X className="size-3" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="pl-5 text-xs text-muted-foreground">
+            {formatShortDate(effectiveStart)} ~ {formatShortDate(effectiveEnd)}
+          </p>
+        )}
+      </div>
+
+      {/* Meals grid (same component used in the registration wizard) */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <FileText className="size-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium">Meals</span>
+          {!editingMeals && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs ml-auto"
+              onClick={() => setEditingMeals(true)}
+              disabled={!eventReady}
+            >
+              <Pencil className="size-3 mr-1" />
+              Edit
+            </Button>
+          )}
+        </div>
+        {!eventReady ? (
+          <p className="text-xs text-muted-foreground italic">Loading event dates…</p>
+        ) : (
+          <>
+            <MealSelectionGrid
+              startDate={effectiveStart}
+              endDate={effectiveEnd}
+              eventStartDate={eventStartDate!}
+              eventEndDate={eventEndDate!}
+              selections={mealSelections}
+              onChange={handleMealsChange}
+              adminOverride
+              readOnly={!editingMeals}
+            />
+            {editingMeals && (
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] text-muted-foreground">
+                  Admin can toggle any meal (including full-day). Saving does not recalculate fees — record monetary deltas in Adjustments.
+                </p>
+                <div className="ml-auto flex gap-1.5">
+                  <Button size="sm" className="h-7 px-2" onClick={handleSaveMeals} disabled={savingMeals || !dirty}>
+                    {savingMeals ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
+                    Save
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={handleCancelMeals}>
+                    <X className="size-3 mr-1" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -2095,9 +2433,13 @@ function InfoRow({
   );
 }
 
-function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, onSaved, churches, departments }: {
+function PersonCard({ person: p, registrationId, regStartDate, regEndDate, eventStartDate, eventEndDate, totalPeople, allRegistrations, onSaved, churches, departments }: {
   person: PersonDetail;
   registrationId: string;
+  regStartDate: string;
+  regEndDate: string;
+  eventStartDate: string | null;
+  eventEndDate: string | null;
   totalPeople: number;
   allRegistrations: { id: string; confirmation_code: string; registrant_name: string; status: string }[];
   onSaved: () => void;
@@ -2528,6 +2870,17 @@ function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, 
             </span>
           )}
         </div>
+
+        {/* Per-participant stay dates + meals */}
+        <StayAndMealsEditor
+          person={p}
+          registrationId={registrationId}
+          regStartDate={regStartDate}
+          regEndDate={regEndDate}
+          eventStartDate={eventStartDate}
+          eventEndDate={eventEndDate}
+          onSaved={onSaved}
+        />
       </div>
 
       {/* Delete Confirmation */}
