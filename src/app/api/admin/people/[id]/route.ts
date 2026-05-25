@@ -17,6 +17,7 @@ const ALLOWED_FIELDS = [
   "grade",
   "church_id",
   "church_other",
+  "church_role",
   "department_id",
 ] as const;
 

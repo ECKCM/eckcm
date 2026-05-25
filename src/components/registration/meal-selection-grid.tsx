@@ -26,6 +26,13 @@ interface MealSelectionGridProps {
   perMealPriceCents?: number;
   fullDayPriceCents?: number;
   tierLabel?: string;
+  // Admin mode: bypass the "full-day always selected" rule so admins can
+  // override any meal (e.g. retroactive opt-outs after check-in).
+  adminOverride?: boolean;
+  // Display-only mode. Renders the grid but disables every checkbox and
+  // skips the auto-sync that would otherwise push defaults back to the
+  // parent. Used by admin tools to require an explicit "Edit" click.
+  readOnly?: boolean;
 }
 
 function getDatesInRange(start: string, end: string): string[] {
@@ -64,19 +71,25 @@ function buildSelections(
   endDate: string,
   eventStartDate: string,
   eventEndDate: string,
-  existing: MealSelection[]
+  existing: MealSelection[],
+  adminOverride: boolean
 ): MealSelection[] {
   const map = new Map<string, boolean>();
   for (const s of existing) map.set(`${s.date}|${s.mealType}`, s.selected);
 
   return visibleDates.flatMap((date) => {
     const dayType = getDayType(date, startDate, endDate, eventStartDate, eventEndDate);
-    return MEAL_TYPES.map((meal) => ({
-      date,
-      mealType: meal.type,
-      // Full days always selected; partial days use existing value or default true
-      selected: dayType === "fullday" ? true : (map.get(`${date}|${meal.type}`) ?? true),
-    }));
+    return MEAL_TYPES.map((meal) => {
+      const key = `${date}|${meal.type}`;
+      // Admin: trust whatever's in `existing` for every day (default true if absent).
+      // User wizard: full days always selected; partial days use existing or default true.
+      const selected = adminOverride
+        ? (map.get(key) ?? true)
+        : dayType === "fullday"
+          ? true
+          : (map.get(key) ?? true);
+      return { date, mealType: meal.type, selected };
+    });
   });
 }
 
@@ -94,6 +107,8 @@ export function MealSelectionGrid({
   perMealPriceCents,
   fullDayPriceCents,
   tierLabel,
+  adminOverride = false,
+  readOnly = false,
 }: MealSelectionGridProps) {
   const showPricing = perMealPriceCents != null;
 
@@ -107,12 +122,13 @@ export function MealSelectionGrid({
 
   // Always-complete selections: fills gaps in props with defaults
   const effective = useMemo(
-    () => buildSelections(visibleDates, startDate, endDate, eventStartDate, eventEndDate, selections),
-    [visibleDates, startDate, endDate, eventStartDate, eventEndDate, selections]
+    () => buildSelections(visibleDates, startDate, endDate, eventStartDate, eventEndDate, selections, adminOverride),
+    [visibleDates, startDate, endDate, eventStartDate, eventEndDate, selections, adminOverride]
   );
 
   // Sync to parent on mount (if empty) or when dates change (missing entries)
   useEffect(() => {
+    if (readOnly) return; // Don't write back from display-only mounts.
     if (visibleDates.length === 0) return;
     const parentDates = new Set(selections.map((s) => s.date));
     if (selections.length === 0 || !visibleDates.every((d) => parentDates.has(d))) {
@@ -122,6 +138,7 @@ export function MealSelectionGrid({
   }, [visibleDates]);
 
   const toggleMeal = (date: string, mealType: MealType) => {
+    if (readOnly) return;
     const updated = effective.map((s) =>
       s.date === date && s.mealType === mealType
         ? { ...s, selected: !s.selected }
@@ -196,16 +213,21 @@ export function MealSelectionGrid({
                   <span className="ml-1 text-muted-foreground">(Full Day)</span>
                 )}
               </span>
-              {MEAL_TYPES.map((meal) => (
-                <div key={meal.type} className="flex justify-center">
-                  <Checkbox
-                    checked={isChecked(date, meal.type)}
-                    onCheckedChange={() => toggleMeal(date, meal.type)}
-                    disabled={isFullDay}
-                    className={isFullDay ? "opacity-50" : ""}
-                  />
-                </div>
-              ))}
+              {MEAL_TYPES.map((meal) => {
+                // Admin can toggle anything; users can't unset full-day meals.
+                const lockFullDay = isFullDay && !adminOverride;
+                const isDisabled = readOnly || lockFullDay;
+                return (
+                  <div key={meal.type} className="flex justify-center">
+                    <Checkbox
+                      checked={isChecked(date, meal.type)}
+                      onCheckedChange={() => toggleMeal(date, meal.type)}
+                      disabled={isDisabled}
+                      className={isDisabled ? "opacity-50" : ""}
+                    />
+                  </div>
+                );
+              })}
             </div>
           );
         })}

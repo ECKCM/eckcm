@@ -364,7 +364,37 @@
   [type="checkbox"],
   [type="radio"],
   label:has(input),
-  [tabindex]:not([tabindex="-1"]) {
+  [tabindex]:not([tabindex="-1"]):not([contenteditable="true"]) {
     cursor: pointer;
   }
+  [contenteditable="true"],
+  [contenteditable="true"] *,
+  .ProseMirror,
+  .ProseMirror * {
+    cursor: text;
+  }
+  /* Re-allow pointer for interactive children inside the editor. */
+  [contenteditable="true"] a,
+  [contenteditable="true"] button,
+  .ProseMirror a,
+  .ProseMirror button {
+    cursor: pointer;
+  }
+}
+
+/* Belt-and-suspenders: TipTap's ProseMirror root must always show a text
+   caret, even if a future global rule re-introduces pointer-on-tabindex. */
+.ProseMirror,
+.ProseMirror p,
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror ul,
+.ProseMirror ol,
+.ProseMirror li,
+.ProseMirror blockquote {
+  cursor: text !important;
+}
+.ProseMirror a {
+  cursor: pointer !important;
 }

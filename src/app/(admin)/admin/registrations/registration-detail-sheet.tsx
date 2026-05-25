@@ -21,6 +21,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -59,6 +65,7 @@ import {
   Loader2,
   Pencil,
   Save,
+  Send,
   X,
   Trash2,
   ArrowRightLeft,
@@ -66,6 +73,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ChurchCombobox } from "@/components/shared/church-combobox";
+import { MealSelectionGrid } from "@/components/registration/meal-selection-grid";
+import type { MealSelection } from "@/lib/types/registration";
+import type { MealType } from "@/lib/types/database";
 import {
   type RegistrationRow,
   type PersonDetail,
@@ -111,7 +121,19 @@ export function RegistrationDetailSheet({
   // All registrations for transfer dropdown
   const [allRegistrations, setAllRegistrations] = useState<{ id: string; confirmation_code: string; registrant_name: string; status: string }[]>([]);
   // Groups for this registration (for room change)
-  const [groups, setGroups] = useState<{ id: string; display_group_code: string; room_number: string | null; room_id: string | null; lodging_type: string | null }[]>([]);
+  const [groups, setGroups] = useState<{
+    id: string;
+    display_group_code: string;
+    room_number: string | null;
+    room_id: string | null;
+    lodging_type: string | null;
+    preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null;
+    key_count: number;
+  }[]>([]);
+  // Registration groups for this event (for editable dropdown)
+  const [registrationGroups, setRegistrationGroups] = useState<{ id: string; name_en: string }[]>([]);
+  // Event start/end dates (for meal grid: excludes arrival/departure days)
+  const [eventDates, setEventDates] = useState<{ start: string; end: string } | null>(null);
   // All rooms for room change dropdown
   const [allRooms, setAllRooms] = useState<{ id: string; room_number: string; building_name: string; floor_number: string }[]>([]);
   // Available lodging options for this event's registration group
@@ -168,6 +190,22 @@ export function RegistrationDetailSheet({
       .eq("is_active", true)
       .order("code")
       .then(({ data }) => setLodgingOptions(data ?? []));
+    // Registration groups for this event (for the editable dropdown)
+    supabase
+      .from("eckcm_registration_groups")
+      .select("id, name_en")
+      .eq("event_id", eventId)
+      .order("name_en")
+      .then(({ data }) => setRegistrationGroups(data ?? []));
+    // Event start/end (used by MealSelectionGrid to skip arrival/departure)
+    supabase
+      .from("eckcm_events")
+      .select("event_start_date, event_end_date")
+      .eq("id", eventId)
+      .single()
+      .then(({ data }) => {
+        if (data) setEventDates({ start: data.event_start_date, end: data.event_end_date });
+      });
   }, [eventId]);
 
   // Load participants and groups when registration changes
@@ -184,24 +222,59 @@ export function RegistrationDetailSheet({
   const loadPeople = async (regId: string) => {
     setLoadingPeople(true);
     const supabase = createClient();
-    const { data } = await supabase
-      .from("eckcm_group_memberships")
-      .select(`
+    const buildSelect = (includeChurchRole: boolean) => `
         id,
         group_id,
         role,
         participant_code,
+        stay_start_date,
+        stay_end_date,
         eckcm_people!inner(
           id, first_name_en, last_name_en, display_name_ko,
           gender, birth_date, age_at_event, is_k12, grade,
-          email, phone, phone_country, church_id, church_other,
+          email, phone, phone_country, church_id, church_other${includeChurchRole ? ", church_role" : ""},
           department_id, guardian_name, guardian_phone,
           eckcm_churches(id, name_en),
           eckcm_departments(id, name_en)
         ),
         eckcm_groups!inner(id, display_group_code, registration_id)
-      `)
+      `;
+
+    // Try with church_role; if the column doesn't exist yet (migration not
+    // applied), retry without it so the rest of the panel still works.
+    let { data, error } = await supabase
+      .from("eckcm_group_memberships")
+      .select(buildSelect(true))
       .eq("eckcm_groups.registration_id", regId);
+
+    if (error && /church_role/i.test(error.message ?? "")) {
+      console.warn("[loadPeople] church_role column missing; retrying without it. Apply migration 20260525130000.");
+      ({ data, error } = await supabase
+        .from("eckcm_group_memberships")
+        .select(buildSelect(false))
+        .eq("eckcm_groups.registration_id", regId));
+    }
+
+    if (error) {
+      console.error("[loadPeople] query failed:", error);
+      toast.error(`Failed to load participants: ${error.message}`);
+    }
+
+    // Load all meal selections for this registration in a single query;
+    // grouped by person_id below so each PersonCard gets its own subset.
+    const { data: mealRows, error: mealError } = await supabase
+      .from("eckcm_meal_selections")
+      .select("person_id, meal_date, meal_type, is_selected")
+      .eq("registration_id", regId);
+    if (mealError) {
+      console.warn("[loadPeople] meal selections query failed:", mealError);
+    }
+    const mealsByPerson = new Map<string, { meal_date: string; meal_type: string; is_selected: boolean }[]>();
+    for (const r of mealRows ?? []) {
+      const arr = mealsByPerson.get(r.person_id) ?? [];
+      arr.push({ meal_date: r.meal_date, meal_type: r.meal_type, is_selected: !!r.is_selected });
+      mealsByPerson.set(r.person_id, arr);
+    }
 
     if (data) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -228,11 +301,15 @@ export function RegistrationDetailSheet({
         church_other: m.eckcm_people.church_other,
         department_id: m.eckcm_people.department_id ?? m.eckcm_people.eckcm_departments?.id ?? null,
         department_name: m.eckcm_people.eckcm_departments?.name_en ?? null,
+        church_role: m.eckcm_people.church_role ?? null,
         guardian_name: m.eckcm_people.guardian_name,
         guardian_phone: m.eckcm_people.guardian_phone,
         group_code: m.eckcm_groups.display_group_code,
         role: m.role,
         participant_code: m.participant_code,
+        stay_start_date: m.stay_start_date ?? null,
+        stay_end_date: m.stay_end_date ?? null,
+        meal_selections: mealsByPerson.get(m.eckcm_people.id) ?? [],
       }));
       setPeople(mapped);
     }
@@ -244,7 +321,7 @@ export function RegistrationDetailSheet({
     const { data } = await supabase
       .from("eckcm_groups")
       .select(`
-        id, display_group_code, lodging_type,
+        id, display_group_code, lodging_type, preferences, key_count,
         eckcm_room_assignments(eckcm_rooms(id, room_number))
       `)
       .eq("registration_id", regId);
@@ -260,6 +337,8 @@ export function RegistrationDetailSheet({
           lodging_type: g.lodging_type ?? null,
           room_number: ra?.eckcm_rooms?.room_number ?? null,
           room_id: ra?.eckcm_rooms?.id ?? null,
+          preferences: g.preferences ?? { elderly: false, handicapped: false, firstFloor: false },
+          key_count: g.key_count ?? 0,
         };
       }));
     }
@@ -484,6 +563,9 @@ export function RegistrationDetailSheet({
                     onChanged={onRefresh}
                   />
                 )}
+                <div className="mt-3">
+                  <ResendEmailButton registrationId={reg.id} />
+                </div>
               </section>
 
               <Separator />
@@ -522,33 +604,23 @@ export function RegistrationDetailSheet({
 
               <Separator />
 
-              {/* Stay Details */}
-              <section>
-                <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                  <CalendarDays className="size-4" />
-                  Stay Details
-                </h3>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                  <InfoRow label="Check-in">{reg.start_date}</InfoRow>
-                  <InfoRow label="Check-out">{reg.end_date}</InfoRow>
-                  <InfoRow label="Reg. Group">
-                    {reg.registration_group_name ?? "-"}
-                  </InfoRow>
-                  <InfoRow label="Reg. Type">
-                    {reg.registration_type === "others" ? "Others" : "Self"}
-                  </InfoRow>
-                  <InfoRow label="Groups">{reg.group_count}</InfoRow>
-                </div>
+              {/* Stay Details (editable) */}
+              <StayDetailsSection
+                registration={reg}
+                registrationGroups={registrationGroups}
+                onSaved={onRefresh}
+              />
 
-                {/* Room assignments & lodging per group */}
-                {groups.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                      <BedDouble className="size-3" />
-                      Room &amp; Lodging
-                    </h4>
+              {/* Room assignments, lodging, preferences, key count per group */}
+              {groups.length > 0 && (
+                <section>
+                  <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-2">
+                    <BedDouble className="size-3" />
+                    Room &amp; Lodging
+                  </h4>
+                  <div className="space-y-3">
                     {groups.map((g) => (
-                      <div key={g.id} className="space-y-1">
+                      <div key={g.id} className="space-y-1.5 rounded border p-2.5">
                         <RoomAssignRow
                           group={g}
                           registrationId={reg.id}
@@ -561,11 +633,16 @@ export function RegistrationDetailSheet({
                           lodgingOptions={lodgingOptions}
                           onChanged={() => { loadGroups(reg.id); onRefresh(); }}
                         />
+                        <GroupPreferencesRow
+                          group={g}
+                          registrationId={reg.id}
+                          onChanged={() => { loadGroups(reg.id); onRefresh(); }}
+                        />
                       </div>
                     ))}
                   </div>
-                )}
-              </section>
+                </section>
+              )}
 
               {/* Notes */}
               <Separator />
@@ -606,6 +683,10 @@ export function RegistrationDetailSheet({
                       <PersonCard
                         person={representative}
                         registrationId={reg.id}
+                        regStartDate={reg.start_date}
+                        regEndDate={reg.end_date}
+                        eventStartDate={eventDates?.start ?? null}
+                        eventEndDate={eventDates?.end ?? null}
                         totalPeople={people.length}
                         allRegistrations={allRegistrations}
                         onSaved={() => { loadPeople(reg.id); loadGroups(reg.id); onRefresh(); }}
@@ -627,6 +708,10 @@ export function RegistrationDetailSheet({
                             key={p.membership_id}
                             person={p}
                             registrationId={reg.id}
+                            regStartDate={reg.start_date}
+                            regEndDate={reg.end_date}
+                            eventStartDate={eventDates?.start ?? null}
+                            eventEndDate={eventDates?.end ?? null}
                             totalPeople={people.length}
                             allRegistrations={allRegistrations}
                             onSaved={() => { loadPeople(reg.id); loadGroups(reg.id); onRefresh(); }}
@@ -1330,6 +1415,592 @@ function AdjustmentsPanel({
   );
 }
 
+// ─── Stay Dates + Meals (per participant, editable) ─────────
+// Reuses MealSelectionGrid from the registration wizard so admin and user
+// see the exact same grid — same arrival/departure exclusion, same partial
+// vs full-day rules, same default-all-checked behavior.
+
+function formatShortDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function StayAndMealsEditor({
+  person,
+  registrationId,
+  regStartDate,
+  regEndDate,
+  eventStartDate,
+  eventEndDate,
+  onSaved,
+}: {
+  person: PersonDetail;
+  registrationId: string;
+  regStartDate: string;
+  regEndDate: string;
+  eventStartDate: string | null;
+  eventEndDate: string | null;
+  onSaved: () => void;
+}) {
+  const hasOverride = !!(person.stay_start_date && person.stay_end_date);
+  const effectiveStart = person.stay_start_date ?? regStartDate;
+  const effectiveEnd = person.stay_end_date ?? regEndDate;
+
+  // ─── Stay dates editor state ─────────────────────────────
+  const [editingDates, setEditingDates] = useState(false);
+  const [savingDates, setSavingDates] = useState(false);
+  const [useOverride, setUseOverride] = useState(hasOverride);
+  const [draftStart, setDraftStart] = useState(effectiveStart);
+  const [draftEnd, setDraftEnd] = useState(effectiveEnd);
+
+  useEffect(() => {
+    setEditingDates(false);
+    setUseOverride(hasOverride);
+    setDraftStart(effectiveStart);
+    setDraftEnd(effectiveEnd);
+  }, [person.membership_id, person.stay_start_date, person.stay_end_date, effectiveStart, effectiveEnd, hasOverride]);
+
+  const handleSaveDates = async () => {
+    if (useOverride && new Date(draftEnd) < new Date(draftStart)) {
+      toast.error("Check-out must be on or after check-in");
+      return;
+    }
+    setSavingDates(true);
+    try {
+      const res = await fetch(
+        `/api/admin/registrations/${registrationId}/participants/${person.membership_id}/stay-dates`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            useOverride
+              ? { stay_start_date: draftStart, stay_end_date: draftEnd }
+              : { stay_start_date: null, stay_end_date: null },
+          ),
+        },
+      );
+      if (res.ok) {
+        toast.success("Stay dates saved");
+        setEditingDates(false);
+        onSaved();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to save stay dates");
+      }
+    } catch {
+      toast.error("Failed to save stay dates");
+    }
+    setSavingDates(false);
+  };
+
+  // ─── Meals editor state ──────────────────────────────────
+  // Convert DB rows to MealSelection[] preserving each row's is_selected so
+  // admin "unchecked" state survives. Absence of any rows is treated as
+  // "uninitialized" — the grid fills it with defaults (all selected).
+  const dbToSelections = (rows: { meal_date: string; meal_type: string; is_selected: boolean }[]): MealSelection[] =>
+    rows.map((r) => ({ date: r.meal_date, mealType: r.meal_type as MealType, selected: r.is_selected }));
+
+  const initialSelections = dbToSelections(person.meal_selections);
+  const [mealSelections, setMealSelections] = useState<MealSelection[]>(initialSelections);
+  const [savingMeals, setSavingMeals] = useState(false);
+  const [editingMeals, setEditingMeals] = useState(false);
+
+  useEffect(() => {
+    setMealSelections(dbToSelections(person.meal_selections));
+    setEditingMeals(false);
+  }, [person.membership_id, person.meal_selections]);
+
+  const handleMealsChange = (next: MealSelection[]) => {
+    setMealSelections(next);
+  };
+
+  // Dirty = the set of *selected* meals differs from what DB has selected.
+  // Both sides treat absence as "not selected" when comparing, so the
+  // grid's initial auto-fill of defaults shows as dirty for pre-fix
+  // registrations (admin can Save to commit those defaults).
+  const selectedKeySet = (rows: { date?: string; meal_date?: string; mealType?: string; meal_type?: string; selected?: boolean; is_selected?: boolean }[]) => {
+    const out = new Set<string>();
+    for (const r of rows) {
+      const date = r.date ?? r.meal_date;
+      const type = r.mealType ?? r.meal_type;
+      const sel = r.selected ?? r.is_selected;
+      if (date && type && sel) out.add(`${date}|${type}`);
+    }
+    return out;
+  };
+  const currentSet = selectedKeySet(mealSelections);
+  const dbSet = selectedKeySet(person.meal_selections);
+  const dirty = currentSet.size !== dbSet.size || [...currentSet].some((k) => !dbSet.has(k));
+
+  const handleSaveMeals = async () => {
+    // Send the full grid (both selected and not). Storing unselected rows
+    // lets admin opt-outs survive a reload — see API doc comment.
+    const selections = mealSelections.map((s) => ({
+      meal_date: s.date,
+      meal_type: s.mealType,
+      is_selected: s.selected,
+    }));
+    setSavingMeals(true);
+    try {
+      const res = await fetch(
+        `/api/admin/registrations/${registrationId}/participants/${person.membership_id}/meals`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selections }),
+        },
+      );
+      if (res.ok) {
+        const selectedCount = selections.filter((s) => s.is_selected).length;
+        toast.success(`Saved ${selectedCount} meal(s) for ${person.first_name_en}`);
+        setEditingMeals(false);
+        onSaved();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to save meals");
+      }
+    } catch {
+      toast.error("Failed to save meals");
+    }
+    setSavingMeals(false);
+  };
+
+  const handleCancelMeals = () => {
+    setMealSelections(dbToSelections(person.meal_selections));
+    setEditingMeals(false);
+  };
+
+  const eventReady = !!(eventStartDate && eventEndDate);
+
+  return (
+    <div className="mt-3 pt-3 border-t space-y-3">
+      {/* Stay dates row */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="size-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium">Stay Dates</span>
+          {!hasOverride && !editingDates && (
+            <span className="text-[10px] text-muted-foreground">(using registration default)</span>
+          )}
+          {!editingDates && (
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs ml-auto" onClick={() => setEditingDates(true)}>
+              <Pencil className="size-3 mr-1" />
+              Edit
+            </Button>
+          )}
+        </div>
+        {editingDates ? (
+          <div className="space-y-2 pl-5">
+            <label className="flex items-center gap-1.5 text-xs">
+              <input
+                type="checkbox"
+                checked={useOverride}
+                onChange={(e) => setUseOverride(e.target.checked)}
+              />
+              Override registration dates for this participant
+            </label>
+            {useOverride && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-0.5">
+                  <label className="text-[10px] text-muted-foreground">Check-in</label>
+                  <Input type="date" value={draftStart} onChange={(e) => setDraftStart(e.target.value)} className="h-8 text-xs" />
+                </div>
+                <div className="space-y-0.5">
+                  <label className="text-[10px] text-muted-foreground">Check-out</label>
+                  <Input type="date" value={draftEnd} onChange={(e) => setDraftEnd(e.target.value)} className="h-8 text-xs" />
+                </div>
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground">
+              Changing dates does not recalculate fees. Use the Adjustments tab for any monetary delta.
+            </p>
+            <div className="flex gap-1.5">
+              <Button size="sm" className="h-7 px-2" onClick={handleSaveDates} disabled={savingDates}>
+                {savingDates ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
+                Save
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => {
+                setUseOverride(hasOverride);
+                setDraftStart(effectiveStart);
+                setDraftEnd(effectiveEnd);
+                setEditingDates(false);
+              }}>
+                <X className="size-3" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="pl-5 text-xs text-muted-foreground">
+            {formatShortDate(effectiveStart)} ~ {formatShortDate(effectiveEnd)}
+          </p>
+        )}
+      </div>
+
+      {/* Meals grid (same component used in the registration wizard) */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <FileText className="size-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium">Meals</span>
+          {!editingMeals && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs ml-auto"
+              onClick={() => setEditingMeals(true)}
+              disabled={!eventReady}
+            >
+              <Pencil className="size-3 mr-1" />
+              Edit
+            </Button>
+          )}
+        </div>
+        {!eventReady ? (
+          <p className="text-xs text-muted-foreground italic">Loading event dates…</p>
+        ) : (
+          <>
+            <MealSelectionGrid
+              startDate={effectiveStart}
+              endDate={effectiveEnd}
+              eventStartDate={eventStartDate!}
+              eventEndDate={eventEndDate!}
+              selections={mealSelections}
+              onChange={handleMealsChange}
+              adminOverride
+              readOnly={!editingMeals}
+            />
+            {editingMeals && (
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] text-muted-foreground">
+                  Admin can toggle any meal (including full-day). Saving does not recalculate fees — record monetary deltas in Adjustments.
+                </p>
+                <div className="ml-auto flex gap-1.5">
+                  <Button size="sm" className="h-7 px-2" onClick={handleSaveMeals} disabled={savingMeals || !dirty}>
+                    {savingMeals ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
+                    Save
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={handleCancelMeals}>
+                    <X className="size-3 mr-1" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Resend Email Button ────────────────────────────────────
+
+function ResendEmailButton({ registrationId }: { registrationId: string }) {
+  const [sending, setSending] = useState<null | "confirmation" | "receipt" | "epass">(null);
+
+  const handleSend = async (type: "confirmation" | "receipt" | "epass") => {
+    setSending(type);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/resend-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || "Failed to resend email");
+      } else if (type === "epass") {
+        const { sent = 0, skipped = 0, failed = 0 } = data;
+        if (sent === 0 && failed === 0) {
+          toast.warning(`No ePass emails sent — ${skipped} participant(s) without email.`);
+        } else {
+          toast.success(`Sent ${sent} ePass email(s)${skipped ? `, skipped ${skipped}` : ""}${failed ? `, failed ${failed}` : ""}`);
+        }
+      } else {
+        toast.success(type === "receipt" ? "Receipt email resent" : "Confirmation email resent");
+      }
+    } catch {
+      toast.error("Failed to resend email");
+    }
+    setSending(null);
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" disabled={sending !== null}>
+          {sending ? (
+            <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+          ) : (
+            <Send className="size-3.5 mr-1.5" />
+          )}
+          Resend Email
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem onClick={() => handleSend("confirmation")} disabled={sending !== null}>
+          <Mail className="size-3.5 mr-2" />
+          Registration confirmation
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSend("receipt")} disabled={sending !== null}>
+          <FileText className="size-3.5 mr-2" />
+          Payment receipt
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSend("epass")} disabled={sending !== null}>
+          <ShieldCheck className="size-3.5 mr-2" />
+          ePass (per participant)
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// ─── Stay Details Section (editable) ────────────────────────
+
+function StayDetailsSection({
+  registration,
+  registrationGroups,
+  onSaved,
+}: {
+  registration: RegistrationRow;
+  registrationGroups: { id: string; name_en: string }[];
+  onSaved: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [startDate, setStartDate] = useState(registration.start_date);
+  const [endDate, setEndDate] = useState(registration.end_date);
+  const currentGroupId = registration.registration_group_id ?? "";
+  const [regGroupId, setRegGroupId] = useState(currentGroupId);
+
+  useEffect(() => {
+    setStartDate(registration.start_date);
+    setEndDate(registration.end_date);
+    setRegGroupId(currentGroupId);
+    setEditing(false);
+  }, [registration.id, registration.start_date, registration.end_date, currentGroupId]);
+
+  const computedNights = Math.max(
+    0,
+    Math.round(
+      (new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000,
+    ),
+  );
+
+  const handleSave = async () => {
+    const payload: Record<string, unknown> = {};
+    if (startDate !== registration.start_date) payload.start_date = startDate;
+    if (endDate !== registration.end_date) payload.end_date = endDate;
+    if (regGroupId !== currentGroupId) payload.registration_group_id = regGroupId || null;
+    if (Object.keys(payload).length === 0) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registration.id}/details`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        toast.success("Stay details saved");
+        setEditing(false);
+        onSaved();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to save");
+      }
+    } catch {
+      toast.error("Failed to save");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <section>
+      <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+        <CalendarDays className="size-4" />
+        Stay Details
+        {!editing ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs ml-auto"
+            onClick={() => setEditing(true)}
+          >
+            <Pencil className="size-3 mr-1" />
+            Edit
+          </Button>
+        ) : null}
+      </h3>
+      {editing ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Check-in</label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Check-out</label>
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-9 text-sm" />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Nights: {computedNights}. Changing dates does NOT recalculate fees — use the Adjustments tab to record any monetary delta.
+          </p>
+          <div className="space-y-1">
+            <label className="text-xs font-medium">Registration Group</label>
+            <Select value={regGroupId || "__none__"} onValueChange={(v) => setRegGroupId(v === "__none__" ? "" : v)}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— None —</SelectItem>
+                {registrationGroups.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>{g.name_en}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
+              Save
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => {
+              setStartDate(registration.start_date);
+              setEndDate(registration.end_date);
+              setRegGroupId(currentGroupId);
+              setEditing(false);
+            }}>
+              <X className="size-3 mr-1" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <InfoRow label="Check-in">{registration.start_date}</InfoRow>
+          <InfoRow label="Check-out">{registration.end_date}</InfoRow>
+          <InfoRow label="Nights">{registration.nights_count}</InfoRow>
+          <InfoRow label="Reg. Group">{registration.registration_group_name ?? "-"}</InfoRow>
+          <InfoRow label="Reg. Type">{registration.registration_type === "others" ? "Others" : "Self"}</InfoRow>
+          <InfoRow label="Groups">{registration.group_count}</InfoRow>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ─── Group Preferences + Key Count Row (editable) ───────────
+
+function GroupPreferencesRow({
+  group,
+  registrationId,
+  onChanged,
+}: {
+  group: {
+    id: string;
+    display_group_code: string;
+    preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null;
+    key_count: number;
+  };
+  registrationId: string;
+  onChanged: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const initialPrefs = group.preferences ?? { elderly: false, handicapped: false, firstFloor: false };
+  const [prefs, setPrefs] = useState(initialPrefs);
+  const [keyCount, setKeyCount] = useState(group.key_count ?? 0);
+
+  useEffect(() => {
+    setPrefs(group.preferences ?? { elderly: false, handicapped: false, firstFloor: false });
+    setKeyCount(group.key_count ?? 0);
+    setEditing(false);
+  }, [group.id, group.preferences, group.key_count]);
+
+  const summary = [
+    prefs.elderly && "Elderly",
+    prefs.handicapped && "Handicapped",
+    prefs.firstFloor && "1st Floor",
+  ].filter(Boolean).join(", ") || "None";
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/group/${group.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferences: prefs, key_count: keyCount }),
+      });
+      if (res.ok) {
+        toast.success("Preferences saved");
+        setEditing(false);
+        onChanged();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to save");
+      }
+    } catch {
+      toast.error("Failed to save");
+    }
+    setSaving(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={prefs.elderly} onChange={(e) => setPrefs({ ...prefs, elderly: e.target.checked })} />
+            Elderly
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={prefs.handicapped} onChange={(e) => setPrefs({ ...prefs, handicapped: e.target.checked })} />
+            Handicapped
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={prefs.firstFloor} onChange={(e) => setPrefs({ ...prefs, firstFloor: e.target.checked })} />
+            1st Floor
+          </label>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium">Key Deposit Count</label>
+          <Input
+            type="number"
+            min={0}
+            value={keyCount}
+            onChange={(e) => setKeyCount(Math.max(0, Number(e.target.value) || 0))}
+            className="h-8 w-20 text-sm"
+          />
+          <div className="ml-auto flex gap-1.5">
+            <Button size="sm" className="h-7 px-2" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
+              Save
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditing(false)}>
+              <X className="size-3" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="text-muted-foreground">Prefs:</span>
+      <span>{summary}</span>
+      <span className="text-muted-foreground ml-3">Keys:</span>
+      <span>{keyCount}</span>
+      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs ml-auto" onClick={() => setEditing(true)}>
+        <Pencil className="size-3 mr-1" />
+        Edit
+      </Button>
+    </div>
+  );
+}
+
 // ─── Notes Section ──────────────────────────────────────────
 
 function NotesSection({
@@ -1346,11 +2017,19 @@ function NotesSection({
   const [editing, setEditing] = useState(false);
   const [notes, setNotes] = useState(initialNotes ?? "");
   const [saving, setSaving] = useState(false);
+  const [editingRequests, setEditingRequests] = useState(false);
+  const [requests, setRequests] = useState(additionalRequests ?? "");
+  const [savingRequests, setSavingRequests] = useState(false);
 
   useEffect(() => {
     setNotes(initialNotes ?? "");
     setEditing(false);
   }, [initialNotes]);
+
+  useEffect(() => {
+    setRequests(additionalRequests ?? "");
+    setEditingRequests(false);
+  }, [additionalRequests]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -1371,6 +2050,28 @@ function NotesSection({
       toast.error("Failed to save notes");
     }
     setSaving(false);
+  };
+
+  const handleSaveRequests = async () => {
+    setSavingRequests(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/details`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ additional_requests: requests.trim() }),
+      });
+      if (res.ok) {
+        toast.success("Additional requests saved");
+        setEditingRequests(false);
+        onRefresh();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to save");
+      }
+    } catch {
+      toast.error("Failed to save");
+    }
+    setSavingRequests(false);
   };
 
   return (
@@ -1426,12 +2127,53 @@ function NotesSection({
         </div>
       )}
 
-      {additionalRequests && (
-        <div className="mt-2">
-          <p className="text-xs text-muted-foreground mb-1">Additional Requests</p>
-          <p className="text-sm bg-muted/50 rounded-md p-2">{additionalRequests}</p>
+      <div className="mt-3">
+        <div className="flex items-center mb-1">
+          <p className="text-xs text-muted-foreground">Additional Requests</p>
+          {!editingRequests && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs ml-auto"
+              onClick={() => setEditingRequests(true)}
+            >
+              <Pencil className="size-3 mr-1" />
+              Edit
+            </Button>
+          )}
         </div>
-      )}
+        {editingRequests ? (
+          <div className="space-y-2">
+            <Textarea
+              value={requests}
+              onChange={(e) => setRequests(e.target.value)}
+              placeholder="Edit additional requests..."
+              rows={3}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleSaveRequests} disabled={savingRequests}>
+                {savingRequests ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setRequests(additionalRequests ?? "");
+                  setEditingRequests(false);
+                }}
+              >
+                <X className="size-3 mr-1" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm bg-muted/50 rounded-md p-2 min-h-[2rem]">
+            {additionalRequests || <span className="text-muted-foreground italic">No additional requests</span>}
+          </p>
+        )}
+      </div>
     </section>
   );
 }
@@ -1691,9 +2433,13 @@ function InfoRow({
   );
 }
 
-function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, onSaved, churches, departments }: {
+function PersonCard({ person: p, registrationId, regStartDate, regEndDate, eventStartDate, eventEndDate, totalPeople, allRegistrations, onSaved, churches, departments }: {
   person: PersonDetail;
   registrationId: string;
+  regStartDate: string;
+  regEndDate: string;
+  eventStartDate: string | null;
+  eventEndDate: string | null;
   totalPeople: number;
   allRegistrations: { id: string; confirmation_code: string; registrant_name: string; status: string }[];
   onSaved: () => void;
@@ -1768,6 +2514,7 @@ function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, 
     grade: p.grade ?? "",
     church_id: p.church_id ?? "",
     church_other: p.church_other ?? "",
+    church_role: p.church_role ?? "",
     department_id: p.department_id ?? "",
     guardian_name: p.guardian_name ?? "",
     guardian_phone: p.guardian_phone ?? "",
@@ -1786,6 +2533,7 @@ function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, 
       grade: p.grade ?? "",
       church_id: p.church_id ?? "",
       church_other: p.church_other ?? "",
+      church_role: p.church_role ?? "",
       department_id: p.department_id ?? "",
       guardian_name: p.guardian_name ?? "",
       guardian_phone: p.guardian_phone ?? "",
@@ -1807,6 +2555,7 @@ function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, 
         grade: form.is_k12 ? (form.grade || null) : null,
         church_id: form.church_id || null,
         church_other: isChurchOther(form.church_id) ? (form.church_other || null) : null,
+        church_role: form.church_role || null,
         department_id: form.department_id || null,
         guardian_name: form.guardian_name || null,
         guardian_phone: form.guardian_phone || null,
@@ -1966,6 +2715,20 @@ function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, 
               </Select>
             </div>
           </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium">Church Position (직분) <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <Select value={form.church_role || "__none__"} onValueChange={(v) => setForm({ ...form, church_role: v === "__none__" ? "" : v })}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— None —</SelectItem>
+                <SelectItem value="MEMBER">Member (성도)</SelectItem>
+                <SelectItem value="DEACON">Deacon (집사)</SelectItem>
+                <SelectItem value="ELDER">Elder (장로)</SelectItem>
+                <SelectItem value="MINISTER">Minister (전도사)</SelectItem>
+                <SelectItem value="PASTOR">Pastor (목사)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Separator />
@@ -2093,6 +2856,12 @@ function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, 
               {p.department_name}
             </span>
           )}
+          {p.church_role && (
+            <span className="flex items-center gap-1">
+              <Church className="size-3" />
+              {p.church_role.charAt(0) + p.church_role.slice(1).toLowerCase()}
+            </span>
+          )}
           {p.guardian_name && (
             <span className="flex items-center gap-1 col-span-2">
               <ShieldCheck className="size-3" />
@@ -2101,6 +2870,17 @@ function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, 
             </span>
           )}
         </div>
+
+        {/* Per-participant stay dates + meals */}
+        <StayAndMealsEditor
+          person={p}
+          registrationId={registrationId}
+          regStartDate={regStartDate}
+          regEndDate={regEndDate}
+          eventStartDate={eventStartDate}
+          eventEndDate={eventEndDate}
+          onSaved={onSaved}
+        />
       </div>
 
       {/* Delete Confirmation */}
