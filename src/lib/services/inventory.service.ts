@@ -74,24 +74,23 @@ export async function recalculateInventory(
     let reserved = 0;
 
     for (const reg of registrations ?? []) {
-      // Check if this registration's group includes this fee category
-      const regGroupFees = groupFeeMap.get(reg.registration_group_id);
-      if (!regGroupFees?.has(feeCategoryId)) continue;
-
       const isHeld = reg.status === "DRAFT" || reg.status === "SUBMITTED";
       const isReserved = reg.status === "APPROVED" || reg.status === "PAID";
 
       if (feeCode.startsWith("LODGING_")) {
-        // Count groups with matching lodging type
+        // Source of truth is the actual selected lodging_type on each room.
+        // The org-group fee_category link can drift (admin reconfigures), so
+        // gating by it under-counts existing reservations.
         for (const group of (reg as any).eckcm_groups ?? []) {
-          const lodgingType = group.lodging_type;
-          if (lodgingType === feeCode) {
+          if (group.lodging_type === feeCode) {
             if (isHeld) held++;
             if (isReserved) reserved++;
           }
         }
       } else {
-        // Count participants
+        // Non-LODGING: still gate by org-group fee_category link
+        const regGroupFees = groupFeeMap.get(reg.registration_group_id);
+        if (!regGroupFees?.has(feeCategoryId)) continue;
         const participantCount = ((reg as any).eckcm_groups ?? []).reduce(
           (sum: number, g: any) =>
             sum + (g.eckcm_group_memberships?.length ?? 0),
