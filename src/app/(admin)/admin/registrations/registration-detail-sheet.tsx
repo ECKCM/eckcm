@@ -21,6 +21,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -59,6 +65,7 @@ import {
   Loader2,
   Pencil,
   Save,
+  Send,
   X,
   Trash2,
   ArrowRightLeft,
@@ -111,7 +118,17 @@ export function RegistrationDetailSheet({
   // All registrations for transfer dropdown
   const [allRegistrations, setAllRegistrations] = useState<{ id: string; confirmation_code: string; registrant_name: string; status: string }[]>([]);
   // Groups for this registration (for room change)
-  const [groups, setGroups] = useState<{ id: string; display_group_code: string; room_number: string | null; room_id: string | null; lodging_type: string | null }[]>([]);
+  const [groups, setGroups] = useState<{
+    id: string;
+    display_group_code: string;
+    room_number: string | null;
+    room_id: string | null;
+    lodging_type: string | null;
+    preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null;
+    key_count: number;
+  }[]>([]);
+  // Registration groups for this event (for editable dropdown)
+  const [registrationGroups, setRegistrationGroups] = useState<{ id: string; name_en: string }[]>([]);
   // All rooms for room change dropdown
   const [allRooms, setAllRooms] = useState<{ id: string; room_number: string; building_name: string; floor_number: string }[]>([]);
   // Available lodging options for this event's registration group
@@ -168,6 +185,13 @@ export function RegistrationDetailSheet({
       .eq("is_active", true)
       .order("code")
       .then(({ data }) => setLodgingOptions(data ?? []));
+    // Registration groups for this event (for the editable dropdown)
+    supabase
+      .from("eckcm_registration_groups")
+      .select("id, name_en")
+      .eq("event_id", eventId)
+      .order("name_en")
+      .then(({ data }) => setRegistrationGroups(data ?? []));
   }, [eventId]);
 
   // Load participants and groups when registration changes
@@ -194,7 +218,7 @@ export function RegistrationDetailSheet({
         eckcm_people!inner(
           id, first_name_en, last_name_en, display_name_ko,
           gender, birth_date, age_at_event, is_k12, grade,
-          email, phone, phone_country, church_id, church_other,
+          email, phone, phone_country, church_id, church_other, church_role,
           department_id, guardian_name, guardian_phone,
           eckcm_churches(id, name_en),
           eckcm_departments(id, name_en)
@@ -228,6 +252,7 @@ export function RegistrationDetailSheet({
         church_other: m.eckcm_people.church_other,
         department_id: m.eckcm_people.department_id ?? m.eckcm_people.eckcm_departments?.id ?? null,
         department_name: m.eckcm_people.eckcm_departments?.name_en ?? null,
+        church_role: m.eckcm_people.church_role ?? null,
         guardian_name: m.eckcm_people.guardian_name,
         guardian_phone: m.eckcm_people.guardian_phone,
         group_code: m.eckcm_groups.display_group_code,
@@ -244,7 +269,7 @@ export function RegistrationDetailSheet({
     const { data } = await supabase
       .from("eckcm_groups")
       .select(`
-        id, display_group_code, lodging_type,
+        id, display_group_code, lodging_type, preferences, key_count,
         eckcm_room_assignments(eckcm_rooms(id, room_number))
       `)
       .eq("registration_id", regId);
@@ -260,6 +285,8 @@ export function RegistrationDetailSheet({
           lodging_type: g.lodging_type ?? null,
           room_number: ra?.eckcm_rooms?.room_number ?? null,
           room_id: ra?.eckcm_rooms?.id ?? null,
+          preferences: g.preferences ?? { elderly: false, handicapped: false, firstFloor: false },
+          key_count: g.key_count ?? 0,
         };
       }));
     }
@@ -484,6 +511,9 @@ export function RegistrationDetailSheet({
                     onChanged={onRefresh}
                   />
                 )}
+                <div className="mt-3">
+                  <ResendEmailButton registrationId={reg.id} />
+                </div>
               </section>
 
               <Separator />
@@ -522,33 +552,23 @@ export function RegistrationDetailSheet({
 
               <Separator />
 
-              {/* Stay Details */}
-              <section>
-                <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                  <CalendarDays className="size-4" />
-                  Stay Details
-                </h3>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                  <InfoRow label="Check-in">{reg.start_date}</InfoRow>
-                  <InfoRow label="Check-out">{reg.end_date}</InfoRow>
-                  <InfoRow label="Reg. Group">
-                    {reg.registration_group_name ?? "-"}
-                  </InfoRow>
-                  <InfoRow label="Reg. Type">
-                    {reg.registration_type === "others" ? "Others" : "Self"}
-                  </InfoRow>
-                  <InfoRow label="Groups">{reg.group_count}</InfoRow>
-                </div>
+              {/* Stay Details (editable) */}
+              <StayDetailsSection
+                registration={reg}
+                registrationGroups={registrationGroups}
+                onSaved={onRefresh}
+              />
 
-                {/* Room assignments & lodging per group */}
-                {groups.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                      <BedDouble className="size-3" />
-                      Room &amp; Lodging
-                    </h4>
+              {/* Room assignments, lodging, preferences, key count per group */}
+              {groups.length > 0 && (
+                <section>
+                  <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-2">
+                    <BedDouble className="size-3" />
+                    Room &amp; Lodging
+                  </h4>
+                  <div className="space-y-3">
                     {groups.map((g) => (
-                      <div key={g.id} className="space-y-1">
+                      <div key={g.id} className="space-y-1.5 rounded border p-2.5">
                         <RoomAssignRow
                           group={g}
                           registrationId={reg.id}
@@ -561,11 +581,16 @@ export function RegistrationDetailSheet({
                           lodgingOptions={lodgingOptions}
                           onChanged={() => { loadGroups(reg.id); onRefresh(); }}
                         />
+                        <GroupPreferencesRow
+                          group={g}
+                          registrationId={reg.id}
+                          onChanged={() => { loadGroups(reg.id); onRefresh(); }}
+                        />
                       </div>
                     ))}
                   </div>
-                )}
-              </section>
+                </section>
+              )}
 
               {/* Notes */}
               <Separator />
@@ -1330,6 +1355,314 @@ function AdjustmentsPanel({
   );
 }
 
+// ─── Resend Email Button ────────────────────────────────────
+
+function ResendEmailButton({ registrationId }: { registrationId: string }) {
+  const [sending, setSending] = useState<null | "confirmation" | "receipt" | "epass">(null);
+
+  const handleSend = async (type: "confirmation" | "receipt" | "epass") => {
+    setSending(type);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/resend-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || "Failed to resend email");
+      } else if (type === "epass") {
+        const { sent = 0, skipped = 0, failed = 0 } = data;
+        if (sent === 0 && failed === 0) {
+          toast.warning(`No ePass emails sent — ${skipped} participant(s) without email.`);
+        } else {
+          toast.success(`Sent ${sent} ePass email(s)${skipped ? `, skipped ${skipped}` : ""}${failed ? `, failed ${failed}` : ""}`);
+        }
+      } else {
+        toast.success(type === "receipt" ? "Receipt email resent" : "Confirmation email resent");
+      }
+    } catch {
+      toast.error("Failed to resend email");
+    }
+    setSending(null);
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" disabled={sending !== null}>
+          {sending ? (
+            <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+          ) : (
+            <Send className="size-3.5 mr-1.5" />
+          )}
+          Resend Email
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem onClick={() => handleSend("confirmation")} disabled={sending !== null}>
+          <Mail className="size-3.5 mr-2" />
+          Registration confirmation
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSend("receipt")} disabled={sending !== null}>
+          <FileText className="size-3.5 mr-2" />
+          Payment receipt
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSend("epass")} disabled={sending !== null}>
+          <ShieldCheck className="size-3.5 mr-2" />
+          ePass (per participant)
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// ─── Stay Details Section (editable) ────────────────────────
+
+function StayDetailsSection({
+  registration,
+  registrationGroups,
+  onSaved,
+}: {
+  registration: RegistrationRow;
+  registrationGroups: { id: string; name_en: string }[];
+  onSaved: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [startDate, setStartDate] = useState(registration.start_date);
+  const [endDate, setEndDate] = useState(registration.end_date);
+  const currentGroupId = registration.registration_group_id ?? "";
+  const [regGroupId, setRegGroupId] = useState(currentGroupId);
+
+  useEffect(() => {
+    setStartDate(registration.start_date);
+    setEndDate(registration.end_date);
+    setRegGroupId(currentGroupId);
+    setEditing(false);
+  }, [registration.id, registration.start_date, registration.end_date, currentGroupId]);
+
+  const computedNights = Math.max(
+    0,
+    Math.round(
+      (new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000,
+    ),
+  );
+
+  const handleSave = async () => {
+    const payload: Record<string, unknown> = {};
+    if (startDate !== registration.start_date) payload.start_date = startDate;
+    if (endDate !== registration.end_date) payload.end_date = endDate;
+    if (regGroupId !== currentGroupId) payload.registration_group_id = regGroupId || null;
+    if (Object.keys(payload).length === 0) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registration.id}/details`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        toast.success("Stay details saved");
+        setEditing(false);
+        onSaved();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to save");
+      }
+    } catch {
+      toast.error("Failed to save");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <section>
+      <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+        <CalendarDays className="size-4" />
+        Stay Details
+        {!editing ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs ml-auto"
+            onClick={() => setEditing(true)}
+          >
+            <Pencil className="size-3 mr-1" />
+            Edit
+          </Button>
+        ) : null}
+      </h3>
+      {editing ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Check-in</label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Check-out</label>
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-9 text-sm" />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Nights: {computedNights}. Changing dates does NOT recalculate fees — use the Adjustments tab to record any monetary delta.
+          </p>
+          <div className="space-y-1">
+            <label className="text-xs font-medium">Registration Group</label>
+            <Select value={regGroupId || "__none__"} onValueChange={(v) => setRegGroupId(v === "__none__" ? "" : v)}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— None —</SelectItem>
+                {registrationGroups.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>{g.name_en}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
+              Save
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => {
+              setStartDate(registration.start_date);
+              setEndDate(registration.end_date);
+              setRegGroupId(currentGroupId);
+              setEditing(false);
+            }}>
+              <X className="size-3 mr-1" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <InfoRow label="Check-in">{registration.start_date}</InfoRow>
+          <InfoRow label="Check-out">{registration.end_date}</InfoRow>
+          <InfoRow label="Nights">{registration.nights_count}</InfoRow>
+          <InfoRow label="Reg. Group">{registration.registration_group_name ?? "-"}</InfoRow>
+          <InfoRow label="Reg. Type">{registration.registration_type === "others" ? "Others" : "Self"}</InfoRow>
+          <InfoRow label="Groups">{registration.group_count}</InfoRow>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ─── Group Preferences + Key Count Row (editable) ───────────
+
+function GroupPreferencesRow({
+  group,
+  registrationId,
+  onChanged,
+}: {
+  group: {
+    id: string;
+    display_group_code: string;
+    preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null;
+    key_count: number;
+  };
+  registrationId: string;
+  onChanged: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const initialPrefs = group.preferences ?? { elderly: false, handicapped: false, firstFloor: false };
+  const [prefs, setPrefs] = useState(initialPrefs);
+  const [keyCount, setKeyCount] = useState(group.key_count ?? 0);
+
+  useEffect(() => {
+    setPrefs(group.preferences ?? { elderly: false, handicapped: false, firstFloor: false });
+    setKeyCount(group.key_count ?? 0);
+    setEditing(false);
+  }, [group.id, group.preferences, group.key_count]);
+
+  const summary = [
+    prefs.elderly && "Elderly",
+    prefs.handicapped && "Handicapped",
+    prefs.firstFloor && "1st Floor",
+  ].filter(Boolean).join(", ") || "None";
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/group/${group.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferences: prefs, key_count: keyCount }),
+      });
+      if (res.ok) {
+        toast.success("Preferences saved");
+        setEditing(false);
+        onChanged();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to save");
+      }
+    } catch {
+      toast.error("Failed to save");
+    }
+    setSaving(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={prefs.elderly} onChange={(e) => setPrefs({ ...prefs, elderly: e.target.checked })} />
+            Elderly
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={prefs.handicapped} onChange={(e) => setPrefs({ ...prefs, handicapped: e.target.checked })} />
+            Handicapped
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={prefs.firstFloor} onChange={(e) => setPrefs({ ...prefs, firstFloor: e.target.checked })} />
+            1st Floor
+          </label>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium">Key Deposit Count</label>
+          <Input
+            type="number"
+            min={0}
+            value={keyCount}
+            onChange={(e) => setKeyCount(Math.max(0, Number(e.target.value) || 0))}
+            className="h-8 w-20 text-sm"
+          />
+          <div className="ml-auto flex gap-1.5">
+            <Button size="sm" className="h-7 px-2" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
+              Save
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditing(false)}>
+              <X className="size-3" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="text-muted-foreground">Prefs:</span>
+      <span>{summary}</span>
+      <span className="text-muted-foreground ml-3">Keys:</span>
+      <span>{keyCount}</span>
+      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs ml-auto" onClick={() => setEditing(true)}>
+        <Pencil className="size-3 mr-1" />
+        Edit
+      </Button>
+    </div>
+  );
+}
+
 // ─── Notes Section ──────────────────────────────────────────
 
 function NotesSection({
@@ -1346,11 +1679,19 @@ function NotesSection({
   const [editing, setEditing] = useState(false);
   const [notes, setNotes] = useState(initialNotes ?? "");
   const [saving, setSaving] = useState(false);
+  const [editingRequests, setEditingRequests] = useState(false);
+  const [requests, setRequests] = useState(additionalRequests ?? "");
+  const [savingRequests, setSavingRequests] = useState(false);
 
   useEffect(() => {
     setNotes(initialNotes ?? "");
     setEditing(false);
   }, [initialNotes]);
+
+  useEffect(() => {
+    setRequests(additionalRequests ?? "");
+    setEditingRequests(false);
+  }, [additionalRequests]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -1371,6 +1712,28 @@ function NotesSection({
       toast.error("Failed to save notes");
     }
     setSaving(false);
+  };
+
+  const handleSaveRequests = async () => {
+    setSavingRequests(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/details`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ additional_requests: requests.trim() }),
+      });
+      if (res.ok) {
+        toast.success("Additional requests saved");
+        setEditingRequests(false);
+        onRefresh();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to save");
+      }
+    } catch {
+      toast.error("Failed to save");
+    }
+    setSavingRequests(false);
   };
 
   return (
@@ -1426,12 +1789,53 @@ function NotesSection({
         </div>
       )}
 
-      {additionalRequests && (
-        <div className="mt-2">
-          <p className="text-xs text-muted-foreground mb-1">Additional Requests</p>
-          <p className="text-sm bg-muted/50 rounded-md p-2">{additionalRequests}</p>
+      <div className="mt-3">
+        <div className="flex items-center mb-1">
+          <p className="text-xs text-muted-foreground">Additional Requests</p>
+          {!editingRequests && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs ml-auto"
+              onClick={() => setEditingRequests(true)}
+            >
+              <Pencil className="size-3 mr-1" />
+              Edit
+            </Button>
+          )}
         </div>
-      )}
+        {editingRequests ? (
+          <div className="space-y-2">
+            <Textarea
+              value={requests}
+              onChange={(e) => setRequests(e.target.value)}
+              placeholder="Edit additional requests..."
+              rows={3}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleSaveRequests} disabled={savingRequests}>
+                {savingRequests ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Save className="size-3 mr-1" />}
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setRequests(additionalRequests ?? "");
+                  setEditingRequests(false);
+                }}
+              >
+                <X className="size-3 mr-1" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm bg-muted/50 rounded-md p-2 min-h-[2rem]">
+            {additionalRequests || <span className="text-muted-foreground italic">No additional requests</span>}
+          </p>
+        )}
+      </div>
     </section>
   );
 }
@@ -1768,6 +2172,7 @@ function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, 
     grade: p.grade ?? "",
     church_id: p.church_id ?? "",
     church_other: p.church_other ?? "",
+    church_role: p.church_role ?? "",
     department_id: p.department_id ?? "",
     guardian_name: p.guardian_name ?? "",
     guardian_phone: p.guardian_phone ?? "",
@@ -1786,6 +2191,7 @@ function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, 
       grade: p.grade ?? "",
       church_id: p.church_id ?? "",
       church_other: p.church_other ?? "",
+      church_role: p.church_role ?? "",
       department_id: p.department_id ?? "",
       guardian_name: p.guardian_name ?? "",
       guardian_phone: p.guardian_phone ?? "",
@@ -1807,6 +2213,7 @@ function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, 
         grade: form.is_k12 ? (form.grade || null) : null,
         church_id: form.church_id || null,
         church_other: isChurchOther(form.church_id) ? (form.church_other || null) : null,
+        church_role: form.church_role || null,
         department_id: form.department_id || null,
         guardian_name: form.guardian_name || null,
         guardian_phone: form.guardian_phone || null,
@@ -1966,6 +2373,20 @@ function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, 
               </Select>
             </div>
           </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium">Church Position (직분) <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <Select value={form.church_role || "__none__"} onValueChange={(v) => setForm({ ...form, church_role: v === "__none__" ? "" : v })}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— None —</SelectItem>
+                <SelectItem value="MEMBER">Member (성도)</SelectItem>
+                <SelectItem value="DEACON">Deacon (집사)</SelectItem>
+                <SelectItem value="ELDER">Elder (장로)</SelectItem>
+                <SelectItem value="MINISTER">Minister (전도사)</SelectItem>
+                <SelectItem value="PASTOR">Pastor (목사)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Separator />
@@ -2091,6 +2512,12 @@ function PersonCard({ person: p, registrationId, totalPeople, allRegistrations, 
             <span className="flex items-center gap-1">
               <Building2 className="size-3" />
               {p.department_name}
+            </span>
+          )}
+          {p.church_role && (
+            <span className="flex items-center gap-1">
+              <Church className="size-3" />
+              {p.church_role.charAt(0) + p.church_role.slice(1).toLowerCase()}
             </span>
           )}
           {p.guardian_name && (

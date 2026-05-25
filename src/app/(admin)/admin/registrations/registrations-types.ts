@@ -30,6 +30,7 @@ export interface RegistrationRow {
   registrant_department: string | null;
   registrant_guardian_name: string | null;
   registrant_guardian_phone: string | null;
+  registration_group_id: string | null;
   registration_group_name: string | null;
   invoice_id: string | null;
   invoice_number: string | null;
@@ -66,6 +67,7 @@ export interface PersonDetail {
   church_other: string | null;
   department_id: string | null;
   department_name: string | null;
+  church_role: string | null;
   guardian_name: string | null;
   guardian_phone: string | null;
   group_code: string;

@@ -67,6 +67,8 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
   const [registrations, setRegistrations] = useState<RegistrationRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [highlightFilter, setHighlightFilter] = useState(false);
+  const [regGroupFilter, setRegGroupFilter] = useState("ALL");
+  const [departmentFilter, setDepartmentFilter] = useState("ALL");
 
   const [stripeAccountId, setStripeAccountId] = useState("");
 
@@ -126,6 +128,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         is_highlighted,
         created_at,
         updated_at,
+        registration_group_id,
         eckcm_registration_groups(name_en),
         eckcm_invoices(
           id,
@@ -266,6 +269,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           registrant_department: registrantDept,
           registrant_guardian_name: registrantGuardianName,
           registrant_guardian_phone: registrantGuardianPhone,
+          registration_group_id: r.registration_group_id ?? null,
           registration_group_name: r.eckcm_registration_groups?.name_en ?? null,
           invoice_id: invoice?.id ?? null,
           invoice_number: invoice?.invoice_number ?? null,
@@ -359,9 +363,19 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
 
   // ─── Filter ────────────────────────────────────────────────────
 
+  // Distinct option lists derived from currently loaded rows.
+  const regGroupOptions = Array.from(
+    new Set(registrations.map((r) => r.registration_group_name).filter((v): v is string => !!v))
+  ).sort((a, b) => a.localeCompare(b));
+  const departmentOptions = Array.from(
+    new Set(registrations.map((r) => r.registrant_department).filter((v): v is string => !!v))
+  ).sort((a, b) => a.localeCompare(b));
+
   const filtered = registrations.filter((r) => {
     if (highlightFilter && !r.is_highlighted) return false;
     if (statusFilter !== "ALL" && r.status !== statusFilter) return false;
+    if (regGroupFilter !== "ALL" && r.registration_group_name !== regGroupFilter) return false;
+    if (departmentFilter !== "ALL" && r.registrant_department !== departmentFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -428,6 +442,30 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
               <SelectItem key={s} value={s}>
                 {s === "ALL" ? "All Statuses" : s}
               </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={regGroupFilter} onValueChange={setRegGroupFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Reg. Groups</SelectItem>
+            {regGroupOptions.map((g) => (
+              <SelectItem key={g} value={g}>{g}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Departments</SelectItem>
+            {departmentOptions.map((d) => (
+              <SelectItem key={d} value={d}>{d}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -500,7 +538,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
             <p className="text-center text-muted-foreground py-8">Loading...</p>
           ) : (
             <>
-            <div className="overflow-x-auto">
+            <ScrollSyncedTable>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -778,7 +816,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                   )}
                 </TableBody>
               </Table>
-            </div>
+            </ScrollSyncedTable>
 
             </>
           )}
@@ -827,6 +865,59 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         </AlertDialog>
       )}
     </div>
+  );
+}
+
+// ─── Scroll-synced table wrapper ───────────────────────────
+// Renders a thin scrollbar above the table that mirrors the table's horizontal
+// scroll. Lets admins page through wide tables without scrolling to the bottom.
+function ScrollSyncedTable({ children }: { children: React.ReactNode }) {
+  const topRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const [contentWidth, setContentWidth] = useState(0);
+  const syncing = useRef<"top" | "bottom" | null>(null);
+
+  // Track the inner table's scroll width so the top spacer matches.
+  useEffect(() => {
+    const el = bottomRef.current;
+    if (!el) return;
+    const update = () => setContentWidth(el.scrollWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    // Children mutations (sort/filter) can change inner width without resize.
+    const mo = new MutationObserver(update);
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => { ro.disconnect(); mo.disconnect(); };
+  }, []);
+
+  const onTopScroll = () => {
+    if (syncing.current === "bottom") { syncing.current = null; return; }
+    if (!topRef.current || !bottomRef.current) return;
+    syncing.current = "top";
+    bottomRef.current.scrollLeft = topRef.current.scrollLeft;
+  };
+  const onBottomScroll = () => {
+    if (syncing.current === "top") { syncing.current = null; return; }
+    if (!topRef.current || !bottomRef.current) return;
+    syncing.current = "bottom";
+    topRef.current.scrollLeft = bottomRef.current.scrollLeft;
+  };
+
+  return (
+    <>
+      <div
+        ref={topRef}
+        onScroll={onTopScroll}
+        className="overflow-x-auto"
+        aria-hidden
+      >
+        <div style={{ width: contentWidth, height: 1 }} />
+      </div>
+      <div ref={bottomRef} onScroll={onBottomScroll} className="overflow-x-auto">
+        {children}
+      </div>
+    </>
   );
 }
 
