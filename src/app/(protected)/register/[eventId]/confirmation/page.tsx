@@ -17,13 +17,13 @@ export default function ConfirmationPage() {
   const code = searchParams.get("code");
   const registrationId = searchParams.get("registrationId");
   const method = searchParams.get("method");
-  const isManual = method === "zelle" || method === "check";
-  const [status, setStatus] = useState<PaymentStatus>(isManual ? "pending" : "loading");
+  const skipPolling = method === "zelle" || method === "check" || method === "free";
+  const [status, setStatus] = useState<PaymentStatus>(skipPolling ? "pending" : "loading");
   const { t } = useI18n();
 
   useEffect(() => {
-    // Zelle/Check payments are pending until confirmed — skip polling
-    if (isManual) return;
+    // Zelle/Check/Free flows are pending admin confirmation — skip polling
+    if (skipPolling) return;
 
     if (!registrationId) {
       setStatus("error");

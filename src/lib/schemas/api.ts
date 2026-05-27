@@ -134,6 +134,10 @@ export const confirmPaymentSchema = z.object({
   paymentIntentId: z.string().min(1),
 });
 
+export const freeSubmitSchema = z.object({
+  registrationId: uuid,
+});
+
 export const zelleSubmitSchema = z.object({
   registrationId: uuid,
   zellePayerName: z.string().min(1).optional(),
