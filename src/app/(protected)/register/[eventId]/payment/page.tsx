@@ -338,12 +338,31 @@ export default function PaymentStep() {
       } catch (err) {
         console.error("[payment] confirm fetch error:", err);
       }
+    } else if (freeRegistration && registrationId) {
+      try {
+        const res = await fetch("/api/registration/free-submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ registrationId }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error("[free-submit] failed:", res.status, err);
+        }
+      } catch (err) {
+        console.error("[free-submit] fetch error:", err);
+      }
     }
     const params = new URLSearchParams({
       registrationId: registrationId!,
       code: confirmationCode || "",
     });
-    if (!paymentIntentId) params.set("method", payMode === "check" ? "check" : "zelle");
+    if (!paymentIntentId) {
+      params.set(
+        "method",
+        freeRegistration ? "free" : payMode === "check" ? "check" : "zelle"
+      );
+    }
     router.push(`/register/${eventId}/confirmation?${params.toString()}`);
   };
 
