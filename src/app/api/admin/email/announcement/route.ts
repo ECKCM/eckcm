@@ -64,6 +64,15 @@ export async function POST(req: NextRequest) {
   const text = htmlToPlainText(html);
   const headers = getBulkEmailHeaders(emailConfig.replyTo);
 
+  // Brand-prefix every announcement so the recipient instantly recognises
+  // the sender in their inbox list. Skip the prefix if the admin already
+  // typed one themselves (e.g. they pasted "[ECKCM]" or "[Reminder]" into
+  // the subject field) so we don't double up.
+  const PREFIX = "[ECKCM]";
+  const subjectWithBrand = subject.trim().startsWith("[")
+    ? subject
+    : `${PREFIX} ${subject}`;
+
   const resend = await getResendClient();
 
   if (testOnly) {
@@ -77,7 +86,7 @@ export async function POST(req: NextRequest) {
         from: emailConfig.from,
         to: adminEmail,
         ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
-        subject: `[TEST] ${subject}`,
+        subject: subjectWithBrand,
         html,
         text,
         headers,
@@ -91,7 +100,7 @@ export async function POST(req: NextRequest) {
         eventId,
         toEmail: adminEmail,
         fromEmail: emailConfig.from,
-        subject: `[TEST] ${subject}`,
+        subject: subjectWithBrand,
         template: "announcement",
         status: "sent",
         resendId: sendResult?.id,
@@ -137,7 +146,7 @@ export async function POST(req: NextRequest) {
         from: emailConfig.from,
         to: email,
         ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
-        subject,
+        subject: subjectWithBrand,
         html,
         text,
         headers,
@@ -149,7 +158,7 @@ export async function POST(req: NextRequest) {
           eventId,
           toEmail: email,
           fromEmail: emailConfig.from,
-          subject,
+          subject: subjectWithBrand,
           template: "announcement",
           status: "failed",
           errorMessage: error.message,
@@ -161,7 +170,7 @@ export async function POST(req: NextRequest) {
           eventId,
           toEmail: email,
           fromEmail: emailConfig.from,
-          subject,
+          subject: subjectWithBrand,
           template: "announcement",
           status: "sent",
           resendId: sendResult?.id,

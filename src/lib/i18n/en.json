@@ -277,6 +277,7 @@
     "savedPersonRemoved": "Saved person removed",
     "saveBeforeProceeding": "Please save the participant before proceeding",
     "saveAllBeforeProceeding": "Please save all participants before proceeding",
+    "regGroupAutoAssigned": "Registration group was auto-set to \"{name}\" based on department",
     "unableToUseEmail": "Unable to use this email",
     "alreadyRegisteredPerson": "Already registered person",
     "submissionFailed": "Submission failed",
