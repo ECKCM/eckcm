@@ -986,10 +986,10 @@ function AdjustmentsPanel({
     setSubmitting(true);
     try {
       const localInput = Math.round(parseFloat(newAmountDollars) * 100);
-      // For refund: registration drops by the amount the customer actually receives
-      // (admin intent − proportional fee), so new_total reflects "money remaining in Stripe".
+      // For refund: registration total drops by the gross refund amount (admin's intent).
+      // API computes the proportional fee and refunds (gross − fee) to the customer.
       const apiNewAmount = newAction === "refund"
-        ? Math.max(0, currentAmount - stripeRefund)
+        ? Math.max(0, currentAmount - localInput)
         : localInput;
       const res = await fetch(`/api/admin/registrations/${registrationId}/adjustments`, {
         method: "POST",
@@ -1055,18 +1055,19 @@ function AdjustmentsPanel({
   const processingFee = feeBase > 0 ? calculateProcessingFee(feeBase, paymentMethod) : 0;
   const maxRefundTotal = feeBase - processingFee;
   const availableRefund = summary ? Math.max(0, maxRefundTotal - summary.total_refunded) : 0;
-  // Proportional fee deducted from THIS partial refund (so the church doesn't eat the fee).
+  // Proportional fee withheld from THIS refund — Stripe doesn't refund fees on partials,
+  // so the church holds back the fee share of the refunded portion. The customer pays it.
   const proportionalRefundFee = isRefundAction && inputCents > 0
     ? calculateProportionalProcessingFee(inputCents, feeBase, paymentMethod)
     : 0;
-  // Stripe refund = admin intent − proportional fee, capped at remaining refundable balance.
-  // This is what the customer actually receives back.
+  // What the customer actually receives via Stripe: gross intent − proportional fee,
+  // capped at remaining refundable balance.
   const stripeRefund = isRefundAction
     ? Math.max(0, Math.min(inputCents - proportionalRefundFee, availableRefund))
     : 0;
-  // "New Total" reflects how much money remains in Stripe for this registration —
-  // i.e. it drops by the actual Stripe refund (customer received), not by admin intent.
-  const newAmountCents = isRefundAction ? currentAmount - stripeRefund : inputCents;
+  // Registration total reflects admin's intent — drops by the GROSS refund amount.
+  // (Customer-received refund differs by the withheld fee; tracked separately in eckcm_refunds.)
+  const newAmountCents = isRefundAction ? Math.max(0, currentAmount - inputCents) : inputCents;
   const diff = newAmountCents - currentAmount;
   const refundExceedsTotal = isRefundAction && inputCents > currentAmount;
   // Minimum: customer must receive at least $1 (Stripe's own floor is ~$0.50;

@@ -74,7 +74,7 @@ const navLinks: NavLinkDef[] = [
   { href: "/admin/registrations", label: "Registrations", icon: FileText, exact: true, permission: "participant.read" },
   { href: "/admin/participants", label: "Participants", icon: UserCheck, exact: false, permission: "participant.read" },
   { href: "/admin/department-view", label: "Department View", icon: Building2, exact: false, permission: ["participant.read", "department.view"] },
-  { href: "/admin/registrations/create", label: "Manual Registration", icon: ClipboardPlus, exact: true, permission: "participant.update" },
+  { href: "/admin/registrations/create", label: "Register for Others", icon: ClipboardPlus, exact: true, permission: "participant.update" },
   { href: "/admin/events", label: "Events", icon: Calendar, exact: false, permission: "event.manage" },
   { href: "/admin/room-groups", label: "Room Assignment", icon: BedDouble, exact: false, permission: "group.read" },
   { href: "/admin/lodging/upj-rooms", label: "UPJ Lodging", icon: Hotel, exact: false, permission: "group.read" },

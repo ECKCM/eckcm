@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // isomorphic-dompurify pulls in jsdom, which has dynamic requires that
+  // confuse Next/Turbopack's bundler. Keeping it external means the route
+  // handler loads it from node_modules at runtime instead of being bundled.
+  serverExternalPackages: ["isomorphic-dompurify"],
   async headers() {
     return [
       {

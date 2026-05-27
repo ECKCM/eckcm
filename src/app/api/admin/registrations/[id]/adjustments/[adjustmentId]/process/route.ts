@@ -12,7 +12,11 @@ import {
   processAdjustment,
   getAdjustmentsWithSummary,
 } from "@/lib/services/adjustment.service";
-import { calculateProcessingFee, MIN_REFUND_CENTS } from "@/app/(admin)/admin/registrations/registrations-types";
+import {
+  calculateProcessingFee,
+  calculateProportionalProcessingFee,
+  MIN_REFUND_CENTS,
+} from "@/app/(admin)/admin/registrations/registrations-types";
 import { writeAuditLog } from "@/lib/services/audit.service";
 import { sendRefundEmail } from "@/lib/email/send-refund";
 import { logger } from "@/lib/logger";
@@ -77,7 +81,7 @@ export async function POST(
     );
   }
 
-  // 2. Resolve event's Stripe mode
+  // 2. Resolve event's Stripe mode + payment_method (best-effort)
   const { data: reg } = await admin
     .from("eckcm_registrations")
     .select("event_id, eckcm_events!inner(stripe_mode)")
@@ -94,7 +98,7 @@ export async function POST(
   let stripeRefundId: string | undefined;
   let cappedRefundAmount: number | undefined;
 
-  // 3. Execute Stripe operations based on action
+  // 3. Execute Stripe operations for action=refund (negative difference = refund)
   if (action === "refund" && adj.difference < 0) {
     // Find the most recent SUCCEEDED payment for this registration
     const { data: invoices } = await admin
@@ -106,163 +110,211 @@ export async function POST(
       (i: { id: string }) => i.id
     );
 
-    if (invoiceIds.length > 0) {
-      const { data: payment } = await admin
+    if (invoiceIds.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "No payment found for this registration. Mark as waive/credit for manual tracking.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const { data: payment } = await admin
+      .from("eckcm_payments")
+      .select(
+        "id, stripe_payment_intent_id, payment_method, amount_cents, status, invoice_id"
+      )
+      .in("invoice_id", invoiceIds)
+      .in("status", ["SUCCEEDED", "PARTIALLY_REFUNDED"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!payment) {
+      return NextResponse.json(
+        {
+          error:
+            "No succeeded payment found. Mark as waive/credit for manual tracking.",
+        },
+        { status: 400 }
+      );
+    }
+    if (!payment.stripe_payment_intent_id) {
+      return NextResponse.json(
+        {
+          error:
+            "Payment is non-Stripe (e.g. Zelle/Check). Mark as waive/credit for manual tracking.",
+        },
+        { status: 400 }
+      );
+    }
+
+    paymentMethod = payment.payment_method ?? "CARD";
+
+    // Pending adjustments store the GROSS refund (admin's typed amount).
+    // Apply proportional fee to compute the customer-received refund, same as
+    // the direct-refund creation flow — the church withholds the fee share
+    // of the refunded portion since Stripe doesn't refund fees on partials.
+    const { summary } = await getAdjustmentsWithSummary(admin, registrationId);
+    const feeBase =
+      summary.original_amount > 0 ? summary.original_amount : payment.amount_cents;
+    const grossRefund = Math.abs(adj.difference);
+    const totalFee = calculateProcessingFee(feeBase, paymentMethod);
+    const proportionalFee = calculateProportionalProcessingFee(
+      grossRefund,
+      feeBase,
+      paymentMethod
+    );
+    const customerRefund = Math.max(0, grossRefund - proportionalFee);
+
+    // Cap based on customer-received refunds already issued (sum of eckcm_refunds),
+    // not adjustment.difference (which is gross and would over-deduct).
+    const preRefundSummary = await getRefundSummary(
+      admin,
+      payment.id,
+      payment.amount_cents
+    );
+    const maxTotalRefundable = Math.max(
+      0,
+      feeBase - totalFee - preRefundSummary.totalRefundedCents
+    );
+    cappedRefundAmount = Math.min(customerRefund, maxTotalRefundable);
+
+    if (cappedRefundAmount <= 0) {
+      return NextResponse.json(
+        {
+          error:
+            "No refundable amount remaining (processing fee already exceeds balance)",
+        },
+        { status: 400 }
+      );
+    }
+    if (cappedRefundAmount < MIN_REFUND_CENTS) {
+      return NextResponse.json(
+        {
+          error: `Minimum refund is ${(MIN_REFUND_CENTS / 100).toFixed(2)} to customer`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Step 1: Reserve refund slot in DB (validates payment-level limits)
+    let refundId: string;
+    try {
+      const result = await createRefundWithGuard(admin, {
+        paymentId: payment.id,
+        paymentAmountCents: payment.amount_cents,
+        amountCents: cappedRefundAmount,
+        reason: adj.reason,
+        refundedBy: user.id,
+      });
+      refundId = result.refundId;
+    } catch (err) {
+      if (err instanceof RefundOverLimitError) {
+        return NextResponse.json(
+          { error: err.message },
+          { status: 409 }
+        );
+      }
+      logger.error("[adjustments/process] Refund guard failed", {
+        error: String(err),
+      });
+      return NextResponse.json(
+        { error: "Failed to validate refund" },
+        { status: 500 }
+      );
+    }
+
+    // Step 2: Issue Stripe refund (idempotency keyed on adjustment id)
+    try {
+      const stripe = await getStripeForMode(stripeMode);
+      const refund = await stripe.refunds.create(
+        {
+          payment_intent: payment.stripe_payment_intent_id,
+          amount: cappedRefundAmount,
+          reason: "requested_by_customer",
+        },
+        { idempotencyKey: `adj-${adjustmentId}` }
+      );
+      stripeRefundId = refund.id;
+    } catch (err) {
+      // Stripe failed — rollback the DB refund record
+      await admin.from("eckcm_refunds").delete().eq("id", refundId);
+      logger.error(
+        "[adjustments/process] Stripe refund failed, refund row rolled back",
+        { error: String(err) }
+      );
+      return NextResponse.json(
+        {
+          error:
+            err instanceof Error
+              ? err.message
+              : "Stripe refund failed",
+        },
+        { status: 500 }
+      );
+    }
+
+    // Stripe refund SUCCEEDED — finalize DB. Failures here are logged but
+    // not rolled back: the refund is a fact.
+    try {
+      await admin
+        .from("eckcm_refunds")
+        .update({ stripe_refund_id: stripeRefundId })
+        .eq("id", refundId);
+
+      const postSummary = await getRefundSummary(
+        admin,
+        payment.id,
+        payment.amount_cents
+      );
+      const refundStatus =
+        postSummary.remainingCents <= 0 ? "REFUNDED" : "PARTIALLY_REFUNDED";
+
+      await admin
         .from("eckcm_payments")
-        .select(
-          "id, stripe_payment_intent_id, payment_method, amount_cents, status"
-        )
-        .in("invoice_id", invoiceIds)
-        .in("status", ["SUCCEEDED", "PARTIALLY_REFUNDED"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .update({ status: refundStatus })
+        .eq("id", payment.id);
 
-      if (payment) {
-        paymentMethod = payment.payment_method;
-        // Safety: if Stripe payment intent exists, it's always a card payment
-        if (!paymentMethod && payment.stripe_payment_intent_id) {
-          paymentMethod = "CARD";
+      if (payment.invoice_id) {
+        await admin
+          .from("eckcm_invoices")
+          .update({ status: refundStatus })
+          .eq("id", payment.invoice_id);
+      }
+
+      // Full refund: customer received the max possible (payment − fee).
+      // For card payments, the remaining cents on the payment are just the
+      // non-refundable processing fee.
+      const stripeFee = calculateProcessingFee(payment.amount_cents, paymentMethod);
+      const fullyRefunded = postSummary.remainingCents <= stripeFee;
+      if (refundStatus === "REFUNDED" || fullyRefunded || adj.new_amount === 0) {
+        await admin
+          .from("eckcm_registrations")
+          .update({ status: "REFUNDED" })
+          .eq("id", registrationId);
+
+        await admin
+          .from("eckcm_epass_tokens")
+          .update({ is_active: false })
+          .eq("registration_id", registrationId);
+      }
+    } catch (finalizeErr) {
+      logger.error(
+        "[adjustments/process] Stripe refund SUCCEEDED but DB finalize partial — manual verification recommended",
+        {
+          adjustmentId,
+          refundId,
+          stripeRefundId,
+          error: String(finalizeErr),
         }
-      }
-
-      // For new-style adjustments, adj.difference is already the customer-received
-      // amount (UI deducted the proportional fee at adjustment creation time).
-      // For legacy adjustments, it's the gross amount; the cap below still protects
-      // against over-refund either way.
-      const { summary } = await getAdjustmentsWithSummary(admin, registrationId);
-      const feeBase = summary.original_amount > 0 ? summary.original_amount : (adj.previous_amount + Math.abs(adj.difference));
-      const totalFee = calculateProcessingFee(feeBase, paymentMethod);
-      const rawRefundAmount = Math.abs(adj.difference);
-      const maxTotalRefundable = totalFee > 0
-        ? Math.max(0, feeBase - totalFee - summary.total_refunded)
-        : Math.max(0, feeBase - summary.total_refunded);
-      cappedRefundAmount = Math.min(rawRefundAmount, maxTotalRefundable);
-
-      if (cappedRefundAmount <= 0) {
-        return NextResponse.json(
-          { error: "No refundable amount remaining (processing fee already exceeds balance)" },
-          { status: 400 }
-        );
-      }
-
-      // Defense-in-depth: same minimum as creation route. Catches legacy/edge
-      // PENDING adjustments where rawRefundAmount or the cap landed below $1.
-      if (cappedRefundAmount < MIN_REFUND_CENTS) {
-        return NextResponse.json(
-          { error: `Minimum refund is ${(MIN_REFUND_CENTS / 100).toFixed(2)} to customer` },
-          { status: 400 }
-        );
-      }
-
-      if (payment?.stripe_payment_intent_id) {
-        // Step 1: Reserve refund slot in DB (validates limits before touching Stripe)
-        let refundId: string;
-        try {
-          const result = await createRefundWithGuard(admin, {
-            paymentId: payment.id,
-            paymentAmountCents: payment.amount_cents,
-            amountCents: cappedRefundAmount,
-            reason: adj.reason,
-            refundedBy: user.id,
-          });
-          refundId = result.refundId;
-        } catch (err) {
-          if (err instanceof RefundOverLimitError) {
-            return NextResponse.json(
-              { error: err.message },
-              { status: 409 }
-            );
-          }
-          logger.error("[adjustments/process] Refund guard failed", { error: String(err) });
-          return NextResponse.json(
-            { error: "Failed to validate refund" },
-            { status: 500 }
-          );
-        }
-
-        // Step 2: Issue Stripe refund (DB slot already reserved)
-        try {
-          const stripe = await getStripeForMode(stripeMode);
-          const refund = await stripe.refunds.create({
-            payment_intent: payment.stripe_payment_intent_id,
-            amount: cappedRefundAmount,
-            reason: "requested_by_customer",
-          });
-          stripeRefundId = refund.id;
-
-          // Step 3: Update DB record with Stripe refund ID
-          await admin
-            .from("eckcm_refunds")
-            .update({ stripe_refund_id: refund.id })
-            .eq("id", refundId);
-
-          // Update payment & invoice status
-          const postSummary = await getRefundSummary(admin, payment.id, payment.amount_cents);
-          const refundStatus = postSummary.remainingCents <= 0 ? "REFUNDED" : "PARTIALLY_REFUNDED";
-
-          await admin
-            .from("eckcm_payments")
-            .update({ status: refundStatus })
-            .eq("id", payment.id);
-
-          // Find invoice for this payment to update status
-          const { data: paymentWithInvoice } = await admin
-            .from("eckcm_payments")
-            .select("invoice_id")
-            .eq("id", payment.id)
-            .single();
-
-          if (paymentWithInvoice?.invoice_id) {
-            await admin
-              .from("eckcm_invoices")
-              .update({ status: refundStatus })
-              .eq("id", paymentWithInvoice.invoice_id);
-          }
-
-          // Full refund — customer has been refunded the maximum possible (= payment − fee).
-          // With proportional fee deduction, `new_amount` lands on the fee amount, not 0,
-          // so detect "fully refunded" by checking whether the remaining balance is just
-          // the non-refundable fee.
-          const stripeFee = calculateProcessingFee(payment.amount_cents, paymentMethod);
-          const fullyRefunded = postSummary.remainingCents <= stripeFee;
-          if (refundStatus === "REFUNDED" || fullyRefunded) {
-            await admin
-              .from("eckcm_registrations")
-              .update({ status: "CANCELLED" })
-              .eq("id", registrationId);
-
-            await admin
-              .from("eckcm_epass_tokens")
-              .update({ is_active: false })
-              .eq("registration_id", registrationId);
-          }
-        } catch (err) {
-          // Stripe failed — rollback the DB refund record
-          await admin.from("eckcm_refunds").delete().eq("id", refundId);
-          logger.error(
-            "[adjustments/process] Stripe refund failed, DB record rolled back",
-            { error: String(err) }
-          );
-          return NextResponse.json(
-            {
-              error:
-                err instanceof Error
-                  ? err.message
-                  : "Stripe refund failed",
-            },
-            { status: 500 }
-          );
-        }
-      }
+      );
+      // Don't return error — refund is real
     }
   }
 
-  // 3b. Stripe fee is Stripe's money, not ours.
-  // Registration total stays at admin's intent (e.g. $0 for full refund).
-  // Actual Stripe refund amount (capped for fee) is tracked via eckcm_refunds + stripe_refund_id.
-
-  // 4. Update adjustment record
+  // 4. Update adjustment row (action_taken + stripe_refund_id)
   await processAdjustment(admin, adjustmentId, {
     actionTaken: action,
     stripeRefundId,
@@ -280,17 +332,17 @@ export async function POST(
       action,
       difference: adj.difference,
       stripe_refund_id: stripeRefundId ?? null,
+      customer_received_cents: cappedRefundAmount ?? null,
     },
   });
 
   // 6. Send refund email in background (non-blocking)
-  if (action === "refund" && adj.difference < 0) {
-    const actualRefund = cappedRefundAmount ?? Math.abs(adj.difference);
+  if (action === "refund" && cappedRefundAmount && cappedRefundAmount > 0) {
     const isFullRefund = adj.new_amount === 0;
     after(
       sendRefundEmail({
         registrationId,
-        refundAmountCents: actualRefund,
+        refundAmountCents: cappedRefundAmount,
         reason: adj.reason,
         isFullRefund,
         paymentMethod,

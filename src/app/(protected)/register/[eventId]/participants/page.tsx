@@ -426,6 +426,18 @@ export default function ParticipantsStep() {
                 participantIndex: 0,
                 participant: filledRepresentative,
               });
+              // Mirror updateParticipant's dept→reg-group auto-switch.
+              // Without this, an autofilled dept silently leaves the user in
+              // the default reg group (e.g. HANSAMO rep → "General" → wrong
+              // lodging options shown).
+              if (person.department_id && !state.accessCode) {
+                const deptGroup = (rgs ?? []).find(
+                  (g) => g.department_id === person.department_id
+                );
+                if (deptGroup && deptGroup.id !== state.registrationGroupId) {
+                  dispatch({ type: "SET_REGISTRATION_GROUP", groupId: deptGroup.id });
+                }
+              }
               representativeFilledRef.current = "self";
             }
           }
@@ -953,8 +965,30 @@ export default function ParticipantsStep() {
   };
 
   const handleNext = () => {
+    // Reconciliation: rep's department must match its dept-linked reg_group.
+    // Catches any path where the auto-switch in updateParticipant didn't fire
+    // (initial autofill, race conditions, dept set via paths other than the
+    // dropdown handler). Skip when the user explicitly opted into general
+    // lodging or applied an access code — both are intentional overrides.
+    const rep = state.roomGroups[0]?.participants?.[0];
+    const repDept = rep?.departmentId;
+    const deptLinkedGroup = repDept
+      ? regGroups.find((g) => g.department_id === repDept && !g.is_default)
+      : undefined;
+    let effectiveRegGroupId = state.registrationGroupId;
+    if (
+      deptLinkedGroup &&
+      deptLinkedGroup.id !== state.registrationGroupId &&
+      !state.accessCode &&
+      !generalLodgingOptIn
+    ) {
+      dispatch({ type: "SET_REGISTRATION_GROUP", groupId: deptLinkedGroup.id });
+      effectiveRegGroupId = deptLinkedGroup.id;
+      toast.info(t("registration.regGroupAutoAssigned", { name: deptLinkedGroup.name_en }));
+    }
+
     // Check if current registration group enforces only one person
-    const currentRegGroup = regGroups.find((g) => g.id === state.registrationGroupId);
+    const currentRegGroup = regGroups.find((g) => g.id === effectiveRegGroupId);
     const isOnlyOnePerson = currentRegGroup?.only_one_person ?? false;
 
     if (isOnlyOnePerson) {

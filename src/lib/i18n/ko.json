@@ -277,6 +277,7 @@
     "savedPersonRemoved": "저장된 인원이 삭제되었습니다",
     "saveBeforeProceeding": "진행하기 전에 참가자를 저장해 주세요",
     "saveAllBeforeProceeding": "진행하기 전에 모든 참가자를 저장해 주세요",
+    "regGroupAutoAssigned": "부서에 따라 등록 그룹이 \"{name}\"(으)로 자동 설정되었습니다",
     "unableToUseEmail": "이 이메일은 사용할 수 없습니다",
     "alreadyRegisteredPerson": "이미 등록된 사람입니다",
     "submissionFailed": "제출에 실패했습니다",

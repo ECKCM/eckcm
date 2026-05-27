@@ -1390,17 +1390,42 @@ function AnnouncementTab() {
           testOnly,
         }),
       });
-      const data = await res.json();
+
+      // Try JSON first; fall back to the raw response body so the admin
+      // sees what actually went wrong (instead of a generic "Network error").
+      const raw = await res.text();
+      let data: { error?: string; sentCount?: number; details?: unknown } = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        // Non-JSON response (usually a Next.js error HTML page). Surface a
+        // short snippet plus the HTTP status so we can diagnose.
+        const snippet = raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+        toast.error(
+          `Server ${res.status} ${res.statusText || ""}: ${snippet || "no response body"}`
+        );
+        return;
+      }
+
       if (!res.ok) {
-        toast.error(data.error || "Failed to send");
+        const detail =
+          data.details && typeof data.details === "object"
+            ? ` — ${JSON.stringify(data.details)}`
+            : "";
+        toast.error(
+          `${data.error || `Send failed (HTTP ${res.status})`}${detail}`
+        );
       } else if (testOnly) {
         toast.success("Test email sent to your email");
       } else {
-        setResult(data);
-        toast.success(`Sent to ${data.sentCount} recipient(s)`);
+        setResult(data as { sentCount: number; failCount: number; total: number });
+        toast.success(`Sent to ${data.sentCount ?? 0} recipient(s)`);
       }
-    } catch {
-      toast.error("Network error");
+    } catch (err) {
+      // True fetch-level failure (server down, CORS, DNS, etc.)
+      toast.error(
+        `Network error: ${err instanceof Error ? err.message : String(err)}`
+      );
     }
     setSending(false);
     setConfirmOpen(false);

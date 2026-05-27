@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-05-25T20:21:04.061Z",
+  "lastUpdated": "2026-05-27T12:19:34.077Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -112,7 +112,9 @@
     "[groupId]",
     "resend-email",
     "stay-dates",
-    "meals"
+    "meals",
+    "free-submit",
+    "confirmation"
   ],
   "primaryFeature": "payment-complete",
   "features": {
@@ -228,9 +230,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T19:44:10.557Z",
-        "lastUpdated": "2026-05-23T18:56:54.787Z"
+        "lastUpdated": "2026-05-27T10:42:44.846Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/participants/participants-table.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
     "i18n": {
       "phase": "do",
@@ -267,9 +269,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:29:55.102Z",
-        "lastUpdated": "2026-04-01T00:28:50.691Z"
+        "lastUpdated": "2026-05-26T03:30:22.947Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/components/shared/markdown-renderer.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/next.config.ts"
     },
     "complete-profile": {
       "phase": "do",
@@ -332,9 +334,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:31:38.573Z",
-        "lastUpdated": "2026-03-26T22:06:27.494Z"
+        "lastUpdated": "2026-05-27T03:06:51.509Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/create/admin-registration-form.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/create/page.tsx"
     },
     "email": {
       "phase": "do",
@@ -345,9 +347,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:32:03.220Z",
-        "lastUpdated": "2026-05-25T18:56:18.891Z"
+        "lastUpdated": "2026-05-26T03:29:56.515Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/.claude/worktrees/admin-reg-edit/src/lib/email/send-epass.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/email/page.tsx"
     },
     "admin": {
       "phase": "do",
@@ -358,9 +360,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T21:01:37.763Z",
-        "lastUpdated": "2026-05-25T07:35:01.019Z"
+        "lastUpdated": "2026-05-27T03:06:52.962Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/admin-presence.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/admin-sidebar.tsx"
     },
     "manual": {
       "phase": "do",
@@ -488,7 +490,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T00:38:36.722Z",
-        "lastUpdated": "2026-04-01T06:39:46.052Z"
+        "lastUpdated": "2026-05-27T12:19:26.311Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/payment/page.tsx"
     },
@@ -774,7 +776,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:52:25.895Z",
-        "lastUpdated": "2026-05-22T23:36:58.052Z"
+        "lastUpdated": "2026-05-27T03:33:03.646Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/adjustments/route.ts"
     },
@@ -787,7 +789,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:52:55.309Z",
-        "lastUpdated": "2026-05-22T23:37:13.201Z"
+        "lastUpdated": "2026-05-27T03:33:21.837Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/adjustments/[adjustmentId]/process/route.ts"
     },
@@ -800,7 +802,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:53:31.955Z",
-        "lastUpdated": "2026-05-25T20:21:04.061Z"
+        "lastUpdated": "2026-05-27T03:25:10.112Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/registration-detail-sheet.tsx"
     },
@@ -1112,7 +1114,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T21:11:00.929Z",
-        "lastUpdated": "2026-03-31T21:11:06.773Z"
+        "lastUpdated": "2026-05-25T21:44:18.328Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/inventory.service.ts"
     },
@@ -1320,7 +1322,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-01T02:25:27.097Z",
-        "lastUpdated": "2026-04-01T02:25:27.097Z"
+        "lastUpdated": "2026-05-27T12:18:08.255Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/schemas/api.ts"
     },
@@ -1502,7 +1504,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-25T18:07:08.920Z",
-        "lastUpdated": "2026-05-25T18:37:57.251Z"
+        "lastUpdated": "2026-05-26T03:35:11.056Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/email/announcement/route.ts"
     },
@@ -1570,6 +1572,32 @@
         "lastUpdated": "2026-05-25T20:15:37.673Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/participants/[membershipId]/meals/route.ts"
+    },
+    "free-submit": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-05-27T12:18:40.624Z",
+        "lastUpdated": "2026-05-27T12:18:40.624Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/registration/free-submit/route.ts"
+    },
+    "confirmation": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-05-27T12:19:34.077Z",
+        "lastUpdated": "2026-05-27T12:19:34.077Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/confirmation/page.tsx"
     }
   },
   "pipeline": {
@@ -1580,7 +1608,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-05-25T20:21:04.061Z"
+    "lastActivity": "2026-05-27T12:19:34.077Z"
   },
   "history": [
     {
@@ -8246,6 +8274,138 @@
     {
       "timestamp": "2026-05-25T20:21:04.061Z",
       "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-25T21:44:18.328Z",
+      "feature": "inventory.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-26T03:29:56.515Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-26T03:30:22.947Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-26T03:34:59.723Z",
+      "feature": "announcement",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-26T03:35:05.289Z",
+      "feature": "announcement",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-26T03:35:11.056Z",
+      "feature": "announcement",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T03:06:51.509Z",
+      "feature": "create",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T03:06:52.962Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T03:24:50.961Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T03:25:10.112Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T03:26:57.851Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T03:28:02.977Z",
+      "feature": "process",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T03:30:11.309Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T03:30:32.864Z",
+      "feature": "process",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T03:33:03.646Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T03:33:21.837Z",
+      "feature": "process",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T10:42:25.940Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T10:42:44.846Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T12:18:08.255Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T12:18:40.624Z",
+      "feature": "free-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T12:19:26.311Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T12:19:34.077Z",
+      "feature": "confirmation",
       "phase": "do",
       "action": "updated"
     }
