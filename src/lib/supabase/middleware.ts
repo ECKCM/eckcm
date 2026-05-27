@@ -155,8 +155,28 @@ export async function updateSession(request: NextRequest) {
     const permissions = [...permissionsSet];
     const { pathname } = request.nextUrl;
 
-    // Check route-level permission (skip for always-open routes)
-    if (!pathname.startsWith("/admin/unauthorized")) {
+    // Airport-shuttle-driver scope: if the user has AIRPORT_SHUTTLE_DRIVER
+    // and no broader admin role, restrict them to /admin/airport/**.
+    // This bypasses the standard permission gate (the airport route is
+    // normally gated on participant.read which shuttle drivers don't have).
+    const isAirportShuttleDriverOnly =
+      roles.includes("AIRPORT_SHUTTLE_DRIVER") &&
+      !roles.includes("SUPER_ADMIN") &&
+      !roles.includes("EVENT_ADMIN") &&
+      !roles.includes("DEPARTMENT_ADMIN");
+
+    if (isAirportShuttleDriverOnly) {
+      const isAirportRoute =
+        pathname === "/admin/airport" ||
+        pathname.startsWith("/admin/airport/") ||
+        pathname.startsWith("/admin/unauthorized");
+      if (!isAirportRoute) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin/airport";
+        return NextResponse.redirect(url);
+      }
+    } else if (!pathname.startsWith("/admin/unauthorized")) {
+      // Standard route-level permission check
       const required = getRequiredPermission(pathname);
       if (required && !hasRequiredPermission(required, permissions)) {
         const url = request.nextUrl.clone();

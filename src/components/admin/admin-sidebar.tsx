@@ -59,6 +59,7 @@ interface AdminSidebarProps {
     is_default: boolean;
   }[];
   permissions: string[];
+  roles: string[];
 }
 
 // Permission can be a single code or any-of array for the link to be visible.
@@ -140,7 +141,7 @@ function NavLink({
   );
 }
 
-export function AdminSidebar({ events, permissions }: AdminSidebarProps) {
+export function AdminSidebar({ events, permissions, roles }: AdminSidebarProps) {
   const pathname = usePathname();
   const hasPermission = (code: string | string[] | null) => {
     if (code === null) return true;
@@ -148,6 +149,54 @@ export function AdminSidebar({ events, permissions }: AdminSidebarProps) {
     return permissions.includes(code);
   };
   const showSettings = permissions.includes("settings.manage");
+
+  // Shuttle drivers (without any broader admin role) see only the Airport link.
+  const isAirportShuttleDriverOnly =
+    roles.includes("AIRPORT_SHUTTLE_DRIVER") &&
+    !roles.includes("SUPER_ADMIN") &&
+    !roles.includes("EVENT_ADMIN") &&
+    !roles.includes("DEPARTMENT_ADMIN");
+
+  if (isAirportShuttleDriverOnly) {
+    return (
+      <Sidebar>
+        <SidebarHeader className="h-14 flex-row items-center justify-start border-b px-4 py-0">
+          <Link href="/admin/airport" className="flex items-center gap-2">
+            <span className="text-lg font-bold">ECKCM Admin</span>
+          </Link>
+        </SidebarHeader>
+
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <NavLink
+                    href="/admin/airport"
+                    isActive={pathname.startsWith("/admin/airport")}
+                    icon={Plane}
+                  >
+                    Airport
+                  </NavLink>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+        <SidebarFooter className="border-t p-4">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <NavLink href="/dashboard" isActive={false} icon={Settings}>
+                Back to Dashboard
+              </NavLink>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+    );
+  }
 
   return (
     <Sidebar>

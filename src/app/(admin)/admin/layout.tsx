@@ -53,6 +53,7 @@ export default async function AdminLayout({
         <AdminSidebar
           events={events ?? []}
           permissions={permissions}
+          roles={roles}
         />
         <SidebarInset className="admin-inset min-w-0 overflow-x-clip">
           <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 sm:px-4">

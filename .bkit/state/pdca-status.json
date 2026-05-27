@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-05-27T12:19:34.077Z",
+  "lastUpdated": "2026-05-27T14:46:42.222Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -114,7 +114,8 @@
     "stay-dates",
     "meals",
     "free-submit",
-    "confirmation"
+    "confirmation",
+    "supabase"
   ],
   "primaryFeature": "payment-complete",
   "features": {
@@ -360,7 +361,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T21:01:37.763Z",
-        "lastUpdated": "2026-05-27T03:06:52.962Z"
+        "lastUpdated": "2026-05-27T14:44:04.172Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/admin-sidebar.tsx"
     },
@@ -802,9 +803,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:53:31.955Z",
-        "lastUpdated": "2026-05-27T03:25:10.112Z"
+        "lastUpdated": "2026-05-27T13:20:32.322Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/registration-detail-sheet.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/registrations-table.tsx"
     },
     "google-sheets": {
       "phase": "do",
@@ -854,7 +855,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T15:01:47.895Z",
-        "lastUpdated": "2026-05-23T18:57:52.318Z"
+        "lastUpdated": "2026-05-27T14:46:42.222Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/audit/audit-logs-table.tsx"
     },
@@ -1598,6 +1599,19 @@
         "lastUpdated": "2026-05-27T12:19:34.077Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/confirmation/page.tsx"
+    },
+    "supabase": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-05-27T14:43:28.520Z",
+        "lastUpdated": "2026-05-27T14:43:28.520Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/supabase/middleware.ts"
     }
   },
   "pipeline": {
@@ -1608,7 +1622,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-05-27T12:19:34.077Z"
+    "lastActivity": "2026-05-27T14:46:42.222Z"
   },
   "history": [
     {
@@ -8406,6 +8420,72 @@
     {
       "timestamp": "2026-05-27T12:19:34.077Z",
       "feature": "confirmation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T13:20:06.095Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T13:20:13.276Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T13:20:18.949Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T13:20:25.872Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T13:20:32.322Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T14:43:28.520Z",
+      "feature": "supabase",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T14:43:36.717Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T14:43:43.818Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T14:44:04.172Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T14:46:20.320Z",
+      "feature": "audit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-27T14:46:42.222Z",
+      "feature": "audit",
       "phase": "do",
       "action": "updated"
     }

@@ -47,6 +47,7 @@ import {
   formatMoney,
   formatTimestamp,
   extractSeqNumber,
+  parseSeqNumber,
   calculateProcessingFee,
 } from "./registrations-types";
 import { RegistrationDetailSheet } from "./registration-detail-sheet";
@@ -284,6 +285,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           lodging_type: lodgingType,
           preferences,
           is_highlighted: r.is_highlighted ?? false,
+          seq_number: parseSeqNumber(r.confirmation_code),
         };
       });
       setRegistrations(rows);
@@ -543,7 +545,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                 <TableHeader>
                   <TableRow>
                     <TableHead className="whitespace-nowrap w-[120px]">Actions</TableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="confirmation_code" sortConfig={sortConfig} onSort={requestSort}>No.</SortableTableHead>
+                    <SortableTableHead className="whitespace-nowrap" sortKey="seq_number" sortConfig={sortConfig} onSort={requestSort}>No.</SortableTableHead>
                     <SortableTableHead className="whitespace-nowrap" sortKey="confirmation_code" sortConfig={sortConfig} onSort={requestSort}>Code</SortableTableHead>
                     <SortableTableHead className="whitespace-nowrap" sortKey="registrant_name" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
                     <SortableTableHead className="whitespace-nowrap" sortKey="status" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>

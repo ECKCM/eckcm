@@ -45,6 +45,7 @@ export interface RegistrationRow {
   lodging_type: string | null;
   preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null;
   is_highlighted: boolean;
+  seq_number: number | null;
 }
 
 export interface PersonDetail {
@@ -166,4 +167,12 @@ export function calculateProportionalProcessingFee(
 export function extractSeqNumber(code: string | null): string {
   if (!code || code.length < 4) return "-";
   return code.slice(-4);
+}
+
+export function parseSeqNumber(code: string | null): number | null {
+  if (!code) return null;
+  const match = code.match(/(\d+)\s*$/);
+  if (!match) return null;
+  const n = parseInt(match[1], 10);
+  return isNaN(n) ? null : n;
 }
