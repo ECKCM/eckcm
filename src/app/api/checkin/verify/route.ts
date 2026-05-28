@@ -2,40 +2,50 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
-import { createHash } from "crypto";
-import { verifySignedCode } from "@/lib/services/epass.service";
+import {
+  resolveParticipant,
+  computeMealCategory,
+  type ResolvedParticipant,
+} from "@/lib/services/participant-lookup";
 
-interface VerifyData {
-  person_id: string;
-  is_active: boolean;
-  eckcm_people: { first_name_en: string; last_name_en: string; display_name_ko: string | null };
-  eckcm_registrations: {
-    confirmation_code: string;
-    status: string;
-    event_id: string;
-    eckcm_events: { name_en: string; year: number };
+function toPersonPayload(p: ResolvedParticipant) {
+  return {
+    id: p.personId,
+    name: p.legalName,
+    koreanName: p.koreanName,
+    participantCode: p.participantCode,
+    gender: p.gender,
+    birthDate: p.birthDate,
+    mealCategory: computeMealCategory(p.birthDate, p.event.startDate),
+    isEpassActive: p.isEpassActive,
   };
 }
 
-interface MembershipJoined {
-  person_id: string;
-  participant_code: string;
-  eckcm_groups: {
-    registration_id: string;
-    eckcm_registrations: {
-      confirmation_code: string;
-      status: string;
-      event_id: string;
-      eckcm_events: { name_en: string; year: number };
-    };
+function toEventPayload(p: ResolvedParticipant) {
+  return {
+    id: p.event.id,
+    name: p.event.name,
+    year: p.event.year,
+    startDate: p.event.startDate,
   };
-  eckcm_people: { first_name_en: string; last_name_en: string; display_name_ko: string | null };
 }
+
+function toRegistrationPayload(p: ResolvedParticipant) {
+  return {
+    id: p.registration.id,
+    confirmationCode: p.registration.confirmationCode,
+    status: p.registration.status,
+  };
+}
+
+// The total-count query that used to live here was removed for speed —
+// every scan added ~50-150ms of latency for a number the client already
+// has via the realtime hook (recentCheckins.length). If a surface ever
+// needs a server-authoritative count again, fetch it via /api/checkin/recent.
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
 
-  // Verify admin/staff access
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -48,7 +58,15 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { token, participantCode, checkinType = "MAIN", sessionId, mealDate, mealType } = body;
+  const {
+    token,
+    participantCode,
+    checkinType = "MAIN",
+    sessionId,
+    mealDate,
+    mealType,
+    scanSessionId,
+  } = body;
 
   if (!token && !participantCode) {
     return NextResponse.json(
@@ -57,7 +75,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Validate meal params for DINING check-in
+  // Enforce scan-session lifecycle if one was supplied.
+  let scanSessionIsSandbox = false;
+  if (scanSessionId) {
+    const adminForSession = createAdminClient();
+    const { data: scanSession, error: scanSessionError } = await adminForSession
+      .from("eckcm_scan_sessions")
+      .select("id, status, is_sandbox")
+      .eq("id", scanSessionId)
+      .single();
+
+    if (scanSessionError || !scanSession) {
+      return NextResponse.json(
+        { error: "Scan session not found" },
+        { status: 404 }
+      );
+    }
+    const ss = scanSession as { id: string; status: string; is_sandbox: boolean };
+    if (ss.status !== "ACTIVE") {
+      return NextResponse.json(
+        { error: `Scan session is ${ss.status.toLowerCase()}` },
+        { status: 409 }
+      );
+    }
+    scanSessionIsSandbox = ss.is_sandbox;
+  }
+
   if (checkinType === "DINING") {
     if (!mealDate || !mealType) {
       return NextResponse.json(
@@ -75,174 +118,96 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Resolve participant code (handle HMAC-signed format: CODE.SIGNATURE)
-  let resolvedParticipantCode = participantCode;
+  let hmacSecret: string | null = null;
   if (participantCode && participantCode.includes(".")) {
     const { data: config } = await admin
       .from("eckcm_app_config")
       .select("epass_hmac_secret")
       .eq("id", 1)
       .single();
-    const secret = (config as unknown as { epass_hmac_secret: string | null } | null)?.epass_hmac_secret ?? null;
-    if (secret) {
-      const { valid, participantCode: code } = verifySignedCode(participantCode, secret);
-      if (!valid) {
-        return NextResponse.json(
-          { error: "Invalid QR signature" },
-          { status: 403 }
-        );
-      }
-      resolvedParticipantCode = code;
-    }
+    hmacSecret = (config as unknown as { epass_hmac_secret: string | null } | null)?.epass_hmac_secret ?? null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let data: any = null;
+  const resolution = await resolveParticipant(admin, {
+    token,
+    participantCode,
+    hmacSecret,
+  });
 
-  if (resolvedParticipantCode) {
-    // Look up by participant code through group_memberships
-    const { data: membership, error: memberError } = await admin
-      .from("eckcm_group_memberships")
-      .select(`
-        person_id,
-        participant_code,
-        eckcm_groups!inner(
-          registration_id,
-          eckcm_registrations!inner(
-            confirmation_code,
-            status,
-            event_id,
-            eckcm_events!inner(name_en, year)
-          )
-        ),
-        eckcm_people!inner(first_name_en, last_name_en, display_name_ko)
-      `)
-      .eq("participant_code", resolvedParticipantCode)
-      .single();
-
-    if (memberError || !membership) {
-      return NextResponse.json(
-        { error: "Invalid participant code" },
-        { status: 404 }
-      );
-    }
-
-    const m = membership as unknown as MembershipJoined;
-    const reg = m.eckcm_groups.eckcm_registrations;
-
-    // Check E-Pass is active
-    const { data: epass } = await admin
-      .from("eckcm_epass_tokens")
-      .select("is_active")
-      .eq("person_id", m.person_id)
-      .eq("registration_id", m.eckcm_groups.registration_id)
-      .single();
-
-    data = {
-      person_id: m.person_id,
-      is_active: epass?.is_active ?? true,
-      eckcm_people: m.eckcm_people,
-      eckcm_registrations: {
-        confirmation_code: reg.confirmation_code,
-        status: reg.status,
-        event_id: reg.event_id,
-        eckcm_events: reg.eckcm_events,
-      },
+  if (!resolution.ok) {
+    const statusByCode: Record<string, number> = {
+      missing_input: 400,
+      invalid_signature: 403,
+      not_found: 404,
     };
-  } else {
-    // Look up by token hash (legacy/backwards-compatible)
-    const tokenHash = createHash("sha256").update(token).digest("hex");
-
-    const { data: epass, error: epassError } = await supabase
-      .from("eckcm_epass_tokens")
-      .select(
-        `
-        id,
-        person_id,
-        registration_id,
-        is_active,
-        eckcm_people!inner(first_name_en, last_name_en, display_name_ko),
-        eckcm_registrations!inner(
-          confirmation_code,
-          status,
-          event_id,
-          eckcm_events!inner(name_en, year)
-        )
-      `
-      )
-      .eq("token_hash", tokenHash)
-      .single();
-
-    if (epassError || !epass) {
-      return NextResponse.json(
-        { error: "Invalid E-Pass token" },
-        { status: 404 }
-      );
-    }
-
-    data = epass as unknown as VerifyData;
+    return NextResponse.json(
+      { error: resolution.error.message },
+      { status: statusByCode[resolution.error.code] ?? 400 }
+    );
   }
 
-  if (!data.is_active) {
+  const p = resolution.participant;
+
+  if (!p.isEpassActive) {
     return NextResponse.json(
       {
         error: "E-Pass is inactive",
-        person: {
-          name: `${data.eckcm_people.first_name_en} ${data.eckcm_people.last_name_en}`,
-          koreanName: data.eckcm_people.display_name_ko,
-        },
+        person: toPersonPayload(p),
+        registration: toRegistrationPayload(p),
+        event: toEventPayload(p),
       },
       { status: 403 }
     );
   }
 
-  if (data.eckcm_registrations.status !== "PAID") {
+  if (p.registration.status !== "PAID" && p.registration.status !== "APPROVED") {
     return NextResponse.json(
       {
         error: "Registration is not paid",
-        person: {
-          name: `${data.eckcm_people.first_name_en} ${data.eckcm_people.last_name_en}`,
-          koreanName: data.eckcm_people.display_name_ko,
-        },
+        person: toPersonPayload(p),
+        registration: toRegistrationPayload(p),
+        event: toEventPayload(p),
       },
       { status: 403 }
     );
   }
 
-  // Record check-in
+  const personPayload = toPersonPayload(p);
+  const registrationPayload = toRegistrationPayload(p);
+  const eventPayload = toEventPayload(p);
+
+  // Sandbox scans are persisted (tagged is_sandbox=true) so they appear in
+  // the Scan Sessions historical viewer. The partial unique indexes exclude
+  // is_sandbox rows so they never collide with real check-ins.
   const insertData: Record<string, unknown> = {
-    person_id: data.person_id,
-    event_id: data.eckcm_registrations.event_id,
+    person_id: p.personId,
+    event_id: p.event.id,
     session_id: sessionId || null,
+    scan_session_id: scanSessionId || null,
     checkin_type: checkinType,
     checked_in_by: user.id,
+    is_sandbox: scanSessionIsSandbox,
   };
   if (checkinType === "DINING") {
     insertData.meal_date = mealDate;
     insertData.meal_type = mealType;
   }
-  const { error: checkinError } = await supabase
+
+  const { error: checkinError } = await admin
     .from("eckcm_checkins")
     .insert(insertData);
 
   if (checkinError) {
-    // Unique constraint violation = already checked in
     if (checkinError.code === "23505") {
-      return NextResponse.json(
-        {
-          status: "already_checked_in",
-          person: {
-            name: `${data.eckcm_people.first_name_en} ${data.eckcm_people.last_name_en}`,
-            koreanName: data.eckcm_people.display_name_ko,
-          },
-          event: {
-            name: data.eckcm_registrations.eckcm_events.name_en,
-            year: data.eckcm_registrations.eckcm_events.year,
-          },
-          confirmationCode: data.eckcm_registrations.confirmation_code,
-        },
-        { status: 200 }
-      );
+      return NextResponse.json({
+        status: "already_checked_in",
+        person: personPayload,
+        registration: registrationPayload,
+        event: eventPayload,
+        confirmationCode: p.registration.confirmationCode,
+        checkinType,
+        isSandbox: scanSessionIsSandbox,
+      });
     }
     return NextResponse.json(
       { error: "Failed to record check-in" },
@@ -252,15 +217,11 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     status: "checked_in",
-    person: {
-      name: `${data.eckcm_people.first_name_en} ${data.eckcm_people.last_name_en}`,
-      koreanName: data.eckcm_people.display_name_ko,
-    },
-    event: {
-      name: data.eckcm_registrations.eckcm_events.name_en,
-      year: data.eckcm_registrations.eckcm_events.year,
-    },
-    confirmationCode: data.eckcm_registrations.confirmation_code,
+    person: personPayload,
+    registration: registrationPayload,
+    event: eventPayload,
+    confirmationCode: p.registration.confirmationCode,
     checkinType,
+    isSandbox: scanSessionIsSandbox,
   });
 }

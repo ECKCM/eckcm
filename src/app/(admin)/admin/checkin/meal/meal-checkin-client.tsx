@@ -1,15 +1,9 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { Scanner } from "@yudiel/react-qr-scanner";
-import {
-  ScanResultCard,
-  type ScanResult,
-} from "@/components/checkin/scan-result-card";
-import { RecentCheckins } from "@/components/checkin/recent-checkins";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -17,165 +11,169 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Coffee, Sun, Moon, ScanLine, Users, Sparkles } from "lucide-react";
 import {
-  ScanLine,
-  Users,
-  Pause,
-  Play,
-  Loader2,
-  UtensilsCrossed,
-  Coffee,
-  Sun,
-  Moon,
-} from "lucide-react";
-import { CameraErrorFallback } from "@/components/checkin/camera-error-fallback";
-import { useCameraPermission } from "@/lib/checkin/use-camera-permission";
-import { addCheckinLog, getRecentLogs } from "@/lib/checkin/offline-store";
+  ScanResultCard,
+  type ScanResult,
+} from "@/components/checkin/scan-result-card";
+import { RecentCheckins } from "@/components/checkin/recent-checkins";
+import { ScannerShell } from "@/components/checkin/scanner-shell";
+import { ScanSessionControls } from "@/components/checkin/scan-session-controls";
+import { CacheStatusBar } from "@/components/checkin/cache-status-bar";
+import { feedback } from "@/lib/checkin/scanner-feedback";
+import { toVerifyBody, type ParsedQR } from "@/lib/checkin/qr-parser";
+import { useScanSession } from "@/lib/checkin/use-scan-session";
+import { useEpassCache } from "@/lib/checkin/use-epass-cache";
+import {
+  realtimeCheckinToScanResult,
+  useRealtimeCheckins,
+} from "@/lib/checkin/use-realtime-checkins";
+import {
+  DEFAULT_MEAL_SCHEDULE,
+  MEAL_KEYS,
+  MEAL_KEY_TO_TYPE,
+  type MealKey,
+  type MealSchedule,
+  suggestMealKey,
+  formatMealWindow,
+} from "@/lib/meal-schedule";
+import type { ScanSessionKind } from "@/lib/types/checkin";
 
 interface EventOption {
   id: string;
   name_en: string;
   year: number;
-  start_date: string;
-  end_date: string;
+  start_date: string | null;
+  end_date: string | null;
 }
 
-type MealType = "BREAKFAST" | "LUNCH" | "DINNER";
+const MEAL_KIND_BY_KEY: Record<MealKey, ScanSessionKind> = {
+  breakfast: "MEAL_BREAKFAST",
+  lunch: "MEAL_LUNCH",
+  dinner: "MEAL_DINNER",
+};
 
-function parseQRValue(
-  scannedValue: string
-): { participantCode: string } | { token: string } | null {
-  const trimmed = scannedValue.trim();
-  if (/^[A-HJ-NP-Z2-9]{6}\.[a-f0-9]{8}$/.test(trimmed)) {
-    return { participantCode: trimmed };
-  }
-  if (/^[A-HJ-NP-Z2-9]{6}$/.test(trimmed)) {
-    return { participantCode: trimmed };
-  }
-  const urlMatch = trimmed.match(/\/epass\/(?:[A-Za-z0-9]+_)?([A-Za-z0-9_-]{20,})/);
-  if (urlMatch) return { token: urlMatch[1] };
-  if (/^[A-Za-z0-9_-]{20,40}$/.test(trimmed)) return { token: trimmed };
-  return null;
-}
+const MEAL_ICON: Record<MealKey, React.ReactNode> = {
+  breakfast: <Coffee className="h-4 w-4" />,
+  lunch: <Sun className="h-4 w-4" />,
+  dinner: <Moon className="h-4 w-4" />,
+};
 
-function playBeep(success: boolean) {
-  try {
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = success ? 800 : 300;
-    gain.gain.value = 0.3;
-    osc.start();
-    osc.stop(ctx.currentTime + (success ? 0.15 : 0.3));
-  } catch {
-    // Audio not available
-  }
-}
-
-function vibrate(success: boolean) {
-  try {
-    if (navigator.vibrate) {
-      navigator.vibrate(success ? 100 : [100, 50, 100]);
-    }
-  } catch {
-    // Vibration not available
-  }
-}
-
-function getCurrentMealType(): MealType {
-  const hour = new Date().getHours();
-  if (hour < 10) return "BREAKFAST";
-  if (hour < 14) return "LUNCH";
-  return "DINNER";
-}
+const MEAL_LABEL: Record<MealKey, string> = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
+};
 
 function getTodayDate(): string {
   return new Date().toISOString().split("T")[0];
 }
 
-function getEventDates(startDate: string, endDate: string): string[] {
+function getEventDates(startDate: string | null, endDate: string | null): string[] {
+  if (!startDate || !endDate) return [getTodayDate()];
   const dates: string[] = [];
   const start = new Date(startDate + "T00:00:00");
   const end = new Date(endDate + "T00:00:00");
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     dates.push(d.toISOString().split("T")[0]);
   }
-  return dates;
+  return dates.length > 0 ? dates : [getTodayDate()];
 }
-
-const MEAL_ICONS: Record<MealType, React.ReactNode> = {
-  BREAKFAST: <Coffee className="h-4 w-4" />,
-  LUNCH: <Sun className="h-4 w-4" />,
-  DINNER: <Moon className="h-4 w-4" />,
-};
-
-const MEAL_LABELS: Record<MealType, string> = {
-  BREAKFAST: "Breakfast",
-  LUNCH: "Lunch",
-  DINNER: "Dinner",
-};
 
 export function MealCheckinClient({ events }: { events: EventOption[] }) {
   const [selectedEventId, setSelectedEventId] = useState(events[0]?.id ?? "");
-  const [mealType, setMealType] = useState<MealType>(getCurrentMealType());
   const [mealDate, setMealDate] = useState(getTodayDate());
-  const [scanning, setScanning] = useState(false);
-  const [processing, setProcessing] = useState(false);
+  const [schedule, setSchedule] = useState<MealSchedule>(DEFAULT_MEAL_SCHEDULE);
+  const [mealKey, setMealKey] = useState<MealKey>("lunch");
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
-  const [mealCount, setMealCount] = useState(0);
-  const [recentCheckins, setRecentCheckins] = useState<ScanResult[]>([]);
+  const [processing, setProcessing] = useState(false);
+  const [resumeCountdown, setResumeCountdown] = useState<number | null>(null);
+  const [scannerLive, setScannerLive] = useState(true);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [resumeCountdown, setResumeCountdown] = useState<number | null>(null);
-  const lastScannedRef = useRef<string | null>(null);
-  const camera = useCameraPermission();
 
   const selectedEvent = events.find((e) => e.id === selectedEventId);
-  const eventDates = selectedEvent
-    ? getEventDates(selectedEvent.start_date, selectedEvent.end_date)
-    : [];
+  const eventDates = useMemo(
+    () => getEventDates(selectedEvent?.start_date ?? null, selectedEvent?.end_date ?? null),
+    [selectedEvent?.start_date, selectedEvent?.end_date]
+  );
 
-  // Load recent logs and meal count
+  // Load meal schedule once.
   useEffect(() => {
-    getRecentLogs(30).then((logs) => {
-      setRecentCheckins(
-        logs
-          .filter((l) => l.checkinType === "DINING")
-          .map((l) => ({
-            status: l.status,
-            person: { name: l.personName, koreanName: l.koreanName },
-            confirmationCode: l.confirmationCode ?? undefined,
-            errorMessage: l.errorMessage,
-            checkinType: l.checkinType,
-            timestamp: new Date(l.timestamp),
-            isOffline: l.isOffline,
-          }))
-      );
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/app-config");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.meal_schedule) {
+            setSchedule({
+              breakfast: data.meal_schedule.breakfast ?? DEFAULT_MEAL_SCHEDULE.breakfast,
+              lunch: data.meal_schedule.lunch ?? DEFAULT_MEAL_SCHEDULE.lunch,
+              dinner: data.meal_schedule.dinner ?? DEFAULT_MEAL_SCHEDULE.dinner,
+            });
+          }
+        }
+      } catch {
+        // Fall back to defaults
+      }
+    })();
+  }, []);
+
+  // Auto-suggest the meal key based on the time. Only on mount + when schedule changes.
+  useEffect(() => {
+    setMealKey(suggestMealKey(schedule));
+  }, [schedule]);
+
+  useEffect(() => () => {
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+  }, []);
+
+  const scanSession = useScanSession({ storageKey: "checkin.scanSessionId.meal" });
+  const cache = useEpassCache({ eventId: selectedEventId || null });
+
+  // Detach the stored session if it's stale relative to the current selection
+  // (e.g. different meal or date) — operator will just start a new one.
+  useEffect(() => {
+    if (!scanSession.session) return;
+    const sessionMealKey = (Object.entries(MEAL_KIND_BY_KEY).find(
+      ([, kind]) => kind === scanSession.session?.kind
+    )?.[0] ?? null) as MealKey | null;
+    const matches =
+      scanSession.session.event_id === selectedEventId &&
+      sessionMealKey === mealKey &&
+      scanSession.session.meal_date === mealDate;
+    if (!matches) {
+      scanSession.detach();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEventId, mealKey, mealDate, scanSession.session?.id]);
+
+  const realtime = useRealtimeCheckins({
+    eventId: selectedEventId || null,
+    scanSessionId: scanSession.session?.id ?? null,
+    checkinType: "DINING",
+    limit: 50,
+    enabled: Boolean(scanSession.session),
+  });
+
+  const recentResults = useMemo(
+    () => realtime.checkins.map(realtimeCheckinToScanResult),
+    [realtime.checkins]
+  );
+
+  const handleStart = useCallback(async () => {
+    if (!selectedEventId) return;
+    await scanSession.start({
+      eventId: selectedEventId,
+      kind: MEAL_KIND_BY_KEY[mealKey],
+      mealDate,
+      label: `${MEAL_LABEL[mealKey]} · ${mealDate}`,
     });
-  }, []);
+    setScannerLive(true);
+  }, [scanSession, selectedEventId, mealKey, mealDate]);
 
-  // Load meal count for current date+type
-  useEffect(() => {
-    if (!selectedEventId || !mealDate || !mealType) return;
-    fetch(`/api/checkin/stats?eventId=${selectedEventId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setMealCount(data.checkins?.dining ?? 0);
-      })
-      .catch(() => {});
-  }, [selectedEventId, mealDate, mealType]);
-
-  useEffect(() => {
-    return () => {
-      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-      if (countdownRef.current) clearInterval(countdownRef.current);
-    };
-  }, []);
-
-  function startResumeCountdown() {
+  const startResumeCountdown = useCallback(() => {
     setResumeCountdown(3);
     countdownRef.current = setInterval(() => {
       setResumeCountdown((prev) => {
@@ -187,76 +185,72 @@ export function MealCheckinClient({ events }: { events: EventOption[] }) {
       });
     }, 1000);
     resumeTimerRef.current = setTimeout(() => {
-      setScanning(true);
+      setScannerLive(true);
       setScanResult(null);
-      lastScannedRef.current = null;
     }, 3000);
-  }
+  }, []);
 
   const handleScan = useCallback(
-    async (detectedCodes: { rawValue: string }[]) => {
-      if (processing || !detectedCodes.length) return;
-      const rawValue = detectedCodes[0].rawValue;
-      const parsed = parseQRValue(rawValue);
-      if (!parsed) return;
-
-      const dedupeKey =
-        "participantCode" in parsed ? parsed.participantCode : parsed.token;
-      if (lastScannedRef.current === dedupeKey) return;
-      lastScannedRef.current = dedupeKey;
-
+    async (parsed: ParsedQR) => {
+      if (!scanSession.canScan || !scanSession.session) return;
       setProcessing(true);
-      setScanning(false);
+      setScannerLive(false);
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
 
-      let result: ScanResult;
-
-      try {
-        const verifyBody: Record<string, string> = {
+      // Cache-first preview — renders the name & meal category instantly while
+      // verify completes. Status stays pending until the server lands.
+      const cached = await cache.lookup(parsed);
+      if (cached) {
+        setScanResult({
+          status: "checked_in",
+          person: {
+            name: cached.personName,
+            koreanName: cached.koreanName,
+            participantCode: cached.participantCode,
+          },
+          confirmationCode: cached.confirmationCode,
           checkinType: "DINING",
+          mealType: MEAL_LABEL[mealKey],
           mealDate,
-          mealType,
-        };
-        if ("participantCode" in parsed) {
-          verifyBody.participantCode = parsed.participantCode;
-        } else {
-          verifyBody.token = parsed.token;
-        }
+          timestamp: new Date(),
+          isPending: true,
+        });
+        feedback("success");
+      }
 
+      let result: ScanResult;
+      try {
         const res = await fetch("/api/checkin/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(verifyBody),
+          body: JSON.stringify({
+            ...toVerifyBody(parsed),
+            checkinType: "DINING",
+            mealDate,
+            mealType: MEAL_KEY_TO_TYPE[mealKey],
+            scanSessionId: scanSession.session.id,
+          }),
         });
-
         const data = await res.json();
-
         if (res.ok) {
           result = {
             status: data.status,
             person: data.person,
+            registration: data.registration,
             confirmationCode: data.confirmationCode,
-            checkinType: "DINING",
-            mealType: MEAL_LABELS[mealType],
+            checkinType: data.checkinType,
+            mealType: MEAL_LABEL[mealKey],
             mealDate,
-            timestamp: new Date(),
-            isOffline: false,
-          };
-          if (data.status === "checked_in") {
-            setMealCount((prev) => prev + 1);
-          }
-        } else if (res.status === 403 || res.status === 404) {
-          result = {
-            status: "error",
-            person: data.person,
-            errorMessage: data.error,
+            isSandbox: data.isSandbox,
             timestamp: new Date(),
             isOffline: false,
           };
         } else {
           result = {
             status: "error",
+            person: data.person,
+            registration: data.registration,
             errorMessage: data.error || "Meal check-in failed",
             timestamp: new Date(),
             isOffline: false,
@@ -271,34 +265,36 @@ export function MealCheckinClient({ events }: { events: EventOption[] }) {
         };
       }
 
-      const isSuccess = result.status !== "error";
-      playBeep(isSuccess);
-      vibrate(isSuccess);
-
+      // Suppress the success beep if the optimistic preview already played one
+      // and the server confirms a clean check-in. Errors and "already" still
+      // beep to override the optimistic sound.
+      if (!cached || result.status !== "checked_in") {
+        const tone =
+          result.status === "checked_in"
+            ? "success"
+            : result.status === "error"
+              ? "error"
+              : "warn";
+        feedback(tone);
+      }
       setScanResult(result);
-      setRecentCheckins((prev) => [result, ...prev].slice(0, 30));
-
-      await addCheckinLog({
-        personName: result.person?.name ?? "Unknown",
-        koreanName: result.person?.koreanName ?? null,
-        confirmationCode: result.confirmationCode ?? null,
-        status: result.status === "checked_out" || result.status === "already_checked_out" ? "checked_in" : result.status,
-        checkinType: "DINING",
-        timestamp: result.timestamp.toISOString(),
-        isOffline: result.isOffline ?? false,
-        errorMessage: result.errorMessage,
-      });
-
       setProcessing(false);
       startResumeCountdown();
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [processing, mealDate, mealType]
+    [scanSession.canScan, scanSession.session, mealDate, mealKey, cache, startResumeCountdown]
   );
+
+  const sessionActive = scanSession.canScan;
+  const disabledReason = !scanSession.session
+    ? "Start a scan session to enable scanning"
+    : scanSession.status === "PAUSED"
+      ? "Session paused"
+      : scanSession.status === "ENDED"
+        ? "Session ended"
+        : undefined;
 
   return (
     <div className="space-y-4">
-      {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
         <Select value={selectedEventId} onValueChange={setSelectedEventId}>
           <SelectTrigger className="w-full sm:w-[220px]">
@@ -314,7 +310,7 @@ export function MealCheckinClient({ events }: { events: EventOption[] }) {
         </Select>
 
         <Select value={mealDate} onValueChange={setMealDate}>
-          <SelectTrigger className="w-full sm:w-[180px]">
+          <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="Select date" />
           </SelectTrigger>
           <SelectContent>
@@ -331,52 +327,50 @@ export function MealCheckinClient({ events }: { events: EventOption[] }) {
           </SelectContent>
         </Select>
 
-        <Tabs
-          value={mealType}
-          onValueChange={(v) => setMealType(v as MealType)}
-        >
+        <Tabs value={mealKey} onValueChange={(v) => setMealKey(v as MealKey)}>
           <TabsList>
-            <TabsTrigger value="BREAKFAST" className="gap-1.5">
-              <Coffee className="h-4 w-4" />
-              Breakfast
-            </TabsTrigger>
-            <TabsTrigger value="LUNCH" className="gap-1.5">
-              <Sun className="h-4 w-4" />
-              Lunch
-            </TabsTrigger>
-            <TabsTrigger value="DINNER" className="gap-1.5">
-              <Moon className="h-4 w-4" />
-              Dinner
-            </TabsTrigger>
+            {MEAL_KEYS.map((k) => {
+              const suggested = suggestMealKey(schedule);
+              return (
+                <TabsTrigger key={k} value={k} className="gap-1.5">
+                  {MEAL_ICON[k]} {MEAL_LABEL[k]}
+                  {suggested === k && (
+                    <Sparkles className="h-3 w-3 text-amber-500" />
+                  )}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
         </Tabs>
       </div>
 
-      {/* Info cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <UtensilsCrossed className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-sm text-muted-foreground">Current Meal</p>
-              <p className="font-medium flex items-center gap-1.5">
-                {MEAL_ICONS[mealType]} {MEAL_LABELS[mealType]}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <Users className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-sm text-muted-foreground">Served Today</p>
-              <p className="font-medium text-lg">{mealCount}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <CacheStatusBar
+        status={cache.status}
+        count={cache.count}
+        onResync={cache.refresh}
+      />
 
-      {/* Scanner + Recent */}
+      <Card>
+        <CardContent className="py-3 px-4 text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+          <Sparkles className="h-4 w-4 text-amber-500" />
+          <span>
+            <span className="font-medium text-foreground">{MEAL_LABEL[mealKey]}</span>{" "}
+            window: {formatMealWindow(schedule[mealKey])}
+          </span>
+        </CardContent>
+      </Card>
+
+      <ScanSessionControls
+        session={scanSession.session}
+        loading={scanSession.loading}
+        startLabel={`Start ${MEAL_LABEL[mealKey]} session`}
+        startDisabled={!selectedEventId || !mealDate}
+        onStart={handleStart}
+        onPause={scanSession.pause}
+        onResume={scanSession.resume}
+        onEnd={scanSession.end}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="space-y-4">
           <Card>
@@ -384,92 +378,28 @@ export function MealCheckinClient({ events }: { events: EventOption[] }) {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <ScanLine className="h-4 w-4" />
-                  Meal Scanner
+                  {MEAL_LABEL[mealKey]} Scanner
                 </CardTitle>
-                <Badge variant="secondary">
-                  {MEAL_LABELS[mealType]} &middot;{" "}
-                  {new Date(mealDate + "T12:00:00").toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
+                <Badge variant="secondary" className="gap-1">
+                  <Users className="h-3 w-3" />
+                  {realtime.checkins.length} scanned
                 </Badge>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="aspect-square max-w-[400px] mx-auto relative rounded-lg overflow-hidden border">
-                {camera.status !== "granted" ? (
-                  <div className="w-full h-full flex items-center justify-center bg-muted/30">
-                    <CameraErrorFallback
-                      status={camera.status}
-                      onAllow={camera.allow}
-                    />
-                  </div>
-                ) : scanning ? (
-                  <Scanner
-                    constraints={{ facingMode: { ideal: "environment" } }}
-                    onScan={handleScan}
-                    onError={(err) => {
-                      const msg = err instanceof Error ? err.name : "";
-                      if (msg === "NotAllowedError") {
-                        camera.deny();
-                      } else {
-                        setScanning(false);
-                      }
-                    }}
-                    allowMultiple={false}
-                    scanDelay={500}
-                    components={{ finder: true }}
-                    styles={{
-                      container: { width: "100%", height: "100%" },
-                      video: { objectFit: "cover" as const },
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30 gap-3">
-                    {processing ? (
-                      <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-                    ) : resumeCountdown !== null ? (
-                      <>
-                        <Pause className="h-10 w-10 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">
-                          Resuming in {resumeCountdown}s
-                        </p>
-                      </>
-                    ) : (
-                      <Button
-                        size="lg"
-                        className="gap-2"
-                        onClick={() => {
-                          setScanning(true);
-                          setScanResult(null);
-                          lastScannedRef.current = null;
-                        }}
-                      >
-                        <Play className="h-4 w-4" />
-                        Start Scanning
-                      </Button>
-                    )}
-                  </div>
-                )}
-                {scanning && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="absolute bottom-3 right-3 gap-1"
-                    onClick={() => {
-                      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-                      if (countdownRef.current) clearInterval(countdownRef.current);
-                      setResumeCountdown(null);
-                      setScanning(false);
-                    }}
-                  >
-                    <Pause className="h-4 w-4" /> Pause
-                  </Button>
-                )}
-              </div>
+              <ScannerShell
+                onScan={handleScan}
+                scanning={scannerLive && sessionActive}
+                onScanningChange={setScannerLive}
+                processing={processing}
+                resumeCountdown={resumeCountdown}
+                disabled={!sessionActive}
+                disabledReason={disabledReason}
+                defaultCameraFacing="environment"
+                cameraStorageNamespace="meal"
+              />
             </CardContent>
           </Card>
-
           <ScanResultCard result={scanResult} />
         </div>
 
@@ -478,7 +408,7 @@ export function MealCheckinClient({ events }: { events: EventOption[] }) {
             <CardTitle className="text-base">Recent Meal Check-ins</CardTitle>
           </CardHeader>
           <CardContent>
-            <RecentCheckins checkins={recentCheckins} />
+            <RecentCheckins checkins={recentResults} />
           </CardContent>
         </Card>
       </div>

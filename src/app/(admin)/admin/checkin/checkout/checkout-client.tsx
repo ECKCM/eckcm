@@ -1,15 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { Scanner } from "@yudiel/react-qr-scanner";
-import {
-  ScanResultCard,
-  type ScanResult,
-} from "@/components/checkin/scan-result-card";
-import { RecentCheckins } from "@/components/checkin/recent-checkins";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -17,17 +10,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScanLine, Users, LogOut } from "lucide-react";
 import {
-  ScanLine,
-  Users,
-  Pause,
-  Play,
-  Loader2,
-  LogOut,
-} from "lucide-react";
-import { CameraErrorFallback } from "@/components/checkin/camera-error-fallback";
-import { useCameraPermission } from "@/lib/checkin/use-camera-permission";
-import { addCheckinLog, getRecentLogs } from "@/lib/checkin/offline-store";
+  ScanResultCard,
+  type ScanResult,
+} from "@/components/checkin/scan-result-card";
+import { RecentCheckins } from "@/components/checkin/recent-checkins";
+import { ScannerShell } from "@/components/checkin/scanner-shell";
+import { ScanSessionControls } from "@/components/checkin/scan-session-controls";
+import { CacheStatusBar } from "@/components/checkin/cache-status-bar";
+import { feedback } from "@/lib/checkin/scanner-feedback";
+import { toVerifyBody, type ParsedQR } from "@/lib/checkin/qr-parser";
+import { useScanSession } from "@/lib/checkin/use-scan-session";
+import { useEpassCache } from "@/lib/checkin/use-epass-cache";
+import {
+  realtimeCheckinToScanResult,
+  useRealtimeCheckins,
+} from "@/lib/checkin/use-realtime-checkins";
 
 interface EventOption {
   id: string;
@@ -35,86 +34,62 @@ interface EventOption {
   year: number;
 }
 
-function parseQRValue(
-  scannedValue: string
-): { participantCode: string } | { token: string } | null {
-  const trimmed = scannedValue.trim();
-  if (/^[A-HJ-NP-Z2-9]{6}\.[a-f0-9]{8}$/.test(trimmed)) {
-    return { participantCode: trimmed };
-  }
-  if (/^[A-HJ-NP-Z2-9]{6}$/.test(trimmed)) {
-    return { participantCode: trimmed };
-  }
-  const urlMatch = trimmed.match(/\/epass\/(?:[A-Za-z0-9]+_)?([A-Za-z0-9_-]{20,})/);
-  if (urlMatch) return { token: urlMatch[1] };
-  if (/^[A-Za-z0-9_-]{20,40}$/.test(trimmed)) return { token: trimmed };
-  return null;
-}
-
-function playBeep(success: boolean) {
-  try {
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = success ? 600 : 300;
-    gain.gain.value = 0.3;
-    osc.start();
-    osc.stop(ctx.currentTime + (success ? 0.2 : 0.3));
-  } catch {
-    // Audio not available
-  }
-}
-
-function vibrate(success: boolean) {
-  try {
-    if (navigator.vibrate) {
-      navigator.vibrate(success ? [50, 50, 50] : [100, 50, 100]);
-    }
-  } catch {
-    // Vibration not available
-  }
-}
-
 export function CheckoutClient({ events }: { events: EventOption[] }) {
   const [selectedEventId, setSelectedEventId] = useState(events[0]?.id ?? "");
-  const [scanning, setScanning] = useState(false);
-  const [processing, setProcessing] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
-  const [checkoutCount, setCheckoutCount] = useState(0);
-  const [recentCheckins, setRecentCheckins] = useState<ScanResult[]>([]);
+  const [processing, setProcessing] = useState(false);
+  const [scannerLive, setScannerLive] = useState(true);
+  const [resumeCountdown, setResumeCountdown] = useState<number | null>(null);
+  const [checkoutsLocally, setCheckoutsLocally] = useState(0);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [resumeCountdown, setResumeCountdown] = useState<number | null>(null);
-  const lastScannedRef = useRef<string | null>(null);
-  const camera = useCameraPermission();
 
+  useEffect(() => () => {
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+  }, []);
+
+  const scanSession = useScanSession({ storageKey: "checkin.scanSessionId.checkout" });
+  const cache = useEpassCache({ eventId: selectedEventId || null });
+
+  // Detach a stale stored session belonging to a different event.
   useEffect(() => {
-    getRecentLogs(30).then((logs) => {
-      const checkoutLogs = logs.filter((l) => l.checkinType === "CHECKOUT");
-      setRecentCheckins(
-        checkoutLogs.map((l) => ({
-          status: l.status,
-          person: { name: l.personName, koreanName: l.koreanName },
-          confirmationCode: l.confirmationCode ?? undefined,
-          errorMessage: l.errorMessage,
-          checkinType: l.checkinType,
-          timestamp: new Date(l.timestamp),
-          isOffline: l.isOffline,
-        }))
-      );
+    if (
+      scanSession.session &&
+      scanSession.session.event_id !== selectedEventId
+    ) {
+      scanSession.detach();
+    }
+  }, [selectedEventId, scanSession]);
+
+  const realtime = useRealtimeCheckins({
+    eventId: selectedEventId || null,
+    checkinType: "MAIN",
+    limit: 50,
+    enabled: Boolean(scanSession.session),
+  });
+
+  // Show only rows that have been checked OUT in the recent list — others are
+  // still arrivals, not checkouts.
+  const recentResults = useMemo(
+    () =>
+      realtime.checkins
+        .filter((c) => c.checkedOutAt)
+        .map(realtimeCheckinToScanResult),
+    [realtime.checkins]
+  );
+
+  const handleStart = useCallback(async () => {
+    if (!selectedEventId) return;
+    await scanSession.start({
+      eventId: selectedEventId,
+      kind: "CHECKOUT",
+      label: "Check-out",
     });
-  }, []);
+    setScannerLive(true);
+  }, [scanSession, selectedEventId]);
 
-  useEffect(() => {
-    return () => {
-      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-      if (countdownRef.current) clearInterval(countdownRef.current);
-    };
-  }, []);
-
-  function startResumeCountdown() {
+  const startResumeCountdown = useCallback(() => {
     setResumeCountdown(3);
     countdownRef.current = setInterval(() => {
       setResumeCountdown((prev) => {
@@ -126,50 +101,33 @@ export function CheckoutClient({ events }: { events: EventOption[] }) {
       });
     }, 1000);
     resumeTimerRef.current = setTimeout(() => {
-      setScanning(true);
+      setScannerLive(true);
       setScanResult(null);
-      lastScannedRef.current = null;
     }, 3000);
-  }
+  }, []);
 
   const handleScan = useCallback(
-    async (detectedCodes: { rawValue: string }[]) => {
-      if (processing || !detectedCodes.length) return;
-      const rawValue = detectedCodes[0].rawValue;
-      const parsed = parseQRValue(rawValue);
-      if (!parsed) return;
-
-      const dedupeKey =
-        "participantCode" in parsed ? parsed.participantCode : parsed.token;
-      if (lastScannedRef.current === dedupeKey) return;
-      lastScannedRef.current = dedupeKey;
-
+    async (parsed: ParsedQR) => {
+      if (!scanSession.canScan || !scanSession.session) return;
       setProcessing(true);
-      setScanning(false);
+      setScannerLive(false);
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
 
       let result: ScanResult;
-
       try {
-        const checkoutBody: Record<string, string> = {};
-        if ("participantCode" in parsed) {
-          checkoutBody.participantCode = parsed.participantCode;
-        } else {
-          checkoutBody.token = parsed.token;
-        }
-
         const res = await fetch("/api/checkin/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(checkoutBody),
+          body: JSON.stringify({
+            ...toVerifyBody(parsed),
+            scanSessionId: scanSession.session.id,
+          }),
         });
-
         const data = await res.json();
-
         if (res.ok) {
           result = {
-            status: data.status, // "checked_out" or "already_checked_out"
+            status: data.status,
             person: data.person,
             confirmationCode: data.confirmationCode,
             checkinType: "CHECKOUT",
@@ -179,16 +137,8 @@ export function CheckoutClient({ events }: { events: EventOption[] }) {
             isOffline: false,
           };
           if (data.status === "checked_out") {
-            setCheckoutCount((prev) => prev + 1);
+            setCheckoutsLocally((prev) => prev + 1);
           }
-        } else if (res.status === 404) {
-          result = {
-            status: "error",
-            person: data.person,
-            errorMessage: data.error || "Not checked in yet",
-            timestamp: new Date(),
-            isOffline: false,
-          };
         } else {
           result = {
             status: "error",
@@ -207,34 +157,31 @@ export function CheckoutClient({ events }: { events: EventOption[] }) {
         };
       }
 
-      const isSuccess = result.status !== "error";
-      playBeep(isSuccess);
-      vibrate(isSuccess);
-
+      const tone =
+        result.status === "checked_out"
+          ? "success"
+          : result.status === "error"
+            ? "error"
+            : "warn";
+      feedback(tone);
       setScanResult(result);
-      setRecentCheckins((prev) => [result, ...prev].slice(0, 30));
-
-      await addCheckinLog({
-        personName: result.person?.name ?? "Unknown",
-        koreanName: result.person?.koreanName ?? null,
-        confirmationCode: result.confirmationCode ?? null,
-        status: result.status === "checked_out" || result.status === "already_checked_out" ? "checked_in" : result.status,
-        checkinType: "CHECKOUT",
-        timestamp: result.timestamp.toISOString(),
-        isOffline: result.isOffline ?? false,
-        errorMessage: result.errorMessage,
-      });
-
       setProcessing(false);
       startResumeCountdown();
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [processing]
+    [scanSession.canScan, scanSession.session, startResumeCountdown]
   );
+
+  const sessionActive = scanSession.canScan;
+  const disabledReason = !scanSession.session
+    ? "Start a check-out session to enable scanning"
+    : scanSession.status === "PAUSED"
+      ? "Session paused"
+      : scanSession.status === "ENDED"
+        ? "Session ended"
+        : undefined;
 
   return (
     <div className="space-y-4">
-      {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-3">
         <Select value={selectedEventId} onValueChange={setSelectedEventId}>
           <SelectTrigger className="w-full sm:w-[260px]">
@@ -255,14 +202,19 @@ export function CheckoutClient({ events }: { events: EventOption[] }) {
         </Badge>
       </div>
 
-      {/* Stats */}
+      <CacheStatusBar
+        status={cache.status}
+        count={cache.count}
+        onResync={cache.refresh}
+      />
+
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <LogOut className="h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="text-sm text-muted-foreground">Checked Out</p>
-              <p className="font-medium text-lg">{checkoutCount}</p>
+              <p className="text-sm text-muted-foreground">Session check-outs</p>
+              <p className="font-medium text-lg">{checkoutsLocally}</p>
             </div>
           </CardContent>
         </Card>
@@ -270,14 +222,24 @@ export function CheckoutClient({ events }: { events: EventOption[] }) {
           <CardContent className="p-4 flex items-center gap-3">
             <Users className="h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="text-sm text-muted-foreground">This Session</p>
-              <p className="font-medium text-lg">{recentCheckins.length}</p>
+              <p className="text-sm text-muted-foreground">Live total</p>
+              <p className="font-medium text-lg">{recentResults.length}</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Scanner + Recent */}
+      <ScanSessionControls
+        session={scanSession.session}
+        loading={scanSession.loading}
+        startLabel="Start check-out session"
+        startDisabled={!selectedEventId}
+        onStart={handleStart}
+        onPause={scanSession.pause}
+        onResume={scanSession.resume}
+        onEnd={scanSession.end}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="space-y-4">
           <Card>
@@ -293,80 +255,19 @@ export function CheckoutClient({ events }: { events: EventOption[] }) {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="aspect-square max-w-[400px] mx-auto relative rounded-lg overflow-hidden border">
-                {camera.status !== "granted" ? (
-                  <div className="w-full h-full flex items-center justify-center bg-muted/30">
-                    <CameraErrorFallback
-                      status={camera.status}
-                      onAllow={camera.allow}
-                    />
-                  </div>
-                ) : scanning ? (
-                  <Scanner
-                    constraints={{ facingMode: { ideal: "environment" } }}
-                    onScan={handleScan}
-                    onError={(err) => {
-                      const msg = err instanceof Error ? err.name : "";
-                      if (msg === "NotAllowedError") {
-                        camera.deny();
-                      } else {
-                        setScanning(false);
-                      }
-                    }}
-                    allowMultiple={false}
-                    scanDelay={500}
-                    components={{ finder: true }}
-                    styles={{
-                      container: { width: "100%", height: "100%" },
-                      video: { objectFit: "cover" as const },
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30 gap-3">
-                    {processing ? (
-                      <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-                    ) : resumeCountdown !== null ? (
-                      <>
-                        <Pause className="h-10 w-10 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">
-                          Resuming in {resumeCountdown}s
-                        </p>
-                      </>
-                    ) : (
-                      <Button
-                        size="lg"
-                        className="gap-2"
-                        onClick={() => {
-                          setScanning(true);
-                          setScanResult(null);
-                          lastScannedRef.current = null;
-                        }}
-                      >
-                        <Play className="h-4 w-4" />
-                        Start Scanning
-                      </Button>
-                    )}
-                  </div>
-                )}
-                {scanning && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="absolute bottom-3 right-3 gap-1"
-                    onClick={() => {
-                      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-                      if (countdownRef.current) clearInterval(countdownRef.current);
-                      setResumeCountdown(null);
-                      setScanning(false);
-                    }}
-                  >
-                    <Pause className="h-4 w-4" /> Pause
-                  </Button>
-                )}
-              </div>
+              <ScannerShell
+                onScan={handleScan}
+                scanning={scannerLive && sessionActive}
+                onScanningChange={setScannerLive}
+                processing={processing}
+                resumeCountdown={resumeCountdown}
+                disabled={!sessionActive}
+                disabledReason={disabledReason}
+                defaultCameraFacing="environment"
+                cameraStorageNamespace="checkout"
+              />
             </CardContent>
           </Card>
-
           <ScanResultCard result={scanResult} />
         </div>
 
@@ -375,7 +276,7 @@ export function CheckoutClient({ events }: { events: EventOption[] }) {
             <CardTitle className="text-base">Recent Check-outs</CardTitle>
           </CardHeader>
           <CardContent>
-            <RecentCheckins checkins={recentCheckins} />
+            <RecentCheckins checkins={recentResults} />
           </CardContent>
         </Card>
       </div>

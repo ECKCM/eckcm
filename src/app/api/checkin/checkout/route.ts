@@ -35,13 +35,43 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { token, participantCode } = body;
+  const { token, participantCode, scanSessionId } = body;
 
   if (!token && !participantCode) {
     return NextResponse.json(
       { error: "token or participantCode is required" },
       { status: 400 }
     );
+  }
+
+  if (scanSessionId) {
+    const adminForSession = createAdminClient();
+    const { data: scanSession, error: scanSessionError } = await adminForSession
+      .from("eckcm_scan_sessions")
+      .select("id, status, is_sandbox")
+      .eq("id", scanSessionId)
+      .single();
+    if (scanSessionError || !scanSession) {
+      return NextResponse.json({ error: "Scan session not found" }, { status: 404 });
+    }
+    const ss = scanSession as { id: string; status: string; is_sandbox: boolean };
+    if (ss.status !== "ACTIVE") {
+      return NextResponse.json(
+        { error: `Scan session is ${ss.status.toLowerCase()}` },
+        { status: 409 }
+      );
+    }
+    // Sandbox checkout still returns a synthetic response without touching the DB.
+    if (ss.is_sandbox) {
+      return NextResponse.json({
+        status: "checked_out",
+        person: { name: "Sandbox", koreanName: null },
+        confirmationCode: null,
+        checkedInAt: new Date().toISOString(),
+        checkedOutAt: new Date().toISOString(),
+        isSandbox: true,
+      });
+    }
   }
 
   const admin = createAdminClient();

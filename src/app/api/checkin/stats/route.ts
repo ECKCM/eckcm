@@ -32,11 +32,12 @@ export async function GET(req: NextRequest) {
 
   const totalPeople = peopleData?.length ?? 0;
 
-  // 3. All checkins
+  // 3. All real checkins (exclude sandbox so test scans don't pollute stats).
   const { data: checkins } = await supabase
     .from("eckcm_checkins")
     .select("id, person_id, checkin_type, checked_in_at, checked_out_at, meal_date, meal_type")
-    .eq("event_id", eventId);
+    .eq("event_id", eventId)
+    .eq("is_sandbox", false);
 
   const allCheckins = checkins ?? [];
 

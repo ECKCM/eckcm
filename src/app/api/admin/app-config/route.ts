@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { COLOR_THEME_IDS } from "@/lib/color-theme";
 import type { ColorThemeId } from "@/lib/color-theme";
 import { requireAdmin, requireSuperAdmin } from "@/lib/auth/admin";
+import { validateMealSchedule } from "@/lib/meal-schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("eckcm_app_config")
-    .select("color_theme, turnstile_enabled, allow_duplicate_email, allow_duplicate_registration, epass_hmac_secret, booklet_url")
+    .select("color_theme, turnstile_enabled, allow_duplicate_email, allow_duplicate_registration, epass_hmac_secret, booklet_url, meal_schedule")
     .eq("id", 1)
     .single();
 
@@ -34,6 +35,7 @@ export async function GET() {
     allow_duplicate_email: data.allow_duplicate_email ?? false,
     allow_duplicate_registration: data.allow_duplicate_registration ?? false,
     booklet_url: data.booklet_url ?? "",
+    meal_schedule: data.meal_schedule ?? null,
     epass_hmac_secret: hmacSecret
       ? { is_set: true, last4: hmacSecret.slice(-4) }
       : { is_set: false, last4: "" },
@@ -114,6 +116,14 @@ export async function PATCH(request: Request) {
       );
     }
     updates.epass_hmac_secret = body.epass_hmac_secret;
+  }
+
+  if ("meal_schedule" in body) {
+    const validation = validateMealSchedule(body.meal_schedule);
+    if ("error" in validation) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+    updates.meal_schedule = validation.schedule;
   }
 
   if (Object.keys(updates).length === 0) {
