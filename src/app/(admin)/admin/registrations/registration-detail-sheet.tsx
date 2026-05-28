@@ -80,6 +80,8 @@ import {
   type RegistrationRow,
   type PersonDetail,
   type Event,
+  type TransferOutRecord,
+  type TransferInRecord,
   statusVariant,
   paymentStatusVariant,
   formatMoney,
@@ -111,6 +113,8 @@ export function RegistrationDetailSheet({
 }: RegistrationDetailSheetProps) {
   const [people, setPeople] = useState<PersonDetail[]>([]);
   const [loadingPeople, setLoadingPeople] = useState(false);
+  const [transfersOut, setTransfersOut] = useState<TransferOutRecord[]>([]);
+  const [transfersIn, setTransfersIn] = useState<TransferInRecord[]>([]);
   const [churches, setChurches] = useState<{ id: string; name_en: string; name_ko: string | null; is_other: boolean }[]>([]);
   const [departments, setDepartments] = useState<{ id: string; name_en: string }[]>([]);
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -213,10 +217,13 @@ export function RegistrationDetailSheet({
     if (!registration) {
       setPeople([]);
       setGroups([]);
+      setTransfersOut([]);
+      setTransfersIn([]);
       return;
     }
     loadPeople(registration.id);
     loadGroups(registration.id);
+    loadTransfers(registration.id);
   }, [registration?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadPeople = async (regId: string) => {
@@ -344,6 +351,18 @@ export function RegistrationDetailSheet({
     }
   };
 
+  const loadTransfers = async (regId: string) => {
+    try {
+      const res = await fetch(`/api/admin/registrations/${regId}/transfers`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setTransfersOut(data.out ?? []);
+      setTransfersIn(data.in ?? []);
+    } catch {
+      // Non-fatal — the rest of the panel still works without transfer history.
+    }
+  };
+
   const handleStatusChange = async (newStatus: string) => {
     if (!registration) return;
     setConfirmAction({
@@ -384,6 +403,12 @@ export function RegistrationDetailSheet({
 
   const representative = people.find((p) => p.role === "REPRESENTATIVE");
   const members = people.filter((p) => p.role !== "REPRESENTATIVE");
+  // Map membership_id -> source confirmation_code for participants cloned in.
+  const transferredInByMembership = new Map(
+    transfersIn
+      .filter((t) => t.to_membership_id)
+      .map((t) => [t.to_membership_id as string, t.from_confirmation_code] as const)
+  );
 
   return (
     <>
@@ -668,7 +693,7 @@ export function RegistrationDetailSheet({
                 <p className="text-center text-muted-foreground py-8">
                   Loading participants...
                 </p>
-              ) : people.length === 0 ? (
+              ) : people.length === 0 && transfersOut.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
                   No participants found.
                 </p>
@@ -689,7 +714,8 @@ export function RegistrationDetailSheet({
                         eventEndDate={eventDates?.end ?? null}
                         totalPeople={people.length}
                         allRegistrations={allRegistrations}
-                        onSaved={() => { loadPeople(reg.id); loadGroups(reg.id); onRefresh(); }}
+                        transferredInFrom={transferredInByMembership.get(representative.membership_id) ?? null}
+                        onSaved={() => { loadPeople(reg.id); loadGroups(reg.id); loadTransfers(reg.id); onRefresh(); }}
                         churches={churches}
                         departments={departments}
                       />
@@ -714,7 +740,8 @@ export function RegistrationDetailSheet({
                             eventEndDate={eventDates?.end ?? null}
                             totalPeople={people.length}
                             allRegistrations={allRegistrations}
-                            onSaved={() => { loadPeople(reg.id); loadGroups(reg.id); onRefresh(); }}
+                            transferredInFrom={transferredInByMembership.get(p.membership_id) ?? null}
+                            onSaved={() => { loadPeople(reg.id); loadGroups(reg.id); loadTransfers(reg.id); onRefresh(); }}
                             churches={churches}
                             departments={departments}
                           />
@@ -723,61 +750,113 @@ export function RegistrationDetailSheet({
                     </div>
                   )}
 
-                  {/* Compact table view toggle */}
-                  <Separator />
-                  <details className="text-sm">
-                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground active:opacity-70 text-xs transition-colors">
-                      Show full table view
-                    </summary>
-                    <div className="overflow-auto mt-2 rounded border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Display Name</TableHead>
-                            <TableHead>Gender</TableHead>
-                            <TableHead>DOB</TableHead>
-                            <TableHead>Age</TableHead>
-                            <TableHead>K-12</TableHead>
-                            <TableHead>Group</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>P.Code</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {people.map((p, i) => (
-                            <TableRow key={i}>
-                              <TableCell className="whitespace-nowrap font-medium text-sm">
-                                {p.first_name_en} {p.last_name_en}
-                              </TableCell>
-                              <TableCell className="text-sm">
-                                {p.display_name_ko ?? "-"}
-                              </TableCell>
-                              <TableCell className="text-xs">
-                                {p.gender}
-                              </TableCell>
-                              <TableCell className="text-xs whitespace-nowrap">
-                                {p.birth_date ?? "-"}
-                              </TableCell>
-                              <TableCell>{p.age_at_event ?? "-"}</TableCell>
-                              <TableCell>{p.is_k12 ? "Y" : "-"}</TableCell>
-                              <TableCell className="font-mono text-xs">
-                                {p.group_code}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className="text-xs">
-                                  {p.role}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="font-mono text-xs">
-                                {p.participant_code ?? "-"}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                  {/* Transferred out — tracking records kept for payment reconciliation */}
+                  {transfersOut.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                        <ArrowRightLeft className="size-3" />
+                        Transferred Out ({transfersOut.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {transfersOut.map((t) => (
+                          <div key={t.id} className="rounded-lg border border-dashed p-3 bg-muted/30">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {t.first_name_en} {t.last_name_en}
+                                  {t.display_name_ko && (
+                                    <span className="ml-1.5 text-muted-foreground font-normal">
+                                      ({t.display_name_ko})
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Transferred to{" "}
+                                  <span className="font-mono text-foreground">
+                                    {t.to_confirmation_code ?? "—"}
+                                  </span>{" "}
+                                  · {formatTimestamp(t.transferred_at)}
+                                </p>
+                                {t.original_participant_code && (
+                                  <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                                    was {t.original_participant_code}
+                                    {t.new_participant_code && ` → ${t.new_participant_code}`}
+                                  </p>
+                                )}
+                              </div>
+                              <Badge variant="outline" className="text-[10px] shrink-0">
+                                tracking
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1.5">
+                        These participants were cloned into another registration. Records are kept
+                        here so this registration&apos;s original payment can be reconciled.
+                      </p>
                     </div>
-                  </details>
+                  )}
+
+                  {/* Compact table view toggle */}
+                  {people.length > 0 && (
+                    <>
+                      <Separator />
+                      <details className="text-sm">
+                        <summary className="cursor-pointer text-muted-foreground hover:text-foreground active:opacity-70 text-xs transition-colors">
+                          Show full table view
+                        </summary>
+                        <div className="overflow-auto mt-2 rounded border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Display Name</TableHead>
+                                <TableHead>Gender</TableHead>
+                                <TableHead>DOB</TableHead>
+                                <TableHead>Age</TableHead>
+                                <TableHead>K-12</TableHead>
+                                <TableHead>Group</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>P.Code</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {people.map((p, i) => (
+                                <TableRow key={i}>
+                                  <TableCell className="whitespace-nowrap font-medium text-sm">
+                                    {p.first_name_en} {p.last_name_en}
+                                  </TableCell>
+                                  <TableCell className="text-sm">
+                                    {p.display_name_ko ?? "-"}
+                                  </TableCell>
+                                  <TableCell className="text-xs">
+                                    {p.gender}
+                                  </TableCell>
+                                  <TableCell className="text-xs whitespace-nowrap">
+                                    {p.birth_date ?? "-"}
+                                  </TableCell>
+                                  <TableCell>{p.age_at_event ?? "-"}</TableCell>
+                                  <TableCell>{p.is_k12 ? "Y" : "-"}</TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    {p.group_code}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className="text-xs">
+                                      {p.role}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    {p.participant_code ?? "-"}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </details>
+                    </>
+                  )}
                 </div>
               )}
             </TabsContent>
@@ -2434,7 +2513,7 @@ function InfoRow({
   );
 }
 
-function PersonCard({ person: p, registrationId, regStartDate, regEndDate, eventStartDate, eventEndDate, totalPeople, allRegistrations, onSaved, churches, departments }: {
+function PersonCard({ person: p, registrationId, regStartDate, regEndDate, eventStartDate, eventEndDate, totalPeople, allRegistrations, transferredInFrom, onSaved, churches, departments }: {
   person: PersonDetail;
   registrationId: string;
   regStartDate: string;
@@ -2443,6 +2522,7 @@ function PersonCard({ person: p, registrationId, regStartDate, regEndDate, event
   eventEndDate: string | null;
   totalPeople: number;
   allRegistrations: { id: string; confirmation_code: string; registrant_name: string; status: string }[];
+  transferredInFrom?: string | null;
   onSaved: () => void;
   churches: { id: string; name_en: string; name_ko: string | null; is_other: boolean }[];
   departments: { id: string; name_en: string }[];
@@ -2778,10 +2858,16 @@ function PersonCard({ person: p, registrationId, regStartDate, regEndDate, event
                 </span>
               )}
             </p>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <Badge variant="outline" className="text-xs">
                 {p.role}
               </Badge>
+              {transferredInFrom !== undefined && transferredInFrom !== null && (
+                <Badge variant="secondary" className="text-[10px] gap-1">
+                  <ArrowRightLeft className="size-2.5" />
+                  from {transferredInFrom}
+                </Badge>
+              )}
               <span className="text-xs text-muted-foreground">
                 {p.gender} · {p.age_at_event ? `Age ${p.age_at_event}` : "-"}
                 {p.is_k12 && " · K-12"}
@@ -2923,8 +3009,9 @@ function PersonCard({ person: p, registrationId, regStartDate, regEndDate, event
                 Transfer Participant
               </AlertDialogTitle>
               <AlertDialogDescription>
-                Transfer <strong>{p.first_name_en} {p.last_name_en}</strong> to another registration.
-                They will be added as a MEMBER in the target group.
+                Clone <strong>{p.first_name_en} {p.last_name_en}</strong> into another registration
+                as a MEMBER. A tracking record stays on this registration so its original payment
+                can be reconciled.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div>
@@ -2946,8 +3033,9 @@ function PersonCard({ person: p, registrationId, regStartDate, regEndDate, event
                 </SelectContent>
               </Select>
               {totalPeople <= 1 && (
-                <p className="text-xs text-destructive mt-1.5">
-                  This is the last participant. Cannot transfer.
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  This is the last participant. After transfer, this registration keeps a
+                  tracking record but no active participants.
                 </p>
               )}
             </div>
@@ -2955,7 +3043,7 @@ function PersonCard({ person: p, registrationId, regStartDate, regEndDate, event
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleTransfer}
-                disabled={!transferTarget || transferring || totalPeople <= 1}
+                disabled={!transferTarget || transferring}
               >
                 {transferring && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
                 Transfer

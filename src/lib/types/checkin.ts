@@ -81,3 +81,53 @@ export interface CheckinStats {
   today: number;
   byType: Record<string, number>;
 }
+
+/**
+ * Scan-session lifecycle (operator-driven scanning window).
+ */
+export type ScanSessionStatus = "ACTIVE" | "PAUSED" | "ENDED";
+
+export type ScanSessionKind =
+  | "MAIN_CHECKIN"
+  | "CHECKOUT"
+  | "MEAL_BREAKFAST"
+  | "MEAL_LUNCH"
+  | "MEAL_DINNER"
+  | "SESSION"
+  | "OTHER";
+
+export interface ScanSession {
+  id: string;
+  event_id: string;
+  kind: ScanSessionKind;
+  label: string | null;
+  status: ScanSessionStatus;
+  is_sandbox: boolean;
+  meal_date: string | null;
+  session_id: string | null;
+  started_at: string;
+  ended_at: string | null;
+  paused_at: string | null;
+  started_by: string;
+  ended_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Maps a scan-session kind into the checkin_type used by eckcm_checkins. */
+export const SCAN_KIND_TO_CHECKIN_TYPE: Record<ScanSessionKind, string> = {
+  MAIN_CHECKIN: "MAIN",
+  CHECKOUT: "MAIN", // checkout updates the existing MAIN row
+  MEAL_BREAKFAST: "DINING",
+  MEAL_LUNCH: "DINING",
+  MEAL_DINNER: "DINING",
+  SESSION: "SESSION",
+  OTHER: "MAIN",
+};
+
+/** Maps a meal scan-session kind into the corresponding meal_type. */
+export const MEAL_KIND_TO_MEAL_TYPE: Partial<Record<ScanSessionKind, "BREAKFAST" | "LUNCH" | "DINNER">> = {
+  MEAL_BREAKFAST: "BREAKFAST",
+  MEAL_LUNCH: "LUNCH",
+  MEAL_DINNER: "DINNER",
+};

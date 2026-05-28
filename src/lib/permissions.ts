@@ -33,7 +33,10 @@ const ROUTE_PERMISSIONS: [string, RouteRule][] = [
   ["/admin/checkin/checkout", "checkin.checkout"],
   ["/admin/checkin/session", "checkin.session"],
   ["/admin/checkin/kiosk", "checkin.main"],
-  ["/admin/checkin/self", "checkin.main"],
+  ["/admin/checkin/main", "checkin.main"],
+  ["/admin/checkin/stats", "checkin.main"],
+  ["/admin/checkin/scan-sessions", "checkin.main"],
+  ["/admin/checkin/test", "checkin.main"],
   ["/admin/checkin", "checkin.main"],
   ["/admin/meals", "checkin.dining"],
 

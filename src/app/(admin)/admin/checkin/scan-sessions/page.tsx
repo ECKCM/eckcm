@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { SelfCheckinClient } from "./self-checkin-client";
+import { ScanSessionsListClient } from "./scan-sessions-list-client";
 
-export default async function SelfCheckinPage() {
+export default async function ScanSessionsListPage() {
   const supabase = await createClient();
 
   const { data: events } = await supabase
@@ -14,10 +14,10 @@ export default async function SelfCheckinPage() {
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 border-b px-4 py-3">
-        <h1 className="text-lg font-semibold">Self Check-in</h1>
+        <h1 className="text-lg font-semibold">Scan Sessions</h1>
       </div>
       <div className="p-6">
-        <SelfCheckinClient events={events ?? []} />
+        <ScanSessionsListClient events={events ?? []} />
       </div>
     </div>
   );

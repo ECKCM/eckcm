@@ -79,6 +79,31 @@ export interface PersonDetail {
   meal_selections: { meal_date: string; meal_type: string; is_selected: boolean }[];
 }
 
+/** A participant transferred AWAY from this registration (tracking record). */
+export interface TransferOutRecord {
+  id: string;
+  person_id: string;
+  first_name_en: string | null;
+  last_name_en: string | null;
+  display_name_ko: string | null;
+  original_role: string;
+  original_participant_code: string | null;
+  new_participant_code: string | null;
+  to_registration_id: string;
+  to_confirmation_code: string | null;
+  transferred_at: string;
+}
+
+/** A participant cloned INTO this registration from another one. */
+export interface TransferInRecord {
+  id: string;
+  person_id: string;
+  to_membership_id: string | null;
+  original_participant_code: string | null;
+  from_confirmation_code: string | null;
+  transferred_at: string;
+}
+
 export const STATUS_OPTIONS = ["ALL", "PAID", "APPROVED", "SUBMITTED", "DRAFT", "CANCELLED", "REFUNDED"];
 export const VALID_STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "PAID", "CANCELLED", "REFUNDED"];
 

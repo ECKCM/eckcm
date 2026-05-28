@@ -1,12 +1,26 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
+import { generateSafeConfirmationCode } from "@/lib/services/confirmation-code.service";
 
 /**
  * POST /api/admin/registrations/[id]/participants/[membershipId]/transfer
- * Transfer a participant to a different registration by confirmation_code.
- * - Moves the group membership to the first group of the target registration
- * - Deactivates e-pass in old registration, creates new e-pass in target
+ * Transfer a participant to a different registration (clone model).
+ *
+ * Rather than MOVING the membership (which made the person vanish from the
+ * source registration), we:
+ *   1. CLONE the person into the first group of the target registration as a
+ *      new active MEMBER membership (fresh participant_code, carried stay dates).
+ *   2. Record a tracking row in eckcm_participant_transfers (snapshot of the
+ *      original membership + where it went) so the source registration keeps a
+ *      record of who was on it and the original payment can be reconciled.
+ *   3. Remove the original membership so active-participant queries (billing,
+ *      check-in, e-pass, exports) don't double-count the person.
+ *   4. Deactivate the e-pass in the old registration and create a new one in
+ *      the target if it's APPROVED or PAID.
+ *
+ * The clone is created BEFORE the original is deleted, so a failure can never
+ * lose the participant.
  */
 export async function POST(
   request: Request,
@@ -30,11 +44,12 @@ export async function POST(
 
   const supabase = createAdminClient();
 
-  // Verify the membership belongs to the source registration
+  // Verify the membership belongs to the source registration + snapshot fields.
   const { data: membership } = await supabase
     .from("eckcm_group_memberships")
     .select(`
-      id, person_id, role, participant_code,
+      id, person_id, role, participant_code, group_id, stay_start_date, stay_end_date,
+      eckcm_people!inner(id, first_name_en, last_name_en, display_name_ko),
       eckcm_groups!inner(id, registration_id)
     `)
     .eq("id", membershipId)
@@ -52,20 +67,8 @@ export async function POST(
       { status: 400 }
     );
   }
-
-  // Prevent transferring the last person
-  const { data: allMembers } = await supabase
-    .from("eckcm_group_memberships")
-    .select("id, eckcm_groups!inner(registration_id)")
-    .eq("eckcm_groups.registration_id", registrationId);
-
-  const otherMembers = (allMembers ?? []).filter((m) => m.id !== membershipId);
-  if (otherMembers.length === 0) {
-    return NextResponse.json(
-      { error: "Cannot transfer the last participant. Cancel the registration instead." },
-      { status: 400 }
-    );
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const person = membership.eckcm_people as any;
 
   // Find the target registration and its first group
   const { data: targetReg } = await supabase
@@ -98,20 +101,76 @@ export async function POST(
     return NextResponse.json({ error: "Target registration has no groups" }, { status: 400 });
   }
 
-  // Move the membership to the target group, demote to MEMBER
-  const { error: updateError } = await supabase
+  // Generate a fresh, unique participant_code for the clone. participant_code
+  // is a global lookup key (used by check-in), so it must not be reused.
+  const candidates: string[] = [];
+  for (let i = 0; i < 12; i++) candidates.push(generateSafeConfirmationCode());
+  const { data: existingCodes } = await supabase
     .from("eckcm_group_memberships")
-    .update({
-      group_id: targetGroup.id,
-      role: "MEMBER",
-    })
-    .eq("id", membershipId);
+    .select("participant_code")
+    .in("participant_code", candidates);
+  const used = new Set((existingCodes ?? []).map((c: { participant_code: string }) => c.participant_code));
+  const newParticipantCode = candidates.find((c) => !used.has(c)) ?? generateSafeConfirmationCode();
 
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+  // 1. Create the clone in the target group (active MEMBER, carry stay dates).
+  const { data: clone, error: cloneError } = await supabase
+    .from("eckcm_group_memberships")
+    .insert({
+      group_id: targetGroup.id,
+      person_id: membership.person_id,
+      role: "MEMBER",
+      participant_code: newParticipantCode,
+      stay_start_date: membership.stay_start_date ?? null,
+      stay_end_date: membership.stay_end_date ?? null,
+    })
+    .select("id")
+    .single();
+
+  if (cloneError || !clone) {
+    return NextResponse.json(
+      { error: cloneError?.message ?? "Failed to create transferred participant" },
+      { status: 500 }
+    );
   }
 
-  // Deactivate e-pass in old registration
+  // 2. Record the tracking row before removing the original.
+  const { error: trackError } = await supabase
+    .from("eckcm_participant_transfers")
+    .insert({
+      person_id: membership.person_id,
+      from_registration_id: registrationId,
+      from_group_id: membership.group_id,
+      to_registration_id: targetRegistrationId,
+      to_group_id: targetGroup.id,
+      to_membership_id: clone.id,
+      original_role: membership.role,
+      original_participant_code: membership.participant_code,
+      new_participant_code: newParticipantCode,
+      stay_start_date: membership.stay_start_date ?? null,
+      stay_end_date: membership.stay_end_date ?? null,
+      person_first_name: person?.first_name_en ?? null,
+      person_last_name: person?.last_name_en ?? null,
+      person_display_name_ko: person?.display_name_ko ?? null,
+      transferred_by: admin.user.id,
+    });
+
+  if (trackError) {
+    // Roll back the clone so we don't leave a duplicate.
+    await supabase.from("eckcm_group_memberships").delete().eq("id", clone.id);
+    return NextResponse.json({ error: trackError.message }, { status: 500 });
+  }
+
+  // 3. Remove the original membership.
+  const { error: deleteError } = await supabase
+    .from("eckcm_group_memberships")
+    .delete()
+    .eq("id", membershipId);
+
+  if (deleteError) {
+    return NextResponse.json({ error: deleteError.message }, { status: 500 });
+  }
+
+  // 4. Deactivate e-pass in old registration
   await supabase
     .from("eckcm_epass_tokens")
     .update({ is_active: false })
@@ -146,7 +205,10 @@ export async function POST(
       from_registration_id: registrationId,
       to_registration_id: targetRegistrationId,
       to_group_id: targetGroup.id,
+      to_membership_id: clone.id,
       person_id: membership.person_id,
+      original_participant_code: membership.participant_code,
+      new_participant_code: newParticipantCode,
     },
   });
 
