@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
 import { generateSafeConfirmationCode } from "@/lib/services/confirmation-code.service";
+import { ensureRepresentative } from "@/lib/services/representative";
 
 /**
  * POST /api/admin/registrations/[id]/participants/[membershipId]/transfer
@@ -169,6 +170,13 @@ export async function POST(
   if (deleteError) {
     return NextResponse.json({ error: deleteError.message }, { status: 500 });
   }
+
+  // Keep the "exactly one representative" invariant on both sides:
+  //  - target: if it had no representative (e.g. was empty), promote the clone
+  //  - source: if the representative was the one transferred out, promote the
+  //    earliest remaining member
+  await ensureRepresentative(supabase, targetRegistrationId);
+  await ensureRepresentative(supabase, registrationId);
 
   // 4. Deactivate e-pass in old registration
   await supabase

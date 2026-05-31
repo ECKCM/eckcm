@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
+import { ensureRepresentative } from "@/lib/services/representative";
 
 /**
  * DELETE /api/admin/registrations/[id]/participants/[membershipId]
@@ -81,6 +82,10 @@ export async function DELETE(
   if (deleteError) {
     return NextResponse.json({ error: deleteError.message }, { status: 500 });
   }
+
+  // If the removed participant was the representative, promote the earliest
+  // remaining member so the registration still resolves a registrant name.
+  await ensureRepresentative(supabase, registrationId);
 
   // Log the action
   await supabase.from("eckcm_audit_logs").insert({

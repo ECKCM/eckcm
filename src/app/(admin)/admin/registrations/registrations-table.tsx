@@ -190,9 +190,25 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         let registrantGuardianName: string | null = null;
         let registrantGuardianPhone: string | null = null;
         let repPersonId: string | null = null;
+        let repFound = false;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let fallbackMember: any = null;
         const roomNumbers: string[] = [];
         let lodgingType: string | null = null;
         let preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null = null;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const applyRegistrant = (m: any) => {
+          repPersonId = m.person_id;
+          registrantName = `${m.eckcm_people.first_name_en} ${m.eckcm_people.last_name_en}`;
+          registrantNameKo = m.eckcm_people.display_name_ko;
+          registrantEmail = m.eckcm_people.email;
+          registrantPhone = m.eckcm_people.phone;
+          registrantChurch = m.eckcm_people.church_other || m.eckcm_people.eckcm_churches?.name_en || null;
+          registrantDept = m.eckcm_people.eckcm_departments?.name_en ?? null;
+          registrantGuardianName = m.eckcm_people.guardian_name ?? null;
+          registrantGuardianPhone = m.eckcm_people.guardian_phone ?? null;
+        };
 
         for (const g of groups) {
           // Lodging type & preferences (take from first group)
@@ -212,18 +228,22 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           const members = g.eckcm_group_memberships ?? [];
           peopleCount += members.length;
           for (const m of members) {
-            if (m.role === "REPRESENTATIVE" && registrantName === "Unknown") {
-              repPersonId = m.person_id;
-              registrantName = `${m.eckcm_people.first_name_en} ${m.eckcm_people.last_name_en}`;
-              registrantNameKo = m.eckcm_people.display_name_ko;
-              registrantEmail = m.eckcm_people.email;
-              registrantPhone = m.eckcm_people.phone;
-              registrantChurch = m.eckcm_people.church_other || m.eckcm_people.eckcm_churches?.name_en || null;
-              registrantDept = m.eckcm_people.eckcm_departments?.name_en ?? null;
-              registrantGuardianName = m.eckcm_people.guardian_name ?? null;
-              registrantGuardianPhone = m.eckcm_people.guardian_phone ?? null;
+            if (m.role === "REPRESENTATIVE" && !repFound) {
+              repFound = true;
+              applyRegistrant(m);
+            } else if (!fallbackMember) {
+              // Remember the first non-representative member as a fallback for
+              // registrations that have no representative (e.g. the rep was
+              // transferred out). Prevents the row from showing "Unknown".
+              fallbackMember = m;
             }
           }
+        }
+
+        // No representative found — fall back to the first member so the row
+        // still shows a name instead of "Unknown".
+        if (!repFound && fallbackMember) {
+          applyRegistrant(fallbackMember);
         }
 
         // Check if representative has checked in on-site
