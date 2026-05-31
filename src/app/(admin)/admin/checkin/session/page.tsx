@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { CheckinBackButton } from "@/components/checkin/back-button";
 import { SessionListClient } from "./session-list-client";
 
 export default async function SessionCheckinPage() {
@@ -35,6 +36,7 @@ export default async function SessionCheckinPage() {
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 border-b px-4 py-3">
+        <CheckinBackButton />
         <h1 className="text-lg font-semibold">Session Check-in</h1>
       </div>
       <div className="p-6">

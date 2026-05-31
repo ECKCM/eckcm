@@ -28,6 +28,7 @@
 # IDE / editor
 .vscode/
 .claude/skills/
+.claude/worktrees/
 
 # MCP config (contains secrets)
 .mcp.json

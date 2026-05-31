@@ -168,3 +168,15 @@ export const donationConfirmSchema = z.object({
   donationId: uuid,
   paymentIntentId: z.string().min(1),
 });
+
+// -- Self-service card payment link (SUBMITTED → PAID) --
+
+export const linkCreateIntentSchema = z.object({
+  token: z.string().min(1).max(256),
+  coversFees: z.boolean().optional(),
+});
+
+export const linkConfirmSchema = z.object({
+  token: z.string().min(1).max(256),
+  paymentIntentId: z.string().min(1),
+});

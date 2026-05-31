@@ -43,7 +43,9 @@ import {
   Square,
   Users,
   Database,
+  ArrowLeft,
 } from "lucide-react";
+import Link from "next/link";
 import { feedback } from "@/lib/checkin/scanner-feedback";
 import { parseQRValue, toVerifyBody } from "@/lib/checkin/qr-parser";
 import { useCameraPermission } from "@/lib/checkin/use-camera-permission";
@@ -354,6 +356,12 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     <div className="fixed inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex flex-col overflow-hidden">
       {/* Top bar */}
       <header className="border-b bg-card/70 backdrop-blur px-4 py-2 flex items-center gap-2 flex-wrap">
+        <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+          <Link href="/admin/checkin" aria-label="Back to check-in">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+
         <Select value={selectedEventId} onValueChange={setSelectedEventId}>
           <SelectTrigger className="w-[200px] h-9">
             <SelectValue placeholder="Event" />
