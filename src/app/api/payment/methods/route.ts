@@ -17,15 +17,15 @@ export async function GET() {
     .single();
 
   if (error || !data) {
-    // Default: all methods enabled
+    // Default: all methods enabled (Check is disabled by default; see payment page flag)
     return NextResponse.json({
-      enabled: ["card", "zelle", "check", "wallet"],
+      enabled: ["card", "zelle", "wallet"],
       donorCoversFees: false,
     });
   }
 
   return NextResponse.json({
-    enabled: data.enabled_payment_methods ?? ["card", "zelle", "check", "wallet"],
+    enabled: data.enabled_payment_methods ?? ["card", "zelle", "wallet"],
     donorCoversFees: data.donor_covers_fees_registration ?? false,
   });
 }

@@ -17,7 +17,7 @@ export default function ConfirmationPage() {
   const code = searchParams.get("code");
   const registrationId = searchParams.get("registrationId");
   const method = searchParams.get("method");
-  const skipPolling = method === "zelle" || method === "check" || method === "free";
+  const skipPolling = method === "zelle" || method === "check" || method === "free" || method === "onsite";
   const [status, setStatus] = useState<PaymentStatus>(skipPolling ? "pending" : "loading");
   const { t } = useI18n();
 

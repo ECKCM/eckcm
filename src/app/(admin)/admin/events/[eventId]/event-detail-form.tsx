@@ -52,6 +52,16 @@ function toDatetimeLocal(value: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Inverse of toDatetimeLocal: a datetime-local input holds a local wall-clock
+// time with no offset. Interpret it as local and store as a UTC ISO string,
+// otherwise Postgres reads it as UTC and the value drifts by the local offset.
+function fromDatetimeLocal(value: string): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 export function EventDetailForm({ event }: EventDetailFormProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -94,10 +104,10 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
         year: form.year,
         event_start_date: form.event_start_date,
         event_end_date: form.event_end_date,
-        registration_start_date: form.registration_start_date || null,
-        registration_end_date: form.registration_end_date || null,
-        early_registration_start: form.early_registration_start || null,
-        early_registration_end: form.early_registration_end || null,
+        registration_start_date: fromDatetimeLocal(form.registration_start_date),
+        registration_end_date: fromDatetimeLocal(form.registration_end_date),
+        early_registration_start: fromDatetimeLocal(form.early_registration_start),
+        early_registration_end: fromDatetimeLocal(form.early_registration_end),
         location: form.location || null,
         is_active: form.is_active,
         is_default: form.is_default,

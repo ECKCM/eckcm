@@ -48,6 +48,7 @@ export type PaymentMethod =
   | "GOOGLE_PAY"
   | "CHECK"
   | "ZELLE"
+  | "ONSITE"
   | "MANUAL";
 export type AdjustmentType =
   | "initial_payment"

@@ -175,7 +175,7 @@ export async function PATCH(request: Request) {
   }
 
   // Handle payment methods update
-  const VALID_METHODS = ["card", "zelle", "check", "wallet", "more"];
+  const VALID_METHODS = ["card", "zelle", "check", "onsite", "wallet", "more"];
   if (Array.isArray(body.enabled_payment_methods)) {
     const methods = body.enabled_payment_methods.filter((m: string) =>
       VALID_METHODS.includes(m)
