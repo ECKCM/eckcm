@@ -58,7 +58,7 @@ export function buildEPassEmail({
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr>
             <td style="text-align: center; padding: 0 0 24px;">
-              <a href="${epassUrl}" style="display: inline-block; padding: 12px 32px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
+              <a href="${epassUrl}" style="display: block; padding: 18px 24px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 18px; line-height: 1.2; text-align: center;">
                 View E-Pass
               </a>
             </td>

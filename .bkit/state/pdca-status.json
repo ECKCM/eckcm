@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-05-31T11:11:15.829Z",
+  "lastUpdated": "2026-05-31T12:25:55.631Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -366,7 +366,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:32:03.220Z",
-        "lastUpdated": "2026-05-31T10:51:27.899Z"
+        "lastUpdated": "2026-05-31T12:25:17.586Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/email/send-confirmation.ts"
     },
@@ -652,7 +652,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:32:31.612Z",
-        "lastUpdated": "2026-05-31T10:51:33.302Z"
+        "lastUpdated": "2026-05-31T12:25:55.631Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/email/templates/confirmation.tsx"
     },
@@ -1874,7 +1874,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-05-31T11:11:15.829Z"
+    "lastActivity": "2026-05-31T12:25:55.631Z"
   },
   "history": [
     {
@@ -9956,6 +9956,72 @@
     {
       "timestamp": "2026-05-31T11:11:15.829Z",
       "feature": "[eventId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-31T12:23:55.020Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-31T12:24:05.960Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-31T12:24:18.495Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-31T12:24:29.575Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-31T12:24:36.484Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-31T12:24:41.185Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-31T12:24:47.437Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-31T12:25:03.276Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-31T12:25:17.586Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-31T12:25:46.948Z",
+      "feature": "templates",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-31T12:25:55.631Z",
+      "feature": "templates",
       "phase": "do",
       "action": "updated"
     }
