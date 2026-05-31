@@ -70,6 +70,7 @@ import {
   Trash2,
   ArrowRightLeft,
   BedDouble,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ChurchCombobox } from "@/components/shared/church-combobox";
@@ -159,13 +160,20 @@ export function RegistrationDetailSheet({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rows = (data ?? []).map((r: any) => {
           let registrantName = "-";
+          let fallbackName: string | null = null;
           for (const g of r.eckcm_groups ?? []) {
             for (const m of g.eckcm_group_memberships ?? []) {
-              if (m.role === "REPRESENTATIVE" && m.eckcm_people) {
-                registrantName = `${m.eckcm_people.first_name_en} ${m.eckcm_people.last_name_en}`;
+              if (!m.eckcm_people) continue;
+              const name = `${m.eckcm_people.first_name_en} ${m.eckcm_people.last_name_en}`;
+              if (m.role === "REPRESENTATIVE") {
+                registrantName = name;
+              } else if (!fallbackName) {
+                fallbackName = name;
               }
             }
           }
+          // Fall back to the first member when there's no representative.
+          if (registrantName === "-" && fallbackName) registrantName = fallbackName;
           return { id: r.id, confirmation_code: r.confirmation_code, registrant_name: registrantName, status: r.status };
         });
         setAllRegistrations(rows);
@@ -596,7 +604,7 @@ export function RegistrationDetailSheet({
                   </div>
                 )}
                 <div className="mt-3">
-                  <ResendEmailButton registrationId={reg.id} />
+                  <ResendEmailButton registrationId={reg.id} status={reg.status} />
                 </div>
               </section>
 
@@ -1791,12 +1799,38 @@ function StayAndMealsEditor({
 // ─── Resend Email Button ────────────────────────────────────
 
 function CardPaymentLinkButton({ registrationId }: { registrationId: string }) {
-  const [loading, setLoading] = useState(false);
+  // null = unknown/none, string = an active link already exists.
   const [url, setUrl] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [open, setOpen] = useState(false);
 
+  // On mount, check whether a payment link already exists so the admin can see
+  // its state instead of blindly (re)generating.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/registrations/${registrationId}/payment-link`
+        );
+        const data = await res.json().catch(() => ({}));
+        if (active && res.ok && data.exists && data.url) setUrl(data.url);
+      } catch {
+        /* non-fatal — admin can still generate */
+      } finally {
+        if (active) setChecking(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [registrationId]);
+
+  // Generates a link, or — because the backend reuses the existing token —
+  // returns the same link if one was already created. Never mints a duplicate.
   const handleGenerate = async () => {
-    setLoading(true);
+    setGenerating(true);
     try {
       const res = await fetch(
         `/api/admin/registrations/${registrationId}/payment-link`,
@@ -1809,7 +1843,7 @@ function CardPaymentLinkButton({ registrationId }: { registrationId: string }) {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create payment link");
     } finally {
-      setLoading(false);
+      setGenerating(false);
     }
   };
 
@@ -1817,29 +1851,50 @@ function CardPaymentLinkButton({ registrationId }: { registrationId: string }) {
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("링크가 복사되었습니다");
+      toast.success("Link copied to clipboard");
     } catch {
-      toast.error("복사에 실패했습니다");
+      toast.error("Failed to copy link");
     }
   };
 
+  const busy = checking || generating;
+
   return (
     <>
-      <Button variant="outline" size="sm" onClick={handleGenerate} disabled={loading}>
-        {loading ? (
-          <Loader2 className="size-3 animate-spin" />
-        ) : (
-          <CreditCard className="size-3" />
-        )}
-        카드 결제 링크 생성
-      </Button>
+      {url ? (
+        // A link already exists — show its state and let the admin view/copy it.
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setOpen(true)}
+          disabled={generating}
+        >
+          <Link2 className="size-3" />
+          Payment Link
+          <span className="ml-1.5 inline-flex items-center gap-1 text-emerald-600">
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            Active
+          </span>
+        </Button>
+      ) : (
+        <Button variant="outline" size="sm" onClick={handleGenerate} disabled={busy}>
+          {busy ? (
+            <Loader2 className="size-3 animate-spin" />
+          ) : (
+            <CreditCard className="size-3" />
+          )}
+          Create Payment Link
+        </Button>
+      )}
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>카드 결제 링크</AlertDialogTitle>
+            <AlertDialogTitle>Card Payment Link</AlertDialogTitle>
             <AlertDialogDescription>
-              이 링크를 신청자에게 보내세요. 로그인 없이 카드로 결제할 수 있습니다.
-              결제가 완료되면 자동으로 PAID 처리됩니다. 카드 정가로 청구됩니다 (수동결제 할인 제외).
+              Send this link to the registrant. They can pay by card without
+              logging in. The registration is marked PAID automatically once
+              payment completes, and the card list price is charged (manual-payment
+              discount excluded).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex items-center gap-2">
@@ -1853,8 +1908,13 @@ function CardPaymentLinkButton({ registrationId }: { registrationId: string }) {
               <Copy className="size-3" />
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            This is a single reusable link — re-generating returns the same link,
+            not a new one. Once the registration is paid, opening it shows
+            &ldquo;already paid.&rdquo;
+          </p>
           <AlertDialogFooter>
-            <AlertDialogCancel>닫기</AlertDialogCancel>
+            <AlertDialogCancel>Close</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1862,10 +1922,18 @@ function CardPaymentLinkButton({ registrationId }: { registrationId: string }) {
   );
 }
 
-function ResendEmailButton({ registrationId }: { registrationId: string }) {
-  const [sending, setSending] = useState<null | "confirmation" | "receipt" | "epass">(null);
+type ResendEmailType = "confirmation" | "receipt" | "epass" | "payment-link";
 
-  const handleSend = async (type: "confirmation" | "receipt" | "epass") => {
+function ResendEmailButton({
+  registrationId,
+  status,
+}: {
+  registrationId: string;
+  status: string;
+}) {
+  const [sending, setSending] = useState<null | ResendEmailType>(null);
+
+  const handleSend = async (type: ResendEmailType) => {
     setSending(type);
     try {
       const res = await fetch(`/api/admin/registrations/${registrationId}/resend-email`, {
@@ -1883,6 +1951,8 @@ function ResendEmailButton({ registrationId }: { registrationId: string }) {
         } else {
           toast.success(`Sent ${sent} ePass email(s)${skipped ? `, skipped ${skipped}` : ""}${failed ? `, failed ${failed}` : ""}`);
         }
+      } else if (type === "payment-link") {
+        toast.success(data.to ? `Card payment link emailed to ${data.to}` : "Card payment link emailed");
       } else {
         toast.success(type === "receipt" ? "Receipt email resent" : "Confirmation email resent");
       }
@@ -1917,6 +1987,13 @@ function ResendEmailButton({ registrationId }: { registrationId: string }) {
           <ShieldCheck className="size-3.5 mr-2" />
           ePass (per participant)
         </DropdownMenuItem>
+        {/* Card payment link email — only meaningful while awaiting payment. */}
+        {status === "SUBMITTED" && (
+          <DropdownMenuItem onClick={() => handleSend("payment-link")} disabled={sending !== null}>
+            <CreditCard className="size-3.5 mr-2" />
+            Card payment link
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

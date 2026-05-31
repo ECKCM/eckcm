@@ -200,15 +200,11 @@ export async function POST(request: Request) {
       logger.error("[payment/link/confirm] Google Sheets sync failed", { error: String(err) })
     );
 
-    // One-time link: consume the token so it can't be reused.
-    await admin
-      .from("eckcm_registrations")
-      .update({
-        payment_link_token: null,
-        payment_link_token_hash: null,
-        payment_link_expires_at: null,
-      })
-      .eq("id", registration.id);
+    // NOTE: We intentionally KEEP the link token after payment. Reuse for a
+    // second charge is already impossible (create-intent/confirm short-circuit
+    // to "already paid" once status is PAID), and keeping the token means a
+    // registrant who re-opens the same link sees a friendly "already paid"
+    // screen instead of an "invalid/expired link" error.
 
     await admin.from("eckcm_audit_logs").insert({
       event_id: registration.event_id,
