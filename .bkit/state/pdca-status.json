@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-05-28T17:31:55.490Z",
+  "lastUpdated": "2026-05-30T03:52:43.152Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -128,7 +128,9 @@
     "checkout",
     "[sessionId]",
     "kiosk",
-    "transfers"
+    "transfers",
+    "new",
+    "payment-link"
   ],
   "primaryFeature": "payment-complete",
   "features": {
@@ -426,9 +428,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T21:02:20.119Z",
-        "lastUpdated": "2026-03-31T20:27:35.405Z"
+        "lastUpdated": "2026-05-30T03:41:09.994Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/confirm/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/link/confirm/route.ts"
     },
     "groups": {
       "phase": "do",
@@ -608,9 +610,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:04:07.405Z",
-        "lastUpdated": "2026-04-01T06:22:38.148Z"
+        "lastUpdated": "2026-05-30T03:40:43.075Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/create-intent/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/link/create-intent/route.ts"
     },
     "registration": {
       "phase": "do",
@@ -790,7 +792,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:52:25.895Z",
-        "lastUpdated": "2026-05-27T03:33:03.646Z"
+        "lastUpdated": "2026-05-28T21:53:50.065Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/adjustments/route.ts"
     },
@@ -803,7 +805,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:52:55.309Z",
-        "lastUpdated": "2026-05-27T03:33:21.837Z"
+        "lastUpdated": "2026-05-28T21:53:06.510Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/adjustments/[adjustmentId]/process/route.ts"
     },
@@ -816,7 +818,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:53:31.955Z",
-        "lastUpdated": "2026-05-28T17:23:35.023Z"
+        "lastUpdated": "2026-05-30T03:51:58.820Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/registration-detail-sheet.tsx"
     },
@@ -842,9 +844,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T13:18:01.874Z",
-        "lastUpdated": "2026-05-28T17:31:55.490Z"
+        "lastUpdated": "2026-05-28T23:39:55.734Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/test/test-client.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/test/page.tsx"
     },
     "invoices": {
       "phase": "do",
@@ -920,9 +922,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T15:01:55.890Z",
-        "lastUpdated": "2026-03-30T15:04:44.960Z"
+        "lastUpdated": "2026-05-28T23:39:08.407Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/session/session-list-client.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/session/page.tsx"
     },
     "departments": {
       "phase": "do",
@@ -1076,7 +1078,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T20:30:48.201Z",
-        "lastUpdated": "2026-04-01T02:25:08.569Z"
+        "lastUpdated": "2026-05-30T03:38:27.974Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/adjustment.service.ts"
     },
@@ -1193,9 +1195,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T23:03:35.831Z",
-        "lastUpdated": "2026-04-01T01:29:53.833Z"
+        "lastUpdated": "2026-05-30T03:52:06.882Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/epass/[token]/epass-viewer.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/pay/[token]/pay-client.tsx"
     },
     "[id]": {
       "phase": "do",
@@ -1206,9 +1208,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T23:03:46.628Z",
-        "lastUpdated": "2026-05-27T19:15:50.079Z"
+        "lastUpdated": "2026-05-28T23:39:00.559Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/scan-sessions/[id]/scan-session-detail-client.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/scan-sessions/[id]/page.tsx"
     },
     "epass": {
       "phase": "do",
@@ -1336,7 +1338,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-01T02:25:27.097Z",
-        "lastUpdated": "2026-05-27T12:18:08.255Z"
+        "lastUpdated": "2026-05-30T03:52:43.152Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/schemas/api.ts"
     },
@@ -1661,9 +1663,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T17:57:18.985Z",
-        "lastUpdated": "2026-05-28T17:29:11.084Z"
+        "lastUpdated": "2026-05-28T23:38:15.097Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/components/checkin/cache-status-bar.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/checkin/back-button.tsx"
     },
     "main": {
       "phase": "do",
@@ -1674,9 +1676,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T18:01:49.312Z",
-        "lastUpdated": "2026-05-28T17:30:07.893Z"
+        "lastUpdated": "2026-05-28T23:38:33.057Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/main/main-checkin-client.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/main/page.tsx"
     },
     "stats": {
       "phase": "do",
@@ -1687,9 +1689,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T18:02:45.908Z",
-        "lastUpdated": "2026-05-27T22:15:27.795Z"
+        "lastUpdated": "2026-05-28T23:39:46.568Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/checkin/stats/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/stats/page.tsx"
     },
     "scan-sessions": {
       "phase": "do",
@@ -1700,9 +1702,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T18:59:14.474Z",
-        "lastUpdated": "2026-05-27T19:15:16.628Z"
+        "lastUpdated": "2026-05-28T23:38:51.526Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/scan-sessions/scan-sessions-list-client.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/scan-sessions/page.tsx"
     },
     "recent": {
       "phase": "do",
@@ -1739,9 +1741,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T19:06:48.105Z",
-        "lastUpdated": "2026-05-28T17:30:49.403Z"
+        "lastUpdated": "2026-05-28T23:38:41.410Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/meal/meal-checkin-client.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/meal/page.tsx"
     },
     "checkout": {
       "phase": "do",
@@ -1752,9 +1754,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T19:08:25.803Z",
-        "lastUpdated": "2026-05-28T17:31:03.505Z"
+        "lastUpdated": "2026-05-28T23:38:25.313Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/checkout/checkout-client.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/checkout/page.tsx"
     },
     "[sessionId]": {
       "phase": "do",
@@ -1765,9 +1767,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T19:09:48.163Z",
-        "lastUpdated": "2026-05-28T17:31:30.213Z"
+        "lastUpdated": "2026-05-28T23:39:17.233Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/session/[sessionId]/session-dashboard-client.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/session/[sessionId]/page.tsx"
     },
     "kiosk": {
       "phase": "do",
@@ -1778,7 +1780,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T19:11:11.175Z",
-        "lastUpdated": "2026-05-27T22:22:35.858Z"
+        "lastUpdated": "2026-05-28T23:40:07.929Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/kiosk/kiosk-checkin-client.tsx"
     },
@@ -1794,6 +1796,32 @@
         "lastUpdated": "2026-05-28T17:19:16.201Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/transfers/route.ts"
+    },
+    "new": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-05-28T23:39:22.859Z",
+        "lastUpdated": "2026-05-28T23:39:38.110Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/session/new/new-session-form.tsx"
+    },
+    "payment-link": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-05-30T03:40:13.071Z",
+        "lastUpdated": "2026-05-30T03:51:41.554Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/payment-link/route.ts"
     }
   },
   "pipeline": {
@@ -1804,7 +1832,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-05-28T17:31:55.490Z"
+    "lastActivity": "2026-05-30T03:52:43.152Z"
   },
   "history": [
     {
@@ -9364,6 +9392,384 @@
     {
       "timestamp": "2026-05-28T17:31:55.490Z",
       "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T21:52:45.453Z",
+      "feature": "process",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T21:52:58.830Z",
+      "feature": "process",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T21:53:06.510Z",
+      "feature": "process",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T21:53:20.022Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T21:53:27.061Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T21:53:42.573Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T21:53:50.065Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T21:54:03.970Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T21:54:10.469Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T21:54:16.639Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:35:46.706Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:35:51.017Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:38:15.097Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:38:21.019Z",
+      "feature": "checkout",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:38:25.313Z",
+      "feature": "checkout",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:38:29.558Z",
+      "feature": "main",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:38:33.057Z",
+      "feature": "main",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:38:37.496Z",
+      "feature": "meal",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:38:41.410Z",
+      "feature": "meal",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:38:46.055Z",
+      "feature": "scan-sessions",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:38:51.526Z",
+      "feature": "scan-sessions",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:38:55.975Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:00.559Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:04.883Z",
+      "feature": "session",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:08.407Z",
+      "feature": "session",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:12.623Z",
+      "feature": "[sessionId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:17.233Z",
+      "feature": "[sessionId]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:22.859Z",
+      "feature": "new",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:26.480Z",
+      "feature": "new",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:33.685Z",
+      "feature": "new",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:38.110Z",
+      "feature": "new",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:42.881Z",
+      "feature": "stats",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:46.568Z",
+      "feature": "stats",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:50.697Z",
+      "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:39:55.734Z",
+      "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:40:02.127Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-28T23:40:07.929Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T03:37:45.901Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T03:37:49.027Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T03:37:50.459Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T03:37:52.112Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T03:59:38.770Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T04:07:40.277Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T04:14:46.935Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T04:14:51.972Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T04:14:57.374Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T04:15:02.399Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T04:37:03.048Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T04:37:04.504Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T04:37:05.937Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-29T04:37:07.413Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-30T03:38:27.974Z",
+      "feature": "adjustment.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-30T03:40:13.071Z",
+      "feature": "payment-link",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-30T03:40:43.075Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-30T03:41:09.994Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-30T03:42:29.965Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-30T03:44:21.376Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-30T03:51:38.979Z",
+      "feature": "payment-link",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-30T03:51:41.554Z",
+      "feature": "payment-link",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-30T03:51:49.880Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-30T03:51:58.820Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-30T03:52:06.882Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-30T03:52:43.152Z",
+      "feature": "schemas",
       "phase": "do",
       "action": "updated"
     }

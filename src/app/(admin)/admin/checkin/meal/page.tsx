@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { CheckinBackButton } from "@/components/checkin/back-button";
 import { MealCheckinClient } from "./meal-checkin-client";
 
 export default async function MealCheckinPage() {
@@ -14,6 +15,7 @@ export default async function MealCheckinPage() {
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 border-b px-4 py-3">
+        <CheckinBackButton />
         <h1 className="text-lg font-semibold">Meal Check-in</h1>
       </div>
       <div className="p-6">

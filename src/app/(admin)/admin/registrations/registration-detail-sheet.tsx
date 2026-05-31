@@ -588,6 +588,13 @@ export function RegistrationDetailSheet({
                     onChanged={onRefresh}
                   />
                 )}
+                {/* Self-service card payment link — only for SUBMITTED (Zelle/Check
+                    awaiting payment). Lets the registrant switch to card at full price. */}
+                {reg.status === "SUBMITTED" && (
+                  <div className="mt-3">
+                    <CardPaymentLinkButton registrationId={reg.id} />
+                  </div>
+                )}
                 <div className="mt-3">
                   <ResendEmailButton registrationId={reg.id} />
                 </div>
@@ -1128,6 +1135,14 @@ function AdjustmentsPanel({
 
   const inputCents = Math.round(parseFloat(newAmountDollars) * 100) || 0;
   const isRefundAction = newAction === "refund";
+  // Zelle/Check/Manual: no Stripe call, no processing fee. Label the refund
+  // generically so the UI doesn't claim a Stripe refund that won't happen.
+  const isManualMethod =
+    !!paymentMethod &&
+    ["ZELLE", "CHECK", "MANUAL", "MANUAL_PAYMENT"].includes(
+      paymentMethod.toUpperCase()
+    );
+  const refundLabel = isManualMethod ? "Refund" : "Stripe refund";
 
   // Refund limit: processing fee is non-refundable
   const feeBase = summary && summary.original_amount > 0 ? summary.original_amount : currentAmount;
@@ -1350,7 +1365,7 @@ function AdjustmentsPanel({
                   <p className="text-muted-foreground">
                     New Total: {formatMoney(Math.max(0, newAmountCents))}
                     {inputCents > 0 && (
-                      <> · Stripe refund: {formatMoney(stripeRefund)}
+                      <> · {refundLabel}: {formatMoney(stripeRefund)}
                         {proportionalRefundFee > 0 && (
                           <> (fee {formatMoney(proportionalRefundFee)} withheld)</>
                         )}
@@ -1475,7 +1490,7 @@ function AdjustmentsPanel({
                 const actual = Math.max(0, Math.min(rawRefund, availableRefund));
                 return (
                   <p className="text-xs mt-1.5 text-muted-foreground">
-                    Stripe refund: {formatMoney(actual)}
+                    {refundLabel}: {formatMoney(actual)}
                   </p>
                 );
               })()}
@@ -1774,6 +1789,78 @@ function StayAndMealsEditor({
 }
 
 // ─── Resend Email Button ────────────────────────────────────
+
+function CardPaymentLinkButton({ registrationId }: { registrationId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [url, setUrl] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/registrations/${registrationId}/payment-link`,
+        { method: "POST" }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to create payment link");
+      setUrl(data.url);
+      setOpen(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create payment link");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("링크가 복사되었습니다");
+    } catch {
+      toast.error("복사에 실패했습니다");
+    }
+  };
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={handleGenerate} disabled={loading}>
+        {loading ? (
+          <Loader2 className="size-3 animate-spin" />
+        ) : (
+          <CreditCard className="size-3" />
+        )}
+        카드 결제 링크 생성
+      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>카드 결제 링크</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 링크를 신청자에게 보내세요. 로그인 없이 카드로 결제할 수 있습니다.
+              결제가 완료되면 자동으로 PAID 처리됩니다. 카드 정가로 청구됩니다 (수동결제 할인 제외).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex items-center gap-2">
+            <Input
+              readOnly
+              value={url ?? ""}
+              className="font-mono text-xs"
+              onFocus={(e) => e.target.select()}
+            />
+            <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
+              <Copy className="size-3" />
+            </Button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>닫기</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
 
 function ResendEmailButton({ registrationId }: { registrationId: string }) {
   const [sending, setSending] = useState<null | "confirmation" | "receipt" | "epass">(null);

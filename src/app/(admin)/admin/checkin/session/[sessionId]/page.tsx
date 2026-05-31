@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
+import { CheckinBackButton } from "@/components/checkin/back-button";
 import { SessionDashboardClient } from "./session-dashboard-client";
 
 export default async function SessionDetailPage({
@@ -28,6 +29,7 @@ export default async function SessionDetailPage({
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 border-b px-4 py-3">
+        <CheckinBackButton href="/admin/checkin/session" />
         <h1 className="text-lg font-semibold">
           Session: {session.name_en}
         </h1>

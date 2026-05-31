@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { CheckinBackButton } from "@/components/checkin/back-button";
 import { TestCheckinClient } from "./test-client";
 
 interface ParticipantRow {
@@ -73,6 +74,7 @@ export default async function TestCheckinPage() {
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 border-b px-4 py-3">
+        <CheckinBackButton />
         <h1 className="text-lg font-semibold">Test Check-in (Sandbox)</h1>
       </div>
       <div className="p-6">

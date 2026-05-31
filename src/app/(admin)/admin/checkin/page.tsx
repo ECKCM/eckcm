@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -15,6 +16,7 @@ import {
   BarChart3,
   Beaker,
   History,
+  ArrowLeft,
 } from "lucide-react";
 
 const modeCards = [
@@ -72,6 +74,11 @@ export default function CheckinHubPage() {
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 border-b px-4 py-3">
+        <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+          <Link href="/admin" aria-label="Back to admin">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
         <h1 className="text-lg font-semibold">Check-in</h1>
       </div>
       <div className="p-6">

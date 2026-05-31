@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
+import { CheckinBackButton } from "@/components/checkin/back-button";
 import { ScanSessionDetailClient } from "./scan-session-detail-client";
 
 export default async function ScanSessionDetailPage({
@@ -26,6 +27,7 @@ export default async function ScanSessionDetailPage({
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 border-b px-4 py-3">
+        <CheckinBackButton href="/admin/checkin/scan-sessions" />
         <h1 className="text-lg font-semibold">
           Scan Session: {session.label ?? session.kind}
         </h1>

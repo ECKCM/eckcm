@@ -15,8 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import Link from "next/link";
+import { Loader2 } from "lucide-react";
 
 interface EventOption {
   id: string;
@@ -68,13 +67,6 @@ export function NewSessionForm({ events }: { events: EventOption[] }) {
 
   return (
     <div className="max-w-lg mx-auto">
-      <Link href="/admin/checkin/session">
-        <Button variant="ghost" size="sm" className="mb-4 gap-1">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Sessions
-        </Button>
-      </Link>
-
       <Card>
         <CardHeader>
           <CardTitle>New Session</CardTitle>

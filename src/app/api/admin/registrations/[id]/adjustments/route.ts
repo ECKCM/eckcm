@@ -138,6 +138,7 @@ export async function POST(
   let stripeRefundId: string | undefined;
   let paymentMethod: string | null = null;
   let cappedRefundAmount: number | undefined;
+  let isManualRefund = false;
   let paymentRow:
     | {
         id: string;
@@ -191,18 +192,13 @@ export async function POST(
         { status: 400 }
       );
     }
-    if (!payment.stripe_payment_intent_id) {
-      return NextResponse.json(
-        {
-          error:
-            "Payment is non-Stripe (e.g. Zelle/Check). Use 'pending', 'waive', or 'credit' for manual tracking.",
-        },
-        { status: 400 }
-      );
-    }
+    // Zelle/Check/Manual: no Stripe PaymentIntent. Don't block — we still record
+    // the refund (money returned out-of-band) and skip the Stripe call below.
+    isManualRefund = !payment.stripe_payment_intent_id;
 
     paymentRow = payment;
-    paymentMethod = payment.payment_method ?? "CARD"; // PI exists → must be card
+    paymentMethod =
+      payment.payment_method ?? (isManualRefund ? "MANUAL" : "CARD");
 
     // Customer-received refund = gross intent − proportional fee.
     // Stripe doesn't refund fees on partials, so the church withholds the fee share
@@ -315,51 +311,56 @@ export async function POST(
       );
     }
 
-    // Call Stripe (idempotency keyed on adjustment id — retry-safe)
-    try {
-      const stripe = await getStripeForMode(stripeModeForRefund);
-      const refund = await stripe.refunds.create(
-        {
-          payment_intent: payment.stripe_payment_intent_id!,
-          amount: refundAmount,
-          reason: "requested_by_customer",
-        },
-        { idempotencyKey: `adj-${adjustment.id}` }
-      );
-      stripeRefundId = refund.id;
-    } catch (err) {
-      // Stripe failed — rollback refund row AND adjustment row
-      await admin.from("eckcm_refunds").delete().eq("id", refundId);
-      await rollbackAdjustment(admin, {
-        adjustmentId: adjustment.id,
-        registrationId,
-        previousAmount: adjustment.previous_amount,
-        newAmount: new_amount,
-      });
-      logger.error(
-        "[adjustments/create] Stripe refund failed, DB rolled back",
-        { error: String(err) }
-      );
-      return NextResponse.json(
-        {
-          error: err instanceof Error ? err.message : "Stripe refund failed",
-        },
-        { status: 500 }
-      );
+    // Call Stripe (idempotency keyed on adjustment id — retry-safe).
+    // Skipped for manual payments — there's no PaymentIntent to refund.
+    if (!isManualRefund) {
+      try {
+        const stripe = await getStripeForMode(stripeModeForRefund);
+        const refund = await stripe.refunds.create(
+          {
+            payment_intent: payment.stripe_payment_intent_id!,
+            amount: refundAmount,
+            reason: "requested_by_customer",
+          },
+          { idempotencyKey: `adj-${adjustment.id}` }
+        );
+        stripeRefundId = refund.id;
+      } catch (err) {
+        // Stripe failed — rollback refund row AND adjustment row
+        await admin.from("eckcm_refunds").delete().eq("id", refundId);
+        await rollbackAdjustment(admin, {
+          adjustmentId: adjustment.id,
+          registrationId,
+          previousAmount: adjustment.previous_amount,
+          newAmount: new_amount,
+        });
+        logger.error(
+          "[adjustments/create] Stripe refund failed, DB rolled back",
+          { error: String(err) }
+        );
+        return NextResponse.json(
+          {
+            error: err instanceof Error ? err.message : "Stripe refund failed",
+          },
+          { status: 500 }
+        );
+      }
     }
 
-    // Stripe refund SUCCEEDED — finalize DB state.
-    // Failures here are logged but NOT rolled back: the refund is a fact.
+    // Refund recorded — finalize DB state. Failures here are logged but NOT
+    // rolled back: the refund is a fact. (Manual refunds have no stripe_refund_id.)
     try {
-      await admin
-        .from("eckcm_refunds")
-        .update({ stripe_refund_id: stripeRefundId })
-        .eq("id", refundId);
+      if (!isManualRefund) {
+        await admin
+          .from("eckcm_refunds")
+          .update({ stripe_refund_id: stripeRefundId })
+          .eq("id", refundId);
 
-      await admin
-        .from("eckcm_registration_adjustments")
-        .update({ stripe_refund_id: stripeRefundId })
-        .eq("id", adjustment.id);
+        await admin
+          .from("eckcm_registration_adjustments")
+          .update({ stripe_refund_id: stripeRefundId })
+          .eq("id", adjustment.id);
+      }
 
       const postSummary = await getRefundSummary(
         admin,
@@ -427,6 +428,7 @@ export async function POST(
       reason: reason.trim(),
       stripe_refund_id: stripeRefundId ?? null,
       customer_received_cents: cappedRefundAmount ?? null,
+      payment_method: paymentMethod,
     },
   });
 

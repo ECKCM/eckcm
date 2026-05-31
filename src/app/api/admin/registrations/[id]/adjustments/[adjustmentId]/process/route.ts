@@ -140,17 +140,12 @@ export async function POST(
         { status: 400 }
       );
     }
-    if (!payment.stripe_payment_intent_id) {
-      return NextResponse.json(
-        {
-          error:
-            "Payment is non-Stripe (e.g. Zelle/Check). Mark as waive/credit for manual tracking.",
-        },
-        { status: 400 }
-      );
-    }
+    // Zelle/Check/Manual payments have no Stripe PaymentIntent. We don't call
+    // Stripe — the money is returned out-of-band (admin Zelles it back / voids
+    // the check). We only RECORD the refund so status/ledger/email/audit flow.
+    const isManual = !payment.stripe_payment_intent_id;
 
-    paymentMethod = payment.payment_method ?? "CARD";
+    paymentMethod = payment.payment_method ?? (isManual ? "MANUAL" : "CARD");
 
     // Pending adjustments store the GROSS refund (admin's typed amount).
     // Apply proportional fee to compute the customer-received refund, same as
@@ -226,43 +221,48 @@ export async function POST(
       );
     }
 
-    // Step 2: Issue Stripe refund (idempotency keyed on adjustment id)
-    try {
-      const stripe = await getStripeForMode(stripeMode);
-      const refund = await stripe.refunds.create(
-        {
-          payment_intent: payment.stripe_payment_intent_id,
-          amount: cappedRefundAmount,
-          reason: "requested_by_customer",
-        },
-        { idempotencyKey: `adj-${adjustmentId}` }
-      );
-      stripeRefundId = refund.id;
-    } catch (err) {
-      // Stripe failed — rollback the DB refund record
-      await admin.from("eckcm_refunds").delete().eq("id", refundId);
-      logger.error(
-        "[adjustments/process] Stripe refund failed, refund row rolled back",
-        { error: String(err) }
-      );
-      return NextResponse.json(
-        {
-          error:
-            err instanceof Error
-              ? err.message
-              : "Stripe refund failed",
-        },
-        { status: 500 }
-      );
+    // Step 2: Issue Stripe refund (idempotency keyed on adjustment id).
+    // Skipped for manual payments — there's no PaymentIntent to refund.
+    if (!isManual) {
+      try {
+        const stripe = await getStripeForMode(stripeMode);
+        const refund = await stripe.refunds.create(
+          {
+            payment_intent: payment.stripe_payment_intent_id,
+            amount: cappedRefundAmount,
+            reason: "requested_by_customer",
+          },
+          { idempotencyKey: `adj-${adjustmentId}` }
+        );
+        stripeRefundId = refund.id;
+      } catch (err) {
+        // Stripe failed — rollback the DB refund record
+        await admin.from("eckcm_refunds").delete().eq("id", refundId);
+        logger.error(
+          "[adjustments/process] Stripe refund failed, refund row rolled back",
+          { error: String(err) }
+        );
+        return NextResponse.json(
+          {
+            error:
+              err instanceof Error
+                ? err.message
+                : "Stripe refund failed",
+          },
+          { status: 500 }
+        );
+      }
     }
 
-    // Stripe refund SUCCEEDED — finalize DB. Failures here are logged but
-    // not rolled back: the refund is a fact.
+    // Refund recorded — finalize DB. Failures here are logged but not rolled
+    // back: the refund is a fact. (Manual refunds have no stripe_refund_id.)
     try {
-      await admin
-        .from("eckcm_refunds")
-        .update({ stripe_refund_id: stripeRefundId })
-        .eq("id", refundId);
+      if (!isManual) {
+        await admin
+          .from("eckcm_refunds")
+          .update({ stripe_refund_id: stripeRefundId })
+          .eq("id", refundId);
+      }
 
       const postSummary = await getRefundSummary(
         admin,
@@ -333,6 +333,7 @@ export async function POST(
       difference: adj.difference,
       stripe_refund_id: stripeRefundId ?? null,
       customer_received_cents: cappedRefundAmount ?? null,
+      payment_method: paymentMethod,
     },
   });
 
