@@ -59,7 +59,7 @@ export function buildConfirmationEmail({
           <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${i + 1}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(p.name)}</td>
           ${showEPass ? `<td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">
-            <a href="${p.epassUrl}" style="color: #2563eb; text-decoration: underline;">View E-Pass</a>
+            <a href="${p.epassUrl}" style="display: inline-block; padding: 12px 20px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; line-height: 1.2; white-space: nowrap;">View E-Pass</a>
           </td>` : ""}
         </tr>`
     )

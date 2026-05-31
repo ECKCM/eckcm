@@ -5,7 +5,7 @@ import { logEmail } from "@/lib/email/email-log.service";
 import { buildConfirmationEmail } from "@/lib/email/templates/confirmation";
 import { generateInvoicePdf } from "@/lib/pdf/generate";
 import { generateRegistrationSummaryPdf, type SummaryParticipant } from "@/lib/pdf/generate-summary";
-import { generateEPassToken } from "@/lib/services/epass.service";
+import { ensureEPassTokens, buildEPassUrl } from "@/lib/email/epass-link";
 import { withTimeout } from "@/lib/utils/with-timeout";
 import { formatCurrency } from "@/lib/utils/formatters";
 
@@ -25,7 +25,7 @@ export async function sendConfirmationEmail(
   const admin = createAdminClient();
 
   // 1. Load registration, memberships, tokens, and invoice in parallel
-  const [regResult, membershipsResult, tokensResult, invoiceResult] = await Promise.all([
+  const [regResult, membershipsResult, invoiceResult] = await Promise.all([
     admin
       .from("eckcm_registrations")
       .select(
@@ -63,11 +63,6 @@ export async function sendConfirmationEmail(
       `
       )
       .eq("eckcm_groups.registration_id", registrationId),
-    admin
-      .from("eckcm_epass_tokens")
-      .select("person_id, token")
-      .eq("registration_id", registrationId)
-      .eq("is_active", true),
     admin
       .from("eckcm_invoices")
       .select(
@@ -113,79 +108,10 @@ export async function sendConfirmationEmail(
     return;
   }
 
-  if (tokensResult.error) {
-    console.error(
-      `[sendConfirmationEmail] Failed to query epass tokens for registration ${registrationId}:`,
-      tokensResult.error
-    );
-  }
-
-  const tokenMap = new Map(
-    (tokensResult.data ?? []).map((t) => [t.person_id, t.token])
-  );
-
-  // Recovery: PAID registration with missing tokens — generate them now.
-  // This handles cases where token insertion failed during payment confirmation.
-  if ((reg.status === "PAID" || reg.status === "APPROVED") && (membershipsResult.data ?? []).length > 0) {
-    const missingPersonIds = (membershipsResult.data as { person_id: string }[])
-      .map((m) => m.person_id)
-      .filter((id) => !tokenMap.has(id));
-
-    if (missingPersonIds.length > 0) {
-      console.warn(
-        `[sendConfirmationEmail] PAID registration ${registrationId} missing ${missingPersonIds.length} epass token(s) — recovering`
-      );
-      try {
-        const newTokens = missingPersonIds.map((personId) => {
-          const { token, tokenHash } = generateEPassToken();
-          return {
-            person_id: personId,
-            registration_id: registrationId,
-            token,
-            token_hash: tokenHash,
-            is_active: true,
-          };
-        });
-        const { data: inserted, error: recoveryError } = await admin
-          .from("eckcm_epass_tokens")
-          .insert(newTokens)
-          .select("person_id, token");
-        if (recoveryError) {
-          console.error(
-            `[sendConfirmationEmail] Token recovery insert failed:`,
-            recoveryError
-          );
-        } else {
-          (inserted ?? []).forEach((t) => tokenMap.set(t.person_id, t.token));
-          console.log(
-            `[sendConfirmationEmail] Token recovery succeeded: generated ${inserted?.length ?? 0} token(s)`
-          );
-        }
-      } catch (err) {
-        console.error(`[sendConfirmationEmail] Token recovery error:`, err);
-      }
-    }
-  }
-
   const baseUrl = process.env.APP_URL || "https://my.eckcm.com";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const participants = (membershipsResult.data ?? []).map((m: any) => {
-    const person = m.eckcm_people;
-    const name =
-      person.display_name_ko ||
-      `${person.first_name_en} ${person.last_name_en}`;
-    const token = tokenMap.get(m.person_id);
-    // Build slug with name prefix so extractTokenFromSlug works correctly
-    // (tokens can contain underscores from base64url encoding)
-    const slug = token
-      ? `${person.first_name_en}${person.last_name_en}`.replace(/[^a-zA-Z0-9]/g, "") + `_${token}`
-      : null;
-    return {
-      name,
-      epassUrl: slug ? `${baseUrl}/epass/${slug}` : `${baseUrl}/dashboard/epass`,
-    };
-  });
+  const memberships = (membershipsResult.data ?? []) as any[];
 
   const eventDates = `${reg.start_date} ~ ${reg.end_date}`;
   const totalAmount = formatCurrency(reg.total_amount_cents);
@@ -258,6 +184,35 @@ export async function sendConfirmationEmail(
 
   // Always include invoice/receipt in email
   const includeInvoice = invoiceInfo;
+
+  // E-Pass links are shown unless this is a manual payment still awaiting
+  // confirmation (mirrors the template's showEPass logic). Only ensure tokens
+  // when links will actually be rendered, so we don't activate passes early for
+  // pending manual payments.
+  const showEPass = !(isManualPayment && !includeInvoice);
+  const tokenMap = showEPass
+    ? await ensureEPassTokens(
+        admin,
+        registrationId,
+        memberships.map((m) => m.person_id),
+      )
+    : new Map<string, string>();
+
+  const participants = memberships.map((m) => {
+    const person = m.eckcm_people;
+    const name =
+      person.display_name_ko ||
+      `${person.first_name_en} ${person.last_name_en}`;
+    return {
+      name,
+      epassUrl: buildEPassUrl(
+        baseUrl,
+        person.first_name_en,
+        person.last_name_en,
+        tokenMap.get(m.person_id),
+      ),
+    };
+  });
 
   const html = buildConfirmationEmail({
     confirmationCode: reg.confirmation_code,

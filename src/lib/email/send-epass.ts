@@ -3,6 +3,7 @@ import { getResendClient } from "@/lib/email/resend";
 import { getEmailConfig, getEmailHeaders } from "@/lib/email/email-config";
 import { logEmail } from "@/lib/email/email-log.service";
 import { buildEPassEmail } from "@/lib/email/templates/epass";
+import { ensureEPassTokens, buildEPassUrl } from "@/lib/email/epass-link";
 
 /**
  * Resend per-participant ePass emails for a registration.
@@ -20,7 +21,7 @@ export async function sendEPassEmails(
 ): Promise<{ sent: number; skipped: number; failed: number }> {
   const admin = createAdminClient();
 
-  const [regResult, membershipsResult, tokensResult] = await Promise.all([
+  const [regResult, membershipsResult] = await Promise.all([
     admin
       .from("eckcm_registrations")
       .select(
@@ -37,11 +38,6 @@ export async function sendEPassEmails(
          eckcm_groups!inner(registration_id)`,
       )
       .eq("eckcm_groups.registration_id", registrationId),
-    admin
-      .from("eckcm_epass_tokens")
-      .select("person_id, token")
-      .eq("registration_id", registrationId)
-      .eq("is_active", true),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,8 +47,16 @@ export async function sendEPassEmails(
     return { sent: 0, skipped: 0, failed: 0 };
   }
 
-  const tokenMap = new Map<string, string>();
-  (tokensResult.data ?? []).forEach((t) => tokenMap.set(t.person_id, t.token));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const memberships = (membershipsResult.data ?? []) as any[];
+
+  // Guarantee a token for every participant so each email links straight to the
+  // public /epass page (viewable without login) instead of /dashboard/epass.
+  const tokenMap = await ensureEPassTokens(
+    admin,
+    registrationId,
+    memberships.map((m) => m.person_id),
+  );
 
   const [emailConfig, resend] = await Promise.all([getEmailConfig(), getResendClient()]);
 
@@ -64,18 +68,18 @@ export async function sendEPassEmails(
   let skipped = 0;
   let failed = 0;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const m of (membershipsResult.data ?? []) as any[]) {
+  for (const m of memberships) {
     const person = m.eckcm_people;
     if (!person.email) {
       skipped++;
       continue;
     }
-    const token = tokenMap.get(m.person_id);
-    const slug = token
-      ? `${person.first_name_en}${person.last_name_en}`.replace(/[^a-zA-Z0-9]/g, "") + `_${token}`
-      : null;
-    const epassUrl = slug ? `${baseUrl}/epass/${slug}` : `${baseUrl}/dashboard/epass`;
+    const epassUrl = buildEPassUrl(
+      baseUrl,
+      person.first_name_en,
+      person.last_name_en,
+      tokenMap.get(m.person_id),
+    );
 
     const personName = `${person.first_name_en} ${person.last_name_en}`;
     const html = buildEPassEmail({
