@@ -49,7 +49,7 @@ export function buildConfirmationEmail({
 }: ConfirmationEmailProps): string {
   const isZellePending = paymentMethod === "ZELLE" && !!zelleInfo;
   const isCheckPending = paymentMethod === "CHECK" && !!checkInfo;
-  const isManualPending = (paymentMethod === "ZELLE" || paymentMethod === "CHECK") && !invoiceInfo;
+  const isManualPending = (paymentMethod === "ZELLE" || paymentMethod === "CHECK" || paymentMethod === "ONSITE") && !invoiceInfo;
   const isPaid = !!invoiceInfo;
   const showEPass = !isManualPending;
   const participantRows = participants

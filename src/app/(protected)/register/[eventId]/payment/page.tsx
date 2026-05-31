@@ -27,6 +27,7 @@ import {
   Clock,
   Globe,
   Banknote,
+  MapPin,
 } from "lucide-react";
 import { STRIPE_APPEARANCE } from "./_components/payment-constants";
 import { CopyButton } from "./_components/copy-button";
@@ -49,7 +50,14 @@ function ZelleIcon({ className }: { className?: string }) {
 /*  Page component                                                     */
 /* ------------------------------------------------------------------ */
 
-type PayMode = "stripe" | "zelle" | "check" | null;
+type PayMode = "stripe" | "zelle" | "check" | "onsite" | null;
+
+/* ------------------------------------------------------------------ */
+/*  Manual payment sub-method feature flags                            */
+/*  Toggle on/off here WITHOUT deleting code.                          */
+/* ------------------------------------------------------------------ */
+const CHECK_PAYMENT_ENABLED = false; // Check temporarily turned off (code retained)
+const ONSITE_PAYMENT_ENABLED = true; // Pay On-Site (현장 결제)
 
 export default function PaymentStep() {
   const searchParams = useSearchParams();
@@ -283,11 +291,22 @@ export default function PaymentStep() {
   // Derive which modes are available
   const stripeEnabled = enabledMethods.includes("card");
   const zelleEnabled = enabledMethods.includes("zelle");
-  // Auto-select payMode when only one option is available
+  const checkEnabled = CHECK_PAYMENT_ENABLED && enabledMethods.includes("check");
+  const onsiteEnabled = ONSITE_PAYMENT_ENABLED;
+  // Any "Manual Payment" sub-method available (Zelle / On-Site / Check)
+  const manualEnabled = zelleEnabled || onsiteEnabled || checkEnabled;
+  // First available manual sub-method (used as default when Manual is selected)
+  const firstManualMode: PayMode = zelleEnabled
+    ? "zelle"
+    : onsiteEnabled
+      ? "onsite"
+      : "check";
+  // Auto-select payMode when only one top-level option is available
   useEffect(() => {
-    if (stripeEnabled && !zelleEnabled) setPayMode("stripe");
-    else if (!stripeEnabled && zelleEnabled) setPayMode("zelle");
-  }, [stripeEnabled, zelleEnabled]);
+    if (stripeEnabled && !manualEnabled) setPayMode("stripe");
+    else if (!stripeEnabled && manualEnabled) setPayMode(firstManualMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stripeEnabled, manualEnabled]);
 
   /* ================================================================ */
   /*  Handlers                                                         */
@@ -360,7 +379,13 @@ export default function PaymentStep() {
     if (!paymentIntentId) {
       params.set(
         "method",
-        freeRegistration ? "free" : payMode === "check" ? "check" : "zelle"
+        freeRegistration
+          ? "free"
+          : payMode === "check"
+            ? "check"
+            : payMode === "onsite"
+              ? "onsite"
+              : "zelle"
       );
     }
     router.push(`/register/${eventId}/confirmation?${params.toString()}`);
@@ -515,7 +540,7 @@ export default function PaymentStep() {
                   <Separator className="my-2" />
                 </>
               )}
-              {(payMode === "zelle" || payMode === "check") && manualPaymentDiscount > 0 && (
+              {(payMode === "zelle" || payMode === "check" || payMode === "onsite") && manualPaymentDiscount > 0 && (
                 <>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t("payment.subtotal")}</span>
@@ -531,7 +556,7 @@ export default function PaymentStep() {
               <div className="flex justify-between items-center">
                 <span className="font-medium">{t("payment.totalDue")}</span>
                 <span className="text-2xl font-bold">
-                  {(payMode === "zelle" || payMode === "check") && manualPaymentDiscount > 0
+                  {(payMode === "zelle" || payMode === "check" || payMode === "onsite") && manualPaymentDiscount > 0
                     ? formatCurrency(Math.max(0, (invoiceTotal || amount) - manualPaymentDiscount))
                     : formatCurrency(amount)}
                 </span>
@@ -589,7 +614,7 @@ export default function PaymentStep() {
       {!loading && !error && (
         <>
           {/* Payment Mode Selector */}
-          {stripeEnabled && zelleEnabled && (
+          {stripeEnabled && manualEnabled && (
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -615,9 +640,9 @@ export default function PaymentStep() {
               </button>
               <button
                 type="button"
-                onClick={() => setPayMode("zelle")}
+                onClick={() => setPayMode(firstManualMode)}
                 className={`relative flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${
-                  payMode === "zelle" || payMode === "check"
+                  payMode === "zelle" || payMode === "check" || payMode === "onsite"
                     ? "border-primary bg-primary/5 shadow-sm"
                     : "border-transparent bg-muted/40 hover:bg-muted/60"
                 }`}
@@ -678,10 +703,13 @@ export default function PaymentStep() {
           )}
 
           {/* === Manual Payment Form (standalone, no Stripe Elements needed) === */}
-          {(payMode === "zelle" || payMode === "check") && zelleEnabled && (
+          {(payMode === "zelle" || payMode === "check" || payMode === "onsite") && manualEnabled && (
             <ManualPaymentForm
-              payMode={payMode as "zelle" | "check"}
+              payMode={payMode as "zelle" | "check" | "onsite"}
               setPayMode={setPayMode}
+              zelleEnabled={zelleEnabled}
+              checkEnabled={checkEnabled}
+              onsiteEnabled={onsiteEnabled}
               registrationId={registrationId!}
               confirmationCode={confirmationCode || ""}
               registrantName={registrantName}
@@ -1005,6 +1033,9 @@ function StripePaymentForm({
 function ManualPaymentForm({
   payMode,
   setPayMode,
+  zelleEnabled,
+  checkEnabled,
+  onsiteEnabled,
   registrationId,
   confirmationCode,
   registrantName,
@@ -1016,8 +1047,11 @@ function ManualPaymentForm({
   onSuccess,
   onCancel,
 }: {
-  payMode: "zelle" | "check";
+  payMode: "zelle" | "check" | "onsite";
   setPayMode: (mode: PayMode) => void;
+  zelleEnabled: boolean;
+  checkEnabled: boolean;
+  onsiteEnabled: boolean;
   registrationId: string;
   confirmationCode: string;
   registrantName: string;
@@ -1040,7 +1074,7 @@ function ManualPaymentForm({
   const zellePayerValid = zellePayerName.trim() !== "" && zellePayerPhone.replace(/\D/g, "") !== "" && zellePayerEmail.trim() !== "";
   const zelleMemo = `${confirmationCode}-${zellePayerName.replace(/\s+/g, "").toUpperCase()}-${zellePayerPhone.replace(/\D/g, "")}-${zellePayerEmail.replace(/[@.]/g, "").toLowerCase()}`;
 
-  const handleMethodChange = (method: "zelle" | "check") => {
+  const handleMethodChange = (method: "zelle" | "check" | "onsite") => {
     setAgreed(false);
     setPayMode(method);
   };
@@ -1052,7 +1086,9 @@ function ManualPaymentForm({
       const endpoint =
         payMode === "check"
           ? "/api/payment/check-submit"
-          : "/api/payment/zelle-submit";
+          : payMode === "onsite"
+            ? "/api/payment/onsite-submit"
+            : "/api/payment/zelle-submit";
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1076,7 +1112,9 @@ function ManualPaymentForm({
       toast.success(
         payMode === "check"
           ? t("payment.checkSubmitted")
-          : t("payment.zelleSubmitted")
+          : payMode === "onsite"
+            ? t("payment.onsiteSubmitted")
+            : t("payment.zelleSubmitted")
       );
       onSuccess();
     } catch (err) {
@@ -1097,6 +1135,7 @@ function ManualPaymentForm({
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Zelle option */}
+          {zelleEnabled && (
           <div className="rounded-lg border overflow-hidden">
             <button
               type="button"
@@ -1217,8 +1256,52 @@ function ManualPaymentForm({
               </div>
             )}
           </div>
+          )}
+
+          {/* Pay On-Site option */}
+          {onsiteEnabled && (
+          <div className="rounded-lg border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => handleMethodChange("onsite")}
+              className="w-full flex items-center gap-3 p-4 bg-background text-left"
+            >
+              <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                payMode === "onsite" ? "border-primary" : "border-muted-foreground/40"
+              }`}>
+                {payMode === "onsite" && <div className="h-2 w-2 rounded-full bg-primary" />}
+              </div>
+              <MapPin className="h-5 w-5 shrink-0 text-blue-700" />
+              <p className="text-sm font-medium">{t("payment.onsiteTitle")}</p>
+            </button>
+            {payMode === "onsite" && (
+              <div className="border-t px-4 pb-4 pt-3 space-y-3 bg-muted/20">
+                <div className="flex items-start gap-2">
+                  <Clock className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-blue-800">
+                    {t("payment.onsiteDesc")}
+                  </p>
+                </div>
+                <div className="space-y-2 text-sm text-blue-900 pl-1">
+                  <p>{t("payment.onsiteStep")} <strong className="font-mono">{formatCurrency(manualAmount)}</strong></p>
+                </div>
+                {/* Critical warning: must pay on-site or room & meals are unavailable */}
+                <div className="flex gap-2 rounded-lg border-2 border-red-400 bg-red-50 p-3 text-sm text-red-900">
+                  <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-red-600" />
+                  <div>
+                    <p className="font-bold">{t("payment.onsiteWarningTitle")}</p>
+                    <p className="mt-1 text-red-800">
+                      {t("payment.onsiteWarning")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          )}
 
           {/* Check option */}
+          {checkEnabled && (
           <div className="rounded-lg border overflow-hidden">
             <button
               type="button"
@@ -1264,6 +1347,7 @@ function ManualPaymentForm({
               </div>
             )}
           </div>
+          )}
 
           {/* Agreement checkbox */}
           <label className="flex items-start gap-3 cursor-pointer rounded-lg border bg-background p-3">
@@ -1278,7 +1362,9 @@ function ManualPaymentForm({
                 const amt = formatCurrency(manualAmount);
                 const text = payMode === "check"
                   ? t("payment.checkAgree", { amount: amt, code: confirmationCode })
-                  : t("payment.zelleAgree", { amount: amt });
+                  : payMode === "onsite"
+                    ? t("payment.onsiteAgree", { amount: amt })
+                    : t("payment.zelleAgree", { amount: amt });
                 const idx = text.indexOf(amt);
                 if (idx === -1) return text;
                 return (

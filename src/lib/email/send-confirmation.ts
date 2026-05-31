@@ -200,7 +200,8 @@ export async function sendConfirmationEmail(
 
   const isZelle = paymentMethod === "ZELLE";
   const isCheck = paymentMethod === "CHECK";
-  const isManualPayment = isZelle || isCheck;
+  const isOnsite = paymentMethod === "ONSITE";
+  const isManualPayment = isZelle || isCheck || isOnsite;
   const invoicePaid = invoiceData?.status === "SUCCEEDED";
   const isZellePending = isZelle && !invoicePaid;
   const isCheckPending = isCheck && !invoicePaid;
