@@ -168,7 +168,7 @@ export async function insertInitialPayment(
     totalAmountCents: number;
     stripePaymentIntentId?: string | null;
     adjustedBy: string;
-    source: "payment_confirm" | "admin_registration" | "admin_manual_payment";
+    source: "payment_confirm" | "admin_registration" | "admin_manual_payment" | "payment_link";
   }
 ): Promise<void> {
   // Idempotency check
