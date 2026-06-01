@@ -25,8 +25,6 @@ export function buildDonationReceiptEmail({
   receiptDate,
   donorName,
   contributionFormatted,
-  baseAmountFormatted,
-  coveredFeeFormatted,
   designation,
   paymentReference,
   orgLegalName,
@@ -36,7 +34,6 @@ export function buildDonationReceiptEmail({
   taxExemptStatement,
 }: DonationReceiptEmailProps): string {
   const greeting = donorName ? `Dear ${escapeHtml(donorName)},` : "Dear Friend,";
-  const showFeeBreakdown = !!coveredFeeFormatted && !!baseAmountFormatted;
   const orgAddressHtml = orgAddressLines.map((l) => escapeHtml(l)).join("<br>");
 
   return `
@@ -95,18 +92,9 @@ export function buildDonationReceiptEmail({
               <!-- Contribution amount -->
               <h3 style="font-size: 14px; color: #6b7280; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px;">Contribution</h3>
               <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 24px;">
-                ${showFeeBreakdown ? `
-                <tr>
-                  <td style="padding: 8px 12px; font-size: 13px; color: #6b7280;">Donation</td>
-                  <td style="padding: 8px 12px; font-size: 13px; color: #111827; text-align: right;">${baseAmountFormatted}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 12px; font-size: 13px; color: #6b7280; border-top: 1px solid #e5e7eb;">Processing fee covered by donor</td>
-                  <td style="padding: 8px 12px; font-size: 13px; color: #111827; text-align: right; border-top: 1px solid #e5e7eb;">${coveredFeeFormatted}</td>
-                </tr>` : ""}
                 <tr style="background-color: #f0fdf4;">
-                  <td style="padding: 12px; font-size: 14px; color: #111827; font-weight: bold; ${showFeeBreakdown ? "border-top: 1px solid #e5e7eb;" : ""}">Total Tax-Deductible Contribution</td>
-                  <td style="padding: 12px; font-size: 18px; font-weight: bold; color: #15803d; text-align: right; ${showFeeBreakdown ? "border-top: 1px solid #e5e7eb;" : ""}">${contributionFormatted}</td>
+                  <td style="padding: 12px; font-size: 14px; color: #111827; font-weight: bold;">Total Tax-Deductible Contribution</td>
+                  <td style="padding: 12px; font-size: 18px; font-weight: bold; color: #15803d; text-align: right;">${contributionFormatted}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 12px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb;">Payment Reference</td>

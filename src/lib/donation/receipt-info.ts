@@ -30,7 +30,7 @@ export const DONATION_RECEIPT_ORG_INFO: DonationReceiptOrgInfo = {
   ein: "20-5105419",
   // 수표 우편 주소와 동일 (send-confirmation.ts 기준)
   addressLines: ["574 Mountain Shadow Ln", "Maryville, TN 37803"],
-  contactEmail: "contact@eckcm.com",
+  contactEmail: "myeckcm@gmail.com",
   // 확정됨: 501(c)(3) 문구 + IRS 필수 "no goods or services" 진술
   taxExemptStatement:
     "ECKCM is a 501(c)(3) nonprofit organization. All donations are tax-deductible. " +
