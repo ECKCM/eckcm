@@ -38,14 +38,14 @@ const C_BLUE_TEXT = rgb(0.118, 0.251, 0.686); // #1e40af
 export async function generateDonationReceiptPdf(
   data: DonationReceiptPdfData
 ): Promise<Buffer> {
-  const {
-    receiptNumber,
-    receiptDate,
-    donorName,
-    contributionFormatted,
-    designation,
-    paymentReference,
-  } = data;
+  const { receiptNumber, receiptDate, contributionFormatted, paymentReference } = data;
+
+  // pdf-lib's StandardFonts use WinAnsi and throw on CJK/emoji. Donor names are
+  // restricted to Latin on the form, but legacy data could still contain Hangul
+  // — replace any unencodable char so receipt generation never crashes.
+  const winAnsiSafe = (s: string) => s.replace(/[^\x20-\x7E\xA0-\xFF]/g, "?");
+  const donorName = data.donorName ? winAnsiSafe(data.donorName) : null;
+  const designation = data.designation ? winAnsiSafe(data.designation) : null;
 
   const org = DONATION_RECEIPT_ORG_INFO;
 

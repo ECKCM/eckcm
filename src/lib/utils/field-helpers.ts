@@ -29,6 +29,18 @@ export function buildDisplayName(firstName: string, lastName: string): string {
   return `${firstName.trim()} ${lastName.trim()}`.trim();
 }
 
+/**
+ * Keep only Latin letters, spaces, and common name punctuation (no CJK/emoji).
+ * Preserves mixed case. Used where the value must render in a Latin-only PDF
+ * (e.g. donation tax receipts — pdf-lib's standard fonts can't encode Hangul).
+ */
+export function sanitizeLatinName(value: string): string {
+  return value
+    .replace(/[^A-Za-zÀ-ÖØ-öø-ÿ '.-]/g, "")
+    .replace(/^\s+/, "")
+    .replace(/\s{2,}/g, " ");
+}
+
 // ── Phone ─────────────────────────────────────────────────────────────
 
 /** Country code → expected digit count */

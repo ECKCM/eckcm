@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
-import { sanitizeEmailInput } from "@/lib/utils/field-helpers";
+import { sanitizeEmailInput, sanitizeLatinName } from "@/lib/utils/field-helpers";
 import { formatCurrency } from "@/lib/utils/formatters";
 
 const STRIPE_APPEARANCE = {
@@ -358,7 +358,6 @@ export default function DonationPage() {
                     {t("donation.zelleSendTo", { amount: formatCurrency(amountCents ?? 0) })}
                   </p>
                   <p className="rounded-md bg-muted px-3 py-2 font-mono text-sm">{ZELLE_EMAIL}</p>
-                  <p className="text-xs text-muted-foreground">{t("donation.zelleMemoNote")}</p>
                   <DonationMemoNote />
                 </div>
               )}
@@ -622,10 +621,13 @@ export default function DonationPage() {
               <Input
                 id="donorName"
                 value={donorName}
-                onChange={(e) => setDonorName(e.target.value)}
-                placeholder="Your name"
+                onChange={(e) => setDonorName(sanitizeLatinName(e.target.value))}
+                placeholder="Your name (English)"
                 className="mt-1"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("donation.nameEnglishOnly")}
+              </p>
             </div>
             <div>
               <Label htmlFor="donorEmail">{t("donation.donorEmail")}</Label>
@@ -712,7 +714,7 @@ function DonationMemoNote() {
       <div>
         <p className="text-sm">{t("donation.memoNote")}</p>
         <p className="mt-1.5 inline-block rounded bg-white/70 px-2 py-1 font-mono text-sm font-semibold">
-          ECKCM Donation
+          ECKCM Donation, {t("donation.memoName")}, {t("donation.memoPhone")}
         </p>
       </div>
     </div>
