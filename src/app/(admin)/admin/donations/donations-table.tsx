@@ -110,6 +110,17 @@ function totalOf(row: DonationRow): number {
   return row.amount_cents + (row.fee_cents ?? 0);
 }
 
+/** Estimated Stripe processing fee (2.9% + $0.30) — card only; manual = $0. */
+function stripeFeeOf(row: DonationRow): number {
+  if (methodKey(row) !== "card") return 0;
+  return Math.round(totalOf(row) * 0.029) + 30;
+}
+
+/** Net amount actually received, after estimated processing fees. */
+function netOf(row: DonationRow): number {
+  return totalOf(row) - stripeFeeOf(row);
+}
+
 const STATUS_STYLES: Record<string, string> = {
   SUCCEEDED: "bg-green-100 text-green-800 border-green-200",
   PENDING: "bg-amber-100 text-amber-800 border-amber-200",
@@ -147,17 +158,18 @@ export function DonationsTable({ donations }: { donations: DonationRow[] }) {
   }, [donations, search, methodFilter, statusFilter]);
 
   const totals = useMemo(() => {
-    let received = 0, receivedCount = 0, pending = 0, pendingCount = 0;
+    let received = 0, receivedCount = 0, netReceived = 0, pending = 0, pendingCount = 0;
     for (const d of donations) {
       if (d.status === "SUCCEEDED") {
         received += totalOf(d);
+        netReceived += netOf(d);
         receivedCount++;
       } else if (d.status === "PENDING") {
         pending += totalOf(d);
         pendingCount++;
       }
     }
-    return { received, receivedCount, pending, pendingCount };
+    return { received, receivedCount, netReceived, pending, pendingCount };
   }, [donations]);
 
   const markReceived = async (id: string) => {
@@ -305,14 +317,23 @@ export function DonationsTable({ donations }: { donations: DonationRow[] }) {
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Received</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Received (gross)</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-green-700">{formatCurrency(totals.received)}</p>
             <p className="text-xs text-muted-foreground">{totals.receivedCount} donations</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground">Net received</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-green-700">{formatCurrency(totals.netReceived)}</p>
+            <p className="text-xs text-muted-foreground">after est. processing fees</p>
           </CardContent>
         </Card>
         <Card>
