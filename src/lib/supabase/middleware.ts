@@ -1,6 +1,54 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getRequiredPermission, hasRequiredPermission } from "@/lib/permissions";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+
+// Staff/admins below SUPER_ADMIN / EVENT_ADMIN are capped to a 1-day session.
+const MAX_STAFF_SESSION_MS = 24 * 60 * 60 * 1000; // 1 day
+
+/**
+ * Whether this user's session should be force-expired.
+ *
+ * Anchored on `last_sign_in_at`, which is set at actual authentication and
+ * does NOT change on token refresh — so the session truly dies 24h after the
+ * user signed in, no matter how many times the access token was refreshed.
+ *
+ * Scope: only staff/admin users whose roles are neither SUPER_ADMIN nor
+ * EVENT_ADMIN. Super/event admins are exempt, and regular participants (no
+ * active staff assignment) are not capped at all. The role lookup only runs
+ * once the session is already older than the cap, so the common path stays
+ * query-free.
+ */
+async function isSessionExpiredForUser(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  user: User
+): Promise<boolean> {
+  if (!user.last_sign_in_at) return false;
+  const signedInAt = new Date(user.last_sign_in_at).getTime();
+  if (Number.isNaN(signedInAt)) return false;
+  if (Date.now() - signedInAt <= MAX_STAFF_SESSION_MS) return false;
+
+  const { data: assignments } = await supabase
+    .from("eckcm_staff_assignments")
+    .select("eckcm_roles(name)")
+    .eq("user_id", user.id)
+    .eq("is_active", true);
+
+  // No active staff assignment → regular participant → not capped.
+  if (!assignments || assignments.length === 0) return false;
+
+  const roleNames = assignments
+    .map((a) => (a.eckcm_roles as unknown as { name: string } | null)?.name)
+    .filter((name): name is string => Boolean(name));
+
+  // SUPER_ADMIN / EVENT_ADMIN keep their session.
+  if (roleNames.includes("SUPER_ADMIN") || roleNames.includes("EVENT_ADMIN")) {
+    return false;
+  }
+
+  return true;
+}
 
 export async function updateSession(request: NextRequest) {
   // Skip auth check for OAuth callback to prevent getUser() from
@@ -51,6 +99,20 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/login";
     const response = NextResponse.redirect(url);
     // Clear all Supabase auth cookies
+    request.cookies.getAll().forEach((cookie) => {
+      if (cookie.name.startsWith("sb-")) {
+        response.cookies.delete(cookie.name);
+      }
+    });
+    return response;
+  }
+
+  // 1-day session cap for staff/admins (except SUPER_ADMIN / EVENT_ADMIN).
+  // Clear the auth cookies and bounce to /login so they must sign in again.
+  if (user && (await isSessionExpiredForUser(supabase, user))) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    const response = NextResponse.redirect(url);
     request.cookies.getAll().forEach((cookie) => {
       if (cookie.name.startsWith("sb-")) {
         response.cookies.delete(cookie.name);
