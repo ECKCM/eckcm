@@ -570,6 +570,7 @@
     "checkMailTo": "Mail to:",
     "checkOrDesk": "You can also pay by check at the registration desk on-site.",
     "cashDesk": "Please bring your cash donation to the registration desk on-site.",
+    "memoNote": "Please include this note with your payment so we can record it as a donation:",
     "manualRecordNote": "Tap below to record your donation. A tax receipt is emailed once we confirm we've received it.",
     "recordDonation": "Record My Donation",
     "recording": "Recording...",

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Elements,
   PaymentElement,
+  ExpressCheckoutElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
@@ -17,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -38,6 +40,7 @@ import {
   Banknote,
   Wallet,
   MapPin,
+  StickyNote,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
@@ -356,6 +359,7 @@ export default function DonationPage() {
                   </p>
                   <p className="rounded-md bg-muted px-3 py-2 font-mono text-sm">{ZELLE_EMAIL}</p>
                   <p className="text-xs text-muted-foreground">{t("donation.zelleMemoNote")}</p>
+                  <DonationMemoNote />
                 </div>
               )}
 
@@ -373,6 +377,7 @@ export default function DonationPage() {
                       <p>Maryville, TN 37803</p>
                     </div>
                   </div>
+                  <DonationMemoNote />
                   <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-900">
                     <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-blue-600" />
                     <p className="text-sm">{t("donation.checkOrDesk")}</p>
@@ -697,6 +702,24 @@ function PageHeader() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Memo note — asks Zelle/Check donors to tag their payment           */
+/* ------------------------------------------------------------------ */
+function DonationMemoNote() {
+  const { t } = useI18n();
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+      <StickyNote className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+      <div>
+        <p className="text-sm">{t("donation.memoNote")}</p>
+        <p className="mt-1.5 inline-block rounded bg-white/70 px-2 py-1 font-mono text-sm font-semibold">
+          ECKCM Donation
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Stripe checkout form (inside Elements provider)                    */
 /* ------------------------------------------------------------------ */
 
@@ -712,14 +735,12 @@ function DonationCheckoutForm({
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
   const [ready, setReady] = useState(false);
+  const [expressAvailable, setExpressAvailable] = useState(false);
   const processingRef = useRef(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements || processingRef.current) return;
-
-    processingRef.current = true;
-    setProcessing(true);
+  // Shared: confirm with Stripe (card OR Apple/Google Pay), then record it.
+  const completePayment = async () => {
+    if (!stripe || !elements) return;
 
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
@@ -736,7 +757,6 @@ function DonationCheckoutForm({
       return;
     }
 
-    // Confirm on our backend
     if (paymentIntent) {
       try {
         await fetch("/api/donation/confirm", {
@@ -756,14 +776,63 @@ function DonationCheckoutForm({
     onSuccess();
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements || processingRef.current) return;
+    processingRef.current = true;
+    setProcessing(true);
+    await completePayment();
+  };
+
+  // Apple Pay / Google Pay button tapped.
+  const handleExpressConfirm = async () => {
+    if (!stripe || !elements || processingRef.current) return;
+    processingRef.current = true;
+    setProcessing(true);
+    await completePayment();
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Apple Pay / Google Pay — only renders when a wallet is available */}
+      <ExpressCheckoutElement
+        onConfirm={handleExpressConfirm}
+        onReady={(event) => setExpressAvailable(!!event.availablePaymentMethods)}
+        options={{
+          paymentMethods: {
+            applePay: "auto",
+            googlePay: "auto",
+            amazonPay: "never",
+            link: "never",
+            klarna: "never",
+          } as Record<string, "auto" | "never">,
+          buttonType: { applePay: "plain", googlePay: "plain" },
+          buttonHeight: 48,
+        }}
+      />
+
+      {expressAvailable && (
+        <div className="flex items-center gap-3">
+          <Separator className="flex-1" />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {t("payment.orPayWith")}
+          </span>
+          <Separator className="flex-1" />
+        </div>
+      )}
+
+      {/* Card — wallets handled by ExpressCheckoutElement above */}
       <PaymentElement
         onChange={(e: StripePaymentElementChangeEvent) => {
           if (e.complete) setReady(true);
           else setReady(false);
         }}
+        options={{
+          paymentMethodOrder: ["card"],
+          wallets: { applePay: "never", googlePay: "never" },
+        }}
       />
+
       <Button
         type="submit"
         disabled={!stripe || !ready || processing}
