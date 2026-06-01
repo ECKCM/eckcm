@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeForMode } from "@/lib/stripe/config";
 import { donationConfirmSchema } from "@/lib/schemas/api";
 import { rateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { sendDonationReceiptEmail } from "@/lib/email/send-donation-receipt";
 
 export async function POST(request: Request) {
   try {
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
     // Load donation
     const { data: donation } = await admin
       .from("eckcm_donations")
-      .select("id, status, stripe_payment_intent_id")
+      .select("id, status, stripe_payment_intent_id, metadata")
       .eq("id", donationId)
       .single();
 
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
       .update({
         status: "SUCCEEDED",
         metadata: {
+          ...((donation.metadata as Record<string, unknown> | null) ?? {}),
           stripe_payment_method: paymentIntent.payment_method,
           stripe_charge_id:
             typeof paymentIntent.latest_charge === "string"
@@ -94,6 +96,19 @@ export async function POST(request: Request) {
         },
       })
       .eq("id", donationId);
+
+    // Primary receipt path for card donations. The "already SUCCEEDED →
+    // already_confirmed" guard above ensures this runs once per donation.
+    after(async () => {
+      try {
+        await sendDonationReceiptEmail(donationId);
+      } catch (err) {
+        logger.error("[donation/confirm] Failed to send donation receipt", {
+          donationId,
+          error: String(err),
+        });
+      }
+    });
 
     return NextResponse.json({ status: "confirmed" });
   } catch (err) {

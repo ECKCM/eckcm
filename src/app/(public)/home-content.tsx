@@ -34,6 +34,14 @@ export function HomeContent() {
             <Link href="/dashboard/epass">{t("home.findEPass")}</Link>
           </Button>
           <div className="flex w-full gap-4">
+            <Button asChild size="lg" variant="secondary" className="flex-1 shadow-xl">
+              <Link href="/donation">{t("home.donation")}</Link>
+            </Button>
+            <Button asChild size="lg" variant="secondary" className="flex-1 shadow-xl">
+              <Link href="/support">{t("home.support")}</Link>
+            </Button>
+          </div>
+          <div className="flex w-full gap-4">
             <Button asChild size="lg" className="flex-1 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.3)]">
               <Link href="/signup">{t("common.signUp")}</Link>
             </Button>

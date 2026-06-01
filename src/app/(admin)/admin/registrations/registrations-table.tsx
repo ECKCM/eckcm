@@ -34,7 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Users, RefreshCw, ExternalLink, DollarSign, UserCheck, ShieldCheck, Star } from "lucide-react";
+import { Users, RefreshCw, ExternalLink, DollarSign, UserCheck, Star, Clock, Banknote, Wallet, Scale } from "lucide-react";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
@@ -48,7 +48,8 @@ import {
   formatTimestamp,
   extractSeqNumber,
   parseSeqNumber,
-  calculateProcessingFee,
+  grossCollectedCents,
+  netCollectedCents,
 } from "./registrations-types";
 import { RegistrationDetailSheet } from "./registration-detail-sheet";
 import { RegistrationActions } from "./registration-actions";
@@ -72,6 +73,9 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
   const [departmentFilter, setDepartmentFilter] = useState("ALL");
 
   const [stripeAccountId, setStripeAccountId] = useState("");
+  // Σ per-person manual-payment discount that card payers don't get (the
+  // surcharge meant to offset Stripe fees). Fetched server-side for accuracy.
+  const [cardSurchargeCents, setCardSurchargeCents] = useState(0);
 
   useEffect(() => setMounted(true), []);
 
@@ -310,6 +314,19 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
       });
       setRegistrations(rows);
     }
+
+    // Card surcharge (discount card payers didn't get) — server computes the
+    // accurate billable-people basis. Non-fatal if it fails.
+    try {
+      const res = await fetch(`/api/admin/registrations/card-surcharge?eventId=${eventId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCardSurchargeCents(data.surchargeCents ?? 0);
+      }
+    } catch {
+      // leave previous value
+    }
+
     setLoading(false);
   }, [eventId]);
 
@@ -420,20 +437,34 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
   // ─── Summary stats ─────────────────────────────────────────────
 
   const totalPaid = registrations.filter((r) => r.status === "PAID").length;
-  const totalApproved = registrations.filter((r) => r.status === "APPROVED").length;
-  const totalAmount = registrations
+  // "Unpaid" = submitted but not yet paid (awaiting Zelle/Check/On-Site, etc.)
+  const totalUnpaid = registrations.filter((r) => r.status === "SUBMITTED").length;
+
+  // Gross = face value people paid; Net = real money kept after Stripe fees.
+  const grossCollected = registrations
     .filter((r) => r.status === "PAID")
-    .reduce((sum, r) => {
-      // Stripe fee residual after refund is not our money
-      if (
-        (r.payment_status === "PARTIALLY_REFUNDED" || r.payment_status === "REFUNDED") &&
-        r.total_amount_cents > 0 &&
-        r.total_amount_cents <= calculateProcessingFee(r.payment_amount_cents, r.payment_method)
-      ) return sum;
-      return sum + r.total_amount_cents;
-    }, 0);
-  const totalPeople = registrations
+    .reduce((sum, r) => sum + grossCollectedCents(r), 0);
+  const netCollected = registrations
+    .filter((r) => r.status === "PAID")
+    .reduce((sum, r) => sum + netCollectedCents(r), 0);
+
+  // Card fee reconciliation: surcharge collected from card payers vs. the
+  // actual Stripe fees taken (Gross − Net). Positive = the per-person premium
+  // more than covered fees; negative = the church absorbed the difference.
+  const actualStripeFeesCents = grossCollected - netCollected;
+  const feeBalanceCents = cardSurchargeCents - actualStripeFeesCents;
+
+  // Amount still owed across all SUBMITTED (unpaid) registrations.
+  const amountDue = registrations
+    .filter((r) => r.status === "SUBMITTED")
+    .reduce((sum, r) => sum + r.total_amount_cents, 0);
+
+  // Confirmed = PAID + APPROVED; Submitted total also counts SUBMITTED.
+  const peopleConfirmed = registrations
     .filter((r) => r.status === "PAID" || r.status === "APPROVED")
+    .reduce((sum, r) => sum + r.people_count, 0);
+  const peopleSubmitted = registrations
+    .filter((r) => r.status === "PAID" || r.status === "APPROVED" || r.status === "SUBMITTED")
     .reduce((sum, r) => sum + r.people_count, 0);
 
   if (!mounted) return null;
@@ -519,8 +550,8 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         </Button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-5 gap-3">
+      {/* Summary Cards — wraps to a second row on narrower screens */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <SummaryCard
           icon={<Users className="size-4 text-muted-foreground" />}
           label="Total Registrations"
@@ -532,19 +563,41 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           value={totalPaid}
         />
         <SummaryCard
-          icon={<ShieldCheck className="size-4 text-emerald-600" />}
-          label="Approved"
-          value={totalApproved}
+          icon={<Clock className="size-4 text-amber-600" />}
+          label="Unpaid (Submitted)"
+          value={totalUnpaid}
+        />
+        <SummaryCard
+          icon={<DollarSign className="size-4 text-amber-600" />}
+          label="Amount Due"
+          value={formatMoney(amountDue)}
         />
         <SummaryCard
           icon={<Users className="size-4 text-blue-600" />}
           label="People (Confirmed)"
-          value={totalPeople}
+          value={peopleConfirmed}
         />
         <SummaryCard
-          icon={<DollarSign className="size-4 text-green-600" />}
-          label="Collected"
-          value={formatMoney(totalAmount)}
+          icon={<Users className="size-4 text-sky-600" />}
+          label="People (Submitted)"
+          value={peopleSubmitted}
+        />
+        <SummaryCard
+          icon={<Banknote className="size-4 text-green-600" />}
+          label="Net Collected"
+          value={formatMoney(netCollected)}
+        />
+        <SummaryCard
+          icon={<Wallet className="size-4 text-emerald-600" />}
+          label="Gross Collected"
+          value={formatMoney(grossCollected)}
+        />
+        <SummaryCard
+          icon={<Scale className="size-4 text-muted-foreground" />}
+          label="Card Fee Balance"
+          value={`${feeBalanceCents >= 0 ? "+" : "−"}${formatMoney(Math.abs(feeBalanceCents))}`}
+          valueClassName={feeBalanceCents >= 0 ? "text-green-600" : "text-red-600"}
+          hint={`Surcharge ${formatMoney(cardSurchargeCents)} − Fees ${formatMoney(actualStripeFeesCents)}`}
         />
       </div>
 
@@ -666,17 +719,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                       </TableCell>
                       {/* Amount — Stripe fee is Stripe's money, not ours */}
                       <TableCell className="font-mono text-sm whitespace-nowrap">
-                        {(() => {
-                          // Cancelled/refunded registrations always $0
-                          if (r.status === "CANCELLED" || r.status === "REFUNDED") return formatMoney(0);
-                          // If remaining amount ≤ processing fee after refund, it's just the Stripe fee residual → $0
-                          if (
-                            (r.payment_status === "PARTIALLY_REFUNDED" || r.payment_status === "REFUNDED") &&
-                            r.total_amount_cents > 0 &&
-                            r.total_amount_cents <= calculateProcessingFee(r.payment_amount_cents, r.payment_method)
-                          ) return formatMoney(0);
-                          return formatMoney(r.total_amount_cents);
-                        })()}
+                        {formatMoney(grossCollectedCents(r))}
                       </TableCell>
                       {/* Reg. Group */}
                       <TableCell className="text-xs whitespace-nowrap">
@@ -949,10 +992,14 @@ function SummaryCard({
   icon,
   label,
   value,
+  hint,
+  valueClassName,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string | number;
+  hint?: string;
+  valueClassName?: string;
 }) {
   return (
     <div className="rounded-lg border bg-card p-3">
@@ -960,7 +1007,8 @@ function SummaryCard({
         {icon}
         {label}
       </div>
-      <p className="text-xl font-bold mt-1">{value}</p>
+      <p className={`text-xl font-bold mt-1 ${valueClassName ?? ""}`}>{value}</p>
+      {hint && <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
     </div>
   );
 }

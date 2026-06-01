@@ -13,6 +13,7 @@ import type { RoomGroupInput } from "@/lib/types/registration";
 import { buildPhoneValue } from "@/lib/utils/field-helpers";
 import { populateDefaultMeals } from "@/lib/services/meal.service";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
+import { MANUAL_PAYMENT_METHODS, MANUAL_PAYMENT_METHODS_LABEL } from "@/lib/payment/methods";
 import { insertInitialPayment } from "@/lib/services/adjustment.service";
 import { loadFundingForGroup, toFundingDiscounts, recordFundingAllocations } from "@/lib/services/funding.service";
 import { syncRegistration } from "@/lib/services/google-sheets.service";
@@ -54,10 +55,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const validMethods = ["MANUAL", "CHECK", "ZELLE"];
-    if (!validMethods.includes(paymentMethod)) {
+    if (!(MANUAL_PAYMENT_METHODS as readonly string[]).includes(paymentMethod)) {
       return NextResponse.json(
-        { error: `Invalid payment method. Must be one of: ${validMethods.join(", ")}` },
+        { error: `Invalid payment method. Must be one of: ${MANUAL_PAYMENT_METHODS_LABEL}` },
         { status: 400 }
       );
     }

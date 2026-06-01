@@ -169,6 +169,16 @@ export const donationConfirmSchema = z.object({
   paymentIntentId: z.string().min(1),
 });
 
+// Manual (non-card) donation: Zelle / Check / Cash. Recorded as PENDING,
+// admin confirms receipt later in the Donation Tracker.
+export const donationManualSchema = z.object({
+  amountCents: z.number().int().min(100).max(1_000_000), // $1 – $10,000
+  donorName: z.string().max(200).optional(),
+  donorEmail: z.string().email().max(255).optional(),
+  method: z.enum(["ZELLE", "CHECK", "CASH"]),
+  departmentId: z.string().uuid().optional(),
+});
+
 // -- Self-service card payment link (SUBMITTED → PAID) --
 
 export const linkCreateIntentSchema = z.object({

@@ -7,6 +7,7 @@ import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { logger } from "@/lib/logger";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 import { syncRegistration } from "@/lib/services/google-sheets.service";
+import { isManualPaymentMethod } from "@/lib/payment/methods";
 
 const VALID_STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "PAID", "CANCELLED", "REFUNDED"];
 
@@ -57,7 +58,6 @@ export async function PATCH(request: Request) {
   let bypassTransitionRules = false;
 
   if (isSuperAdmin) {
-    const MANUAL_METHODS = ["MANUAL", "CHECK", "ZELLE"];
     const { data: payment } = await admin
       .from("eckcm_payments")
       .select("payment_method, eckcm_invoices!inner(registration_id)")
@@ -67,7 +67,7 @@ export async function PATCH(request: Request) {
 
     // Bypass when: no payment exists ($0 group) OR payment is manual method
     bypassTransitionRules =
-      !payment || MANUAL_METHODS.includes(payment.payment_method);
+      !payment || isManualPaymentMethod(payment.payment_method);
   }
 
   if (!bypassTransitionRules) {

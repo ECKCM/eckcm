@@ -92,6 +92,7 @@ import {
   calculateProportionalProcessingFee,
   MIN_REFUND_CENTS,
 } from "./registrations-types";
+import { isManualPaymentMethod, EDITABLE_PAYMENT_METHODS } from "@/lib/payment/methods";
 
 interface RegistrationDetailSheetProps {
   registration: RegistrationRow | null;
@@ -588,13 +589,20 @@ export function RegistrationDetailSheet({
                     </InfoRow>
                   )}
                 </div>
-                {/* Manual payment status changer */}
-                {reg.payment_method && ["ZELLE", "CHECK", "MANUAL", "MANUAL_PAYMENT"].includes(reg.payment_method.toUpperCase()) && (
-                  <ManualPaymentStatusChanger
-                    registrationId={reg.id}
-                    currentStatus={reg.payment_status}
-                    onChanged={onRefresh}
-                  />
+                {/* Manual payment status + method changers (card excluded) */}
+                {isManualPaymentMethod(reg.payment_method) && (
+                  <>
+                    <ManualPaymentStatusChanger
+                      registrationId={reg.id}
+                      currentStatus={reg.payment_status}
+                      onChanged={onRefresh}
+                    />
+                    <PaymentMethodChanger
+                      registrationId={reg.id}
+                      currentMethod={reg.payment_method}
+                      onChanged={onRefresh}
+                    />
+                  </>
                 )}
                 {/* Self-service card payment link — only for SUBMITTED (Zelle/Check
                     awaiting payment). Lets the registrant switch to card at full price. */}
@@ -1143,13 +1151,9 @@ function AdjustmentsPanel({
 
   const inputCents = Math.round(parseFloat(newAmountDollars) * 100) || 0;
   const isRefundAction = newAction === "refund";
-  // Zelle/Check/Manual: no Stripe call, no processing fee. Label the refund
-  // generically so the UI doesn't claim a Stripe refund that won't happen.
-  const isManualMethod =
-    !!paymentMethod &&
-    ["ZELLE", "CHECK", "MANUAL", "MANUAL_PAYMENT"].includes(
-      paymentMethod.toUpperCase()
-    );
+  // Zelle/Check/On-Site/Manual: no Stripe call, no processing fee. Label the
+  // refund generically so the UI doesn't claim a Stripe refund that won't happen.
+  const isManualMethod = isManualPaymentMethod(paymentMethod);
   const refundLabel = isManualMethod ? "Refund" : "Stripe refund";
 
   // Refund limit: processing fee is non-refundable
@@ -2642,6 +2646,64 @@ function ManualPaymentStatusChanger({
         </SelectTrigger>
         <SelectContent>
           {PAYMENT_STATUS_OPTIONS.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {saving && <Loader2 className="size-3 animate-spin text-muted-foreground" />}
+    </div>
+  );
+}
+
+/**
+ * Re-label the payment method of a manual (non-card) payment. Card payments
+ * never render this — switching to/from card is excluded by design, since card
+ * is settled through Stripe. This is a label-only correction.
+ */
+function PaymentMethodChanger({
+  registrationId,
+  currentMethod,
+  onChanged,
+}: {
+  registrationId: string;
+  currentMethod: string | null;
+  onChanged: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+
+  const handleChange = async (newMethod: string) => {
+    if (newMethod === currentMethod) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${registrationId}/payment-method`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payment_method: newMethod }),
+      });
+      if (res.ok) {
+        toast.success(`Payment method changed to ${newMethod.replace(/_/g, " ")}`);
+        onChanged();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to update payment method");
+      }
+    } catch {
+      toast.error("Failed to update payment method");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="flex items-center gap-2 mt-3 text-sm">
+      <span className="text-muted-foreground shrink-0">Payment Method:</span>
+      <Select value={currentMethod ?? ""} onValueChange={handleChange} disabled={saving}>
+        <SelectTrigger className="h-7 w-[180px] text-xs">
+          <SelectValue placeholder="Set method..." />
+        </SelectTrigger>
+        <SelectContent>
+          {EDITABLE_PAYMENT_METHODS.map((o) => (
             <SelectItem key={o.value} value={o.value}>
               {o.label}
             </SelectItem>
