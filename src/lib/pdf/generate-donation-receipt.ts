@@ -43,14 +43,11 @@ export async function generateDonationReceiptPdf(
     receiptDate,
     donorName,
     contributionFormatted,
-    baseAmountFormatted,
-    coveredFeeFormatted,
     designation,
     paymentReference,
   } = data;
 
   const org = DONATION_RECEIPT_ORG_INFO;
-  const showFeeBreakdown = !!coveredFeeFormatted && !!baseAmountFormatted;
 
   const doc = await PDFDocument.create();
   const [regular, bold] = await Promise.all([
@@ -137,26 +134,15 @@ export async function generateDonationReceiptPdf(
   txt("CONTRIBUTION", MX, y - 12, bold, 9, C_GRAY_MID);
   y -= 24;
 
-  const lineRow = (label: string, value: string) => {
-    txt(label, MX, y - 14, regular, 10, C_GRAY_MID);
-    txt(value, MX + CW - regular.widthOfTextAtSize(value, 10), y - 14, regular, 10, C_BLACK);
-    page.drawLine({ start: { x: MX, y: y - ROW_H }, end: { x: MX + CW, y: y - ROW_H }, color: C_ROW_SEP, thickness: 0.5 });
-    y -= ROW_H;
-  };
-
-  if (showFeeBreakdown) {
-    lineRow("Donation", baseAmountFormatted as string);
-    lineRow("Processing fee covered by donor", coveredFeeFormatted as string);
-  }
-
-  // Total — green highlight band
+  // Total — the entire amount is the donation (no fee breakdown). Single green
+  // highlight band with the full contribution.
   const TOTAL_H = 30;
   page.drawRectangle({
-    x: MX, y: y - TOTAL_H + 6, width: CW, height: TOTAL_H,
+    x: MX, y: y - TOTAL_H, width: CW, height: TOTAL_H,
     color: C_GREEN_BG, borderColor: C_GREEN_BORDER, borderWidth: 0.5,
   });
-  txt("Total Tax-Deductible Contribution", MX + 12, y - 13, bold, 11, C_BLACK);
-  txt(contributionFormatted, MX + CW - bold.widthOfTextAtSize(contributionFormatted, 14) - 12, y - 14, bold, 14, C_GREEN_TEXT);
+  txt("Total Tax-Deductible Contribution", MX + 12, y - 19, bold, 11, C_BLACK);
+  txt(contributionFormatted, MX + CW - bold.widthOfTextAtSize(contributionFormatted, 14) - 12, y - 20, bold, 14, C_GREEN_TEXT);
   y -= TOTAL_H + 6;
 
   // Payment reference
