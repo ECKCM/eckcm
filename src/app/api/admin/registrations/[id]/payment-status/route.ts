@@ -4,9 +4,9 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { writeAuditLog } from "@/lib/services/audit.service";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
 import { generateEPassToken } from "@/lib/services/epass.service";
+import { isManualPaymentMethod } from "@/lib/payment/methods";
 import { logger } from "@/lib/logger";
 
-const MANUAL_METHODS = ["ZELLE", "CHECK", "MANUAL", "MANUAL_PAYMENT"];
 const VALID_STATUSES = ["PENDING", "SUCCEEDED", "FAILED", "REFUNDED"];
 
 /**
@@ -60,9 +60,9 @@ export async function PATCH(
 
   // Only allow for manual payment methods
   const method = (payment.payment_method ?? "").toUpperCase();
-  if (!MANUAL_METHODS.includes(method)) {
+  if (!isManualPaymentMethod(method)) {
     return NextResponse.json(
-      { error: "Payment status can only be changed for manual payments (Zelle, Check, etc.)" },
+      { error: "Payment status can only be changed for manual payments (Zelle, Check, On-Site, etc.)" },
       { status: 400 }
     );
   }

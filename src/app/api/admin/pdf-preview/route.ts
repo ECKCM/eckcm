@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { generateInvoicePdf } from "@/lib/pdf/generate";
+import { generateDonationReceiptPdf } from "@/lib/pdf/generate-donation-receipt";
+import { donationReceiptNumber } from "@/lib/donation/receipt-info";
 
 const MOCK_LINE_ITEMS = [
   { description: "Adult Registration (Full Week)", quantity: 1, unitPrice: "$250.00", amount: "$250.00" },
@@ -14,7 +16,38 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const type = req.nextUrl.searchParams.get("type") as "invoice" | "receipt" | null;
+  const type = req.nextUrl.searchParams.get("type") as
+    | "invoice"
+    | "receipt"
+    | "donation-receipt"
+    | null;
+
+  // ── Donation tax receipt preview ──
+  if (type === "donation-receipt") {
+    const donationPdf = await generateDonationReceiptPdf({
+      receiptNumber: donationReceiptNumber("3f2a1b9c-0000-0000-0000-000000000001"),
+      receiptDate: new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        timeZone: "America/New_York",
+      }),
+      donorName: "John Doe",
+      contributionFormatted: "$103.30",
+      baseAmountFormatted: "$100.00",
+      coveredFeeFormatted: "$3.30",
+      designation: "General Fund",
+      paymentReference: "pi_3PExamplePreview001",
+    });
+    return new NextResponse(new Uint8Array(donationPdf), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="eckcm-donation-receipt-preview.pdf"`,
+        "Content-Length": String(donationPdf.length),
+      },
+    });
+  }
+
   const isReceipt = type === "receipt";
 
   const pdfBuffer = await generateInvoicePdf({

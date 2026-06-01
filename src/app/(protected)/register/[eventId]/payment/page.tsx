@@ -1285,6 +1285,11 @@ function ManualPaymentForm({
                 <div className="space-y-2 text-sm text-blue-900 pl-1">
                   <p>{t("payment.onsiteStep")} <strong className="font-mono">{formatCurrency(manualAmount)}</strong></p>
                 </div>
+                {/* Discount eligibility note: only Zelle / Check / Cash qualify (not card) */}
+                <div className="flex items-start gap-2 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-900">
+                  <Banknote className="h-4 w-4 shrink-0 mt-0.5 text-green-600" />
+                  <p>{t("payment.onsiteDiscountNote")}</p>
+                </div>
                 {/* Critical warning: must pay on-site or room & meals are unavailable */}
                 <div className="flex gap-2 rounded-lg border-2 border-red-400 bg-red-50 p-3 text-sm text-red-900">
                   <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-red-600" />

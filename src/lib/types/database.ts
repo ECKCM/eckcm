@@ -49,6 +49,9 @@ export type PaymentMethod =
   | "CHECK"
   | "ZELLE"
   | "ONSITE"
+  | "ONSITE_CASH"
+  | "ONSITE_CHECK"
+  | "ONSITE_ZELLE"
   | "MANUAL";
 export type AdjustmentType =
   | "initial_payment"

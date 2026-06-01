@@ -38,6 +38,25 @@ export async function POST(request: Request) {
 
     const stripeMode = (event?.stripe_mode as "test" | "live") ?? "test";
 
+    // Fetch the publishable key matching the Stripe mode so the client can
+    // initialize Stripe.js in the SAME mode the PaymentIntent is created in.
+    // Without this, a live-mode clientSecret loaded with a test publishable key
+    // (or vice versa) makes Stripe Elements reject the intent and the card form
+    // never works.
+    const { data: appConfig } = await admin
+      .from("eckcm_app_config")
+      .select("stripe_test_publishable_key, stripe_live_publishable_key")
+      .eq("id", 1)
+      .single();
+    const publishableKey =
+      (appConfig as Record<string, string | null> | null)?.[
+        stripeMode === "live"
+          ? "stripe_live_publishable_key"
+          : "stripe_test_publishable_key"
+      ] ||
+      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+      null;
+
     // Look up department name if provided
     let departmentName: string | null = null;
     if (departmentId) {
@@ -88,7 +107,8 @@ export async function POST(request: Request) {
         payment_method: "CARD",
         status: "PENDING",
         metadata: {
-          ...(departmentId ? { departmentId, departmentName } : {}),
+          designation: departmentName ?? "Camp Meeting (General)",
+          ...(departmentId ? { departmentId } : { fund: "camp_meeting" }),
         },
       })
       .select("id")
@@ -138,6 +158,7 @@ export async function POST(request: Request) {
       donationId: donation.id,
       chargeAmount,
       feeCents,
+      publishableKey,
     });
   } catch (err) {
     logger.error("[donation/create-intent] Unhandled error", {

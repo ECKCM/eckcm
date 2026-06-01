@@ -60,12 +60,18 @@ import {
   Save,
   Trash2,
   RefreshCw,
+  Heart,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { buildAnnouncementHtml } from "@/lib/email/templates/announcement";
+import { buildDonationReceiptEmail } from "@/lib/email/templates/donation-receipt";
+import {
+  DONATION_RECEIPT_ORG_INFO,
+  donationReceiptNumber,
+} from "@/lib/donation/receipt-info";
 
 // ─── Settings Tab ───────────────────────────────────────────────────────────
 
@@ -662,6 +668,19 @@ function PdfSettingsTab() {
                 </div>
               </div>
             </Button>
+            <Button
+              variant="outline"
+              className="h-auto py-4"
+              onClick={() => window.open("/api/admin/pdf-preview?type=donation-receipt", "_blank")}
+            >
+              <div className="flex items-center gap-3">
+                <Heart className="size-5 shrink-0 text-muted-foreground" />
+                <div className="text-left">
+                  <div className="font-medium">Donation Receipt PDF</div>
+                  <div className="text-xs text-muted-foreground font-normal">501(c)(3) tax receipt (attached to donor email)</div>
+                </div>
+              </div>
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -701,6 +720,11 @@ const TEMPLATES = [
     id: "check",
     name: "Check Payment Instructions",
     description: "Sent after Check registration with mailing instructions and pending status.",
+  },
+  {
+    id: "donation_receipt",
+    name: "Donation Receipt",
+    description: "501(c)(3) tax receipt emailed to donors after a successful donation. The official PDF is attached — preview it under the PDF Settings tab.",
   },
 ];
 
@@ -765,6 +789,7 @@ function TemplatePreview({ templateId }: { templateId: string | null }) {
     announcement: buildAnnouncementPreview(),
     zelle: buildZellePreview(),
     check: buildCheckPreview(),
+    donation_receipt: buildDonationReceiptPreview(),
   };
 
   const html = previewData[templateId] || "<p>No preview available</p>";
@@ -777,6 +802,29 @@ function TemplatePreview({ templateId }: { templateId: string | null }) {
       sandbox="allow-same-origin"
     />
   );
+}
+
+function buildDonationReceiptPreview(): string {
+  return buildDonationReceiptEmail({
+    receiptNumber: donationReceiptNumber("3f2a1b9c-0000-0000-0000-000000000001"),
+    receiptDate: new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "America/New_York",
+    }),
+    donorName: "John Doe",
+    contributionFormatted: "$103.30",
+    baseAmountFormatted: "$100.00",
+    coveredFeeFormatted: "$3.30",
+    designation: "General Fund",
+    paymentReference: "pi_3PExamplePreview001",
+    orgLegalName: DONATION_RECEIPT_ORG_INFO.legalName,
+    orgEin: DONATION_RECEIPT_ORG_INFO.ein,
+    orgAddressLines: DONATION_RECEIPT_ORG_INFO.addressLines,
+    orgContactEmail: DONATION_RECEIPT_ORG_INFO.contactEmail,
+    taxExemptStatement: DONATION_RECEIPT_ORG_INFO.taxExemptStatement,
+  });
 }
 
 function buildConfirmationPreview(): string {

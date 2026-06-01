@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-05-31T14:12:11.099Z",
+  "lastUpdated": "2026-06-01T16:51:05.543Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -134,7 +134,13 @@
     "onsite-submit",
     "stripe-config",
     "methods",
-    "representative.ts"
+    "representative.ts",
+    "payment-method",
+    "card-surcharge",
+    "pdf-preview",
+    "donations",
+    "receipt",
+    "sync"
   ],
   "primaryFeature": "payment-complete",
   "features": {
@@ -198,7 +204,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T19:43:47.003Z",
-        "lastUpdated": "2026-03-28T14:14:21.035Z"
+        "lastUpdated": "2026-06-01T16:51:05.542Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/home-content.tsx"
     },
@@ -237,7 +243,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T19:43:50.623Z",
-        "lastUpdated": "2026-04-01T02:35:26.772Z"
+        "lastUpdated": "2026-06-01T16:32:48.312Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/donation/page.tsx"
     },
@@ -289,9 +295,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:29:55.102Z",
-        "lastUpdated": "2026-05-31T10:50:39.209Z"
+        "lastUpdated": "2026-06-01T14:29:28.099Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/types/database.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/permissions.ts"
     },
     "complete-profile": {
       "phase": "do",
@@ -367,9 +373,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:32:03.220Z",
-        "lastUpdated": "2026-05-31T14:02:30.858Z"
+        "lastUpdated": "2026-06-01T14:21:55.403Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/email/send-payment-link.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/email/send-donation-receipt.ts"
     },
     "admin": {
       "phase": "do",
@@ -380,7 +386,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T21:01:37.763Z",
-        "lastUpdated": "2026-05-27T19:05:30.107Z"
+        "lastUpdated": "2026-06-01T14:29:02.424Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/admin-sidebar.tsx"
     },
@@ -393,9 +399,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T21:01:48.090Z",
-        "lastUpdated": "2026-03-30T10:57:08.646Z"
+        "lastUpdated": "2026-06-01T14:21:06.912Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/payment/manual/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/donation/manual/route.ts"
     },
     "zelle-submit": {
       "phase": "do",
@@ -432,9 +438,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T21:02:20.119Z",
-        "lastUpdated": "2026-05-31T14:05:20.956Z"
+        "lastUpdated": "2026-06-01T14:21:36.396Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/link/confirm/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/donation/confirm/route.ts"
     },
     "groups": {
       "phase": "do",
@@ -510,9 +516,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T00:38:36.722Z",
-        "lastUpdated": "2026-05-31T14:01:44.647Z"
+        "lastUpdated": "2026-06-01T04:58:06.673Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/payment/payment-link.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/payment/methods.ts"
     },
     "pricing.service.ts": {
       "phase": "do",
@@ -614,9 +620,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:04:07.405Z",
-        "lastUpdated": "2026-05-30T03:40:43.075Z"
+        "lastUpdated": "2026-06-01T14:21:17.930Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/link/create-intent/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/donation/create-intent/route.ts"
     },
     "registration": {
       "phase": "do",
@@ -627,9 +633,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:04:34.050Z",
-        "lastUpdated": "2026-05-25T20:20:20.504Z"
+        "lastUpdated": "2026-06-01T04:21:21.839Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/components/registration/meal-selection-grid.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registration/route.ts"
     },
     "pdf": {
       "phase": "do",
@@ -640,9 +646,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:31:39.038Z",
-        "lastUpdated": "2026-04-01T04:48:46.855Z"
+        "lastUpdated": "2026-06-01T08:03:52.667Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/invoice/[id]/pdf/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/pdf/generate-donation-receipt.ts"
     },
     "templates": {
       "phase": "do",
@@ -653,9 +659,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:32:31.612Z",
-        "lastUpdated": "2026-05-31T14:02:15.274Z"
+        "lastUpdated": "2026-06-01T07:14:13.514Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/email/templates/payment-link.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/email/templates/donation-receipt.tsx"
     },
     "invoice": {
       "phase": "do",
@@ -770,9 +776,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T10:57:10.808Z",
-        "lastUpdated": "2026-03-31T21:57:23.858Z"
+        "lastUpdated": "2026-06-01T14:22:44.266Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registration/status/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/donations/[id]/status/route.ts"
     },
     "cancel": {
       "phase": "do",
@@ -822,7 +828,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:53:31.955Z",
-        "lastUpdated": "2026-05-31T14:12:11.099Z"
+        "lastUpdated": "2026-06-01T05:18:38.223Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/registrations-table.tsx"
     },
@@ -861,7 +867,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T15:00:18.042Z",
-        "lastUpdated": "2026-05-23T18:57:09.952Z"
+        "lastUpdated": "2026-06-01T04:22:51.669Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/invoices/invoices-table.tsx"
     },
@@ -1043,7 +1049,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T19:03:52.956Z",
-        "lastUpdated": "2026-03-31T19:10:53.332Z"
+        "lastUpdated": "2026-06-01T14:21:48.447Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/stripe/webhook/route.ts"
     },
@@ -1056,9 +1062,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T19:05:00.643Z",
-        "lastUpdated": "2026-03-31T19:05:00.643Z"
+        "lastUpdated": "2026-06-01T16:21:08.292Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/refund/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/donations/[id]/refund/route.ts"
     },
     "stripe": {
       "phase": "do",
@@ -1212,9 +1218,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T23:03:46.628Z",
-        "lastUpdated": "2026-05-28T23:39:00.559Z"
+        "lastUpdated": "2026-06-01T16:20:03.375Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/scan-sessions/[id]/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/donations/[id]/route.ts"
     },
     "epass": {
       "phase": "do",
@@ -1342,7 +1348,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-01T02:25:27.097Z",
-        "lastUpdated": "2026-05-30T03:52:43.152Z"
+        "lastUpdated": "2026-06-01T14:20:43.108Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/schemas/api.ts"
     },
@@ -1355,7 +1361,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-01T02:26:36.464Z",
-        "lastUpdated": "2026-04-01T05:10:36.008Z"
+        "lastUpdated": "2026-06-01T04:20:56.480Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/payment-status/route.ts"
     },
@@ -1433,9 +1439,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-23T09:32:22.908Z",
-        "lastUpdated": "2026-05-23T09:34:25.591Z"
+        "lastUpdated": "2026-06-01T07:39:29.066Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/scripts/refactor-admin-headers.js"
+      "lastFile": "/Users/rlulu/dev/eckcm/scripts/preview-donation-receipt.ts"
     },
     "floorplan": {
       "phase": "do",
@@ -1878,6 +1884,84 @@
         "lastUpdated": "2026-05-31T14:10:08.734Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/representative.ts"
+    },
+    "payment-method": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-01T04:59:49.541Z",
+        "lastUpdated": "2026-06-01T04:59:49.541Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/payment-method/route.ts"
+    },
+    "card-surcharge": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-01T05:17:37.096Z",
+        "lastUpdated": "2026-06-01T05:17:37.096Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/card-surcharge/route.ts"
+    },
+    "pdf-preview": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-01T08:05:03.453Z",
+        "lastUpdated": "2026-06-01T08:05:18.455Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/pdf-preview/route.ts"
+    },
+    "donations": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-01T14:27:46.034Z",
+        "lastUpdated": "2026-06-01T16:24:30.376Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/donations/page.tsx"
+    },
+    "receipt": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-01T16:20:16.234Z",
+        "lastUpdated": "2026-06-01T16:20:16.234Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/donations/[id]/receipt/route.ts"
+    },
+    "sync": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-01T16:20:38.258Z",
+        "lastUpdated": "2026-06-01T16:20:38.258Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/donations/[id]/sync/route.ts"
     }
   },
   "pipeline": {
@@ -1888,7 +1972,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-05-31T14:12:11.099Z"
+    "lastActivity": "2026-06-01T16:51:05.543Z"
   },
   "history": [
     {
@@ -10162,6 +10246,624 @@
     {
       "timestamp": "2026-05-31T14:12:11.099Z",
       "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:16:42.053Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:20:46.709Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:20:53.881Z",
+      "feature": "payment-status",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:20:56.480Z",
+      "feature": "payment-status",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:21:04.191Z",
+      "feature": "status",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:21:08.423Z",
+      "feature": "status",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:21:18.702Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:21:21.840Z",
+      "feature": "registration",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:21:27.674Z",
+      "feature": "manual",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:21:30.304Z",
+      "feature": "manual",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:21:55.487Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:21:58.498Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:22:10.497Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:22:31.264Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:22:34.575Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:22:51.669Z",
+      "feature": "invoices",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:23:21.254Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:58:00.170Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:58:06.673Z",
+      "feature": "payment",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:58:22.174Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:58:34.634Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:58:42.867Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:58:53.944Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:59:06.996Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:59:18.509Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:59:27.131Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T04:59:49.541Z",
+      "feature": "payment-method",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T05:00:00.707Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T05:00:07.508Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T05:00:15.499Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T05:17:37.096Z",
+      "feature": "card-surcharge",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T05:18:01.480Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T05:18:08.106Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T05:18:15.428Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T05:18:25.131Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T05:18:34.755Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T05:18:38.223Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:02:18.882Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:02:24.254Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:02:31.761Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:02:37.646Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:02:46.250Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:02:52.750Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:13:43.089Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:14:13.514Z",
+      "feature": "templates",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:14:59.236Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:15:11.871Z",
+      "feature": "webhook",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:15:20.184Z",
+      "feature": "webhook",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:15:27.816Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:15:35.027Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:27:33.869Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:35:34.109Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:39:29.066Z",
+      "feature": "scripts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T07:46:32.664Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:03:36.856Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:03:52.667Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:04:14.277Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:04:27.365Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:04:55.647Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:05:03.453Z",
+      "feature": "pdf-preview",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:05:18.455Z",
+      "feature": "pdf-preview",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:05:48.917Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:05:54.838Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:06:04.442Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:06:19.108Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:06:24.531Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:06:35.885Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:07:34.274Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T08:08:06.405Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:20:43.108Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:21:06.912Z",
+      "feature": "manual",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:21:17.930Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:21:29.330Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:21:36.396Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:21:41.968Z",
+      "feature": "webhook",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:21:48.447Z",
+      "feature": "webhook",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:21:55.403Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:22:44.266Z",
+      "feature": "status",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:25:52.213Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:27:46.034Z",
+      "feature": "donations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:28:25.060Z",
+      "feature": "donations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:28:46.338Z",
+      "feature": "donations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:28:56.500Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:29:02.424Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T14:29:28.099Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:05:04.982Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:08:10.331Z",
+      "feature": "donations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:11:37.334Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:11:43.529Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:20:03.375Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:20:16.234Z",
+      "feature": "receipt",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:20:38.258Z",
+      "feature": "sync",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:21:08.292Z",
+      "feature": "refund",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:22:56.098Z",
+      "feature": "donations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:23:37.497Z",
+      "feature": "donations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:24:30.376Z",
+      "feature": "donations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:30:38.071Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:30:53.647Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:31:01.398Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:31:17.268Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:32:48.312Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:49:59.788Z",
+      "feature": "(public)",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T16:51:05.542Z",
+      "feature": "(public)",
       "phase": "do",
       "action": "updated"
     }

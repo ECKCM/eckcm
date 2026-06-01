@@ -58,6 +58,9 @@ const ROUTE_PERMISSIONS: [string, RouteRule][] = [
   // Funding
   ["/admin/funding", "settings.manage"],
 
+  // Donations
+  ["/admin/donations", "settings.manage"],
+
   // Audit & Users
   ["/admin/audit", "audit.read"],
   ["/admin/users", "user.manage"],

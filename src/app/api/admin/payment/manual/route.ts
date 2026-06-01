@@ -9,6 +9,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 import { insertInitialPayment } from "@/lib/services/adjustment.service";
 import { syncRegistration } from "@/lib/services/google-sheets.service";
+import { MANUAL_PAYMENT_METHODS, MANUAL_PAYMENT_METHODS_LABEL } from "@/lib/payment/methods";
 
 interface ManualPayBody {
   invoiceId: string;
@@ -34,10 +35,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const validMethods = ["MANUAL", "CHECK", "ZELLE"];
-  if (!validMethods.includes(paymentMethod)) {
+  if (!(MANUAL_PAYMENT_METHODS as readonly string[]).includes(paymentMethod)) {
     return NextResponse.json(
-      { error: `Invalid payment method. Must be one of: ${validMethods.join(", ")}` },
+      { error: `Invalid payment method. Must be one of: ${MANUAL_PAYMENT_METHODS_LABEL}` },
       { status: 400 }
     );
   }

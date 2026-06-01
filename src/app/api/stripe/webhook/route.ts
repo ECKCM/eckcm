@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeForMode } from "@/lib/stripe/config";
 import { generateEPassToken } from "@/lib/services/epass.service";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
+import { sendDonationReceiptEmail } from "@/lib/email/send-donation-receipt";
 import { logger } from "@/lib/logger";
 import type Stripe from "stripe";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
       const donationId = pi.metadata.donationId;
       const { data: donation } = await admin
         .from("eckcm_donations")
-        .select("id, status")
+        .select("id, status, metadata")
         .eq("id", donationId)
         .single();
 
@@ -95,6 +96,7 @@ export async function POST(request: Request) {
         .update({
           status: "SUCCEEDED",
           metadata: {
+            ...((donation.metadata as Record<string, unknown> | null) ?? {}),
             stripe_payment_method: pi.payment_method,
             stripe_charge_id:
               typeof pi.latest_charge === "string" ? pi.latest_charge : null,
@@ -104,6 +106,21 @@ export async function POST(request: Request) {
         .eq("id", donationId);
 
       logger.info("[stripe/webhook] Donation succeeded", { donationId, piId: pi.id });
+
+      // Send tax receipt (backup path — confirm route sends first for card).
+      // The "already SUCCEEDED → skip" guard above means this only runs on the
+      // PENDING→SUCCEEDED transition, so the donor gets exactly one receipt.
+      after(async () => {
+        try {
+          await sendDonationReceiptEmail(donationId);
+        } catch (err) {
+          logger.error("[stripe/webhook] Failed to send donation receipt", {
+            donationId,
+            error: String(err),
+          });
+        }
+      });
+
       return NextResponse.json({ received: true });
     }
 

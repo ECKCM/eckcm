@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/lib/utils/formatters";
+import { isManualPaymentMethod } from "@/lib/payment/methods";
 
 export interface Event {
   id: string;
@@ -140,18 +141,60 @@ export function formatTimestamp(ts: string) {
 /**
  * Calculate non-refundable processing fee based on payment method.
  * - Card / Apple Pay / Google Pay / Amazon: 2.9% + 30¢
- * - Zelle / Check (Manual): $0
+ * - Zelle / Check / On-Site / Manual: $0
  */
 export function calculateProcessingFee(amountCents: number, paymentMethod: string | null): number {
   if (!paymentMethod) return 0;
-  const method = paymentMethod.toUpperCase();
 
-  if (["ZELLE", "CHECK", "MANUAL", "MANUAL_PAYMENT"].includes(method)) {
+  // Manual methods (Zelle / Check / On-Site / Manual) bypass card processing fees.
+  if (isManualPaymentMethod(paymentMethod)) {
     return 0;
   }
 
   // Card, Apple Pay, Google Pay, Amazon Pay, etc.
   return Math.round(amountCents * 0.029) + 30;
+}
+
+/**
+ * Gross amount actually collected for a registration (face value people paid),
+ * in cents. Cancelled/refunded registrations contribute $0, and a partially-
+ * refunded registration whose remaining balance is just the non-refundable
+ * Stripe fee residual also contributes $0. This mirrors the per-row "Amount"
+ * column so the summary totals always match what's shown in the table.
+ */
+export function grossCollectedCents(r: {
+  status: string;
+  payment_status: string | null;
+  payment_method: string | null;
+  total_amount_cents: number;
+  payment_amount_cents: number;
+}): number {
+  if (r.status === "CANCELLED" || r.status === "REFUNDED") return 0;
+  if (
+    (r.payment_status === "PARTIALLY_REFUNDED" || r.payment_status === "REFUNDED") &&
+    r.total_amount_cents > 0 &&
+    r.total_amount_cents <= calculateProcessingFee(r.payment_amount_cents, r.payment_method)
+  ) {
+    return 0;
+  }
+  return r.total_amount_cents;
+}
+
+/**
+ * Net amount actually received, in cents — the real money the church keeps
+ * after Stripe's processing fee. Manual methods (Zelle / Check / On-Site /
+ * cash) have no fee, so net == gross for them.
+ */
+export function netCollectedCents(r: {
+  status: string;
+  payment_status: string | null;
+  payment_method: string | null;
+  total_amount_cents: number;
+  payment_amount_cents: number;
+}): number {
+  const gross = grossCollectedCents(r);
+  if (gross <= 0) return 0;
+  return gross - calculateProcessingFee(gross, r.payment_method);
 }
 
 /**
@@ -178,8 +221,9 @@ export function calculateProportionalProcessingFee(
   paymentMethod: string | null,
 ): number {
   if (!paymentMethod) return 0;
-  const method = paymentMethod.toUpperCase();
-  if (["ZELLE", "CHECK", "MANUAL", "MANUAL_PAYMENT"].includes(method)) {
+  // Manual methods (Zelle / Check / On-Site / Manual) never incurred a Stripe
+  // fee, so refunds shouldn't withhold a proportional one.
+  if (isManualPaymentMethod(paymentMethod)) {
     return 0;
   }
   if (refundCents <= 0 || paymentAmountCents <= 0) return 0;
