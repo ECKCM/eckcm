@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-01T18:59:41.037Z",
+  "lastUpdated": "2026-06-02T00:25:59.921Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -140,7 +140,10 @@
     "pdf-preview",
     "donations",
     "receipt",
-    "sync"
+    "sync",
+    "willow",
+    "upj-export",
+    "eckcm_exports"
   ],
   "primaryFeature": "payment-complete",
   "features": {
@@ -243,9 +246,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T19:43:50.623Z",
-        "lastUpdated": "2026-06-01T18:22:57.981Z"
+        "lastUpdated": "2026-06-01T20:13:23.369Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/donation/receipt-info.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/donation/page.tsx"
     },
     "participants": {
       "phase": "do",
@@ -295,9 +298,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:29:55.102Z",
-        "lastUpdated": "2026-06-01T18:33:49.335Z"
+        "lastUpdated": "2026-06-01T20:13:07.779Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/verify-donation-pdf.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/utils/field-helpers.ts"
     },
     "complete-profile": {
       "phase": "do",
@@ -386,9 +389,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T21:01:37.763Z",
-        "lastUpdated": "2026-06-01T18:59:41.037Z"
+        "lastUpdated": "2026-06-01T23:30:44.882Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/admin-presence.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/admin-sidebar.tsx"
     },
     "manual": {
       "phase": "do",
@@ -646,7 +649,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:31:39.038Z",
-        "lastUpdated": "2026-06-01T18:37:16.728Z"
+        "lastUpdated": "2026-06-01T20:13:36.844Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/pdf/generate-donation-receipt.ts"
     },
@@ -906,7 +909,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T15:01:50.920Z",
-        "lastUpdated": "2026-05-23T19:01:02.574Z"
+        "lastUpdated": "2026-06-01T23:31:00.763Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/room-groups/room-assignment.tsx"
     },
@@ -1491,9 +1494,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-23T18:59:46.548Z",
-        "lastUpdated": "2026-05-23T19:00:06.259Z"
+        "lastUpdated": "2026-06-02T00:19:52.044Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/lodging/upj-rooms/upj-lodging-manager.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/lodging/upj-rooms/route.ts"
     },
     "funding": {
       "phase": "do",
@@ -1962,6 +1965,45 @@
         "lastUpdated": "2026-06-01T16:20:38.258Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/donations/[id]/sync/route.ts"
+    },
+    "willow": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-01T23:28:28.943Z",
+        "lastUpdated": "2026-06-02T00:07:25.996Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/lodging/willow/willow-assignment.tsx"
+    },
+    "upj-export": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-01T23:31:57.574Z",
+        "lastUpdated": "2026-06-01T23:31:57.574Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/lodging/upj-export/route.ts"
+    },
+    "eckcm_exports": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-02T00:25:59.921Z",
+        "lastUpdated": "2026-06-02T00:25:59.921Z"
+      },
+      "lastFile": "/tmp/eckcm_exports/process.py"
     }
   },
   "pipeline": {
@@ -1972,7 +2014,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-01T18:59:41.037Z"
+    "lastActivity": "2026-06-02T00:25:59.921Z"
   },
   "history": [
     {
@@ -11032,6 +11074,498 @@
     {
       "timestamp": "2026-06-01T18:59:41.037Z",
       "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T19:40:26.156Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T19:40:36.562Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T19:56:47.596Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T20:13:07.779Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T20:13:16.526Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T20:13:23.369Z",
+      "feature": "donation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T20:13:36.844Z",
+      "feature": "pdf",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:26:14.874Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:26:19.991Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:26:25.968Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:26:39.305Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:27:26.082Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:27:31.950Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:27:54.189Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:28:01.340Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:28:08.341Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:28:18.600Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:28:33.603Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:28:41.271Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:28:49.347Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:28:56.504Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:29:20.968Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:41:02.269Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:41:10.698Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:41:17.823Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:41:30.740Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:41:37.048Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:41:42.161Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:41:48.762Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:41:59.391Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T22:42:06.653Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:28:28.943Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:30:21.084Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:30:39.248Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:30:44.882Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:30:53.997Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:31:00.763Z",
+      "feature": "room-groups",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:31:57.574Z",
+      "feature": "upj-export",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:46:06.947Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:46:16.467Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:46:23.745Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:46:34.079Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:47:11.583Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:49:12.198Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:51:56.008Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:52:06.586Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:52:12.786Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:52:18.307Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:52:25.060Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:52:31.728Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:52:43.295Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:52:51.220Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:53:02.423Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:53:10.218Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:53:20.461Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:53:30.764Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:55:05.840Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:55:12.685Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:55:24.507Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:55:49.028Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:58:10.859Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:58:20.505Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:58:25.854Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:58:32.569Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:58:39.024Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:58:49.814Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:59:01.902Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:59:10.828Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:59:17.273Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:59:26.382Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-01T23:59:35.452Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T00:02:48.995Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T00:02:54.419Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T00:03:10.034Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T00:03:28.200Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T00:04:48.191Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T00:04:56.103Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T00:07:13.473Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T00:07:25.996Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T00:19:43.653Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T00:19:52.044Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T00:25:59.921Z",
+      "feature": "eckcm_exports",
       "phase": "do",
       "action": "updated"
     }

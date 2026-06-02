@@ -21,7 +21,7 @@ export async function GET() {
     supabase
       .from("eckcm_rooms")
       .select(`
-        id, room_number, capacity, has_ac, is_accessible, is_available, fee_category_code,
+        id, room_number, capacity, event_capacity_override, has_ac, is_accessible, is_available, fee_category_code,
         eckcm_floors!inner(
           id, floor_number, name_en, sort_order,
           eckcm_buildings!inner(id, name_en, short_code, sort_order, is_active)
@@ -142,6 +142,49 @@ export async function GET() {
     assignmentMap.set(a.room_id, existing);
   }
 
+  // 2b. Willow Hall participant-level assignments (per-person, not group-based).
+  // Merge their occupants into the room participant lists so they show here too.
+  const WILLOW_CATEGORIES = ["LODGING_WILLOW_EM", "LODGING_WILLOW_HANSAMO"];
+  const willowByRoom = new Map<
+    string,
+    { firstName: string; lastName: string; displayNameKo: string | null; arrival: string | null; departure: string | null }[]
+  >();
+  if (roomIds.length > 0) {
+    const { data: willowRaw } = await supabase
+      .from("eckcm_willow_assignments")
+      .select(`
+        room_id, assigned_at,
+        eckcm_group_memberships!inner(
+          stay_start_date, stay_end_date,
+          eckcm_people!inner(first_name_en, last_name_en, display_name_ko),
+          eckcm_groups!inner(eckcm_registrations!inner(start_date, end_date, status))
+        )
+      `)
+      .in("room_id", roomIds)
+      .order("assigned_at", { ascending: true });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const w of (willowRaw ?? []) as any[]) {
+      const m = w.eckcm_group_memberships;
+      const person = m?.eckcm_people;
+      if (!person) continue;
+      const reg = Array.isArray(m.eckcm_groups?.eckcm_registrations)
+        ? m.eckcm_groups.eckcm_registrations[0]
+        : m.eckcm_groups?.eckcm_registrations;
+      if (!reg || !ACTIVE_REGISTRATION_STATUSES.includes(reg.status)) continue;
+
+      const arr = willowByRoom.get(w.room_id) ?? [];
+      arr.push({
+        firstName: person.first_name_en ?? "",
+        lastName: person.last_name_en ?? "",
+        displayNameKo: person.display_name_ko ?? null,
+        arrival: m.stay_start_date ?? reg.start_date ?? null,
+        departure: m.stay_end_date ?? reg.end_date ?? null,
+      });
+      willowByRoom.set(w.room_id, arr);
+    }
+  }
+
   // 3. Build response
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rooms = (roomsRaw as any[]).map((r: any) => {
@@ -154,7 +197,19 @@ export async function GET() {
     const feeCode = r.fee_category_code ?? "";
     const meta = upjRoomMeta.get(r.room_number);
     const type = meta?.type ?? (r.capacity <= 2 ? "Single" : "Double");
-    const participants = assignments.flatMap((assignment) => assignment.participants);
+    const isWillow = WILLOW_CATEGORIES.includes(feeCode);
+    // Willow rooms are per-person (0–2) — default the event capacity to the room's
+    // physical capacity instead of the type-derived value.
+    const derivedEventCapacity = isWillow
+      ? r.capacity
+      : meta?.eventCapacity ?? (type === "Double" ? 6 : 2);
+    const eventCapacity =
+      r.event_capacity_override != null ? r.event_capacity_override : derivedEventCapacity;
+    const willowParticipants = willowByRoom.get(r.id) ?? [];
+    const participants = [
+      ...assignments.flatMap((assignment) => assignment.participants),
+      ...willowParticipants,
+    ];
     const notes = [
       meta?.note ?? "",
       r.is_accessible ? "ADA" : "",
@@ -171,7 +226,9 @@ export async function GET() {
       type,
       capacity: r.capacity,
       hostCapacity: meta?.hostCapacity ?? (type === "Double" ? 2 : 1),
-      eventCapacity: meta?.eventCapacity ?? (type === "Double" ? 6 : 2),
+      eventCapacity,
+      eventCapacityOverride: r.event_capacity_override ?? null,
+      eventCapacityDefault: derivedEventCapacity,
       hasAc: r.has_ac,
       isAccessible: r.is_accessible,
       isAvailable: r.is_available,
@@ -205,7 +262,8 @@ export async function GET() {
 
 /**
  * PATCH /api/admin/lodging/upj-rooms
- * Update a room's fee_category_code.
+ * Update editable room fields inline from the UPJ Lodging Rooms page.
+ * Accepts any subset of: categoryCode, eventCapacityOverride, hasAc, isAvailable.
  */
 export async function PATCH(request: Request) {
   const admin = await requireAdmin();
@@ -213,16 +271,49 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { roomId, categoryCode } = await request.json();
-  if (!roomId || !categoryCode) {
-    return NextResponse.json({ error: "roomId and categoryCode are required" }, { status: 400 });
+  const body = await request.json();
+  const { roomId } = body;
+  if (!roomId) {
+    return NextResponse.json({ error: "roomId is required" }, { status: 400 });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const update: Record<string, any> = {};
+
+  if ("categoryCode" in body) {
+    update.fee_category_code = body.categoryCode || null;
+  }
+  if ("eventCapacityOverride" in body) {
+    const raw = body.eventCapacityOverride;
+    if (raw === null || raw === "") {
+      update.event_capacity_override = null; // clear → fall back to type-derived default
+    } else {
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 0) {
+        return NextResponse.json(
+          { error: "eventCapacityOverride must be a non-negative integer or null" },
+          { status: 400 }
+        );
+      }
+      update.event_capacity_override = n;
+    }
+  }
+  if ("hasAc" in body) {
+    update.has_ac = Boolean(body.hasAc);
+  }
+  if ("isAvailable" in body) {
+    update.is_available = Boolean(body.isAvailable);
+  }
+
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: "No editable fields provided" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
 
   const { error } = await supabase
     .from("eckcm_rooms")
-    .update({ fee_category_code: categoryCode })
+    .update(update)
     .eq("id", roomId);
 
   if (error) {
