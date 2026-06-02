@@ -36,6 +36,7 @@ import {
   BookOpen,
   Hotel,
   Map,
+  Trees,
 } from "lucide-react";
 import {
   Sidebar,
@@ -81,6 +82,7 @@ const navLinks: NavLinkDef[] = [
   { href: "/admin/events", label: "Events", icon: Calendar, exact: false, permission: "event.manage" },
   { href: "/admin/room-groups", label: "Room Assignment", icon: BedDouble, exact: false, permission: "group.read" },
   { href: "/admin/lodging/upj-rooms", label: "UPJ Lodging", icon: Hotel, exact: false, permission: "group.read" },
+  { href: "/admin/lodging/willow", label: "Willow Hall", icon: Trees, exact: false, permission: "group.read" },
   { href: "/admin/lodging/floorplan", label: "Floor Plan", icon: Map, exact: false, permission: "group.read" },
   { href: "/admin/invoices", label: "Invoices", icon: FileText, exact: false, permission: "invoice.read" },
   { href: "/admin/inventory", label: "Inventory", icon: Package, exact: false, permission: "participant.read" },

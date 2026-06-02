@@ -22,6 +22,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   Download,
@@ -33,6 +43,8 @@ import {
   BedDouble,
   RefreshCw,
   Upload,
+  Pencil,
+  Snowflake,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +69,8 @@ interface Room {
   capacity: number;
   hostCapacity: number;
   eventCapacity: number;
+  eventCapacityOverride: number | null;
+  eventCapacityDefault: number;
   hasAc: boolean;
   isAccessible: boolean;
   isAvailable: boolean;
@@ -75,6 +89,13 @@ interface CategoryOption {
 }
 
 type ViewMode = "event" | "host";
+
+interface RoomPatch {
+  categoryCode?: string;
+  eventCapacityOverride?: number | null;
+  hasAc?: boolean;
+  isAvailable?: boolean;
+}
 
 // ─── Component ──────────────────────────────────────────────────
 
@@ -148,31 +169,47 @@ export function UPJLodgingManager() {
     }
   };
 
-  const updateCategory = useCallback(
-    async (roomId: string, roomNumber: string, categoryCode: string) => {
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+
+  const updateRoom = useCallback(
+    async (room: Room, patch: RoomPatch): Promise<boolean> => {
       try {
         const res = await fetch("/api/admin/lodging/upj-rooms", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ roomId, categoryCode }),
+          body: JSON.stringify({ roomId: room.dbRoomId, ...patch }),
         });
-        if (!res.ok) throw new Error("Failed to update");
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error ?? "Failed to update");
+        }
 
         setRooms((prev) =>
-          prev.map((r) =>
-            r.dbRoomId === roomId
-              ? {
-                  ...r,
-                  lodgingCategory: categoryCode,
-                  lodgingCategoryName:
-                    categories.find((c) => c.code === categoryCode)?.name ?? "",
-                }
-              : r
-          )
+          prev.map((r) => {
+            if (r.dbRoomId !== room.dbRoomId) return r;
+            const next = { ...r };
+            if ("categoryCode" in patch) {
+              next.lodgingCategory = patch.categoryCode ?? "";
+              next.lodgingCategoryName =
+                categories.find((c) => c.code === patch.categoryCode)?.name ?? "";
+            }
+            if ("eventCapacityOverride" in patch) {
+              next.eventCapacityOverride = patch.eventCapacityOverride ?? null;
+              next.eventCapacity =
+                patch.eventCapacityOverride != null
+                  ? patch.eventCapacityOverride
+                  : r.eventCapacityDefault;
+            }
+            if ("hasAc" in patch) next.hasAc = Boolean(patch.hasAc);
+            if ("isAvailable" in patch) next.isAvailable = Boolean(patch.isAvailable);
+            return next;
+          })
         );
-        toast.success(`${roomNumber} updated`);
-      } catch {
-        toast.error("Failed to update category");
+        toast.success(`${room.roomNumber} updated`);
+        return true;
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to update room");
+        return false;
       }
     },
     [categories]
@@ -405,11 +442,7 @@ export function UPJLodgingManager() {
                     </span>
                   </h3>
                   {viewMode === "event" ? (
-                    <EventTable
-                      rooms={floorRooms}
-                      categories={categories}
-                      onCategoryChange={updateCategory}
-                    />
+                    <EventTable rooms={floorRooms} onEdit={setEditingRoom} />
                   ) : (
                     <HostTable rooms={floorRooms} />
                   )}
@@ -419,6 +452,13 @@ export function UPJLodgingManager() {
           </div>
         )}
       </div>
+
+      <RoomEditDialog
+        room={editingRoom}
+        categories={categories}
+        onClose={() => setEditingRoom(null)}
+        onSave={updateRoom}
+      />
     </div>
   );
 }
@@ -427,12 +467,10 @@ export function UPJLodgingManager() {
 
 function EventTable({
   rooms,
-  categories,
-  onCategoryChange,
+  onEdit,
 }: {
   rooms: Room[];
-  categories: CategoryOption[];
-  onCategoryChange: (roomId: string, roomNumber: string, code: string) => void;
+  onEdit: (room: Room) => void;
 }) {
   return (
     <div className="border rounded-md overflow-hidden">
@@ -441,12 +479,14 @@ function EventTable({
           <TableRow className="bg-muted/40">
             <TableHead className="w-24">Room #</TableHead>
             <TableHead className="w-16">Type</TableHead>
+            <TableHead className="w-12 text-center">A/C</TableHead>
             <TableHead className="w-12 text-center">Cap</TableHead>
             <TableHead className="w-20 text-center">Assigned</TableHead>
             <TableHead className="w-20">Group</TableHead>
             <TableHead className="w-48">Category</TableHead>
             <TableHead>Participants</TableHead>
             <TableHead className="w-24">Note</TableHead>
+            <TableHead className="w-12 text-center">Edit</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -463,8 +503,27 @@ function EventTable({
                   {room.roomNumber}
                 </TableCell>
                 <TableCell className="text-xs py-2">{room.type}</TableCell>
+                <TableCell className="text-center py-2">
+                  {room.hasAc ? (
+                    <Snowflake className="size-3.5 text-sky-500 inline" />
+                  ) : (
+                    <span className="text-muted-foreground/50 text-[10px]">—</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-center text-xs py-2">
-                  {room.eventCapacity}
+                  <span
+                    className={cn(
+                      room.eventCapacityOverride != null &&
+                        "font-semibold text-primary underline decoration-dotted"
+                    )}
+                    title={
+                      room.eventCapacityOverride != null
+                        ? `Overridden (default ${room.eventCapacityDefault})`
+                        : undefined
+                    }
+                  >
+                    {room.eventCapacity}
+                  </span>
                 </TableCell>
                 <TableCell className="text-center py-2">
                   <Badge
@@ -477,24 +536,12 @@ function EventTable({
                 <TableCell className="font-mono text-xs py-2">
                   {room.groupCode ?? "—"}
                 </TableCell>
-                <TableCell className="py-1">
-                  <Select
-                    value={room.lodgingCategory || undefined}
-                    onValueChange={(val) =>
-                      onCategoryChange(room.dbRoomId, room.roomNumber, val)
-                    }
-                  >
-                    <SelectTrigger className="h-7 text-xs">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((c) => (
-                        <SelectItem key={c.code} value={c.code} className="text-xs">
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <TableCell className="text-xs py-2">
+                  {room.lodgingCategoryName || (
+                    <span className="text-muted-foreground/50 italic text-[10px]">
+                      Not set
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="text-xs py-2">
                   {room.participants.length > 0 ? (
@@ -521,6 +568,17 @@ function EventTable({
                 </TableCell>
                 <TableCell className="text-[10px] text-muted-foreground py-2">
                   {room.note || "—"}
+                </TableCell>
+                <TableCell className="text-center py-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7"
+                    onClick={() => onEdit(room)}
+                    title="Edit room"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
                 </TableCell>
               </TableRow>
             );
@@ -607,6 +665,144 @@ function HostTable({ rooms }: { rooms: Room[] }) {
         </TableBody>
       </Table>
     </div>
+  );
+}
+
+// ─── Room Edit Dialog ───────────────────────────────────────────
+
+function RoomEditDialog({
+  room,
+  categories,
+  onClose,
+  onSave,
+}: {
+  room: Room | null;
+  categories: CategoryOption[];
+  onClose: () => void;
+  onSave: (room: Room, patch: RoomPatch) => Promise<boolean>;
+}) {
+  const [capacity, setCapacity] = useState("");
+  const [hasAc, setHasAc] = useState(false);
+  const [isAvailable, setIsAvailable] = useState(true);
+  const [category, setCategory] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!room) return;
+    setCapacity(
+      room.eventCapacityOverride != null ? String(room.eventCapacityOverride) : ""
+    );
+    setHasAc(room.hasAc);
+    setIsAvailable(room.isAvailable);
+    setCategory(room.lodgingCategory ?? "");
+  }, [room]);
+
+  if (!room) return null;
+
+  const NO_CATEGORY = "__none__";
+
+  const handleSave = async () => {
+    const trimmed = capacity.trim();
+    const override = trimmed === "" ? null : Number(trimmed);
+    if (override != null && (!Number.isInteger(override) || override < 0)) {
+      toast.error("Capacity must be a non-negative whole number");
+      return;
+    }
+
+    setSaving(true);
+    const ok = await onSave(room, {
+      eventCapacityOverride: override,
+      hasAc,
+      isAvailable,
+      categoryCode: category === NO_CATEGORY ? "" : category,
+    });
+    setSaving(false);
+    if (ok) onClose();
+  };
+
+  return (
+    <Dialog open={!!room} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-mono text-base">{room.roomNumber}</DialogTitle>
+          <DialogDescription>
+            {room.building} — {room.floorName} · {room.type}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {/* Event capacity */}
+          <div className="space-y-1.5">
+            <Label htmlFor="room-capacity">Event Capacity</Label>
+            <Input
+              id="room-capacity"
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+              placeholder={`Default: ${room.eventCapacityDefault}`}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Max participants for the event. Leave blank to use the type-derived
+              default ({room.eventCapacityDefault}).
+            </p>
+          </div>
+
+          {/* A/C */}
+          <div className="flex items-center justify-between">
+            <Label htmlFor="room-ac" className="flex items-center gap-1.5">
+              <Snowflake className="size-3.5 text-sky-500" />
+              Air Conditioning
+            </Label>
+            <Switch id="room-ac" checked={hasAc} onCheckedChange={setHasAc} />
+          </div>
+
+          {/* Available */}
+          <div className="flex items-center justify-between">
+            <Label htmlFor="room-available">Available</Label>
+            <Switch
+              id="room-available"
+              checked={isAvailable}
+              onCheckedChange={setIsAvailable}
+            />
+          </div>
+
+          {/* Category */}
+          <div className="space-y-1.5">
+            <Label>Lodging Category</Label>
+            <Select
+              value={category || NO_CATEGORY}
+              onValueChange={(v) => setCategory(v === NO_CATEGORY ? "" : v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_CATEGORY} className="text-muted-foreground">
+                  Not set
+                </SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={saving} className="gap-1.5">
+            {saving && <Loader2 className="size-3.5 animate-spin" />}
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

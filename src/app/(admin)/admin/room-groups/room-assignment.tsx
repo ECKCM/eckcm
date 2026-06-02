@@ -40,6 +40,35 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// ─── Lodging category equivalence ───────────────────────────────
+// AC-VIP registrants are assigned into A/C rooms — there is no separate
+// AC-VIP room stock. So for room assignment we treat LODGING_AC_VIP as
+// LODGING_AC: VIP groups appear under the A/C tab and A/C rooms are offered.
+const CATEGORY_ALIASES: Record<string, string> = {
+  LODGING_AC_VIP: "LODGING_AC",
+};
+
+/** Map an alias category to its canonical code (or return it unchanged). */
+function canonicalCategory(code: string | null | undefined): string {
+  if (!code) return "";
+  return CATEGORY_ALIASES[code] ?? code;
+}
+
+/** All fee_category_codes that belong to a canonical tab (canonical + its aliases). */
+function categoryGroup(canonical: string): string[] {
+  const aliases = Object.keys(CATEGORY_ALIASES).filter(
+    (k) => CATEGORY_ALIASES[k] === canonical
+  );
+  return [canonical, ...aliases];
+}
+
+// Categories handled by their own dedicated tool, not this group-based one.
+// Willow Hall uses participant-level assignment at /admin/lodging/willow.
+const CATEGORIES_HANDLED_ELSEWHERE = new Set([
+  "LODGING_WILLOW_EM",
+  "LODGING_WILLOW_HANSAMO",
+]);
+
 // ─── Types ──────────────────────────────────────────────────────
 
 interface Event {
@@ -69,6 +98,7 @@ interface UnassignedGroup {
   members: GroupMember[];
   church_name: string | null;
   preferences: Record<string, unknown>;
+  isVip: boolean;
 }
 
 interface RoomAssignmentData {
@@ -110,8 +140,18 @@ export function RoomAssignment({
   events: Event[];
   feeCategories: FeeCategory[];
 }) {
+  // Hide alias categories (e.g. AC VIP, fold into canonical tab) and categories
+  // handled by a dedicated tool (Willow Hall → /admin/lodging/willow).
+  const visibleCategories = useMemo(
+    () =>
+      feeCategories.filter(
+        (fc) => !CATEGORY_ALIASES[fc.code] && !CATEGORIES_HANDLED_ELSEWHERE.has(fc.code)
+      ),
+    [feeCategories]
+  );
+
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
-  const [activeTab, setActiveTab] = useState(feeCategories[0]?.code ?? "");
+  const [activeTab, setActiveTab] = useState(visibleCategories[0]?.code ?? "");
   const [unassigned, setUnassigned] = useState<UnassignedGroup[]>([]);
   const [buildings, setBuildings] = useState<BuildingData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -170,9 +210,11 @@ export function RoomAssignment({
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const g of (groupsRaw ?? []) as any[]) {
-      // Match groups to tab: by lodging_type column, or show in all tabs if unset
+      // Match groups to tab by canonical lodging_type (AC VIP folds into A/C),
+      // or show in all tabs if unset.
       const lt = g.lodging_type as string | null;
-      if (lt && lt !== activeTab) continue;
+      if (lt && canonicalCategory(lt) !== activeTab) continue;
+      const isVip = !!lt && CATEGORY_ALIASES[lt] != null;
       totalForTab++;
 
       const raRaw = g.eckcm_room_assignments;
@@ -199,6 +241,7 @@ export function RoomAssignment({
         members,
         church_name: churchName,
         preferences: g.preferences ?? {},
+        isVip,
       });
     }
 
@@ -228,7 +271,7 @@ export function RoomAssignment({
           eckcm_buildings!inner(id, name_en, short_code, sort_order, is_active)
         )
       `)
-      .eq("fee_category_code", activeTab)
+      .in("fee_category_code", categoryGroup(activeTab))
       .eq("is_available", true);
 
     if (!roomsRaw) {
@@ -519,7 +562,7 @@ export function RoomAssignment({
 
   // ─── Render ─────────────────────────────────────────────────
 
-  if (!feeCategories.length) {
+  if (!visibleCategories.length) {
     return (
       <div className="p-6 text-center text-muted-foreground">
         No lodging fee categories with inventory tracking found.
@@ -556,7 +599,7 @@ export function RoomAssignment({
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
-              {feeCategories.map((fc) => (
+              {visibleCategories.map((fc) => (
                 <TabsTrigger key={fc.code} value={fc.code} className="text-xs">
                   {fc.name_en}
                 </TabsTrigger>
@@ -833,6 +876,11 @@ function GroupCardContent({
             <span className="font-mono text-xs font-medium">
               {group.display_group_code}
             </span>
+            {group.isVip && (
+              <Badge className="text-[10px] px-1 py-0 bg-amber-500 hover:bg-amber-500 text-white">
+                VIP
+              </Badge>
+            )}
           </div>
           <Badge variant="secondary" className="text-[10px] gap-0.5">
             <Users className="size-2.5" />

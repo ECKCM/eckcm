@@ -101,6 +101,49 @@ export async function GET() {
     }
   }
 
+  // ─── Willow Hall: participant-level assignments ───────────────
+  // Willow rooms are NOT assigned by group. Pull from eckcm_willow_assignments
+  // and show ONLY the earliest-assigned person per room (the rest are tracked
+  // in our admin UI but omitted from the UPJ report).
+  const { data: willowRaw } = await supabase
+    .from("eckcm_willow_assignments")
+    .select(`
+      room_id, assigned_at,
+      eckcm_group_memberships!inner(
+        stay_start_date, stay_end_date,
+        eckcm_people!inner(first_name_en, last_name_en),
+        eckcm_groups!inner(
+          eckcm_registrations!inner(start_date, end_date, status)
+        )
+      )
+    `)
+    .order("assigned_at", { ascending: true });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const w of (willowRaw ?? []) as any[]) {
+    const roomNumber = numberByRoomId.get(w.room_id);
+    if (!roomNumber) continue;
+    // Rows are ordered earliest-first; keep only the first person per room.
+    if (participantsByRoom.has(roomNumber)) continue;
+
+    const m = w.eckcm_group_memberships;
+    const person = m?.eckcm_people;
+    if (!person) continue;
+    const reg = m.eckcm_groups?.eckcm_registrations;
+    const regRow = Array.isArray(reg) ? reg[0] : reg;
+    if (!regRow || !ACTIVE_REGISTRATION_STATUSES.includes(regRow.status)) continue;
+
+    participantsByRoom.set(roomNumber, [
+      {
+        firstName: person.first_name_en ?? "",
+        lastName: person.last_name_en ?? "",
+        displayNameKo: null,
+        arrival: m.stay_start_date ?? regRow.start_date ?? null,
+        departure: m.stay_end_date ?? regRow.end_date ?? null,
+      },
+    ]);
+  }
+
   // Generate updated Excel files in parallel and ZIP them
   const buffers = await Promise.all(
     BUILDING_FILES.map((_, i) => exportBuildingExcel(i, participantsByRoom))
