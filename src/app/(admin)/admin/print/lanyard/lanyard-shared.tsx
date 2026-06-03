@@ -147,7 +147,7 @@ export const PRINT_CSS = `
   word-break: keep-all;
   max-height: 100%;
 }
-.lan-name { font-size: 19pt; font-weight: 800; color: #000000; }
+.lan-name { font-size: 19pt; font-weight: 800; color: #2563eb; }
 .lan-title {
   font-size: 9pt;
   font-weight: 700;
