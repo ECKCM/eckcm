@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +34,18 @@ interface Event {
   year: number;
 }
 
+interface ParticipantTitleOption {
+  id: string;
+  name: string;
+  color: string | null;
+  is_active: boolean;
+}
+
+const NO_TITLE = "__none__";
+
 interface ParticipantRow {
+  membership_id: string;
+  title_id: string | null;
   person_id: string;
   first_name_en: string;
   last_name_en: string;
@@ -68,11 +80,22 @@ interface ParticipantRow {
   lodging_type: string | null;
 }
 
-export function ParticipantsTable({ events }: { events: Event[] }) {
+export function ParticipantsTable({
+  events,
+  titles,
+}: {
+  events: Event[];
+  titles: ParticipantTitleOption[];
+}) {
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
   const [search, setSearch] = useState("");
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const titleById = useMemo(
+    () => new Map(titles.map((t) => [t.id, t])),
+    [titles]
+  );
 
   const loadParticipants = useCallback(async () => {
     if (!eventId) return;
@@ -82,10 +105,12 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
     const { data } = await supabase
       .from("eckcm_group_memberships")
       .select(`
+        id,
         person_id,
         role,
         status,
         participant_code,
+        title_id,
         eckcm_people!inner(
           first_name_en, last_name_en, display_name_ko,
           gender, birth_date, age_at_event, is_k12, grade,
@@ -118,6 +143,8 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
           prefs && typeof prefs === "object" ? prefs.lodgingType ?? null : null;
 
         return {
+          membership_id: m.id,
+          title_id: m.title_id ?? null,
           person_id: m.person_id,
           first_name_en: m.eckcm_people.first_name_en,
           last_name_en: m.eckcm_people.last_name_en,
@@ -174,7 +201,52 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
   useRealtime({ table: "eckcm_group_memberships", event: "*" }, _reload);
   useChangeDetector("eckcm_group_memberships", loadParticipants, 5000);
 
-  const filtered = participants.filter((p) => {
+  const activeTitles = useMemo(() => titles.filter((t) => t.is_active), [titles]);
+
+  // Options for a row's dropdown: active titles, plus the currently-assigned one
+  // if it has since been deactivated (so its label still shows).
+  const titleOptionsFor = (currentId: string | null) => {
+    if (currentId && !activeTitles.some((t) => t.id === currentId)) {
+      const cur = titleById.get(currentId);
+      if (cur) return [cur, ...activeTitles];
+    }
+    return activeTitles;
+  };
+
+  const assignTitle = async (membershipId: string, value: string) => {
+    const title_id = value === NO_TITLE ? null : value;
+    const snapshot = participants;
+    // Optimistic update.
+    setParticipants((rows) =>
+      rows.map((r) => (r.membership_id === membershipId ? { ...r, title_id } : r))
+    );
+    try {
+      const res = await fetch(
+        `/api/admin/participants/${membershipId}/title`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title_id }),
+        }
+      );
+      if (!res.ok) throw new Error("request failed");
+      toast.success("Title updated");
+    } catch {
+      setParticipants(snapshot); // revert
+      toast.error("Failed to update title");
+    }
+  };
+
+  const enriched = useMemo(
+    () =>
+      participants.map((p) => ({
+        ...p,
+        title_name: p.title_id ? titleById.get(p.title_id)?.name ?? null : null,
+      })),
+    [participants, titleById]
+  );
+
+  const filtered = enriched.filter((p) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -188,7 +260,8 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
       p.display_group_code.toLowerCase().includes(q) ||
       (p.church_name?.toLowerCase().includes(q) ?? false) ||
       (p.department_name?.toLowerCase().includes(q) ?? false) ||
-      (p.guardian_name?.toLowerCase().includes(q) ?? false)
+      (p.guardian_name?.toLowerCase().includes(q) ?? false) ||
+      (p.title_name?.toLowerCase().includes(q) ?? false)
     );
   });
 
@@ -274,6 +347,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
                   <TableRow>
                     <SortableTableHead className="whitespace-nowrap" sortKey="first_name_en" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
                     <SortableTableHead sortKey="display_name_ko" sortConfig={sortConfig} onSort={requestSort}>Display Name</SortableTableHead>
+                    <SortableTableHead sortKey="title_name" sortConfig={sortConfig} onSort={requestSort}>Title</SortableTableHead>
                     <SortableTableHead sortKey="gender" sortConfig={sortConfig} onSort={requestSort}>Gender</SortableTableHead>
                     <SortableTableHead sortKey="date_of_birth" sortConfig={sortConfig} onSort={requestSort}>DOB</SortableTableHead>
                     <SortableTableHead sortKey="age_at_event" sortConfig={sortConfig} onSort={requestSort}>Age</SortableTableHead>
@@ -304,13 +378,40 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sorted.map((p, i) => (
-                    <TableRow key={`${p.person_id}-${i}`}>
+                  {sorted.map((p) => (
+                    <TableRow key={p.membership_id}>
                       <TableCell className="font-medium whitespace-nowrap">
                         {p.first_name_en} {p.last_name_en}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {p.display_name_ko ?? "-"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <Select
+                          value={p.title_id ?? NO_TITLE}
+                          onValueChange={(v) => assignTitle(p.membership_id, v)}
+                        >
+                          <SelectTrigger className="h-7 w-[150px] text-xs">
+                            <SelectValue placeholder="— Title —" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NO_TITLE}>
+                              <span className="text-muted-foreground">— None —</span>
+                            </SelectItem>
+                            {titleOptionsFor(p.title_id).map((t) => (
+                              <SelectItem key={t.id} value={t.id}>
+                                <span className="flex items-center gap-2">
+                                  <span
+                                    className="inline-block size-2 shrink-0 rounded-full"
+                                    style={{ backgroundColor: t.color ?? "#94a3b8" }}
+                                  />
+                                  {t.name}
+                                  {!t.is_active && " (inactive)"}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>{p.gender}</TableCell>
                       <TableCell className="whitespace-nowrap">
@@ -390,7 +491,7 @@ export function ParticipantsTable({ events }: { events: Event[] }) {
                   {sorted.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={27}
+                        colSpan={28}
                         className="text-center text-muted-foreground py-8"
                       >
                         No participants found.

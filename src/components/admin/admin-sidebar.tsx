@@ -37,6 +37,7 @@ import {
   Hotel,
   Map,
   Trees,
+  Tag,
 } from "lucide-react";
 import {
   Sidebar,
@@ -109,6 +110,7 @@ const settingsLinks = [
   { href: "/admin/settings/roles", label: "Roles", icon: ShieldCheck },
   { href: "/admin/settings/departments", label: "Departments", icon: Building2 },
   { href: "/admin/settings/churches", label: "Churches", icon: Church },
+  { href: "/admin/settings/participant-titles", label: "Participant Titles", icon: Tag },
   { href: "/admin/settings/legal", label: "Legal Pages", icon: Scale },
   { href: "/admin/settings/stripe", label: "Stripe", icon: CreditCard },
   { href: "/admin/settings/lodging", label: "Lodging", icon: BedDouble },
