@@ -11,6 +11,7 @@ import {
   Presentation,
   Plane,
   Settings2,
+  Tag,
 } from "lucide-react";
 
 const settingsCards = [
@@ -19,6 +20,7 @@ const settingsCards = [
   { href: "/admin/settings/roles", label: "Roles", icon: ShieldCheck, description: "Manage staff roles and permissions" },
   { href: "/admin/settings/departments", label: "Departments", icon: Building2, description: "Organize departments within the event" },
   { href: "/admin/settings/churches", label: "Churches", icon: Church, description: "Manage church directory for registrations" },
+  { href: "/admin/settings/participant-titles", label: "Participant Titles", icon: Tag, description: "Create titles (Speaker, Staff, VIP…) to assign to participants" },
   { href: "/admin/settings/legal", label: "Legal Pages", icon: Scale, description: "Edit terms of service and privacy policy" },
   { href: "/admin/settings/stripe", label: "Stripe", icon: CreditCard, description: "Configure Stripe payment integration" },
   { href: "/admin/settings/lodging", label: "Lodging", icon: BedDouble, description: "Manage buildings, floors, and rooms" },
