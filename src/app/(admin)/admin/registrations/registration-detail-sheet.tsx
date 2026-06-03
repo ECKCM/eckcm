@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   Sheet,
@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ExternalLink,
   Copy,
@@ -54,7 +55,6 @@ import {
   CalendarDays,
   FileText,
   AlertTriangle,
-  CheckCircle2,
   User,
   Phone,
   Mail,
@@ -71,6 +71,8 @@ import {
   ArrowRightLeft,
   BedDouble,
   Link2,
+  PlaneLanding,
+  PlaneTakeoff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ChurchCombobox } from "@/components/shared/church-combobox";
@@ -528,6 +530,11 @@ export function RegistrationDetailSheet({
                 </div>
               </div>
 
+              {/* Check-in / Check-out (editable) */}
+              <CheckinSection registration={reg} onChanged={onRefresh} />
+
+              <Separator />
+
               {/* Payment & Invoice */}
               <section>
                 <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
@@ -691,6 +698,13 @@ export function RegistrationDetailSheet({
                   </div>
                 </section>
               )}
+
+              {/* Airport pickup / drop-off (per participant, editable) */}
+              <AirportSection
+                registrationId={reg.id}
+                eventId={eventId}
+                people={people}
+              />
 
               {/* Notes */}
               <Separator />
@@ -2000,6 +2014,550 @@ function ResendEmailButton({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+// ─── Airport Pickup / Drop-off Section (per participant) ────
+
+interface AirportRideRow {
+  id: string;
+  direction: "PICKUP" | "DROPOFF";
+  scheduled_at: string;
+  label: string | null;
+  origin: string | null;
+  destination: string | null;
+}
+
+function AirportSection({
+  registrationId,
+  eventId,
+  people,
+}: {
+  registrationId: string;
+  eventId: string;
+  people: PersonDetail[];
+}) {
+  const [rides, setRides] = useState<AirportRideRow[]>([]);
+  // key `${rideId}:${personId}` → flight_info. Presence in the map === assigned.
+  const [assignMap, setAssignMap] = useState<Map<string, string>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [pending, setPending] = useState<{
+    ride: AirportRideRow;
+    personId: string;
+    personName: string;
+    next: boolean;
+  } | null>(null);
+
+  const rideKey = (rideId: string, personId: string) => `${rideId}:${personId}`;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const supabase = createClient();
+    const [{ data: rideRows }, { data: assignRows }] = await Promise.all([
+      supabase
+        .from("eckcm_airport_rides")
+        .select("id, direction, scheduled_at, label, origin, destination")
+        .eq("event_id", eventId)
+        .eq("is_active", true)
+        .order("scheduled_at"),
+      supabase
+        .from("eckcm_registration_rides")
+        .select("ride_id, person_id, flight_info")
+        .eq("registration_id", registrationId),
+    ]);
+    setRides((rideRows as AirportRideRow[]) ?? []);
+    const map = new Map<string, string>();
+    for (const a of (assignRows ?? []) as {
+      ride_id: string;
+      person_id: string | null;
+      flight_info: string | null;
+    }[]) {
+      if (a.person_id) map.set(rideKey(a.ride_id, a.person_id), a.flight_info ?? "");
+    }
+    setAssignMap(map);
+    setLoading(false);
+  }, [eventId, registrationId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "America/New_York",
+    });
+
+  const dirLabel = (d: "PICKUP" | "DROPOFF") =>
+    d === "PICKUP" ? "pickup" : "drop-off";
+
+  // Toggle is confirmed via the warning dialog before it hits the API.
+  const applyToggle = async () => {
+    if (!pending) return;
+    const { ride, personId, next } = pending;
+    const key = rideKey(ride.id, personId);
+    setSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/admin/registrations/${registrationId}/airport`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ personId, rideId: ride.id, assigned: next }),
+        }
+      );
+      if (res.ok) {
+        setAssignMap((prev) => {
+          const n = new Map(prev);
+          if (next) n.set(key, "");
+          else n.delete(key);
+          return n;
+        });
+        setPending(null);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to update airport assignment");
+      }
+    } catch {
+      toast.error("Failed to update airport assignment");
+    }
+    setSubmitting(false);
+  };
+
+  const saveFlight = async (rideId: string, personId: string, value: string) => {
+    const key = rideKey(rideId, personId);
+    try {
+      const res = await fetch(
+        `/api/admin/registrations/${registrationId}/airport`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ personId, rideId, flightInfo: value }),
+        }
+      );
+      if (res.ok) {
+        setAssignMap((prev) => {
+          const n = new Map(prev);
+          n.set(key, value);
+          return n;
+        });
+        toast.success("Flight info saved");
+        return true;
+      }
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error || "Failed to save flight info");
+      return false;
+    } catch {
+      toast.error("Failed to save flight info");
+      return false;
+    }
+  };
+
+  // No rides configured for this event → nothing to assign.
+  if (!loading && rides.length === 0) return null;
+
+  const pickups = rides.filter((r) => r.direction === "PICKUP");
+  const dropoffs = rides.filter((r) => r.direction === "DROPOFF");
+
+  const renderRide = (ride: AirportRideRow) => {
+    const count = people.reduce(
+      (n, p) => n + (assignMap.has(rideKey(ride.id, p.person_id)) ? 1 : 0),
+      0
+    );
+    return (
+      <div key={ride.id} className="rounded border p-2.5 space-y-2">
+        <div className="flex items-center gap-2 text-xs">
+          {ride.direction === "PICKUP" ? (
+            <PlaneLanding className="size-3.5 text-muted-foreground shrink-0" />
+          ) : (
+            <PlaneTakeoff className="size-3.5 text-muted-foreground shrink-0" />
+          )}
+          <span className="font-medium">{fmt(ride.scheduled_at)}</span>
+          {(ride.origin || ride.destination) && (
+            <span className="text-muted-foreground truncate">
+              {ride.origin ?? "—"} → {ride.destination ?? "—"}
+            </span>
+          )}
+          <span className="ml-auto text-muted-foreground shrink-0">
+            {count}/{people.length}
+          </span>
+        </div>
+        <div className="space-y-1.5">
+          {people.map((p) => {
+            const key = rideKey(ride.id, p.person_id);
+            const isAssigned = assignMap.has(key);
+            return (
+              <RidePassengerRow
+                key={p.membership_id}
+                person={p}
+                assigned={isAssigned}
+                flightInfo={assignMap.get(key) ?? ""}
+                onToggle={() =>
+                  setPending({
+                    ride,
+                    personId: p.person_id,
+                    personName: `${p.first_name_en} ${p.last_name_en}`,
+                    next: !isAssigned,
+                  })
+                }
+                onSaveFlight={(value) => saveFlight(ride.id, p.person_id, value)}
+              />
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <section>
+        <h3 className="text-sm font-semibold mb-3">Airport</h3>
+        {loading ? (
+          <p className="text-xs text-muted-foreground">Loading rides…</p>
+        ) : (
+          <div className="space-y-3">
+            {pickups.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground">Pickup</p>
+                {pickups.map(renderRide)}
+              </div>
+            )}
+            {dropoffs.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Drop-off
+                </p>
+                {dropoffs.map(renderRide)}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {pending && (
+        <AlertDialog
+          open
+          onOpenChange={(open) => !open && !submitting && setPending(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle
+                  className={`size-5 ${
+                    pending.next ? "text-amber-500" : "text-destructive"
+                  }`}
+                />
+                {pending.next ? "Add to airport ride" : "Remove from airport ride"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {pending.next ? (
+                  <>
+                    Assign <strong>{pending.personName}</strong> to the{" "}
+                    {dirLabel(pending.ride.direction)} ride on{" "}
+                    <strong>{fmt(pending.ride.scheduled_at)}</strong>?
+                  </>
+                ) : (
+                  <>
+                    Remove <strong>{pending.personName}</strong> from the{" "}
+                    {dirLabel(pending.ride.direction)} ride on{" "}
+                    <strong>{fmt(pending.ride.scheduled_at)}</strong>? Their flight
+                    info for this ride will be removed too.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className={
+                  pending.next
+                    ? ""
+                    : "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/70 active:scale-[0.97]"
+                }
+                onClick={(e) => {
+                  e.preventDefault();
+                  applyToggle();
+                }}
+                disabled={submitting}
+              >
+                {submitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
+                Confirm
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </>
+  );
+}
+
+// ─── Airport passenger row (checkbox + editable flight info) ──
+
+function RidePassengerRow({
+  person,
+  assigned,
+  flightInfo,
+  onToggle,
+  onSaveFlight,
+}: {
+  person: PersonDetail;
+  assigned: boolean;
+  flightInfo: string;
+  onToggle: () => void;
+  onSaveFlight: (value: string) => Promise<boolean>;
+}) {
+  const [draft, setDraft] = useState(flightInfo);
+  const [saving, setSaving] = useState(false);
+
+  // Re-sync when the saved value changes (assign/unassign/reload).
+  useEffect(() => {
+    setDraft(flightInfo);
+  }, [flightInfo, assigned]);
+
+  const dirty = draft !== flightInfo;
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSaveFlight(draft);
+    setSaving(false);
+  };
+
+  return (
+    <div>
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <Checkbox checked={assigned} onCheckedChange={onToggle} />
+        <span>
+          {person.first_name_en} {person.last_name_en}
+          {person.display_name_ko ? (
+            <span className="text-muted-foreground">
+              {" "}
+              ({person.display_name_ko})
+            </span>
+          ) : null}
+        </span>
+      </label>
+      {assigned && (
+        <div className="mt-1 ml-6 space-y-1">
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={2}
+            placeholder="Flight info (airline, flight #, arrival time)…"
+            className="text-xs"
+          />
+          {dirty && (
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                className="h-7 px-2"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <Loader2 className="size-3 mr-1 animate-spin" />
+                ) : (
+                  <Save className="size-3 mr-1" />
+                )}
+                Save
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Check-in / Check-out Section (editable) ────────────────
+
+type CheckinActionKey = "check_in" | "uncheck_in" | "check_out" | "uncheck_out";
+
+const CHECKIN_ACTIONS: Record<
+  CheckinActionKey,
+  {
+    title: string;
+    toast: string;
+    describe: (code: string, count: number) => string;
+    destructive: boolean;
+  }
+> = {
+  check_in: {
+    title: "Check in registration",
+    toast: "Checked in",
+    describe: (code, n) =>
+      `Mark ${code} as checked in? This checks in all ${n} participant(s).`,
+    destructive: false,
+  },
+  uncheck_in: {
+    title: "Undo check-in",
+    toast: "Check-in removed",
+    describe: (code, n) =>
+      `Remove check-in for ${code}? This clears check-in for all ${n} participant(s) — and also clears any check-out.`,
+    destructive: true,
+  },
+  check_out: {
+    title: "Check out registration",
+    toast: "Checked out",
+    describe: (code, n) =>
+      `Mark ${code} as checked out? This checks out all ${n} participant(s).`,
+    destructive: false,
+  },
+  uncheck_out: {
+    title: "Undo check-out",
+    toast: "Check-out removed",
+    describe: (code) =>
+      `Undo check-out for ${code}? Participants stay checked in.`,
+    destructive: true,
+  },
+};
+
+function CheckinSection({
+  registration,
+  onChanged,
+}: {
+  registration: RegistrationRow;
+  onChanged: () => void;
+}) {
+  const [pending, setPending] = useState<CheckinActionKey | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // The parent's detailReg is a snapshot — onChanged() refreshes the table but
+  // not these props until the sheet is reopened. Keep local state so the
+  // checkboxes reflect the change immediately, re-syncing if the prop changes.
+  const [checkedIn, setCheckedIn] = useState(registration.checked_in);
+  const [checkedOut, setCheckedOut] = useState(registration.checked_out);
+  useEffect(() => {
+    setCheckedIn(registration.checked_in);
+    setCheckedOut(registration.checked_out);
+  }, [registration.id, registration.checked_in, registration.checked_out]);
+
+  const apply = async (action: CheckinActionKey) => {
+    setSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/admin/registrations/${registration.id}/checkin`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        }
+      );
+      if (res.ok) {
+        toast.success(CHECKIN_ACTIONS[action].toast);
+        // Optimistically reflect the new state in the open sheet.
+        if (action === "check_in") setCheckedIn(true);
+        else if (action === "uncheck_in") {
+          setCheckedIn(false);
+          setCheckedOut(false);
+        } else if (action === "check_out") {
+          setCheckedIn(true);
+          setCheckedOut(true);
+        } else if (action === "uncheck_out") setCheckedOut(false);
+        setPending(null);
+        onChanged();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to update check-in");
+      }
+    } catch {
+      toast.error("Failed to update check-in");
+    }
+    setSubmitting(false);
+  };
+
+  return (
+    <section>
+      <h3 className="text-sm font-semibold mb-3">Check-in / Check-out</h3>
+      <div className="space-y-2.5">
+        <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+          <Checkbox
+            checked={checkedIn}
+            disabled={submitting}
+            onCheckedChange={(v) => setPending(v ? "check_in" : "uncheck_in")}
+          />
+          <span>Checked In</span>
+          {checkedIn && (
+            <Badge variant="default" className="text-[10px] ml-auto">
+              Checked In
+            </Badge>
+          )}
+        </label>
+        <label
+          className={`flex items-center gap-2.5 text-sm ${
+            checkedIn ? "cursor-pointer" : "opacity-50 cursor-not-allowed"
+          }`}
+        >
+          <Checkbox
+            checked={checkedOut}
+            disabled={submitting || !checkedIn}
+            onCheckedChange={(v) => setPending(v ? "check_out" : "uncheck_out")}
+          />
+          <span>Checked Out</span>
+          {checkedOut && (
+            <Badge variant="default" className="text-[10px] ml-auto">
+              Checked Out
+            </Badge>
+          )}
+        </label>
+      </div>
+      <p className="text-[11px] text-muted-foreground mt-2">
+        Applies to all {registration.people_count} participant(s). The registration
+        counts as checked-in/out when at least one participant is.
+      </p>
+
+      {pending && (
+        <AlertDialog
+          open
+          onOpenChange={(open) => !open && !submitting && setPending(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle
+                  className={`size-5 ${
+                    CHECKIN_ACTIONS[pending].destructive
+                      ? "text-destructive"
+                      : "text-amber-500"
+                  }`}
+                />
+                {CHECKIN_ACTIONS[pending].title}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {CHECKIN_ACTIONS[pending].describe(
+                  registration.confirmation_code,
+                  registration.people_count
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className={
+                  CHECKIN_ACTIONS[pending].destructive
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/70 active:scale-[0.97]"
+                    : ""
+                }
+                onClick={(e) => {
+                  e.preventDefault();
+                  apply(pending);
+                }}
+                disabled={submitting}
+              >
+                {submitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
+                Confirm
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </section>
   );
 }
 

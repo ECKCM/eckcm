@@ -74,7 +74,7 @@ export async function POST(
   // Find the target registration and its first group
   const { data: targetReg } = await supabase
     .from("eckcm_registrations")
-    .select("id, confirmation_code, status")
+    .select("id, confirmation_code, status, event_id")
     .eq("id", targetRegistrationId)
     .single();
 
@@ -161,6 +161,30 @@ export async function POST(
     return NextResponse.json({ error: trackError.message }, { status: 500 });
   }
 
+  // Per-person data (airport rides, meals, Willow room) is event-scoped. On a
+  // same-event transfer it should follow the person to the target; on a
+  // cross-event transfer it belongs to the old event and is dropped.
+  const { data: sourceReg } = await supabase
+    .from("eckcm_registrations")
+    .select("event_id")
+    .eq("id", registrationId)
+    .single();
+  const sameEvent = !!(
+    sourceReg && targetReg.event_id && sourceReg.event_id === targetReg.event_id
+  );
+
+  // 2b. Willow Hall assignment is tied to the membership via ON DELETE CASCADE,
+  // so it MUST be repointed to the clone BEFORE the source membership is deleted
+  // below — otherwise the delete cascade-removes it and the person silently
+  // loses their Willow room. (Cross-event: leave it; the cascade drops it since
+  // the room belongs to the old event.)
+  if (sameEvent) {
+    await supabase
+      .from("eckcm_willow_assignments")
+      .update({ membership_id: clone.id })
+      .eq("membership_id", membershipId);
+  }
+
   // 3. Remove the original membership.
   const { error: deleteError } = await supabase
     .from("eckcm_group_memberships")
@@ -169,6 +193,41 @@ export async function POST(
 
   if (deleteError) {
     return NextResponse.json({ error: deleteError.message }, { status: 500 });
+  }
+
+  // 3b. Move the transferred person's airport ride assignments. They're
+  // per-passenger and keyed by (registration_id, person_id); without this the
+  // rows would orphan in the source AND the unique (ride_id, person_id) index
+  // would block re-assigning the person to the same ride in the target.
+  // Non-fatal — the transfer itself is already committed above.
+  if (sameEvent) {
+    await supabase
+      .from("eckcm_registration_rides")
+      .update({ registration_id: targetRegistrationId })
+      .eq("registration_id", registrationId)
+      .eq("person_id", membership.person_id);
+  } else {
+    await supabase
+      .from("eckcm_registration_rides")
+      .delete()
+      .eq("registration_id", registrationId)
+      .eq("person_id", membership.person_id);
+  }
+
+  // 3c. Move the transferred person's meal selections, keyed by
+  // (registration_id, person_id), the same way.
+  if (sameEvent) {
+    await supabase
+      .from("eckcm_meal_selections")
+      .update({ registration_id: targetRegistrationId })
+      .eq("registration_id", registrationId)
+      .eq("person_id", membership.person_id);
+  } else {
+    await supabase
+      .from("eckcm_meal_selections")
+      .delete()
+      .eq("registration_id", registrationId)
+      .eq("person_id", membership.person_id);
   }
 
   // Keep the "exactly one representative" invariant on both sides:

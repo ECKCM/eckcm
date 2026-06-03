@@ -508,6 +508,7 @@ export async function POST(request: Request) {
   const personInserts: Record<string, unknown>[] = [];
   const personGroupMap: {
     groupIdx: number;
+    wizardId: string;
     isRep: boolean;
     isDateOverridden: boolean;
     checkInDate: string | null;
@@ -551,6 +552,7 @@ export async function POST(request: Request) {
       });
       personGroupMap.push({
         groupIdx: gi,
+        wizardId: participant.id,
         isRep: !!participant.isRepresentative,
         isDateOverridden: !!participant.isDateOverridden,
         checkInDate: participant.checkInDate ?? null,
@@ -633,15 +635,40 @@ export async function POST(request: Request) {
     }
   }
 
-  // 7. Airport rides (batch insert)
+  // 7. Airport rides — persist one row per PASSENGER (person) per ride so the
+  // wizard's per-participant selection survives and admins can edit it later.
   if (airportPickup?.selectedRides?.length) {
-    const rideInserts = airportPickup.selectedRides.map((ride) => ({
-      registration_id: registration.id,
-      ride_id: ride.rideId,
-      passenger_count: ride.selectedParticipantIds?.length ?? 1,
-      flight_info: ride.flightInfo || null,
-    }));
-    await admin.from("eckcm_registration_rides").insert(rideInserts);
+    // Map wizard-local participant ids → DB person ids (parallel arrays).
+    const personIdByWizardId = new Map<string, string>();
+    for (let i = 0; i < people.length; i++) {
+      personIdByWizardId.set(personGroupMap[i].wizardId, people[i].id);
+    }
+    const allPersonIds = [...personIdByWizardId.values()];
+    const rideInserts: Record<string, unknown>[] = [];
+    const seen = new Set<string>();
+    for (const ride of airportPickup.selectedRides) {
+      // Resolve selected wizard ids → person ids; fall back to everyone.
+      const personIds = ride.selectedParticipantIds?.length
+        ? ride.selectedParticipantIds
+            .map((wid) => personIdByWizardId.get(wid))
+            .filter((pid): pid is string => !!pid)
+        : allPersonIds;
+      for (const personId of personIds) {
+        const key = `${ride.rideId}:${personId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        rideInserts.push({
+          registration_id: registration.id,
+          ride_id: ride.rideId,
+          person_id: personId,
+          passenger_count: 1,
+          flight_info: ride.flightInfo || null,
+        });
+      }
+    }
+    if (rideInserts.length > 0) {
+      await admin.from("eckcm_registration_rides").insert(rideInserts);
+    }
   } else if (airportPickup?.needed && airportPickup?.details) {
     await admin
       .from("eckcm_registrations")

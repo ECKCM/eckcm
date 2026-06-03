@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getMyRoom } from "@/lib/services/lodging.service";
 import { DashboardContent } from "./dashboard-content";
 
 export default async function DashboardPage() {
@@ -27,7 +29,7 @@ export default async function DashboardPage() {
   // Get person info
   const { data: personData } = await supabase
     .from("eckcm_people")
-    .select("id, first_name_en, last_name_en, display_name_ko, gender, email")
+    .select("id, first_name_en, last_name_en, display_name_ko, gender, email, birth_date")
     .in(
       "id",
       (
@@ -83,6 +85,22 @@ export default async function DashboardPage() {
   const allowDuplicateRegistration = appConfig?.allow_duplicate_registration ?? false;
   const bookletUrl = appConfig?.booklet_url ?? "";
 
+  // Resolve the user's own assigned room (registration group room or Willow Hall).
+  // Not tied to event active state — rooms are assigned from the SUBMITTED stage.
+  const myRoom = await getMyRoom(createAdminClient(), {
+    userId: user.id,
+    identities: personData
+      ? [
+          {
+            first_name_en: personData.first_name_en,
+            last_name_en: personData.last_name_en,
+            birth_date: personData.birth_date ?? null,
+          },
+        ]
+      : [],
+    fallbackFullName: (user.user_metadata?.full_name as string | undefined) ?? null,
+  });
+
   return (
     <DashboardContent
       user={{
@@ -95,6 +113,7 @@ export default async function DashboardPage() {
       registeredEventIds={Array.from(registeredEventIds)}
       allowDuplicateRegistration={allowDuplicateRegistration}
       bookletUrl={bookletUrl}
+      myRoom={myRoom}
     />
   );
 }
