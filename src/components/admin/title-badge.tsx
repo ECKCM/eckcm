@@ -1,4 +1,6 @@
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { TitleIcon } from "@/components/admin/title-icons";
 
 /**
  * Preset palette for participant titles. Medium/dark hues so white text stays
@@ -19,25 +21,34 @@ export const TITLE_COLORS = [
 export function TitleBadge({
   name,
   color,
+  icon,
   className,
 }: {
   name: string;
   color?: string | null;
+  icon?: string | null;
   className?: string;
 }) {
+  const content = (
+    <>
+      <TitleIcon name={icon} className="mr-1 size-3.5 shrink-0" />
+      {name}
+    </>
+  );
+
   if (color) {
     return (
       <Badge
-        className={className}
+        className={cn("inline-flex items-center", className)}
         style={{ backgroundColor: color, borderColor: color, color: "#fff" }}
       >
-        {name}
+        {content}
       </Badge>
     );
   }
   return (
-    <Badge variant="secondary" className={className}>
-      {name}
+    <Badge variant="secondary" className={cn("inline-flex items-center", className)}>
+      {content}
     </Badge>
   );
 }
