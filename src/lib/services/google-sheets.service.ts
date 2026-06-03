@@ -65,6 +65,7 @@ export const PARTICIPANT_HEADERS = [
   "Phone Country",
   "Church",
   "Church (Other)",
+  "Church Role",
   "Department",
   "Lodging Type",
   "Guardian Name",
@@ -396,6 +397,7 @@ interface ParticipantRow {
   phone_country: string;
   church: string;
   church_other: string;
+  church_role: string;
   department: string;
   lodging_type: string;
   guardian_name: string;
@@ -430,7 +432,7 @@ async function fetchParticipants(eventId: string): Promise<ParticipantRow[]> {
           first_name_en, last_name_en, display_name_ko,
           gender, birth_date, age_at_event, is_k12, grade,
           email, phone, phone_country,
-          church_id, church_other, department_id,
+          church_id, church_other, church_role, department_id,
           guardian_name, guardian_phone, guardian_phone_country
         )
       )
@@ -476,6 +478,7 @@ async function fetchParticipants(eventId: string): Promise<ParticipantRow[]> {
         phone_country: p.phone_country ?? "",
         church: churchMap.get(p.church_id) ?? "",
         church_other: p.church_other ?? "",
+        church_role: p.church_role ?? "",
         department: deptMap.get(p.department_id) ?? "",
         lodging_type: group.lodging_type ?? "",
         guardian_name: p.guardian_name ?? "",
@@ -507,6 +510,7 @@ function participantToRow(p: ParticipantRow): (string | number | boolean)[] {
     p.phone_country,
     p.church,
     p.church_other,
+    p.church_role,
     p.department,
     p.lodging_type,
     p.guardian_name,
