@@ -140,95 +140,72 @@ export function AirportChecklist() {
       return;
     }
 
-    // Fetch registration rides with registration info
+    // Fetch registration rides — now one row per PASSENGER (person_id). Pull the
+    // person directly, plus the registration's memberships to resolve each
+    // person's participant_code / role.
     const rideIds = rideRows.map((r) => r.id);
     const { data: regRides } = await supabase
       .from("eckcm_registration_rides")
       .select(
-        `id, ride_id, passenger_count, flight_info,
+        `id, ride_id, person_id, flight_info,
+         eckcm_people!inner(id, first_name_en, last_name_en, phone, gender, age_at_event),
          eckcm_registrations!inner(
            confirmation_code, status,
            eckcm_groups(
-             eckcm_group_memberships(
-               participant_code, role,
-               eckcm_people!inner(id, first_name_en, last_name_en, phone, gender, age_at_event)
-             )
+             eckcm_group_memberships(participant_code, role, person_id)
            )
          )`
       )
       .in("ride_id", rideIds);
 
-    // Build ride map — expand each registration into individual people
+    // Build ride map — each registration_ride row is a single passenger.
     const ridesWithPassengers: RideWithPassengers[] = rideRows.map((ride) => {
       const passengers: Passenger[] = [];
 
       if (regRides) {
-        for (const rr of regRides) {
+        for (const rr of regRides as any[]) {
           if (rr.ride_id !== ride.id) continue;
-          const reg = rr.eckcm_registrations as any;
+          const reg = rr.eckcm_registrations;
           if (!reg || reg.status === "CANCELLED" || reg.status === "DRAFT") continue;
+          const person = rr.eckcm_people;
+          if (!person) continue;
 
-          // Collect ALL members from all groups
-          const allMembers: any[] = [];
-          try {
-            const groups = reg.eckcm_groups;
-            if (Array.isArray(groups)) {
-              for (const g of groups) {
-                const members = g.eckcm_group_memberships;
-                if (Array.isArray(members)) {
-                  allMembers.push(...members);
+          // Find this person's membership in the registration for code/role.
+          let participantCode: string | null = null;
+          let role: string | null = null;
+          const groups = reg.eckcm_groups;
+          if (Array.isArray(groups)) {
+            for (const g of groups) {
+              const members = g.eckcm_group_memberships;
+              if (Array.isArray(members)) {
+                const m = members.find((mm: any) => mm.person_id === rr.person_id);
+                if (m) {
+                  participantCode = m.participant_code ?? null;
+                  role = m.role ?? null;
+                  break;
                 }
               }
             }
-          } catch {
-            // fallback
           }
 
-          if (allMembers.length === 0) {
-            // No members found — show a placeholder row
-            passengers.push({
-              id: rr.id,
-              registrationRideId: rr.id,
-              personId: null,
-              flightInfo: rr.flight_info,
-              confirmationCode: reg.confirmation_code,
-              name: "Unknown",
-              phone: null,
-              gender: null,
-              ageAtEvent: null,
-              participantCode: null,
-              role: null,
-            });
-          } else {
-            // Sort: LEADER first, then by name
-            allMembers.sort((a, b) => {
-              if (a.role === "LEADER" && b.role !== "LEADER") return -1;
-              if (a.role !== "LEADER" && b.role === "LEADER") return 1;
-              return 0;
-            });
-
-            for (let i = 0; i < allMembers.length; i++) {
-              const member = allMembers[i];
-              const person = member.eckcm_people;
-              passengers.push({
-                id: `${rr.id}-${i}`,
-                registrationRideId: rr.id,
-                personId: person?.id ?? null,
-                flightInfo: rr.flight_info,
-                confirmationCode: reg.confirmation_code,
-                name: person
-                  ? `${person.first_name_en} ${person.last_name_en}`
-                  : "Unknown",
-                phone: person?.phone ?? null,
-                gender: person?.gender ?? null,
-                ageAtEvent: person?.age_at_event ?? null,
-                participantCode: member.participant_code,
-                role: member.role,
-              });
-            }
-          }
+          passengers.push({
+            id: rr.id,
+            registrationRideId: rr.id,
+            personId: rr.person_id ?? person.id ?? null,
+            flightInfo: rr.flight_info,
+            confirmationCode: reg.confirmation_code,
+            name: `${person.first_name_en} ${person.last_name_en}`,
+            phone: person.phone ?? null,
+            gender: person.gender ?? null,
+            ageAtEvent: person.age_at_event ?? null,
+            participantCode,
+            role,
+          });
         }
       }
+
+      // Stable display order by name.
+      passengers.sort((a, b) => a.name.localeCompare(b.name));
 
       return { ...ride, passengers };
     });

@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-02T00:25:59.921Z",
+  "lastUpdated": "2026-06-03T07:06:49.878Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -597,7 +597,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:02:10.314Z",
-        "lastUpdated": "2026-05-25T20:15:50.489Z"
+        "lastUpdated": "2026-06-03T04:32:30.335Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/registration/submit/route.ts"
     },
@@ -831,9 +831,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:53:31.955Z",
-        "lastUpdated": "2026-06-01T05:18:38.223Z"
+        "lastUpdated": "2026-06-03T05:29:50.086Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/registrations-table.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/registration-detail-sheet.tsx"
     },
     "google-sheets": {
       "phase": "do",
@@ -1117,7 +1117,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T20:31:51.345Z",
-        "lastUpdated": "2026-03-31T20:31:51.345Z"
+        "lastUpdated": "2026-06-02T22:39:13.318Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/lodging.service.ts"
     },
@@ -1195,9 +1195,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T23:03:05.446Z",
-        "lastUpdated": "2026-04-01T03:08:28.954Z"
+        "lastUpdated": "2026-06-02T22:39:24.218Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/dashboard/dashboard-content.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/dashboard/page.tsx"
     },
     "[token]": {
       "phase": "do",
@@ -1325,7 +1325,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-01T01:58:58.897Z",
-        "lastUpdated": "2026-05-31T14:10:24.243Z"
+        "lastUpdated": "2026-06-03T07:06:49.878Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/participants/[membershipId]/transfer/route.ts"
     },
@@ -1481,9 +1481,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-23T18:58:29.657Z",
-        "lastUpdated": "2026-05-24T23:48:01.475Z"
+        "lastUpdated": "2026-06-03T05:27:54.651Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/airport/airport-checklist.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/airport/route.ts"
     },
     "upj-rooms": {
       "phase": "do",
@@ -1676,9 +1676,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T17:57:18.985Z",
-        "lastUpdated": "2026-05-28T23:38:15.097Z"
+        "lastUpdated": "2026-06-03T03:24:44.545Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/components/checkin/back-button.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/checkin/route.ts"
     },
     "main": {
       "phase": "do",
@@ -2014,7 +2014,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-02T00:25:59.921Z"
+    "lastActivity": "2026-06-03T07:06:49.878Z"
   },
   "history": [
     {
@@ -11566,6 +11566,294 @@
     {
       "timestamp": "2026-06-02T00:25:59.921Z",
       "feature": "eckcm_exports",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:30:56.738Z",
+      "feature": "lodging.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:31:03.625Z",
+      "feature": "lodging.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:31:08.935Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:31:14.137Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:31:24.456Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:31:30.169Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:31:38.890Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:31:45.035Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:31:52.831Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:31:58.820Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:32:06.399Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:32:41.143Z",
+      "feature": "lodging.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:39:13.318Z",
+      "feature": "lodging.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-02T22:39:24.218Z",
+      "feature": "dashboard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:19:07.246Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:19:21.983Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:19:32.899Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:19:39.410Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:19:47.745Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:20:10.013Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:20:16.773Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:21:37.972Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:21:46.676Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:22:13.605Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:24:31.774Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:24:39.346Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:24:44.545Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:25:59.368Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:26:44.934Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T03:28:04.001Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T04:28:46.964Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T04:29:11.755Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T04:29:26.061Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T04:29:37.224Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T04:30:50.537Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T04:31:44.441Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T04:32:08.685Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T04:32:16.023Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T04:32:30.335Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T04:43:04.445Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T04:43:17.370Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T05:27:33.698Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T05:27:54.651Z",
+      "feature": "airport",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T05:29:50.086Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T05:51:48.628Z",
+      "feature": "transfer",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T05:51:59.936Z",
+      "feature": "transfer",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T07:06:33.840Z",
+      "feature": "transfer",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T07:06:49.878Z",
+      "feature": "transfer",
       "phase": "do",
       "action": "updated"
     }

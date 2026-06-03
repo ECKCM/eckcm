@@ -166,12 +166,14 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
       .eq("event_id", eventId)
       .order("created_at", { ascending: false });
 
-    // Fetch all MAIN check-ins for this event (arrival check-in + checkout)
+    // Fetch all real MAIN check-ins for this event (arrival check-in + checkout).
+    // Sandbox (test-scan) rows are excluded from real attendance status.
     const { data: checkins } = await supabase
       .from("eckcm_checkins")
       .select("person_id, checked_out_at")
       .eq("event_id", eventId)
-      .eq("checkin_type", "MAIN");
+      .eq("checkin_type", "MAIN")
+      .eq("is_sandbox", false);
 
     const checkinSet = new Set(
       (checkins ?? []).map((c) => c.person_id)
@@ -193,17 +195,18 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         let registrantDept: string | null = null;
         let registrantGuardianName: string | null = null;
         let registrantGuardianPhone: string | null = null;
-        let repPersonId: string | null = null;
         let repFound = false;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let fallbackMember: any = null;
+        // Every participant's person_id — used to derive registration-level
+        // check-in/out (checked-in/out if ANY participant is).
+        const memberPersonIds: string[] = [];
         const roomNumbers: string[] = [];
         let lodgingType: string | null = null;
         let preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null = null;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const applyRegistrant = (m: any) => {
-          repPersonId = m.person_id;
           registrantName = `${m.eckcm_people.first_name_en} ${m.eckcm_people.last_name_en}`;
           registrantNameKo = m.eckcm_people.display_name_ko;
           registrantEmail = m.eckcm_people.email;
@@ -232,6 +235,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           const members = g.eckcm_group_memberships ?? [];
           peopleCount += members.length;
           for (const m of members) {
+            if (m.person_id) memberPersonIds.push(m.person_id);
             if (m.role === "REPRESENTATIVE" && !repFound) {
               repFound = true;
               applyRegistrant(m);
@@ -250,8 +254,8 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           applyRegistrant(fallbackMember);
         }
 
-        // Check if representative has checked in on-site
-        const checkedIn = repPersonId ? checkinSet.has(repPersonId) : false;
+        // Registration-level check-in: checked-in if ANY participant is.
+        const checkedIn = memberPersonIds.some((pid) => checkinSet.has(pid));
 
         // Invoice & payment info
         const invoices = r.eckcm_invoices ?? [];
@@ -304,7 +308,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           payment_amount_cents: paymentAmountCents,
           paid_at: invoice?.paid_at ?? null,
           checked_in: checkedIn,
-          checked_out: repPersonId ? checkoutSet.has(repPersonId) : false,
+          checked_out: memberPersonIds.some((pid) => checkoutSet.has(pid)),
           room_numbers: roomNumbers,
           lodging_type: lodgingType,
           preferences,
@@ -313,6 +317,10 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         };
       });
       setRegistrations(rows);
+      // Keep an open detail sheet in sync with freshly loaded data (the sheet
+      // holds a snapshot, so editable sections that call onRefresh reflect
+      // their changes without needing a reopen).
+      setDetailReg((prev) => (prev ? rows.find((r) => r.id === prev.id) ?? prev : prev));
     }
 
     // Card surcharge (discount card payers didn't get) — server computes the

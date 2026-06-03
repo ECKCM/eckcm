@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, QrCode, Receipt, ClipboardList, Check, Shield, LifeBuoy, Heart, BookOpen } from "lucide-react";
+import { Loader2, QrCode, Receipt, ClipboardList, Check, Shield, LifeBuoy, Heart, BookOpen, BedDouble } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 
 function formatShortDate(dateStr: string): string {
@@ -56,6 +56,11 @@ interface DashboardContentProps {
   registeredEventIds: string[];
   allowDuplicateRegistration: boolean;
   bookletUrl?: string;
+  myRoom?: {
+    buildingEn: string;
+    buildingKo: string | null;
+    roomNumber: string;
+  } | null;
 }
 
 type RegistrationType = "self" | "others";
@@ -68,6 +73,7 @@ export function DashboardContent({
   allowDuplicateRegistration,
   isAdmin,
   bookletUrl,
+  myRoom,
 }: DashboardContentProps) {
   const router = useRouter();
   const { t, locale } = useI18n();
@@ -80,6 +86,10 @@ export function DashboardContent({
     ? person.display_name_ko ??
       `${person.first_name_en} ${person.last_name_en}`
     : user.email;
+
+  const roomBuilding = myRoom
+    ? (locale === "ko" && myRoom.buildingKo ? myRoom.buildingKo : myRoom.buildingEn)
+    : null;
 
   const registeredSet = new Set(registeredEventIds);
 
@@ -118,7 +128,15 @@ export function DashboardContent({
     <div className="mx-auto max-w-2xl space-y-6 p-4 pt-8">
       {/* Welcome */}
       <div>
-        <h1 className="text-2xl font-bold">{t("dashboard.welcome", { name: displayName })}</h1>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="text-2xl font-bold">{t("dashboard.welcome", { name: displayName })}</h1>
+          {myRoom && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-sm font-semibold text-primary">
+              <BedDouble className="size-4 shrink-0" />
+              {roomBuilding} {myRoom.roomNumber}
+            </span>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground">{user.email}</p>
       </div>
 
