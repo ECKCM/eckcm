@@ -77,7 +77,11 @@ export async function GET() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let assignmentsRaw: any[] = [];
   if (roomIds.length > 0) {
-    const { data } = await supabase
+    // NOTE: Do NOT filter with `.in("room_id", roomIds)` here. With the full
+    // room inventory (400+ rooms) that builds a >16KB request URL, which Node's
+    // fetch (undici) rejects with UND_ERR_HEADERS_OVERFLOW — silently zeroing
+    // out all assignments. Room assignments are few, so fetch them all.
+    const { data, error } = await supabase
       .from("eckcm_room_assignments")
       .select(`
         id, room_id, group_id,
@@ -88,9 +92,11 @@ export async function GET() {
             eckcm_people(first_name_en, last_name_en, display_name_ko)
           )
         )
-      `)
-      .in("room_id", roomIds);
+      `);
 
+    if (error) {
+      console.error("Failed to load room assignments", error);
+    }
     assignmentsRaw = data ?? [];
   }
 
@@ -150,7 +156,9 @@ export async function GET() {
     { firstName: string; lastName: string; displayNameKo: string | null; arrival: string | null; departure: string | null }[]
   >();
   if (roomIds.length > 0) {
-    const { data: willowRaw } = await supabase
+    // Same constraint as above: no `.in("room_id", roomIds)` — the oversized URL
+    // overflows Node's fetch header limit. Willow assignments are few; fetch all.
+    const { data: willowRaw, error: willowErr } = await supabase
       .from("eckcm_willow_assignments")
       .select(`
         room_id, assigned_at,
@@ -160,8 +168,11 @@ export async function GET() {
           eckcm_groups!inner(eckcm_registrations!inner(start_date, end_date, status))
         )
       `)
-      .in("room_id", roomIds)
       .order("assigned_at", { ascending: true });
+
+    if (willowErr) {
+      console.error("Failed to load Willow assignments", willowErr);
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const w of (willowRaw ?? []) as any[]) {
