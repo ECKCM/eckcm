@@ -32,11 +32,13 @@ import { logActivity } from "@/lib/audit-client";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { TitleBadge, TITLE_COLORS } from "@/components/admin/title-badge";
+import { TitleIcon, TITLE_ICON_NAMES } from "@/components/admin/title-icons";
 
 interface ParticipantTitle {
   id: string;
   name: string;
   color: string | null;
+  icon: string | null;
   is_active: boolean;
 }
 
@@ -62,8 +64,9 @@ export function ParticipantTitlesManager({
   const [form, setForm] = useState<{
     name: string;
     color: string | null;
+    icon: string | null;
     is_active: boolean;
-  }>({ name: "", color: null, is_active: true });
+  }>({ name: "", color: null, icon: null, is_active: true });
   const [deleteTarget, setDeleteTarget] = useState<ParticipantTitle | null>(null);
 
   const reload = async () => {
@@ -77,13 +80,18 @@ export function ParticipantTitlesManager({
 
   const openCreate = () => {
     setEditingId(null);
-    setForm({ name: "", color: null, is_active: true });
+    setForm({ name: "", color: null, icon: null, is_active: true });
     setDialogOpen(true);
   };
 
   const openEdit = (title: ParticipantTitle) => {
     setEditingId(title.id);
-    setForm({ name: title.name, color: title.color, is_active: title.is_active });
+    setForm({
+      name: title.name,
+      color: title.color,
+      icon: title.icon,
+      is_active: title.is_active,
+    });
     setDialogOpen(true);
   };
 
@@ -98,6 +106,7 @@ export function ParticipantTitlesManager({
     const payload = {
       name: form.name.trim(),
       color: form.color,
+      icon: form.icon,
       is_active: form.is_active,
     };
 
@@ -208,9 +217,43 @@ export function ParticipantTitlesManager({
                     </button>
                   ))}
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Icon (optional)</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, icon: null })}
+                    className={cn(
+                      "flex size-7 items-center justify-center rounded-md border bg-background text-xs text-muted-foreground",
+                      form.icon === null && "ring-2 ring-ring ring-offset-2"
+                    )}
+                    title="No icon"
+                  >
+                    {form.icon === null ? <Check className="size-3.5" /> : "—"}
+                  </button>
+                  {TITLE_ICON_NAMES.map((ic) => (
+                    <button
+                      key={ic}
+                      type="button"
+                      onClick={() => setForm({ ...form, icon: ic })}
+                      className={cn(
+                        "flex size-7 items-center justify-center rounded-md border bg-background",
+                        form.icon === ic && "ring-2 ring-ring ring-offset-2"
+                      )}
+                      title={ic}
+                    >
+                      <TitleIcon name={ic} className="size-4" />
+                    </button>
+                  ))}
+                </div>
                 <div className="pt-1">
                   <span className="text-xs text-muted-foreground">Preview: </span>
-                  <TitleBadge name={form.name || "Title"} color={form.color} />
+                  <TitleBadge
+                    name={form.name || "Title"}
+                    color={form.color}
+                    icon={form.icon}
+                  />
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -240,7 +283,7 @@ export function ParticipantTitlesManager({
           {sorted.map((title) => (
             <TableRow key={title.id}>
               <TableCell>
-                <TitleBadge name={title.name} color={title.color} />
+                <TitleBadge name={title.name} color={title.color} icon={title.icon} />
               </TableCell>
               <TableCell>
                 <Badge variant={title.is_active ? "default" : "secondary"}>

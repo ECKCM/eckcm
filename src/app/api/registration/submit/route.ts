@@ -543,6 +543,7 @@ export async function POST(request: Request) {
         department_id: participant.departmentId || null,
         church_id: participant.churchId || null,
         church_other: participant.churchOther || null,
+        church_role: participant.churchRole || null,
         guardian_name: participant.guardianName?.trim() || null,
         guardian_phone: participant.guardianPhone
           ? buildPhoneValue(participant.guardianPhoneCountry || "US", participant.guardianPhone)
