@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Mail, MessageSquare, Copy, Check, Info } from "lucide-react";
+import { ArrowLeft, Mail, MessageSquare, Copy, Check, Info, ExternalLink } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -17,18 +17,6 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/context";
 
 const messageContacts = [
-  {
-    id: "reg-ko",
-    label: { en: "Registration (Korean)", ko: "등록 문의 (한국어)" },
-    phone: "2402334441",
-    body: "안녕하세요, ECKCM 등록 관련 문의드립니다.\n이름:\n문의 내용:",
-  },
-  {
-    id: "reg-en",
-    label: { en: "Registration (English)", ko: "등록 문의 (English)" },
-    phone: "2402334441",
-    body: "Hi, I have a question regarding ECKCM registration:\nName:\nQuestion:",
-  },
   {
     id: "em",
     label: { en: "EM", ko: "EM" },
@@ -55,6 +43,39 @@ export function SupportContent({ isLoggedIn }: { isLoggedIn: boolean }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleOpenGmail = () => {
+    const ua = navigator.userAgent || navigator.vendor || "";
+    const isIOS = /iPad|iPhone|iPod/.test(ua);
+    const isAndroid = /android/i.test(ua);
+
+    const subject =
+      locale === "ko"
+        ? "ECKCM 문의 - [이름][Registration Code]"
+        : "ECKCM Inquiry - [Name][Registration Code]";
+    const body =
+      locale === "ko"
+        ? "- 이름: \n- Registration Code: \n- 교회: \n- 문의 내용: "
+        : "- Name: \n- Registration Code: \n- Church: \n- Inquiry: ";
+    const su = encodeURIComponent(subject);
+    const bd = encodeURIComponent(body);
+
+    if (isIOS) {
+      // Open the Gmail app's compose screen (requires Gmail installed).
+      window.location.href = `googlegmail:///co?to=${EMAIL}&subject=${su}&body=${bd}`;
+    } else if (isAndroid) {
+      // Opens the device's mail app — Gmail on most Android devices.
+      window.location.href = `mailto:${EMAIL}?subject=${su}&body=${bd}`;
+    } else {
+      // Desktop has no app: open Gmail compose in a new browser tab.
+      // Note: Gmail web uses `su` (not `subject`) for the subject line.
+      window.open(
+        `https://mail.google.com/mail/?view=cm&to=${EMAIL}&su=${su}&body=${bd}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+    }
+  };
+
   const getSmsUrl = (phone: string, body: string) => {
     return `sms:+1${phone}?&body=${encodeURIComponent(body)}`;
   };
@@ -75,15 +96,58 @@ export function SupportContent({ isLoggedIn }: { isLoggedIn: boolean }) {
         {t("support.subtitle")}
       </p>
 
-      {/* Contact - Message & Email */}
+      {/* Contact - Email & Message */}
       <div className="mb-8 space-y-4">
-        {/* Message */}
+        {/* Email */}
         <Card>
           <CardContent className="pt-6">
             <div className="mb-4 flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">{t("support.emailUs")}</h2>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              {t("support.emailUsDesc")}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                className="h-auto py-3"
+                onClick={handleCopyEmail}
+              >
+                {copied ? (
+                  <Check className="mr-2 h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="mr-2 h-4 w-4" />
+                )}
+                <span>{EMAIL}</span>
+                {copied && (
+                  <span className="ml-2 text-xs text-green-500">
+                    {t("support.copied")}
+                  </span>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto py-3"
+                onClick={handleOpenGmail}
+              >
+                <ExternalLink className="mr-2 h-4 w-4 shrink-0" />
+                <span>{t("support.openGmail")}</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Message */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="mb-2 flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold">{t("support.textUs")}</h2>
             </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              {t("support.textUsDesc")}
+            </p>
             <div className="grid gap-3 sm:grid-cols-2">
               {messageContacts.map((contact) => (
                 <Button
@@ -99,33 +163,6 @@ export function SupportContent({ isLoggedIn }: { isLoggedIn: boolean }) {
                 </Button>
               ))}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Email */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="mb-4 flex items-center gap-2">
-              <Mail className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">{t("support.emailUs")}</h2>
-            </div>
-            <Button
-              variant="outline"
-              className="h-auto py-3"
-              onClick={handleCopyEmail}
-            >
-              {copied ? (
-                <Check className="mr-2 h-4 w-4 text-green-500" />
-              ) : (
-                <Copy className="mr-2 h-4 w-4" />
-              )}
-              <span>{EMAIL}</span>
-              {copied && (
-                <span className="ml-2 text-xs text-green-500">
-                  {t("support.copied")}
-                </span>
-              )}
-            </Button>
           </CardContent>
         </Card>
       </div>

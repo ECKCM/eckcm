@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-03T07:06:49.878Z",
+  "lastUpdated": "2026-06-04T04:26:43.965Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -143,7 +143,10 @@
     "sync",
     "willow",
     "upj-export",
-    "eckcm_exports"
+    "eckcm_exports",
+    "title",
+    "participant-titles",
+    "lanyard"
   ],
   "primaryFeature": "payment-complete",
   "features": {
@@ -259,9 +262,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T19:44:10.557Z",
-        "lastUpdated": "2026-05-27T10:42:44.846Z"
+        "lastUpdated": "2026-06-04T02:06:09.431Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/participants/participants-table.tsx"
     },
     "i18n": {
       "phase": "do",
@@ -285,7 +288,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:08:19.979Z",
-        "lastUpdated": "2026-03-30T23:03:33.080Z"
+        "lastUpdated": "2026-06-03T16:04:34.780Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/google-sheets.service.ts"
     },
@@ -389,9 +392,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T21:01:37.763Z",
-        "lastUpdated": "2026-06-01T23:30:44.882Z"
+        "lastUpdated": "2026-06-03T17:32:57.556Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/admin-sidebar.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/title-icons.tsx"
     },
     "manual": {
       "phase": "do",
@@ -480,9 +483,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T00:34:51.971Z",
-        "lastUpdated": "2026-03-27T00:36:05.486Z"
+        "lastUpdated": "2026-06-03T09:18:49.678Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/dashboard/settings/profile-settings.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/page.tsx"
     },
     "receipts": {
       "phase": "do",
@@ -597,7 +600,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:02:10.314Z",
-        "lastUpdated": "2026-06-03T04:32:30.335Z"
+        "lastUpdated": "2026-06-03T15:13:46.817Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/registration/submit/route.ts"
     },
@@ -727,7 +730,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-28T13:11:04.511Z",
-        "lastUpdated": "2026-04-01T04:18:13.556Z"
+        "lastUpdated": "2026-06-04T04:26:43.965Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(support)/support/support-content.tsx"
     },
@@ -857,9 +860,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T13:18:01.874Z",
-        "lastUpdated": "2026-05-28T23:39:55.734Z"
+        "lastUpdated": "2026-06-03T10:47:56.945Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/test/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/print/lanyard/test/page.tsx"
     },
     "invoices": {
       "phase": "do",
@@ -1494,7 +1497,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-23T18:59:46.548Z",
-        "lastUpdated": "2026-06-02T00:19:52.044Z"
+        "lastUpdated": "2026-06-03T20:14:09.952Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/lodging/upj-rooms/route.ts"
     },
@@ -2004,6 +2007,45 @@
         "lastUpdated": "2026-06-02T00:25:59.921Z"
       },
       "lastFile": "/tmp/eckcm_exports/process.py"
+    },
+    "title": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-03T09:17:26.317Z",
+        "lastUpdated": "2026-06-03T09:17:26.317Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/participants/[membershipId]/title/route.ts"
+    },
+    "participant-titles": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-03T09:17:35.305Z",
+        "lastUpdated": "2026-06-03T17:16:58.708Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/participant-titles/participant-titles-manager.tsx"
+    },
+    "lanyard": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-03T09:44:42.334Z",
+        "lastUpdated": "2026-06-03T21:39:54.454Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/print/lanyard/lanyard-shared.tsx"
     }
   },
   "pipeline": {
@@ -2014,7 +2056,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-03T07:06:49.878Z"
+    "lastActivity": "2026-06-04T04:26:43.965Z"
   },
   "history": [
     {
@@ -11854,6 +11896,726 @@
     {
       "timestamp": "2026-06-03T07:06:49.878Z",
       "feature": "transfer",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:17:26.317Z",
+      "feature": "title",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:17:35.305Z",
+      "feature": "participant-titles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:18:12.080Z",
+      "feature": "participant-titles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:18:21.353Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:18:30.248Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:18:31.976Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:18:46.814Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:18:49.678Z",
+      "feature": "settings",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:19:01.043Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:19:11.071Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:19:14.017Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:19:18.703Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:19:22.034Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:19:28.242Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:19:29.772Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:20:37.797Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:20:44.789Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:20:54.735Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:21:01.125Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:21:02.697Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:21:22.820Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:38:48.804Z",
+      "feature": "participant-titles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:38:53.395Z",
+      "feature": "participant-titles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:38:54.806Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:38:56.686Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:38:58.771Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:38:59.333Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:44:42.334Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:46:17.077Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T09:59:32.715Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:03:43.780Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:04:12.250Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:05:52.191Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:09:16.686Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:09:28.243Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:09:48.451Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:09:54.598Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:10:07.181Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:10:21.402Z",
+      "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:14:37.635Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:25:02.154Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:25:09.870Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:25:17.089Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:25:29.698Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:25:40.743Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:35:37.479Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:37:47.779Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:38:08.346Z",
+      "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:38:14.450Z",
+      "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:38:21.041Z",
+      "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:38:26.811Z",
+      "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:38:45.706Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:38:52.241Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:39:02.300Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:39:15.220Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:46:51.098Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:47:03.787Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:47:10.812Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:47:19.580Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:47:25.637Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:47:34.519Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:47:41.669Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:47:47.322Z",
+      "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:47:56.945Z",
+      "feature": "test",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:49:06.023Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:51:11.224Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T10:51:18.569Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T14:46:35.072Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T14:47:54.704Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T15:13:46.817Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T16:04:26.739Z",
+      "feature": "google-sheets.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T16:04:28.151Z",
+      "feature": "google-sheets.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T16:04:29.706Z",
+      "feature": "google-sheets.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T16:04:32.959Z",
+      "feature": "google-sheets.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T16:04:34.780Z",
+      "feature": "google-sheets.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:03:10.892Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:03:18.436Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:03:31.138Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:15:54.578Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:16:05.735Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:16:16.782Z",
+      "feature": "participant-titles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:16:24.375Z",
+      "feature": "participant-titles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:16:32.772Z",
+      "feature": "participant-titles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:16:40.424Z",
+      "feature": "participant-titles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:16:51.795Z",
+      "feature": "participant-titles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:16:58.708Z",
+      "feature": "participant-titles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:17:23.659Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:17:34.510Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:17:44.578Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:17:57.655Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:18:05.629Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:18:20.002Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:23:12.497Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:30:04.182Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:32:48.434Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:32:57.556Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T17:39:59.659Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T20:14:00.228Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T20:14:09.952Z",
+      "feature": "upj-rooms",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T21:39:54.454Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T22:01:07.988Z",
+      "feature": "support",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T22:01:13.420Z",
+      "feature": "support",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T22:01:21.175Z",
+      "feature": "support",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T22:01:38.167Z",
+      "feature": "support",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T22:37:16.750Z",
+      "feature": "support",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T22:37:26.509Z",
+      "feature": "support",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T22:37:32.645Z",
+      "feature": "support",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T22:43:52.596Z",
+      "feature": "support",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-03T22:44:03.344Z",
+      "feature": "support",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T02:03:41.430Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T02:03:49.505Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T02:03:57.417Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T02:04:09.954Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T02:04:22.093Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T02:04:31.015Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T02:04:50.161Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T02:05:11.254Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T02:06:09.431Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T04:24:22.124Z",
+      "feature": "support",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T04:26:43.965Z",
+      "feature": "support",
       "phase": "do",
       "action": "updated"
     }

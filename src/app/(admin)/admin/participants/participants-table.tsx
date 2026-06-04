@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  useDeferredValue,
+  memo,
+} from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,6 +87,152 @@ interface ParticipantRow {
   lodging_type: string | null;
 }
 
+type EnrichedRow = ParticipantRow & { title_name: string | null };
+
+const STATUS_VARIANT: Record<
+  string,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
+  PAID: "default",
+  SUBMITTED: "outline",
+  DRAFT: "secondary",
+  CANCELLED: "destructive",
+};
+
+function formatLodging(type: string | null) {
+  if (!type) return "-";
+  return type.replace("LODGING_", "").replace(/_/g, " ");
+}
+
+function formatDate(d: string | null) {
+  if (!d) return "-";
+  return d;
+}
+
+function formatMoney(cents: number | null) {
+  if (cents == null) return "-";
+  return formatCurrency(cents);
+}
+
+function formatTimestamp(ts: string | null) {
+  if (!ts) return "-";
+  return new Date(ts).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+const ParticipantRowItem = memo(function ParticipantRowItem({
+  p,
+  titleOptions,
+  onAssignTitle,
+}: {
+  p: EnrichedRow;
+  titleOptions: ParticipantTitleOption[];
+  onAssignTitle: (membershipId: string, value: string) => void;
+}) {
+  return (
+    <TableRow>
+      <TableCell className="font-medium whitespace-nowrap">
+        {p.first_name_en} {p.last_name_en}
+      </TableCell>
+      <TableCell className="whitespace-nowrap">
+        {p.display_name_ko ?? "-"}
+      </TableCell>
+      <TableCell className="whitespace-nowrap">
+        <Select
+          value={p.title_id ?? NO_TITLE}
+          onValueChange={(v) => onAssignTitle(p.membership_id, v)}
+        >
+          <SelectTrigger className="h-7 w-[150px] text-xs">
+            <SelectValue placeholder="— Title —" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_TITLE}>
+              <span className="text-muted-foreground">— None —</span>
+            </SelectItem>
+            {titleOptions.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                <span className="flex items-center gap-2">
+                  <span
+                    className="inline-block size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: t.color ?? "#94a3b8" }}
+                  />
+                  {t.name}
+                  {!t.is_active && " (inactive)"}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
+      <TableCell>{p.gender}</TableCell>
+      <TableCell className="whitespace-nowrap">{p.birth_date}</TableCell>
+      <TableCell>{p.age_at_event ?? "-"}</TableCell>
+      <TableCell>{p.is_k12 ? "Y" : "-"}</TableCell>
+      <TableCell>{p.grade ?? "-"}</TableCell>
+      <TableCell className="whitespace-nowrap text-xs">
+        {p.church_name ?? "-"}
+      </TableCell>
+      <TableCell className="whitespace-nowrap text-xs">
+        {p.department_name ?? "-"}
+      </TableCell>
+      <TableCell className="font-mono text-xs">{p.display_group_code}</TableCell>
+      <TableCell>
+        <Badge variant="outline" className="text-xs">
+          {p.group_role}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        <Badge variant="outline" className="text-xs">
+          {p.membership_status}
+        </Badge>
+      </TableCell>
+      <TableCell className="font-mono text-xs">
+        {p.confirmation_code ?? "-"}
+      </TableCell>
+      <TableCell className="font-mono text-xs">
+        {p.participant_code ?? "-"}
+      </TableCell>
+      <TableCell>
+        <Badge variant={STATUS_VARIANT[p.registration_status] ?? "secondary"}>
+          {p.registration_status}
+        </Badge>
+      </TableCell>
+      <TableCell className="whitespace-nowrap text-xs">
+        {formatDate(p.registration_start)}
+      </TableCell>
+      <TableCell className="whitespace-nowrap text-xs">
+        {formatDate(p.registration_end)}
+      </TableCell>
+      <TableCell>{p.nights_count ?? "-"}</TableCell>
+      <TableCell className="whitespace-nowrap text-xs">
+        {formatLodging(p.lodging_type)}
+      </TableCell>
+      <TableCell className="text-xs">{p.room_assign_status ?? "-"}</TableCell>
+      <TableCell>{p.key_count ?? "-"}</TableCell>
+      <TableCell className="whitespace-nowrap font-mono text-xs">
+        {formatMoney(p.total_amount_cents)}
+      </TableCell>
+      <TableCell className="text-xs">{p.email ?? "-"}</TableCell>
+      <TableCell className="text-xs whitespace-nowrap">
+        {p.phone ?? "-"}
+      </TableCell>
+      <TableCell className="text-xs whitespace-nowrap">
+        {p.guardian_name ?? "-"}
+      </TableCell>
+      <TableCell className="text-xs whitespace-nowrap">
+        {p.guardian_phone ?? "-"}
+      </TableCell>
+      <TableCell className="whitespace-nowrap text-xs">
+        {formatTimestamp(p.registration_created_at)}
+      </TableCell>
+    </TableRow>
+  );
+});
+
 export function ParticipantsTable({
   events,
   titles,
@@ -89,6 +242,10 @@ export function ParticipantsTable({
 }) {
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
   const [search, setSearch] = useState("");
+  // Keep the input responsive: typing updates `search` immediately, but the
+  // expensive filter/sort/render runs against the deferred value so keystrokes
+  // never block on re-rendering the (potentially huge) table.
+  const deferredSearch = useDeferredValue(search);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -205,21 +362,28 @@ export function ParticipantsTable({
 
   // Options for a row's dropdown: active titles, plus the currently-assigned one
   // if it has since been deactivated (so its label still shows).
-  const titleOptionsFor = (currentId: string | null) => {
-    if (currentId && !activeTitles.some((t) => t.id === currentId)) {
-      const cur = titleById.get(currentId);
-      if (cur) return [cur, ...activeTitles];
-    }
-    return activeTitles;
-  };
+  // Stable identity so memoized rows don't re-render on every parent render.
+  const titleOptionsFor = useCallback(
+    (currentId: string | null) => {
+      if (currentId && !activeTitles.some((t) => t.id === currentId)) {
+        const cur = titleById.get(currentId);
+        if (cur) return [cur, ...activeTitles];
+      }
+      return activeTitles;
+    },
+    [activeTitles, titleById]
+  );
 
-  const assignTitle = async (membershipId: string, value: string) => {
+  const assignTitle = useCallback(async (membershipId: string, value: string) => {
     const title_id = value === NO_TITLE ? null : value;
-    const snapshot = participants;
-    // Optimistic update.
-    setParticipants((rows) =>
-      rows.map((r) => (r.membership_id === membershipId ? { ...r, title_id } : r))
-    );
+    let snapshot: ParticipantRow[] = [];
+    // Optimistic update (capture the pre-update snapshot for revert).
+    setParticipants((rows) => {
+      snapshot = rows;
+      return rows.map((r) =>
+        r.membership_id === membershipId ? { ...r, title_id } : r
+      );
+    });
     try {
       const res = await fetch(
         `/api/admin/participants/${membershipId}/title`,
@@ -235,9 +399,9 @@ export function ParticipantsTable({
       setParticipants(snapshot); // revert
       toast.error("Failed to update title");
     }
-  };
+  }, []);
 
-  const enriched = useMemo(
+  const enriched = useMemo<EnrichedRow[]>(
     () =>
       participants.map((p) => ({
         ...p,
@@ -246,61 +410,27 @@ export function ParticipantsTable({
     [participants, titleById]
   );
 
-  const filtered = enriched.filter((p) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      p.first_name_en.toLowerCase().includes(q) ||
-      p.last_name_en.toLowerCase().includes(q) ||
-      (p.display_name_ko?.toLowerCase().includes(q) ?? false) ||
-      (p.email?.toLowerCase().includes(q) ?? false) ||
-      (p.phone?.includes(q) ?? false) ||
-      (p.confirmation_code?.toLowerCase().includes(q) ?? false) ||
-      (p.participant_code?.toLowerCase().includes(q) ?? false) ||
-      p.display_group_code.toLowerCase().includes(q) ||
-      (p.church_name?.toLowerCase().includes(q) ?? false) ||
-      (p.department_name?.toLowerCase().includes(q) ?? false) ||
-      (p.guardian_name?.toLowerCase().includes(q) ?? false) ||
-      (p.title_name?.toLowerCase().includes(q) ?? false)
+  const filtered = useMemo(() => {
+    const q = deferredSearch.trim().toLowerCase();
+    if (!q) return enriched;
+    return enriched.filter(
+      (p) =>
+        p.first_name_en.toLowerCase().includes(q) ||
+        p.last_name_en.toLowerCase().includes(q) ||
+        (p.display_name_ko?.toLowerCase().includes(q) ?? false) ||
+        (p.email?.toLowerCase().includes(q) ?? false) ||
+        (p.phone?.includes(q) ?? false) ||
+        (p.confirmation_code?.toLowerCase().includes(q) ?? false) ||
+        (p.participant_code?.toLowerCase().includes(q) ?? false) ||
+        p.display_group_code.toLowerCase().includes(q) ||
+        (p.church_name?.toLowerCase().includes(q) ?? false) ||
+        (p.department_name?.toLowerCase().includes(q) ?? false) ||
+        (p.guardian_name?.toLowerCase().includes(q) ?? false) ||
+        (p.title_name?.toLowerCase().includes(q) ?? false)
     );
-  });
+  }, [enriched, deferredSearch]);
 
   const { sortedData: sorted, sortConfig, requestSort } = useTableSort(filtered);
-
-  const statusVariant: Record<
-    string,
-    "default" | "secondary" | "destructive" | "outline"
-  > = {
-    PAID: "default",
-    SUBMITTED: "outline",
-    DRAFT: "secondary",
-    CANCELLED: "destructive",
-  };
-
-  function formatLodging(type: string | null) {
-    if (!type) return "-";
-    return type.replace("LODGING_", "").replace(/_/g, " ");
-  }
-
-  function formatDate(d: string | null) {
-    if (!d) return "-";
-    return d;
-  }
-
-  function formatMoney(cents: number | null) {
-    if (cents == null) return "-";
-    return formatCurrency(cents);
-  }
-
-  function formatTimestamp(ts: string | null) {
-    if (!ts) return "-";
-    return new Date(ts).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
 
   return (
     <div className="space-y-4">
@@ -379,114 +509,12 @@ export function ParticipantsTable({
                 </TableHeader>
                 <TableBody>
                   {sorted.map((p) => (
-                    <TableRow key={p.membership_id}>
-                      <TableCell className="font-medium whitespace-nowrap">
-                        {p.first_name_en} {p.last_name_en}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {p.display_name_ko ?? "-"}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <Select
-                          value={p.title_id ?? NO_TITLE}
-                          onValueChange={(v) => assignTitle(p.membership_id, v)}
-                        >
-                          <SelectTrigger className="h-7 w-[150px] text-xs">
-                            <SelectValue placeholder="— Title —" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={NO_TITLE}>
-                              <span className="text-muted-foreground">— None —</span>
-                            </SelectItem>
-                            {titleOptionsFor(p.title_id).map((t) => (
-                              <SelectItem key={t.id} value={t.id}>
-                                <span className="flex items-center gap-2">
-                                  <span
-                                    className="inline-block size-2 shrink-0 rounded-full"
-                                    style={{ backgroundColor: t.color ?? "#94a3b8" }}
-                                  />
-                                  {t.name}
-                                  {!t.is_active && " (inactive)"}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>{p.gender}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {p.birth_date}
-                      </TableCell>
-                      <TableCell>{p.age_at_event ?? "-"}</TableCell>
-                      <TableCell>{p.is_k12 ? "Y" : "-"}</TableCell>
-                      <TableCell>{p.grade ?? "-"}</TableCell>
-                      <TableCell className="whitespace-nowrap text-xs">
-                        {p.church_name ?? "-"}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs">
-                        {p.department_name ?? "-"}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {p.display_group_code}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {p.group_role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {p.membership_status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {p.confirmation_code ?? "-"}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {p.participant_code ?? "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            statusVariant[p.registration_status] ?? "secondary"
-                          }
-                        >
-                          {p.registration_status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs">
-                        {formatDate(p.registration_start)}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs">
-                        {formatDate(p.registration_end)}
-                      </TableCell>
-                      <TableCell>{p.nights_count ?? "-"}</TableCell>
-                      <TableCell className="whitespace-nowrap text-xs">
-                        {formatLodging(p.lodging_type)}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {p.room_assign_status ?? "-"}
-                      </TableCell>
-                      <TableCell>{p.key_count ?? "-"}</TableCell>
-                      <TableCell className="whitespace-nowrap font-mono text-xs">
-                        {formatMoney(p.total_amount_cents)}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {p.email ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {p.phone ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {p.guardian_name ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {p.guardian_phone ?? "-"}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs">
-                        {formatTimestamp(p.registration_created_at)}
-                      </TableCell>
-                    </TableRow>
+                    <ParticipantRowItem
+                      key={p.membership_id}
+                      p={p}
+                      titleOptions={titleOptionsFor(p.title_id)}
+                      onAssignTitle={assignTitle}
+                    />
                   ))}
                   {sorted.length === 0 && (
                     <TableRow>
