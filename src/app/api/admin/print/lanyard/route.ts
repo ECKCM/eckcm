@@ -112,10 +112,18 @@ export async function GET(req: NextRequest) {
 
     const title = m.title_id ? titleById.get(m.title_id) ?? null : null;
 
+    // "No Home Church" is a placeholder selection, not a real church — omit it
+    // from the badge. Normalization matches the convention used in profile/register.
+    const churchRaw = p.church_other || p.eckcm_churches?.name_en || null;
+    const church =
+      churchRaw && churchRaw.replace(/\W/g, "").toLowerCase() === "nohomechurch"
+        ? null
+        : churchRaw;
+
     return {
       nameEn: `${p.first_name_en ?? ""} ${p.last_name_en ?? ""}`.trim(),
       nameKo: (p.display_name_ko as string | null) ?? null,
-      church: p.church_other || p.eckcm_churches?.name_en || null,
+      church,
       groupCode: (group?.display_group_code as string | null) ?? null,
       title,
       role: (m.role as string | null) ?? "MEMBER",

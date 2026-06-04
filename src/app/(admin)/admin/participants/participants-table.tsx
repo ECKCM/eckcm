@@ -68,6 +68,7 @@ interface ParticipantRow {
   church_name: string | null;
   church_other: string | null;
   department_name: string | null;
+  registration_group_name: string | null;
   guardian_name: string | null;
   guardian_phone: string | null;
   guardian_phone_country: string | null;
@@ -179,6 +180,9 @@ const ParticipantRowItem = memo(function ParticipantRowItem({
       <TableCell className="whitespace-nowrap text-xs">
         {p.department_name ?? "-"}
       </TableCell>
+      <TableCell className="whitespace-nowrap text-xs">
+        {p.registration_group_name ?? "-"}
+      </TableCell>
       <TableCell className="font-mono text-xs">{p.display_group_code}</TableCell>
       <TableCell>
         <Badge variant="outline" className="text-xs">
@@ -248,6 +252,8 @@ export function ParticipantsTable({
   const deferredSearch = useDeferredValue(search);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [regGroupFilter, setRegGroupFilter] = useState("ALL");
+  const [departmentFilter, setDepartmentFilter] = useState("ALL");
 
   const titleById = useMemo(
     () => new Map(titles.map((t) => [t.id, t])),
@@ -285,7 +291,8 @@ export function ParticipantsTable({
           eckcm_registrations!inner(
             confirmation_code, status,
             start_date, end_date, nights_count,
-            total_amount_cents, created_at
+            total_amount_cents, created_at,
+            eckcm_registration_groups(name_en)
           )
         )
       `)
@@ -330,6 +337,9 @@ export function ParticipantsTable({
             m.eckcm_groups.eckcm_registrations.total_amount_cents,
           registration_created_at:
             m.eckcm_groups.eckcm_registrations.created_at,
+          registration_group_name:
+            m.eckcm_groups.eckcm_registrations.eckcm_registration_groups
+              ?.name_en ?? null,
           group_role: m.role,
           membership_status: m.status,
           display_group_code: m.eckcm_groups.display_group_code,
@@ -410,11 +420,42 @@ export function ParticipantsTable({
     [participants, titleById]
   );
 
+  // Distinct filter options derived from currently loaded rows.
+  const regGroupOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          participants
+            .map((p) => p.registration_group_name)
+            .filter((v): v is string => !!v)
+        )
+      ).sort((a, b) => a.localeCompare(b)),
+    [participants]
+  );
+  const departmentOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          participants
+            .map((p) => p.department_name)
+            .filter((v): v is string => !!v)
+        )
+      ).sort((a, b) => a.localeCompare(b)),
+    [participants]
+  );
+
   const filtered = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
-    if (!q) return enriched;
-    return enriched.filter(
-      (p) =>
+    return enriched.filter((p) => {
+      if (
+        regGroupFilter !== "ALL" &&
+        p.registration_group_name !== regGroupFilter
+      )
+        return false;
+      if (departmentFilter !== "ALL" && p.department_name !== departmentFilter)
+        return false;
+      if (!q) return true;
+      return (
         p.first_name_en.toLowerCase().includes(q) ||
         p.last_name_en.toLowerCase().includes(q) ||
         (p.display_name_ko?.toLowerCase().includes(q) ?? false) ||
@@ -427,8 +468,9 @@ export function ParticipantsTable({
         (p.department_name?.toLowerCase().includes(q) ?? false) ||
         (p.guardian_name?.toLowerCase().includes(q) ?? false) ||
         (p.title_name?.toLowerCase().includes(q) ?? false)
-    );
-  }, [enriched, deferredSearch]);
+      );
+    });
+  }, [enriched, deferredSearch, regGroupFilter, departmentFilter]);
 
   const { sortedData: sorted, sortConfig, requestSort } = useTableSort(filtered);
 
@@ -436,7 +478,7 @@ export function ParticipantsTable({
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Participants</h1>
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Select value={eventId} onValueChange={setEventId}>
           <SelectTrigger className="w-[250px]">
             <SelectValue placeholder="Select event" />
@@ -445,6 +487,34 @@ export function ParticipantsTable({
             {events.map((e) => (
               <SelectItem key={e.id} value={e.id}>
                 {e.name_en} ({e.year})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={regGroupFilter} onValueChange={setRegGroupFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Reg. Groups</SelectItem>
+            {regGroupOptions.map((g) => (
+              <SelectItem key={g} value={g}>
+                {g}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Departments</SelectItem>
+            {departmentOptions.map((d) => (
+              <SelectItem key={d} value={d}>
+                {d}
               </SelectItem>
             ))}
           </SelectContent>
@@ -485,6 +555,7 @@ export function ParticipantsTable({
                     <SortableTableHead sortKey="grade" sortConfig={sortConfig} onSort={requestSort}>Grade</SortableTableHead>
                     <SortableTableHead sortKey="church_name" sortConfig={sortConfig} onSort={requestSort}>Church</SortableTableHead>
                     <SortableTableHead sortKey="department_name" sortConfig={sortConfig} onSort={requestSort}>Dept</SortableTableHead>
+                    <SortableTableHead sortKey="registration_group_name" sortConfig={sortConfig} onSort={requestSort}>Reg. Group</SortableTableHead>
                     <SortableTableHead sortKey="display_group_code" sortConfig={sortConfig} onSort={requestSort}>Group</SortableTableHead>
                     <SortableTableHead sortKey="role_name" sortConfig={sortConfig} onSort={requestSort}>Role</SortableTableHead>
                     <SortableTableHead sortKey="membership_status" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
@@ -519,7 +590,7 @@ export function ParticipantsTable({
                   {sorted.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={28}
+                        colSpan={29}
                         className="text-center text-muted-foreground py-8"
                       >
                         No participants found.
