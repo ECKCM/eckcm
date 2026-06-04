@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-04T04:26:43.965Z",
+  "lastUpdated": "2026-06-04T05:34:24.418Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -262,7 +262,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T19:44:10.557Z",
-        "lastUpdated": "2026-06-04T02:06:09.431Z"
+        "lastUpdated": "2026-06-04T05:03:59.259Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/participants/participants-table.tsx"
     },
@@ -392,9 +392,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T21:01:37.763Z",
-        "lastUpdated": "2026-06-03T17:32:57.556Z"
+        "lastUpdated": "2026-06-04T05:34:24.418Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/title-icons.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/title-badge.tsx"
     },
     "manual": {
       "phase": "do",
@@ -2030,7 +2030,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-03T09:17:35.305Z",
-        "lastUpdated": "2026-06-03T17:16:58.708Z"
+        "lastUpdated": "2026-06-04T05:33:15.093Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/settings/participant-titles/participant-titles-manager.tsx"
     },
@@ -2043,9 +2043,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-03T09:44:42.334Z",
-        "lastUpdated": "2026-06-03T21:39:54.454Z"
+        "lastUpdated": "2026-06-04T05:31:31.779Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/print/lanyard/lanyard-shared.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/print/lanyard/route.ts"
     }
   },
   "pipeline": {
@@ -2056,7 +2056,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-04T04:26:43.965Z"
+    "lastActivity": "2026-06-04T05:34:24.418Z"
   },
   "history": [
     {
@@ -12616,6 +12616,108 @@
     {
       "timestamp": "2026-06-04T04:26:43.965Z",
       "feature": "support",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:02:54.762Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:03:00.608Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:03:10.254Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:03:15.630Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:03:28.554Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:03:38.819Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:03:45.789Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:03:53.669Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:03:59.259Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:26:43.533Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:31:31.779Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:32:47.588Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:32:53.354Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:32:59.928Z",
+      "feature": "participant-titles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:33:15.093Z",
+      "feature": "participant-titles",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:34:11.935Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T05:34:24.418Z",
+      "feature": "admin",
       "phase": "do",
       "action": "updated"
     }

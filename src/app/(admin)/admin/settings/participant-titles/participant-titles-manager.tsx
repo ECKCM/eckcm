@@ -31,7 +31,7 @@ import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { logActivity } from "@/lib/audit-client";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
-import { TitleBadge, TITLE_COLORS } from "@/components/admin/title-badge";
+import { TitleBadge, TITLE_COLORS, titleTextColor } from "@/components/admin/title-badge";
 import { TitleIcon, TITLE_ICON_NAMES } from "@/components/admin/title-icons";
 
 interface ParticipantTitle {
@@ -213,7 +213,9 @@ export function ParticipantTitlesManager({
                       style={{ backgroundColor: c }}
                       title={c}
                     >
-                      {form.color === c && <Check className="size-3.5 text-white" />}
+                      {form.color === c && (
+                        <Check className="size-3.5" style={{ color: titleTextColor(c) }} />
+                      )}
                     </button>
                   ))}
                 </div>
