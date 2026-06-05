@@ -148,12 +148,12 @@ export function SupportContent({ isLoggedIn }: { isLoggedIn: boolean }) {
             <p className="mb-4 text-sm text-muted-foreground">
               {t("support.textUsDesc")}
             </p>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-wrap gap-3">
               {messageContacts.map((contact) => (
                 <Button
                   key={contact.id}
                   variant="outline"
-                  className="h-auto justify-start py-3"
+                  className="h-auto py-3"
                   asChild
                 >
                   <a href={getSmsUrl(contact.phone, contact.body)}>

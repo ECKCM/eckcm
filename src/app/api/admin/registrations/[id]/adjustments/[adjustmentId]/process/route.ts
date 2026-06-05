@@ -12,6 +12,7 @@ import {
   processAdjustment,
   getAdjustmentsWithSummary,
 } from "@/lib/services/adjustment.service";
+import { getPrimaryInvoiceId } from "@/lib/services/invoice.service";
 import {
   calculateProcessingFee,
   calculateProportionalProcessingFee,
@@ -100,17 +101,12 @@ export async function POST(
 
   // 3. Execute Stripe operations for action=refund (negative difference = refund)
   if (action === "refund" && adj.difference < 0) {
-    // Find the most recent SUCCEEDED payment for this registration
-    const { data: invoices } = await admin
-      .from("eckcm_invoices")
-      .select("id")
-      .eq("registration_id", registrationId);
+    // Refund targets the registration's ORIGINAL payment (the primary invoice).
+    // Custom-charge invoices add their own paid MANUAL payment that must never be
+    // selected here, or a card refund would silently become a manual no-op.
+    const primaryInvoiceId = await getPrimaryInvoiceId(admin, registrationId);
 
-    const invoiceIds = (invoices ?? []).map(
-      (i: { id: string }) => i.id
-    );
-
-    if (invoiceIds.length === 0) {
+    if (!primaryInvoiceId) {
       return NextResponse.json(
         {
           error:
@@ -125,7 +121,7 @@ export async function POST(
       .select(
         "id, stripe_payment_intent_id, payment_method, amount_cents, status, invoice_id"
       )
-      .in("invoice_id", invoiceIds)
+      .eq("invoice_id", primaryInvoiceId)
       .in("status", ["SUCCEEDED", "PARTIALLY_REFUNDED"])
       .order("created_at", { ascending: false })
       .limit(1)
