@@ -149,7 +149,7 @@ export const PRINT_CSS = `
 }
 .lan-name { font-size: 19pt; font-weight: 800; color: #2563eb; }
 .lan-title {
-  font-size: 9pt;
+  font-size: 10pt;
   font-weight: 700;
   color: #ffffff;
   background: #334155;          /* default; overridden by the title's color */
@@ -226,7 +226,7 @@ export function LanyardBadge({ badge }: { badge: Badge }) {
               badge.title.color ? { backgroundColor: badge.title.color } : undefined
             }
           >
-            <TitleIcon name={badge.title.icon} size={11} />
+            <TitleIcon name={badge.title.icon} size={12} />
             {badge.title.name}
           </div>
         )}

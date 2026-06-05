@@ -1005,6 +1005,10 @@ interface AdjustmentData {
   reason: string;
   adjusted_by_name: string;
   created_at: string;
+  metadata?: {
+    custom_charge_invoice_id?: string;
+    custom_charge_invoice_number?: string;
+  } | null;
 }
 
 interface AdjustmentSummaryData {
@@ -1102,11 +1106,15 @@ function AdjustmentsPanel({
     setSubmitting(true);
     try {
       const localInput = Math.round(parseFloat(newAmountDollars) * 100);
-      // For refund: registration total drops by the gross refund amount (admin's intent).
-      // API computes the proportional fee and refunds (gross − fee) to the customer.
+      // refund: registration total drops by the gross refund amount (admin's intent).
+      //   API computes the proportional fee and refunds (gross − fee) to the customer.
+      // charge: a manual additional amount is ADDED on top of the current total.
+      // others (credit/waive/pending/correction): the input IS the new total.
       const apiNewAmount = newAction === "refund"
         ? Math.max(0, currentAmount - localInput)
-        : localInput;
+        : newAction === "charge"
+          ? currentAmount + localInput
+          : localInput;
       const res = await fetch(`/api/admin/registrations/${registrationId}/adjustments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1118,7 +1126,18 @@ function AdjustmentsPanel({
         }),
       });
       if (res.ok) {
-        toast.success("Adjustment created");
+        const data = await res.json().catch(() => null);
+        if (data?.custom_charge_invoice_error) {
+          // Charge committed, but the invoice/receipt document failed.
+          toast.success("Charge recorded");
+          toast.error("Invoice/receipt could not be generated — check logs");
+        } else if (data?.custom_charge_invoice_number) {
+          toast.success(
+            `Custom charge invoice & receipt created (${data.custom_charge_invoice_number})`
+          );
+        } else {
+          toast.success("Adjustment created");
+        }
         setShowNewDialog(false);
         setReason("");
         setNewType("admin_correction");
@@ -1165,6 +1184,9 @@ function AdjustmentsPanel({
 
   const inputCents = Math.round(parseFloat(newAmountDollars) * 100) || 0;
   const isRefundAction = newAction === "refund";
+  // Charge takes a manual additional amount to ADD on top of the current total
+  // (mirrors how refund takes an amount to subtract), not an absolute new total.
+  const isChargeAction = newAction === "charge";
   // Zelle/Check/On-Site/Manual: no Stripe call, no processing fee. Label the
   // refund generically so the UI doesn't claim a Stripe refund that won't happen.
   const isManualMethod = isManualPaymentMethod(paymentMethod);
@@ -1187,7 +1209,12 @@ function AdjustmentsPanel({
     : 0;
   // Registration total reflects admin's intent — drops by the GROSS refund amount.
   // (Customer-received refund differs by the withheld fee; tracked separately in eckcm_refunds.)
-  const newAmountCents = isRefundAction ? Math.max(0, currentAmount - inputCents) : inputCents;
+  // Charge ADDS the manual amount to the current total; everything else IS the new total.
+  const newAmountCents = isRefundAction
+    ? Math.max(0, currentAmount - inputCents)
+    : isChargeAction
+      ? currentAmount + inputCents
+      : inputCents;
   const diff = newAmountCents - currentAmount;
   const refundExceedsTotal = isRefundAction && inputCents > currentAmount;
   // Minimum: customer must receive at least $1 (Stripe's own floor is ~$0.50;
@@ -1257,7 +1284,8 @@ function AdjustmentsPanel({
         size="sm"
         variant="outline"
         onClick={() => {
-          setNewAmountDollars((currentAmount / 100).toFixed(2));
+          // Charge enters an amount to ADD (start empty); all others prefill the total.
+          setNewAmountDollars(newAction === "charge" ? "0.00" : (currentAmount / 100).toFixed(2));
           setShowNewDialog(true);
         }}
         className="w-full"
@@ -1336,6 +1364,29 @@ function AdjustmentsPanel({
                         Process
                       </Button>
                     )}
+                    {/* Custom-charge invoice & receipt (generated for the added amount) */}
+                    {adj.metadata?.custom_charge_invoice_id && (
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`/api/invoice/${adj.metadata.custom_charge_invoice_id}/pdf?type=invoice`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-0.5 text-[10px] text-blue-600 hover:underline"
+                          title="Custom charge invoice"
+                        >
+                          <FileText className="size-3" /> Inv
+                        </a>
+                        <a
+                          href={`/api/invoice/${adj.metadata.custom_charge_invoice_id}/pdf?type=receipt`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-0.5 text-[10px] text-green-600 hover:underline"
+                          title="Custom charge receipt"
+                        >
+                          <FileText className="size-3" /> Rct
+                        </a>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -1373,7 +1424,11 @@ function AdjustmentsPanel({
 
             <div>
               <label className="text-sm font-medium">
-                {isRefundAction ? "Refund Amount ($)" : "New Total ($)"}
+                {isRefundAction
+                  ? "Refund Amount ($)"
+                  : isChargeAction
+                    ? "Additional Charge ($)"
+                    : "New Total ($)"}
               </label>
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
@@ -1417,6 +1472,18 @@ function AdjustmentsPanel({
                     </p>
                   )}
                 </div>
+              ) : isChargeAction ? (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Current: {formatMoney(currentAmount)}
+                  {" · "}
+                  New Total:{" "}
+                  <span className="font-medium text-foreground">
+                    {formatMoney(newAmountCents)}
+                  </span>
+                  {inputCents > 0 && (
+                    <span className="text-green-600"> (+{formatMoney(inputCents)})</span>
+                  )}
+                </p>
               ) : (
                 <p className="text-xs text-muted-foreground mt-1">
                   Current: {formatMoney(currentAmount)}
@@ -1432,13 +1499,18 @@ function AdjustmentsPanel({
             <div>
               <label className="text-sm font-medium">Action</label>
               <Select value={newAction} onValueChange={(val) => {
+                const prev = newAction;
                 setNewAction(val);
                 if (val === "refund") {
                   // Auto-fill with the current registration total — admin's intent
                   // for a "full refund". Fee is deducted from the actual Stripe refund
                   // (shown beneath the input), not from this intent value.
                   setNewAmountDollars((currentAmount / 100).toFixed(2));
-                } else if (newAction === "refund") {
+                } else if (val === "charge") {
+                  // Charge takes a manual amount to ADD, not a total — start empty.
+                  setNewAmountDollars("0.00");
+                } else if (prev === "refund" || prev === "charge") {
+                  // Switching from an incremental action back to a "new total" action.
                   setNewAmountDollars((currentAmount / 100).toFixed(2));
                 }
               }}>
@@ -1471,7 +1543,7 @@ function AdjustmentsPanel({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCreate}
-              disabled={!reason.trim() || submitting || refundExceedsTotal || refundBelowMinimum || (isRefundAction && availableRefund <= 0)}
+              disabled={!reason.trim() || submitting || refundExceedsTotal || refundBelowMinimum || (isRefundAction && availableRefund <= 0) || (isChargeAction && inputCents <= 0)}
             >
               {submitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
               Confirm Adjustment

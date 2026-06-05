@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-04T05:34:24.418Z",
+  "lastUpdated": "2026-06-05T14:15:46.345Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -146,7 +146,8 @@
     "eckcm_exports",
     "title",
     "participant-titles",
-    "lanyard"
+    "lanyard",
+    "invoice.service.ts"
   ],
   "primaryFeature": "payment-complete",
   "features": {
@@ -730,7 +731,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-28T13:11:04.511Z",
-        "lastUpdated": "2026-06-04T04:26:43.965Z"
+        "lastUpdated": "2026-06-04T16:06:45.412Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(support)/support/support-content.tsx"
     },
@@ -808,7 +809,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:52:25.895Z",
-        "lastUpdated": "2026-05-28T21:53:50.065Z"
+        "lastUpdated": "2026-06-05T03:31:16.352Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/adjustments/route.ts"
     },
@@ -821,7 +822,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:52:55.309Z",
-        "lastUpdated": "2026-05-28T21:53:06.510Z"
+        "lastUpdated": "2026-06-05T03:31:44.173Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/adjustments/[adjustmentId]/process/route.ts"
     },
@@ -834,9 +835,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:53:31.955Z",
-        "lastUpdated": "2026-06-03T05:29:50.086Z"
+        "lastUpdated": "2026-06-05T03:28:16.653Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/registration-detail-sheet.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/registrations-table.tsx"
     },
     "google-sheets": {
       "phase": "do",
@@ -1367,7 +1368,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-01T02:26:36.464Z",
-        "lastUpdated": "2026-06-01T04:20:56.480Z"
+        "lastUpdated": "2026-06-05T03:32:03.714Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/payment-status/route.ts"
     },
@@ -1900,7 +1901,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-01T04:59:49.541Z",
-        "lastUpdated": "2026-06-01T04:59:49.541Z"
+        "lastUpdated": "2026-06-05T03:32:18.585Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/payment-method/route.ts"
     },
@@ -2043,9 +2044,22 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-03T09:44:42.334Z",
-        "lastUpdated": "2026-06-04T05:31:31.779Z"
+        "lastUpdated": "2026-06-05T14:15:46.345Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/print/lanyard/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/print/lanyard/lanyard-shared.tsx"
+    },
+    "invoice.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-05T03:23:43.515Z",
+        "lastUpdated": "2026-06-05T03:30:54.585Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/invoice.service.ts"
     }
   },
   "pipeline": {
@@ -2056,7 +2070,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-04T05:34:24.418Z"
+    "lastActivity": "2026-06-05T14:15:46.345Z"
   },
   "history": [
     {
@@ -12718,6 +12732,216 @@
     {
       "timestamp": "2026-06-04T05:34:24.418Z",
       "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T06:27:11.939Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T06:27:21.462Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-04T16:06:45.412Z",
+      "feature": "support",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T02:32:33.575Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T02:32:41.876Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T02:32:48.592Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T02:33:04.886Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T02:33:17.265Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T02:33:29.469Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T02:33:47.212Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T02:33:54.147Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:23:43.515Z",
+      "feature": "invoice.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:23:51.703Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:23:57.546Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:24:21.945Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:24:31.973Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:24:37.188Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:25:00.821Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:25:09.725Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:25:51.426Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:25:59.183Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:26:09.683Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:28:09.854Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:28:16.653Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:30:54.585Z",
+      "feature": "invoice.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:31:06.097Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:31:16.352Z",
+      "feature": "adjustments",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:31:30.859Z",
+      "feature": "process",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:31:44.173Z",
+      "feature": "process",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:31:56.265Z",
+      "feature": "payment-status",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:32:03.714Z",
+      "feature": "payment-status",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:32:08.843Z",
+      "feature": "payment-method",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T03:32:18.585Z",
+      "feature": "payment-method",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T14:15:41.805Z",
+      "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-05T14:15:46.345Z",
+      "feature": "lanyard",
       "phase": "do",
       "action": "updated"
     }

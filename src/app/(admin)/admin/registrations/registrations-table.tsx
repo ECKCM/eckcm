@@ -140,6 +140,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           invoice_number,
           status,
           paid_at,
+          issued_at,
           eckcm_payments(payment_method, status, stripe_payment_intent_id, amount_cents)
         ),
         eckcm_groups(
@@ -257,8 +258,14 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         // Registration-level check-in: checked-in if ANY participant is.
         const checkedIn = memberPersonIds.some((pid) => checkinSet.has(pid));
 
-        // Invoice & payment info
-        const invoices = r.eckcm_invoices ?? [];
+        // Invoice & payment info. Pick the PRIMARY (original) invoice = the oldest
+        // one. Custom-charge invoices (INV-...-C{n}) are created later as separate
+        // paid invoices and must not hijack the row's payment status/amount display.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const invoices = [...(r.eckcm_invoices ?? [])].sort(
+          (a: any, b: any) =>
+            new Date(a.issued_at ?? 0).getTime() - new Date(b.issued_at ?? 0).getTime()
+        );
         const invoice = invoices[0];
         let paymentMethod: string | null = null;
         let paymentStatus: string | null = null;

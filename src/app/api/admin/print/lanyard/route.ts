@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signParticipantCode } from "@/lib/services/epass.service";
+import { extractSeqFromConfirmationCode } from "@/lib/services/invoice.service";
 
 /**
  * GET /api/admin/print/lanyard?eventId=xxx&status=PAID
@@ -133,8 +134,16 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  // Stable, group-then-name ordering so reprints land in the same place.
+  // Order by registration number (등록번호) — the trailing sequence of the
+  // confirmation code (e.g. R26KIM0001 → 1), so badges print in the order people
+  // registered. Sorting the raw code string would instead sort by the embedded
+  // last name, not the number. Within one registration, keep group-then-name
+  // ordering so members stay together and reprints land in the same place.
+  // Missing/unparseable codes sort last.
   badges.sort((a, b) => {
+    const sa = (a.confirmationCode && extractSeqFromConfirmationCode(a.confirmationCode)) || Number.POSITIVE_INFINITY;
+    const sb = (b.confirmationCode && extractSeqFromConfirmationCode(b.confirmationCode)) || Number.POSITIVE_INFINITY;
+    if (sa !== sb) return sa - sb;
     const g = (a.groupCode ?? "").localeCompare(b.groupCode ?? "");
     if (g !== 0) return g;
     return (a.nameKo ?? a.nameEn).localeCompare(b.nameKo ?? b.nameEn, "ko");

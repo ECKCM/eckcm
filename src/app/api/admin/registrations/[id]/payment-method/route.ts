@@ -45,7 +45,7 @@ export async function PATCH(
 
   const { data: reg } = await supabase
     .from("eckcm_registrations")
-    .select("id, event_id, eckcm_invoices(id, eckcm_payments(id, payment_method, status))")
+    .select("id, event_id, eckcm_invoices(id, issued_at, eckcm_payments(id, payment_method, status))")
     .eq("id", registrationId)
     .single();
 
@@ -55,7 +55,12 @@ export async function PATCH(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const invoices = (reg as any).eckcm_invoices ?? [];
-  const invoice = invoices[0];
+  // Edit the registration's ORIGINAL invoice (the oldest). Custom-charge invoices
+  // are added later and share the MANUAL method, so they must not be picked here.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const invoice = [...invoices].sort(
+    (a: any, b: any) => new Date(a.issued_at ?? 0).getTime() - new Date(b.issued_at ?? 0).getTime()
+  )[0];
   if (!invoice) {
     return NextResponse.json({ error: "No invoice found for this registration" }, { status: 404 });
   }

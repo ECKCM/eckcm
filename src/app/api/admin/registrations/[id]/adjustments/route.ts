@@ -14,6 +14,10 @@ import {
   createAdjustment,
 } from "@/lib/services/adjustment.service";
 import {
+  createCustomChargeInvoice,
+  getPrimaryInvoiceId,
+} from "@/lib/services/invoice.service";
+import {
   calculateProcessingFee,
   calculateProportionalProcessingFee,
   MIN_REFUND_CENTS,
@@ -118,7 +122,7 @@ export async function POST(
   // Load registration + event stripe_mode
   const { data: reg } = await admin
     .from("eckcm_registrations")
-    .select("id, event_id, total_amount_cents, eckcm_events!inner(stripe_mode)")
+    .select("id, event_id, confirmation_code, total_amount_cents, eckcm_events!inner(stripe_mode)")
     .eq("id", registrationId)
     .single();
 
@@ -154,15 +158,12 @@ export async function POST(
     const events = reg.eckcm_events as unknown as { stripe_mode: string } | null;
     stripeModeForRefund = (events?.stripe_mode as "test" | "live") ?? "test";
 
-    // Find the most recent SUCCEEDED Stripe payment for this registration
-    const { data: invoices } = await admin
-      .from("eckcm_invoices")
-      .select("id")
-      .eq("registration_id", registrationId);
+    // Refund targets the registration's ORIGINAL payment (the primary invoice).
+    // Custom-charge invoices add their own paid MANUAL payment that must never be
+    // selected here, or a card refund would silently become a manual no-op.
+    const primaryInvoiceId = await getPrimaryInvoiceId(admin, registrationId);
 
-    const invoiceIds = (invoices ?? []).map((i: { id: string }) => i.id);
-
-    if (invoiceIds.length === 0) {
+    if (!primaryInvoiceId) {
       return NextResponse.json(
         {
           error:
@@ -177,7 +178,7 @@ export async function POST(
       .select(
         "id, stripe_payment_intent_id, payment_method, amount_cents, status, invoice_id"
       )
-      .in("invoice_id", invoiceIds)
+      .eq("invoice_id", primaryInvoiceId)
       .in("status", ["SUCCEEDED", "PARTIALLY_REFUNDED"])
       .order("created_at", { ascending: false })
       .limit(1)
@@ -267,6 +268,51 @@ export async function POST(
       },
       { status: 500 }
     );
+  }
+
+  // ─── Custom Charge: generate a paid invoice + receipt for the added amount ───
+  // A "charge" adjustment that raises the total is a manual additional amount
+  // collected out-of-band. Produce a standalone, already-paid invoice so both the
+  // invoice and receipt PDFs are immediately available (admin list + dashboard).
+  // Best-effort: the adjustment (the money record) already committed, so a document
+  // failure is logged/surfaced but does NOT roll back the charge.
+  let customChargeInvoiceId: string | null = null;
+  let customChargeInvoiceNumber: string | null = null;
+  let customChargeInvoiceError: string | null = null;
+  if (action_taken === "charge" && adjustment.difference > 0) {
+    try {
+      const result = await createCustomChargeInvoice(admin, {
+        registrationId,
+        amountCents: adjustment.difference,
+        reason: reason.trim(),
+        confirmationCode: reg.confirmation_code ?? "",
+        recordedBy: user.id,
+        adjustmentId: adjustment.id,
+      });
+      customChargeInvoiceId = result.invoiceId;
+      customChargeInvoiceNumber = result.invoiceNumber;
+
+      // Back-link the invoice from the adjustment ledger row (best-effort).
+      await admin
+        .from("eckcm_registration_adjustments")
+        .update({
+          metadata: {
+            ...(adjustment.metadata ?? {}),
+            custom_charge_invoice_id: result.invoiceId,
+            custom_charge_invoice_number: result.invoiceNumber,
+          },
+        })
+        .eq("id", adjustment.id);
+    } catch (err) {
+      customChargeInvoiceError =
+        err instanceof Error ? err.message : "Failed to create custom charge invoice";
+      logger.error("[adjustments/create] Custom charge invoice creation failed", {
+        registrationId,
+        adjustmentId: adjustment.id,
+        amountCents: adjustment.difference,
+        error: customChargeInvoiceError,
+      });
+    }
   }
 
   // ─── Step 2 + 3: Stripe refund flow (rollback adjustment on failure) ───
@@ -429,6 +475,8 @@ export async function POST(
       stripe_refund_id: stripeRefundId ?? null,
       customer_received_cents: cappedRefundAmount ?? null,
       payment_method: paymentMethod,
+      custom_charge_invoice_id: customChargeInvoiceId,
+      custom_charge_invoice_number: customChargeInvoiceNumber,
     },
   });
 
@@ -447,7 +495,13 @@ export async function POST(
     );
   }
 
-  return NextResponse.json({ adjustment, success: true });
+  return NextResponse.json({
+    adjustment,
+    success: true,
+    custom_charge_invoice_id: customChargeInvoiceId,
+    custom_charge_invoice_number: customChargeInvoiceNumber,
+    custom_charge_invoice_error: customChargeInvoiceError,
+  });
 }
 
 // ─── Rollback helper: undo createAdjustment after a downstream failure ───
