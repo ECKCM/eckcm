@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { calculateEstimate, loadMemberGroupFees, computeWaivedBenefits, remapLodgingForDefault } from "@/lib/services/pricing.service";
+import { calculateEstimate, loadMemberGroupFees, computeWaivedBenefits, remapLodgingForDefault, applyKeyDepositGate } from "@/lib/services/pricing.service";
 import type { MealFeeCategory, LodgingRate } from "@/lib/services/pricing.service";
 import { estimateSchema } from "@/lib/schemas/api";
 import { logger } from "@/lib/logger";
@@ -188,11 +188,14 @@ export async function POST(request: Request) {
     .eq("id", eventId)
     .single();
 
+  // Gate key deposit by the group-level toggle: OFF → key counts as 0 (server is authoritative)
+  const gatedRoomGroups = applyKeyDepositGate(roomGroups, regGroup.show_key_deposit);
+
   // Populate default meals for participants with empty selections
   const evStartDate = event?.event_start_date ?? startDate;
   const evEndDate = event?.event_end_date ?? endDate;
   const processedRoomGroups = populateDefaultMeals(
-    roomGroups,
+    gatedRoomGroups,
     startDate,
     endDate,
     evStartDate,

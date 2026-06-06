@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateSafeConfirmationCode } from "@/lib/services/confirmation-code.service";
-import { calculateEstimate, loadMemberGroupFees, computeWaivedBenefits, remapLodgingForDefault } from "@/lib/services/pricing.service";
+import { calculateEstimate, loadMemberGroupFees, computeWaivedBenefits, remapLodgingForDefault, applyKeyDepositGate } from "@/lib/services/pricing.service";
 import type { MealFeeCategory, LodgingRate } from "@/lib/services/pricing.service";
 import { createInvoice } from "@/lib/services/invoice.service";
 import type { RoomGroupInput, AirportPickupInput } from "@/lib/types/registration";
@@ -332,10 +332,14 @@ export async function POST(request: Request) {
     now < new Date(effectiveEarlyBirdDeadline) &&
     (effectiveEarlyBirdStart == null || now >= new Date(effectiveEarlyBirdStart));
 
+  // Gate key deposit by the group-level toggle: OFF → key counts as 0 (server is authoritative).
+  // Used for both pricing AND the persisted key_count below.
+  const gatedRoomGroups = applyKeyDepositGate(roomGroups, regGroup.show_key_deposit);
+
   const evStartDate = event?.event_start_date ?? startDate;
   const evEndDate = event?.event_end_date ?? endDate;
   const processedRoomGroups = populateDefaultMeals(
-    roomGroups,
+    gatedRoomGroups,
     startDate,
     endDate,
     evStartDate,
@@ -483,7 +487,8 @@ export async function POST(request: Request) {
   const availableCodes = candidates.filter((c) => !usedCodes.has(c));
 
   // Batch 1: Insert all groups at once
-  const groupInserts = roomGroups.map((roomGroup, i) => ({
+  // Use gatedRoomGroups so key_count is 0 when the group-level Key Deposit toggle is OFF.
+  const groupInserts = gatedRoomGroups.map((roomGroup, i) => ({
     event_id: eventId,
     registration_id: registration.id,
     display_group_code: `${confirmationCode}-G${String(i + 1).padStart(2, "0")}`,

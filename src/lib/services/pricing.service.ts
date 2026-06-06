@@ -101,6 +101,16 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
       ? input.earlyBirdFeePerPerson
       : input.registrationFeePerPerson;
 
+  // "(Early Bird)" label must only show when the early-bird fee is actually
+  // applied. isEarlyBird can be true purely from an active deadline window
+  // (incl. event-level early_registration_end) even when a group has no
+  // early-bird fee set — in that case the regular fee is charged, so the line
+  // must read "Registration Fee", not "Registration Fee (Early Bird)".
+  const isEarlyBirdApplied =
+    input.isEarlyBird && input.earlyBirdFeePerPerson != null;
+  const defaultIsEarlyBirdApplied =
+    input.defaultIsEarlyBird && input.defaultEarlyBirdFeePerPerson != null;
+
   let registrationFeeBillableCount = 0;
 
   if (input.applyGeneralFeesToMembers) {
@@ -121,8 +131,8 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
           registrationFeeBillableCount++;
           registrationFee += feePerPerson;
           participantBreakdown[p.id].push({
-            description: input.isEarlyBird ? "Registration Fee (Early Bird)" : "Registration Fee",
-            descriptionKo: input.isEarlyBird ? "등록비 (얼리버드)" : "등록비",
+            description: isEarlyBirdApplied ? "Registration Fee (Early Bird)" : "Registration Fee",
+            descriptionKo: isEarlyBirdApplied ? "등록비 (얼리버드)" : "등록비",
             quantity: 1,
             unitPrice: feePerPerson,
             amount: feePerPerson,
@@ -133,8 +143,8 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     }
     if (registrationFeeBillableCount > 0) {
       breakdown.push({
-        description: input.isEarlyBird ? "Registration Fee (Early Bird)" : "Registration Fee",
-        descriptionKo: input.isEarlyBird ? "등록비 (얼리버드)" : "등록비",
+        description: isEarlyBirdApplied ? "Registration Fee (Early Bird)" : "Registration Fee",
+        descriptionKo: isEarlyBirdApplied ? "등록비 (얼리버드)" : "등록비",
         quantity: registrationFeeBillableCount,
         unitPrice: feePerPerson,
         amount: registrationFee,
@@ -175,8 +185,8 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
             registrationFeeBillableCount++;
             registrationFee += feePerPerson;
             breakdown.push({
-              description: input.isEarlyBird ? "Registration Fee (Early Bird)" : "Registration Fee",
-              descriptionKo: input.isEarlyBird ? "등록비 (얼리버드)" : "등록비",
+              description: isEarlyBirdApplied ? "Registration Fee (Early Bird)" : "Registration Fee",
+              descriptionKo: isEarlyBirdApplied ? "등록비 (얼리버드)" : "등록비",
               quantity: 1,
               unitPrice: feePerPerson,
               amount: feePerPerson,
@@ -194,10 +204,10 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
           }
           participantBreakdown[p.id].push({
             description: eligible
-              ? (input.isEarlyBird ? "Registration Fee (Early Bird)" : "Registration Fee")
+              ? (isEarlyBirdApplied ? "Registration Fee (Early Bird)" : "Registration Fee")
               : "Registration Fee (Waived)",
             descriptionKo: eligible
-              ? (input.isEarlyBird ? "등록비 (얼리버드)" : "등록비")
+              ? (isEarlyBirdApplied ? "등록비 (얼리버드)" : "등록비")
               : "등록비 (면제)",
             quantity: 1,
             unitPrice: eligible ? feePerPerson : 0,
@@ -216,12 +226,12 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
         if (mGroupId && mgf[mGroupId]) {
           const mg = mgf[mGroupId];
           pFee = mg.isEarlyBird && mg.earlyBirdFee != null ? mg.earlyBirdFee : mg.registrationFee;
-          pIsEB = mg.isEarlyBird;
+          pIsEB = mg.isEarlyBird && mg.earlyBirdFee != null;
           pAgeMin = mg.isEarlyBird && mg.earlyBirdFee != null ? mg.earlyBirdAgeMin : mg.regFeeAgeMin;
           pAgeMax = mg.isEarlyBird && mg.earlyBirdFee != null ? mg.earlyBirdAgeMax : mg.regFeeAgeMax;
         } else {
           pFee = defaultFee;
-          pIsEB = input.defaultIsEarlyBird;
+          pIsEB = defaultIsEarlyBirdApplied;
           pAgeMin = defAgeMin;
           pAgeMax = defAgeMax;
         }
@@ -554,6 +564,22 @@ export function calculateEstimate(input: PricingInput): PriceEstimate {
     manualPaymentDiscount,
     fundingDiscount,
   };
+}
+
+/**
+ * Enforce the group-level "Key Deposit" toggle (eckcm_registration_groups.show_key_deposit)
+ * as the authoritative gate. When the toggle is OFF, the key itself counts as 0 — no key,
+ * no deposit — regardless of any KEY_DEPOSIT fee-category link or client-provided keyCount.
+ * The fee-category link only governs charging when this toggle is ON.
+ *
+ * Treats null/undefined as enabled (column default is true).
+ */
+export function applyKeyDepositGate<T extends { keyCount: number }>(
+  roomGroups: T[],
+  showKeyDeposit: boolean | null | undefined,
+): T[] {
+  if (showKeyDeposit !== false) return roomGroups;
+  return roomGroups.map((g) => (g.keyCount === 0 ? g : { ...g, keyCount: 0 }));
 }
 
 /**

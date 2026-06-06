@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-05T14:15:46.345Z",
+  "lastUpdated": "2026-06-06T17:00:23.662Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -147,7 +147,8 @@
     "title",
     "participant-titles",
     "lanyard",
-    "invoice.service.ts"
+    "invoice.service.ts",
+    "key-deposit"
   ],
   "primaryFeature": "payment-complete",
   "features": {
@@ -263,9 +264,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T19:44:10.557Z",
-        "lastUpdated": "2026-06-04T05:03:59.259Z"
+        "lastUpdated": "2026-06-06T17:00:23.662Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/participants/participants-table.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/participants/page.tsx"
     },
     "i18n": {
       "phase": "do",
@@ -536,7 +537,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T02:57:04.116Z",
-        "lastUpdated": "2026-04-01T00:26:05.005Z"
+        "lastUpdated": "2026-06-06T16:52:48.179Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/pricing.service.ts"
     },
@@ -549,7 +550,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T02:58:38.502Z",
-        "lastUpdated": "2026-03-27T04:06:10.154Z"
+        "lastUpdated": "2026-06-06T16:53:32.006Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/__tests__/unit/services/pricing.service.test.ts"
     },
@@ -588,7 +589,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:01:14.743Z",
-        "lastUpdated": "2026-03-31T02:49:01.529Z"
+        "lastUpdated": "2026-06-06T16:33:35.234Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/registration/estimate/route.ts"
     },
@@ -601,7 +602,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:02:10.314Z",
-        "lastUpdated": "2026-06-03T15:13:46.817Z"
+        "lastUpdated": "2026-06-06T16:33:59.912Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/registration/submit/route.ts"
     },
@@ -2060,6 +2061,19 @@
         "lastUpdated": "2026-06-05T03:30:54.585Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/invoice.service.ts"
+    },
+    "key-deposit": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-06T16:34:24.287Z",
+        "lastUpdated": "2026-06-06T16:34:24.287Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/register/[eventId]/key-deposit/page.tsx"
     }
   },
   "pipeline": {
@@ -2070,7 +2084,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-05T14:15:46.345Z"
+    "lastActivity": "2026-06-06T17:00:23.662Z"
   },
   "history": [
     {
@@ -12942,6 +12956,108 @@
     {
       "timestamp": "2026-06-05T14:15:46.345Z",
       "feature": "lanyard",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:33:22.127Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:33:28.070Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:33:35.234Z",
+      "feature": "estimate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:33:45.068Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:33:52.025Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:33:59.912Z",
+      "feature": "submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:34:24.287Z",
+      "feature": "key-deposit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:35:13.333Z",
+      "feature": "pricing.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:35:24.061Z",
+      "feature": "pricing.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:52:25.140Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:52:30.612Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:52:35.511Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:52:43.469Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:52:48.179Z",
+      "feature": "pricing.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T16:53:32.006Z",
+      "feature": "pricing.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T17:00:11.499Z",
+      "feature": "participants",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-06T17:00:23.662Z",
+      "feature": "participants",
       "phase": "do",
       "action": "updated"
     }

@@ -46,13 +46,20 @@ export default function KeyDepositStep() {
         .eq("id", state.registrationGroupId)
         .single();
       if (data?.show_key_deposit === false) {
+        // Toggle OFF → key counts as 0. Zero out before skipping so the
+        // estimate preview stays consistent with the server.
+        state.roomGroups.forEach((g, i) => {
+          if (g.keyCount !== 0) {
+            dispatch({ type: "UPDATE_ROOM_GROUP", index: i, group: { ...g, keyCount: 0 } });
+          }
+        });
         router.push(`/register/${eventId}/airport-pickup`);
       } else {
         setAllowed(true);
       }
     };
     checkKeyDeposit();
-  }, [state.startDate, state.registrationGroupId, router, eventId]);
+  }, [state.startDate, state.registrationGroupId, state.roomGroups, dispatch, router, eventId]);
 
   if (!state.startDate || allowed !== true) {
     return null;
