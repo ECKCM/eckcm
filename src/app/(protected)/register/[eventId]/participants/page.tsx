@@ -1132,7 +1132,11 @@ export default function ParticipantsStep() {
                                   {t("registration.selectSavedPerson")}
                                 </Button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-(--radix-popover-trigger-width) p-1" align="start">
+                              <PopoverContent
+                                className="w-(--radix-popover-trigger-width) p-1 max-h-[min(18rem,var(--radix-popover-content-available-height))] overflow-y-auto"
+                                align="start"
+                                collisionPadding={8}
+                              >
                                 {savedPersons.map((sp) => {
                                   const updatedLabel = sp.updated_at
                                     ? (() => {

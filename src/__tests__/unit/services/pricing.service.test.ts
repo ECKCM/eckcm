@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculateEstimate, computeWaivedBenefits } from "@/lib/services/pricing.service";
+import { calculateEstimate, computeWaivedBenefits, applyKeyDepositGate } from "@/lib/services/pricing.service";
 import type { LodgingRate, MealFeeCategory } from "@/lib/services/pricing.service";
 import type { ParticipantInput, RoomGroupInput, PriceEstimate } from "@/lib/types/registration";
 
@@ -102,6 +102,10 @@ describe("calculateEstimate", () => {
     it("applies early bird rate when isEarlyBird=true", () => {
       const result = calculateEstimate(makeInput({ isEarlyBird: true }));
       expect(result.registrationFee).toBe(8000); // 1 person × $80
+      // Early bird fee is actually applied → label says "(Early Bird)"
+      const regLine = result.breakdown.find((b) => b.category === "registration");
+      expect(regLine?.description).toBe("Registration Fee (Early Bird)");
+      expect(regLine?.descriptionKo).toBe("등록비 (얼리버드)");
     });
 
     it("uses standard rate when earlyBirdFeePerPerson is null", () => {
@@ -109,6 +113,19 @@ describe("calculateEstimate", () => {
         makeInput({ isEarlyBird: true, earlyBirdFeePerPerson: null })
       );
       expect(result.registrationFee).toBe(10000);
+    });
+
+    it("does NOT label '(Early Bird)' when group has no early bird fee but deadline window is active", () => {
+      // Bug: a group with early bird OFF (no early-bird fee) still showed
+      // "Registration Fee (Early Bird)" because isEarlyBird was true purely from
+      // an active deadline (e.g. event-level early_registration_end). The regular
+      // fee is charged, so the label must read plain "Registration Fee".
+      const result = calculateEstimate(
+        makeInput({ isEarlyBird: true, earlyBirdFeePerPerson: null })
+      );
+      const regLine = result.breakdown.find((b) => b.category === "registration");
+      expect(regLine?.description).toBe("Registration Fee");
+      expect(regLine?.descriptionKo).toBe("등록비");
     });
 
     it("multiplies by total participants across groups", () => {
@@ -874,5 +891,39 @@ describe("calculateEstimate", () => {
         "Meals (Waived)",
       ]);
     });
+  });
+});
+
+describe("applyKeyDepositGate", () => {
+  it("forces keyCount to 0 for every group when toggle is OFF", () => {
+    const groups = [
+      makeGroup([makeParticipant()], { keyCount: 1 }),
+      makeGroup([makeParticipant()], { id: "g2", keyCount: 2 }),
+    ];
+    const gated = applyKeyDepositGate(groups, false);
+    expect(gated.map((g) => g.keyCount)).toEqual([0, 0]);
+  });
+
+  it("leaves keyCount untouched when toggle is ON", () => {
+    const groups = [makeGroup([makeParticipant()], { keyCount: 2 })];
+    const gated = applyKeyDepositGate(groups, true);
+    expect(gated[0].keyCount).toBe(2);
+    expect(gated[0]).toBe(groups[0]); // same reference — no needless clone
+  });
+
+  it("treats null/undefined as enabled (column default is true)", () => {
+    const groups = [makeGroup([makeParticipant()], { keyCount: 1 })];
+    expect(applyKeyDepositGate(groups, null)[0].keyCount).toBe(1);
+    expect(applyKeyDepositGate(groups, undefined)[0].keyCount).toBe(1);
+  });
+
+  it("results in $0 key deposit even when a KEY_DEPOSIT fee is linked (toggle OFF wins)", () => {
+    // Simulates the gap: group toggle OFF but fee category still linked ($20/key)
+    const gated = applyKeyDepositGate(
+      [makeGroup([makeParticipant()], { keyCount: 1 })],
+      false,
+    );
+    const result = calculateEstimate(makeInput({ roomGroups: gated, keyDepositPerKey: 2000 }));
+    expect(result.keyDeposit).toBe(0);
   });
 });
