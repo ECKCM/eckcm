@@ -139,6 +139,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           id,
           invoice_number,
           status,
+          total_cents,
           paid_at,
           issued_at,
           eckcm_payments(payment_method, status, stripe_payment_intent_id, amount_cents)
@@ -258,15 +259,29 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         // Registration-level check-in: checked-in if ANY participant is.
         const checkedIn = memberPersonIds.some((pid) => checkinSet.has(pid));
 
-        // Invoice & payment info. Pick the PRIMARY (original) invoice = the oldest
-        // one. Custom-charge invoices (INV-...-C{n}) are created later as separate
-        // paid invoices and must not hijack the row's payment status/amount display.
+        // Invoice & payment info. Default to the PRIMARY (original) invoice = the
+        // oldest one. But when the registration is awaiting payment (SUBMITTED) and
+        // owes an additional amount, surface its OUTSTANDING invoice = the oldest
+        // unpaid one (a folded-in or separate "Custom Charge"), so the badge reads
+        // PENDING and the manual-settle / card-link controls appear. Fully-paid regs
+        // (incl. historical auto-paid -C invoices) have no outstanding invoice → the
+        // primary is used exactly as before.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const invoices = [...(r.eckcm_invoices ?? [])].sort(
           (a: any, b: any) =>
             new Date(a.issued_at ?? 0).getTime() - new Date(b.issued_at ?? 0).getTime()
         );
-        const invoice = invoices[0];
+        const primaryInvoice = invoices[0];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const outstandingInvoice = invoices.find(
+          (inv: any) =>
+            !["SUCCEEDED", "REFUNDED", "PARTIALLY_REFUNDED"].includes(inv.status) &&
+            (inv.eckcm_payments ?? []).length > 0
+        );
+        const invoice =
+          r.status === "SUBMITTED" && outstandingInvoice
+            ? outstandingInvoice
+            : primaryInvoice;
         let paymentMethod: string | null = null;
         let paymentStatus: string | null = null;
         let stripePaymentIntentId: string | null = null;
@@ -282,6 +297,18 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           }
         }
 
+        // Split the registration's money into already-PAID (SUCCEEDED invoices) vs
+        // still-OWED (outstanding invoices, e.g. a pending Custom Charge), so a charge
+        // added on top of a paid registration shows a clear "paid vs balance due".
+        const paidAmountCents = invoices
+          .filter((iv) => iv.status === "SUCCEEDED")
+          .reduce((sum, iv) => sum + (iv.total_cents ?? 0), 0);
+        const balanceDueCents = invoices
+          .filter(
+            (iv) => !["SUCCEEDED", "REFUNDED", "PARTIALLY_REFUNDED"].includes(iv.status)
+          )
+          .reduce((sum, iv) => sum + (iv.total_cents ?? 0), 0);
+
         return {
           id: r.id,
           confirmation_code: r.confirmation_code,
@@ -291,6 +318,8 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           end_date: r.end_date,
           nights_count: r.nights_count,
           total_amount_cents: r.total_amount_cents,
+          paid_amount_cents: paidAmountCents,
+          balance_due_cents: balanceDueCents,
           notes: r.notes,
           additional_requests: r.additional_requests ?? null,
           created_at: r.created_at,

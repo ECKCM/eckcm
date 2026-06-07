@@ -541,6 +541,25 @@ export function RegistrationDetailSheet({
                   <CreditCard className="size-4" />
                   Payment & Invoice
                 </h3>
+                {/* Paid vs. owed split — surfaced when an additional charge (or an
+                    unpaid balance) leaves an outstanding amount, so the admin settles
+                    only the balance due, not the already-paid total. */}
+                {reg.balance_due_cents > 0 && (
+                  <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <div>
+                      <p className="text-[11px] text-muted-foreground">Amount Paid</p>
+                      <p className="text-base font-semibold">
+                        {formatMoney(reg.paid_amount_cents)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-amber-700">Balance Due</p>
+                      <p className="text-base font-bold text-amber-700">
+                        {formatMoney(reg.balance_due_cents)}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                   <InfoRow label="Payment Method">
                     {reg.payment_method?.replace(/_/g, " ") ?? "-"}
@@ -1005,6 +1024,8 @@ interface AdjustmentData {
   reason: string;
   adjusted_by_name: string;
   created_at: string;
+  // Status of the linked custom-charge invoice (gates the receipt link below).
+  custom_charge_invoice_status?: string | null;
   metadata?: {
     custom_charge_invoice_id?: string;
     custom_charge_invoice_number?: string;
@@ -1128,12 +1149,12 @@ function AdjustmentsPanel({
       if (res.ok) {
         const data = await res.json().catch(() => null);
         if (data?.custom_charge_invoice_error) {
-          // Charge committed, but the invoice/receipt document failed.
+          // Charge committed, but the invoice document failed.
           toast.success("Charge recorded");
-          toast.error("Invoice/receipt could not be generated — check logs");
+          toast.error("Invoice could not be generated — check logs");
         } else if (data?.custom_charge_invoice_number) {
           toast.success(
-            `Custom charge invoice & receipt created (${data.custom_charge_invoice_number})`
+            `Charge billed — awaiting payment (${data.custom_charge_invoice_number})`
           );
         } else {
           toast.success("Adjustment created");
@@ -1364,7 +1385,8 @@ function AdjustmentsPanel({
                         Process
                       </Button>
                     )}
-                    {/* Custom-charge invoice & receipt (generated for the added amount) */}
+                    {/* Custom-charge invoice (always) + receipt (only once the
+                        charge invoice is paid — receipts don't exist while pending). */}
                     {adj.metadata?.custom_charge_invoice_id && (
                       <div className="flex items-center gap-2">
                         <a
@@ -1376,15 +1398,17 @@ function AdjustmentsPanel({
                         >
                           <FileText className="size-3" /> Inv
                         </a>
-                        <a
-                          href={`/api/invoice/${adj.metadata.custom_charge_invoice_id}/pdf?type=receipt`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-0.5 text-[10px] text-green-600 hover:underline"
-                          title="Custom charge receipt"
-                        >
-                          <FileText className="size-3" /> Rct
-                        </a>
+                        {adj.custom_charge_invoice_status === "SUCCEEDED" && (
+                          <a
+                            href={`/api/invoice/${adj.metadata.custom_charge_invoice_id}/pdf?type=receipt`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-0.5 text-[10px] text-green-600 hover:underline"
+                            title="Custom charge receipt"
+                          >
+                            <FileText className="size-3" /> Rct
+                          </a>
+                        )}
                       </div>
                     )}
                   </TableCell>

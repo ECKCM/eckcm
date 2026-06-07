@@ -14,9 +14,10 @@ import {
   createAdjustment,
 } from "@/lib/services/adjustment.service";
 import {
-  createCustomChargeInvoice,
+  applyChargeToRegistration,
   getPrimaryInvoiceId,
 } from "@/lib/services/invoice.service";
+import { isManualPaymentMethod } from "@/lib/payment/methods";
 import {
   calculateProcessingFee,
   calculateProportionalProcessingFee,
@@ -270,27 +271,56 @@ export async function POST(
     );
   }
 
-  // ─── Custom Charge: generate a paid invoice + receipt for the added amount ───
-  // A "charge" adjustment that raises the total is a manual additional amount
-  // collected out-of-band. Produce a standalone, already-paid invoice so both the
-  // invoice and receipt PDFs are immediately available (admin list + dashboard).
-  // Best-effort: the adjustment (the money record) already committed, so a document
+  // ─── Custom Charge: bill the added amount as a PENDING invoice (money owed) ───
+  // A "charge" adjustment that raises the total is an additional amount the
+  // registrant now owes. Bill it as a PENDING invoice (carrying a "Custom Charge"
+  // line item) and re-open the registration to SUBMITTED + payment pending — it is
+  // NOT auto-paid. The registrant settles it via the self-service card link or a
+  // manual payment-status change, at which point the receipt becomes available.
+  // Best-effort: the adjustment (the money record) already committed, so an invoice
   // failure is logged/surfaced but does NOT roll back the charge.
   let customChargeInvoiceId: string | null = null;
   let customChargeInvoiceNumber: string | null = null;
   let customChargeInvoiceError: string | null = null;
   if (action_taken === "charge" && adjustment.difference > 0) {
     try {
-      const result = await createCustomChargeInvoice(admin, {
+      // Method for the pending charge payment: reuse the registration's method when
+      // it's already manual (so the manual changer can settle it), else generic
+      // MANUAL. The self-service card link works regardless of this method.
+      let chargePaymentMethod = "MANUAL";
+      const primaryInvoiceId = await getPrimaryInvoiceId(admin, registrationId);
+      if (primaryInvoiceId) {
+        const { data: pay } = await admin
+          .from("eckcm_payments")
+          .select("payment_method")
+          .eq("invoice_id", primaryInvoiceId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const m = (pay?.payment_method ?? "").toUpperCase();
+        if (m && isManualPaymentMethod(m)) chargePaymentMethod = m;
+      }
+
+      const result = await applyChargeToRegistration(admin, {
         registrationId,
         amountCents: adjustment.difference,
         reason: reason.trim(),
         confirmationCode: reg.confirmation_code ?? "",
+        paymentMethod: chargePaymentMethod,
         recordedBy: user.id,
         adjustmentId: adjustment.id,
       });
       customChargeInvoiceId = result.invoiceId;
       customChargeInvoiceNumber = result.invoiceNumber;
+
+      // Re-open the registration to awaiting-payment so the owed amount surfaces
+      // (PAY: PENDING) and the card-link / manual-settle controls appear. Never
+      // re-open a terminal (cancelled/refunded) registration.
+      await admin
+        .from("eckcm_registrations")
+        .update({ status: "SUBMITTED" })
+        .eq("id", registrationId)
+        .not("status", "in", "(CANCELLED,REFUNDED)");
 
       // Back-link the invoice from the adjustment ledger row (best-effort).
       await admin

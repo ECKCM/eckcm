@@ -17,6 +17,10 @@ export interface RegistrationRow {
   end_date: string;
   nights_count: number;
   total_amount_cents: number;
+  /** Sum of already-paid (SUCCEEDED) invoices. */
+  paid_amount_cents: number;
+  /** Sum of outstanding (unpaid) invoices — what the registrant still owes. */
+  balance_due_cents: number;
   notes: string | null;
   additional_requests: string | null;
   created_at: string;

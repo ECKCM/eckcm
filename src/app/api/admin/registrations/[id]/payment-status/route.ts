@@ -46,19 +46,33 @@ export async function PATCH(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const invoices = (reg as any).eckcm_invoices ?? [];
-  // Edit the registration's ORIGINAL invoice (the oldest). Custom-charge invoices
-  // are added later and share the MANUAL method, so they must not be picked here.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const invoice = [...invoices].sort(
+  const invoices = [...((reg as any).eckcm_invoices ?? [])].sort(
     (a: any, b: any) => new Date(a.issued_at ?? 0).getTime() - new Date(b.issued_at ?? 0).getTime()
-  )[0];
+  );
+  // Prefer the registration's OUTSTANDING invoice that carries a manual payment —
+  // the amount the registrant still owes (a folded-in or separate Custom Charge).
+  // Fall back to the oldest invoice for single-invoice regs / re-settling an
+  // original. (A registration never has more than one outstanding invoice.)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const manualOutstanding = invoices.find(
+    (inv: any) =>
+      !["SUCCEEDED", "REFUNDED", "PARTIALLY_REFUNDED"].includes(inv.status) &&
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (inv.eckcm_payments ?? []).some((p: any) =>
+        isManualPaymentMethod((p.payment_method ?? "").toUpperCase())
+      )
+  );
+  const invoice = manualOutstanding ?? invoices[0];
   if (!invoice) {
     return NextResponse.json({ error: "No invoice found for this registration" }, { status: 404 });
   }
 
+  // The manual payment on the chosen invoice is the one this changer governs.
   const payments = invoice.eckcm_payments ?? [];
-  const payment = payments[0];
+  const payment =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    payments.find((p: any) => isManualPaymentMethod((p.payment_method ?? "").toUpperCase())) ??
+    payments[0];
   if (!payment) {
     return NextResponse.json({ error: "No payment found for this registration" }, { status: 404 });
   }
