@@ -105,14 +105,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payment amount" }, { status: 400 });
     }
 
-    // Persist recomputed full price (mirror existing payment flows).
-    await Promise.all([
-      admin.from("eckcm_invoices").update({ total_cents: fullPriceCents }).eq("id", invoice.id),
-      admin
-        .from("eckcm_registrations")
-        .update({ total_amount_cents: fullPriceCents })
-        .eq("id", registration.id),
-    ]);
+    // Persist recomputed full price for THIS invoice.
+    await admin.from("eckcm_invoices").update({ total_cents: fullPriceCents }).eq("id", invoice.id);
+
+    // Registration total = SUM of all non-refunded invoices (this one + any already
+    // paid, e.g. the original when settling a separate Custom Charge). Writing only
+    // this invoice's total would drop the already-paid portion and corrupt the total.
+    const { data: regInvoices } = await admin
+      .from("eckcm_invoices")
+      .select("total_cents")
+      .eq("registration_id", registration.id)
+      .neq("status", "REFUNDED");
+    const regTotalCents = (regInvoices ?? []).reduce(
+      (sum: number, iv: { total_cents: number | null }) => sum + (iv.total_cents ?? 0),
+      0
+    );
+    await admin
+      .from("eckcm_registrations")
+      .update({ total_amount_cents: regTotalCents })
+      .eq("id", registration.id);
 
     // Load event mode + publishable key.
     const { data: event } = await admin

@@ -21,6 +21,8 @@ export interface AdjustmentRecord {
 
 export interface AdjustmentWithUser extends AdjustmentRecord {
   adjusted_by_name: string;
+  // Status of the linked custom-charge invoice, if any (gates the receipt link).
+  custom_charge_invoice_status?: string | null;
 }
 
 export interface AdjustmentSummary {
@@ -79,10 +81,40 @@ export async function getAdjustments(
     }
   }
 
-  return data.map((a: AdjustmentRecord) => ({
-    ...a,
-    adjusted_by_name: nameMap.get(a.adjusted_by) ?? "Unknown",
-  }));
+  // Attach the linked custom-charge invoice's status (gates the receipt link in UI).
+  const chargeInvoiceIds = [
+    ...new Set(
+      data
+        .map((a: AdjustmentRecord) => {
+          const id = (a.metadata as Record<string, unknown> | null)?.custom_charge_invoice_id;
+          return typeof id === "string" ? id : null;
+        })
+        .filter((id): id is string => id !== null)
+    ),
+  ];
+  const invoiceStatusMap = new Map<string, string>();
+  if (chargeInvoiceIds.length > 0) {
+    const { data: invs } = await admin
+      .from("eckcm_invoices")
+      .select("id, status")
+      .in("id", chargeInvoiceIds);
+    for (const iv of (invs ?? []) as { id: string; status: string }[]) {
+      invoiceStatusMap.set(iv.id, iv.status);
+    }
+  }
+
+  return data.map((a: AdjustmentRecord) => {
+    const chargeInvoiceId = (a.metadata as Record<string, unknown> | null)
+      ?.custom_charge_invoice_id;
+    return {
+      ...a,
+      adjusted_by_name: nameMap.get(a.adjusted_by) ?? "Unknown",
+      custom_charge_invoice_status:
+        typeof chargeInvoiceId === "string"
+          ? invoiceStatusMap.get(chargeInvoiceId) ?? null
+          : null,
+    };
+  });
 }
 
 /**

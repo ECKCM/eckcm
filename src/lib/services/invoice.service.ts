@@ -89,10 +89,9 @@ export async function createInvoice(
 /**
  * Resolve a registration's PRIMARY invoice id = the oldest invoice by issued_at.
  *
- * A registration can now carry SECONDARY "custom charge" invoices (see
- * {@link createCustomChargeInvoice}), each with its own paid MANUAL payment.
- * Any code that needs "the registration's original invoice/payment" — refund
- * targeting, manual payment status/method edits — must resolve it deterministically
+ * A registration can carry SECONDARY "custom charge" invoices (see
+ * {@link applyChargeToRegistration}). Any code that needs "the registration's
+ * original invoice/payment" — refund targeting — must resolve it deterministically
  * instead of grabbing an arbitrary or newest invoice, or it could act on a custom
  * charge by mistake. The original registration invoice is always the oldest.
  */
@@ -110,35 +109,144 @@ export async function getPrimaryInvoiceId(
 }
 
 /**
- * Create a standalone "Custom Charge" invoice for a manual additional amount
- * added by an admin (see the Charge adjustment in the registration detail view).
+ * Resolve a registration's OUTSTANDING (unpaid) invoice = the oldest invoice whose
+ * status is not a terminal paid/refunded state.
  *
- * Unlike the primary registration invoice this is a SECONDARY invoice on the same
- * registration. It's created already PAID (status SUCCEEDED + paid_at now) with a
- * recorded MANUAL payment, so both the invoice PDF and the receipt PDF are
- * immediately available in the admin invoices list and the registrant's dashboard.
- *
- * The invoice number reuses the registration's base number with a `-C{n}` suffix
- * (e.g. INV-2026-0023-C1 → receipt RCT-2026-0023-C1) so it reads clearly as a
- * custom charge and never collides with the original registration invoice.
- *
- * @returns the new invoice id and its number.
+ * A registration is kept to at most ONE outstanding invoice at a time (see
+ * {@link applyChargeToRegistration}), so this is the single invoice that the
+ * settlement layer (card payment link, manual payment-status change) and the admin
+ * display should act on whenever the registration owes money.
  */
-export async function createCustomChargeInvoice(
+export async function getOutstandingInvoice(
+  admin: SupabaseClient,
+  registrationId: string
+): Promise<{ id: string; total_cents: number } | null> {
+  const { data } = await admin
+    .from("eckcm_invoices")
+    .select("id, total_cents, status, issued_at")
+    .eq("registration_id", registrationId)
+    .not("status", "in", "(SUCCEEDED,REFUNDED,PARTIALLY_REFUNDED)")
+    .order("issued_at", { ascending: true })
+    .limit(1);
+  const inv = data?.[0];
+  return inv ? { id: inv.id, total_cents: inv.total_cents } : null;
+}
+
+/**
+ * Apply an admin "Custom Charge" (an additional amount the registrant owes) to a
+ * registration as a PENDING amount — NOT auto-paid. The registrant settles it later
+ * via the self-service card payment link or a manual payment-status change, at which
+ * point the invoice becomes SUCCEEDED and the receipt becomes available.
+ *
+ * Keeps the registration to at most ONE outstanding invoice so the existing
+ * single-invoice settlement layer keeps working unchanged:
+ *   - if an outstanding (unpaid) invoice exists, the charge is FOLDED into it
+ *     (extra line item + higher invoice total + higher pending payment);
+ *   - otherwise (the registration is fully paid) a new PENDING `-C{n}` invoice is
+ *     CREATED for the delta, with its own pending payment so the manual changer can
+ *     settle it. The original paid invoice is never touched (no double charge).
+ *
+ * The new amount is reflected on the registration total separately, by the caller's
+ * `createAdjustment` (optimistic-lock bump) — this function only manages invoices.
+ *
+ * @returns the affected invoice id/number and whether it was folded into an existing one.
+ */
+export async function applyChargeToRegistration(
   admin: SupabaseClient,
   params: {
     registrationId: string;
     amountCents: number; // gross amount added; must be > 0
     reason: string;
     confirmationCode: string;
+    paymentMethod?: string | null; // method for the pending payment row (fallback MANUAL)
     recordedBy: string;
     adjustmentId?: string | null;
   }
-): Promise<{ invoiceId: string; invoiceNumber: string }> {
+): Promise<{ invoiceId: string; invoiceNumber: string; folded: boolean }> {
   if (!Number.isInteger(params.amountCents) || params.amountCents <= 0) {
     throw new Error("Custom charge amount must be a positive integer (cents)");
   }
 
+  const method = (params.paymentMethod ?? "MANUAL").toUpperCase();
+  const descEn = `Custom Charge: ${params.reason}`;
+  const descKo = `추가 결제: ${params.reason}`;
+  const paymentMeta = {
+    source: "custom_charge",
+    adjustment_id: params.adjustmentId ?? null,
+    recorded_by: params.recordedBy,
+  };
+
+  const outstanding = await getOutstandingInvoice(admin, params.registrationId);
+
+  if (outstanding) {
+    // ── Fold into the existing unpaid invoice (keeps it the single outstanding one) ──
+    const { data: lastItem } = await admin
+      .from("eckcm_invoice_line_items")
+      .select("sort_order")
+      .eq("invoice_id", outstanding.id)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const nextSort = ((lastItem?.sort_order as number | null) ?? -1) + 1;
+
+    const { error: lineErr } = await admin.from("eckcm_invoice_line_items").insert({
+      invoice_id: outstanding.id,
+      description_en: descEn,
+      description_ko: descKo,
+      quantity: 1,
+      unit_price_cents: params.amountCents,
+      total_cents: params.amountCents,
+      sort_order: nextSort,
+    });
+    if (lineErr) {
+      throw new Error(`Failed to add custom charge line item: ${lineErr.message}`);
+    }
+
+    await admin
+      .from("eckcm_invoices")
+      .update({ total_cents: outstanding.total_cents + params.amountCents })
+      .eq("id", outstanding.id);
+
+    // Keep the pending payment in step with the new total so the manual changer /
+    // card link settle the right amount. Bump an existing pending row, else add one.
+    const { data: pending } = await admin
+      .from("eckcm_payments")
+      .select("id, amount_cents")
+      .eq("invoice_id", outstanding.id)
+      .eq("status", "PENDING")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (pending) {
+      await admin
+        .from("eckcm_payments")
+        .update({ amount_cents: (pending.amount_cents ?? 0) + params.amountCents })
+        .eq("id", pending.id);
+    } else {
+      await admin.from("eckcm_payments").insert({
+        invoice_id: outstanding.id,
+        payment_method: method,
+        amount_cents: outstanding.total_cents + params.amountCents,
+        status: "PENDING",
+        metadata: paymentMeta,
+      });
+    }
+
+    const { data: inv } = await admin
+      .from("eckcm_invoices")
+      .select("invoice_number")
+      .eq("id", outstanding.id)
+      .maybeSingle();
+
+    return {
+      invoiceId: outstanding.id,
+      invoiceNumber: (inv?.invoice_number as string) ?? "",
+      folded: true,
+    };
+  }
+
+  // ── No outstanding invoice (registration fully paid): create a PENDING delta ──
   // Base number from the confirmation code — same scheme as the primary invoice.
   const seq = extractSeqFromConfirmationCode(params.confirmationCode) ?? 1;
   const yyMatch = params.confirmationCode.match(/^R(\d{2})/);
@@ -153,18 +261,15 @@ export async function createCustomChargeInvoice(
     .like("invoice_number", `${base}-C%`);
   const invoiceNumber = `${base}-C${(existing?.length ?? 0) + 1}`;
 
-  const nowIso = new Date().toISOString();
-
-  // 1. Invoice — created already paid so the receipt is available immediately.
+  // issued_at = now (never the oldest) so refund targeting still resolves the original.
   const { data: invoice, error: invoiceError } = await admin
     .from("eckcm_invoices")
     .insert({
       registration_id: params.registrationId,
       invoice_number: invoiceNumber,
       total_cents: params.amountCents,
-      status: "SUCCEEDED",
-      issued_at: nowIso,
-      paid_at: nowIso,
+      status: "PENDING",
+      issued_at: new Date().toISOString(),
     })
     .select("id")
     .single();
@@ -175,43 +280,31 @@ export async function createCustomChargeInvoice(
     );
   }
 
-  // 2. Single line item describing the charge.
-  const { error: lineItemError } = await admin
-    .from("eckcm_invoice_line_items")
-    .insert({
-      invoice_id: invoice.id,
-      description_en: `Custom Charge: ${params.reason}`,
-      description_ko: `추가 결제: ${params.reason}`,
-      quantity: 1,
-      unit_price_cents: params.amountCents,
-      total_cents: params.amountCents,
-      sort_order: 0,
-    });
-
+  const { error: lineItemError } = await admin.from("eckcm_invoice_line_items").insert({
+    invoice_id: invoice.id,
+    description_en: descEn,
+    description_ko: descKo,
+    quantity: 1,
+    unit_price_cents: params.amountCents,
+    total_cents: params.amountCents,
+    sort_order: 0,
+  });
   if (lineItemError) {
-    throw new Error(
-      `Failed to create custom charge line item: ${lineItemError.message}`
-    );
+    throw new Error(`Failed to create custom charge line item: ${lineItemError.message}`);
   }
 
-  // 3. Recorded MANUAL payment (no Stripe) marking the charge as collected.
+  // Pending payment (no Stripe) so the manual changer can settle it; the card link
+  // supersedes this with a real card PaymentIntent when paid online.
   const { error: paymentError } = await admin.from("eckcm_payments").insert({
     invoice_id: invoice.id,
-    payment_method: "MANUAL",
+    payment_method: method,
     amount_cents: params.amountCents,
-    status: "SUCCEEDED",
-    metadata: {
-      source: "custom_charge",
-      adjustment_id: params.adjustmentId ?? null,
-      recorded_by: params.recordedBy,
-    },
+    status: "PENDING",
+    metadata: paymentMeta,
   });
-
   if (paymentError) {
-    throw new Error(
-      `Failed to create custom charge payment: ${paymentError.message}`
-    );
+    throw new Error(`Failed to create custom charge payment: ${paymentError.message}`);
   }
 
-  return { invoiceId: invoice.id, invoiceNumber };
+  return { invoiceId: invoice.id, invoiceNumber, folded: false };
 }
