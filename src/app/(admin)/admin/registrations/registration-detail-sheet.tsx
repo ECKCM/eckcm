@@ -1103,6 +1103,11 @@ function AdjustmentsPanel({
   const [processingAdj, setProcessingAdj] = useState<AdjustmentData | null>(null);
   const [processAction, setProcessAction] = useState("refund");
 
+  // Edit adjustment state (reason + type only — amount is immutable)
+  const [editingAdj, setEditingAdj] = useState<AdjustmentData | null>(null);
+  const [editReason, setEditReason] = useState("");
+  const [editType, setEditType] = useState("admin_correction");
+
   const loadAdjustments = async () => {
     setLoading(true);
     try {
@@ -1199,6 +1204,48 @@ function AdjustmentsPanel({
       }
     } catch {
       toast.error("Failed to process adjustment");
+    }
+    setSubmitting(false);
+  };
+
+  const openEdit = (adj: AdjustmentData) => {
+    setEditingAdj(adj);
+    setEditReason(adj.reason);
+    setEditType(
+      ADJUSTMENT_TYPES.some((t) => t.value === adj.adjustment_type)
+        ? adj.adjustment_type
+        : "admin_correction"
+    );
+  };
+
+  const handleEdit = async () => {
+    if (!editingAdj || !editReason.trim()) return;
+    setSubmitting(true);
+    try {
+      // The system-generated initial payment keeps its type; only the reason changes.
+      const isInitial = editingAdj.adjustment_type === "initial_payment";
+      const res = await fetch(
+        `/api/admin/registrations/${registrationId}/adjustments/${editingAdj.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reason: editReason.trim(),
+            ...(isInitial ? {} : { adjustment_type: editType }),
+          }),
+        }
+      );
+      if (res.ok) {
+        toast.success("Adjustment updated");
+        setEditingAdj(null);
+        await loadAdjustments();
+        onAdjustmentCreated();
+      } else {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error || "Failed to update adjustment");
+      }
+    } catch {
+      toast.error("Failed to update adjustment");
     }
     setSubmitting(false);
   };
@@ -1372,23 +1419,36 @@ function AdjustmentsPanel({
                     {adj.adjusted_by_name}
                   </TableCell>
                   <TableCell>
-                    {adj.action_taken === "pending" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 text-[10px] px-2"
-                        onClick={() => {
-                          setProcessingAdj(adj);
-                          setProcessAction(adj.difference < 0 ? "refund" : "charge");
-                        }}
-                      >
-                        Process
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {adj.adjustment_type !== "initial_payment" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0"
+                          title="Edit reason / type"
+                          onClick={() => openEdit(adj)}
+                        >
+                          <Pencil className="size-3" />
+                        </Button>
+                      )}
+                      {adj.action_taken === "pending" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[10px] px-2"
+                          onClick={() => {
+                            setProcessingAdj(adj);
+                            setProcessAction(adj.difference < 0 ? "refund" : "charge");
+                          }}
+                        >
+                          Process
+                        </Button>
+                      )}
+                    </div>
                     {/* Custom-charge invoice (always) + receipt (only once the
                         charge invoice is paid — receipts don't exist while pending). */}
                     {adj.metadata?.custom_charge_invoice_id && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mt-1">
                         <a
                           href={`/api/invoice/${adj.metadata.custom_charge_invoice_id}/pdf?type=invoice`}
                           target="_blank"
@@ -1575,6 +1635,72 @@ function AdjustmentsPanel({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Adjustment Dialog */}
+      {editingAdj && (
+        <AlertDialog open onOpenChange={(open) => !open && setEditingAdj(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Edit Adjustment</AlertDialogTitle>
+              <AlertDialogDescription>
+                Update the reason and type. The amount ({formatMoney(editingAdj.difference)})
+                and action ({editingAdj.action_taken}) can&apos;t be changed — create a new
+                adjustment to correct an amount.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-4">
+              {editingAdj.adjustment_type !== "initial_payment" && (
+                <div>
+                  <label className="text-sm font-medium">Type</label>
+                  <Select value={editType} onValueChange={setEditType}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ADJUSTMENT_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div>
+                <label className="text-sm font-medium">Reason *</label>
+                <Textarea
+                  value={editReason}
+                  onChange={(e) => setEditReason(e.target.value)}
+                  placeholder="Explain this adjustment..."
+                  className="mt-1"
+                  rows={2}
+                />
+                {editingAdj.metadata?.custom_charge_invoice_id && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Also updates the linked custom-charge invoice
+                    {editingAdj.metadata.custom_charge_invoice_number
+                      ? ` (${editingAdj.metadata.custom_charge_invoice_number})`
+                      : ""}.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleEdit}
+                disabled={!editReason.trim() || submitting}
+              >
+                {submitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
+                Save
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
 
       {/* Process Pending Dialog */}
       {processingAdj && (

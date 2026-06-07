@@ -105,7 +105,15 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
   const page = doc.addPage([PAGE_W, PAGE_H]);
   const docTitle = isPaid ? "Receipt" : "Invoice";
 
-  // Helper: draw text
+  // pdf-lib's StandardFonts (Helvetica) use WinAnsi encoding and THROW on any
+  // character they can't encode — e.g. Hangul in a custom-charge reason — which
+  // would abort the whole PDF. Replace unencodable characters with "?" so the
+  // document always renders. (Latin-1 + the truncation ellipsis are kept.)
+  // Matches the approach in generate-summary.ts / generate-donation-receipt.ts.
+  const winAnsiSafe = (s: string): string =>
+    String(s ?? "").replace(/[^\x20-\x7E\xA0-\xFF…]/g, "?");
+
+  // Helper: draw text (sanitized — never throws on CJK/emoji)
   const txt = (
     text: string,
     x: number,
@@ -113,12 +121,14 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
     font: typeof regular,
     size: number,
     color: ReturnType<typeof rgb>
-  ) => page.drawText(String(text), { x, y, font, size, color });
+  ) => page.drawText(winAnsiSafe(String(text)), { x, y, font, size, color });
 
-  // Truncate text to fit within maxWidth
+  // Truncate text to fit within maxWidth. Sanitize FIRST — widthOfTextAtSize
+  // throws on unencodable glyphs just like drawText does.
   const truncate = (text: string, font: typeof regular, size: number, maxWidth: number): string => {
-    if (font.widthOfTextAtSize(text, size) <= maxWidth) return text;
-    let t = text;
+    const safeText = winAnsiSafe(String(text));
+    if (font.widthOfTextAtSize(safeText, size) <= maxWidth) return safeText;
+    let t = safeText;
     while (t.length > 0 && font.widthOfTextAtSize(t + "…", size) > maxWidth) {
       t = t.slice(0, -1);
     }
