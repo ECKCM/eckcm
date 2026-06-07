@@ -52,3 +52,23 @@ export function isManualPaymentMethod(method: string | null | undefined): boolea
   if (!method) return false;
   return (MANUAL_PAYMENT_METHODS as readonly string[]).includes(method.toUpperCase());
 }
+
+/** Human-readable labels for every payment method. */
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  CARD: "Card",
+  APPLE_PAY: "Apple Pay",
+  GOOGLE_PAY: "Google Pay",
+  CHECK: "Check",
+  ZELLE: "Zelle",
+  ONSITE: "On-Site",
+  ONSITE_CASH: "On-Site (Cash)",
+  ONSITE_CHECK: "On-Site (Check)",
+  ONSITE_ZELLE: "On-Site (Zelle)",
+  MANUAL: "Manual",
+};
+
+/** Format a payment method for display. Falls back to the raw value / em dash. */
+export function formatPaymentMethod(method: string | null | undefined): string {
+  if (!method) return "—";
+  return PAYMENT_METHOD_LABELS[method.toUpperCase() as PaymentMethod] ?? method;
+}

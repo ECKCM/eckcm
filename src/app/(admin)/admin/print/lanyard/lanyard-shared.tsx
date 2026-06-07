@@ -38,8 +38,8 @@ export const STATUS_OPTIONS = ["PAID", "APPROVED", "SUBMITTED", "ALL"];
 export const BADGES_PER_SHEET = 8;
 
 // Fixed event header printed on every badge. Edit these two lines per year.
-export const HEADER_EN = "East Coast Korean Camp meeting 2026";
-export const HEADER_KO = "제47 회 중동부 연합 야영회";
+export const HEADER_EN = "East Coast Korean Camp Meeting 2026";
+export const HEADER_KO = "제47회 중동부 연합 야영회";
 
 /* ─── Print / layout CSS (physical inches → exact 5390 alignment) ─────────── */
 
