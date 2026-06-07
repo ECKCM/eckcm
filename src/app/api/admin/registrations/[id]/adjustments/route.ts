@@ -322,7 +322,8 @@ export async function POST(
         .eq("id", registrationId)
         .not("status", "in", "(CANCELLED,REFUNDED)");
 
-      // Back-link the invoice from the adjustment ledger row (best-effort).
+      // Back-link the invoice + line item from the adjustment ledger row so an
+      // edit can keep the document in sync and the UI can link to it (best-effort).
       await admin
         .from("eckcm_registration_adjustments")
         .update({
@@ -330,6 +331,7 @@ export async function POST(
             ...(adjustment.metadata ?? {}),
             custom_charge_invoice_id: result.invoiceId,
             custom_charge_invoice_number: result.invoiceNumber,
+            custom_charge_line_item_id: result.lineItemId,
           },
         })
         .eq("id", adjustment.id);

@@ -22,7 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Users, RefreshCw, ExternalLink, DollarSign, UserCheck, Star, Clock, Banknote, Wallet, Scale } from "lucide-react";
+import { Users, RefreshCw, DollarSign, UserCheck, Star, Clock, Banknote, Wallet, Scale } from "lucide-react";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
@@ -42,23 +41,36 @@ import {
   type Event,
   type RegistrationRow,
   STATUS_OPTIONS,
-  statusVariant,
-  paymentStatusVariant,
   formatMoney,
-  formatTimestamp,
-  extractSeqNumber,
   parseSeqNumber,
   grossCollectedCents,
   netCollectedCents,
 } from "./registrations-types";
 import { RegistrationDetailSheet } from "./registration-detail-sheet";
-import { RegistrationActions } from "./registration-actions";
 import { useRegistrationLock } from "@/lib/hooks/use-registration-lock";
+import {
+  resolveColumnLayout,
+  visibleColumns,
+  type ColumnPref,
+  type ColumnRenderContext,
+} from "./registrations-columns";
+import { ColumnSettings } from "./column-settings";
 
 interface RegistrationsTableProps {
   events: Event[];
   currentUserId: string;
   currentUserName: string;
+}
+
+/**
+ * Row background so admins can spot which registrations have a room assigned.
+ * Highlight (star) takes priority; otherwise a reg with a room gets a subtle
+ * green tint. Rooms-less rows are left unstyled.
+ */
+function rowClassName(r: RegistrationRow): string {
+  if (r.is_highlighted) return "!bg-yellow-50 dark:!bg-yellow-950/20";
+  if (r.room_numbers.length > 0) return "!bg-green-50/60 dark:!bg-green-950/20";
+  return "";
 }
 
 export function RegistrationsTable({ events, currentUserId, currentUserName }: RegistrationsTableProps) {
@@ -77,7 +89,56 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
   // surcharge meant to offset Stripe fees). Fetched server-side for accuracy.
   const [cardSurchargeCents, setCardSurchargeCents] = useState(0);
 
+  // Global (shared) column layout: order + visibility. `null` = code default.
+  const [columnPrefs, setColumnPrefs] = useState<ColumnPref[] | null>(null);
+  const [columnsSaving, setColumnsSaving] = useState(false);
+  // Mirror of columnPrefs for stable access inside the persist callback.
+  const columnPrefsRef = useRef<ColumnPref[] | null>(null);
+  useEffect(() => { columnPrefsRef.current = columnPrefs; }, [columnPrefs]);
+
+  // Resolved, render-ready columns reconciled against the current registry.
+  const columnLayout = resolveColumnLayout(columnPrefs);
+  const hiddenColumns = new Set(
+    (columnPrefs ?? []).filter((c) => !c.visible).map((c) => c.id)
+  );
+  const renderColumns = visibleColumns(columnLayout, hiddenColumns);
+
   useEffect(() => setMounted(true), []);
+
+  // Load the shared column layout once.
+  useEffect(() => {
+    fetch("/api/admin/registration-columns")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && Array.isArray(data.columns)) setColumnPrefs(data.columns);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Persist a new layout globally (optimistic). On failure, revert + toast.
+  // Called only on explicit Save / Reset from the column settings editor.
+  const persistColumnPrefs = useCallback(async (next: ColumnPref[] | null) => {
+    const prev = columnPrefsRef.current;
+    setColumnPrefs(next);
+    setColumnsSaving(true);
+    try {
+      const res = await fetch("/api/admin/registration-columns", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ columns: next }),
+      });
+      if (!res.ok) throw new Error("save failed");
+      toast.success("Column settings saved");
+    } catch {
+      setColumnPrefs(prev);
+      toast.error("Failed to save column settings");
+    } finally {
+      setColumnsSaving(false);
+    }
+  }, []);
+
+  const handleColumnSave = (prefs: ColumnPref[]) => persistColumnPrefs(prefs);
+  const handleColumnReset = () => persistColumnPrefs(null);
 
   useEffect(() => {
     fetch("/api/admin/stripe-config")
@@ -478,6 +539,18 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
 
   const { sortedData: sorted, sortConfig, requestSort } = useTableSort(filtered);
 
+  // Context handed to each column's cell renderer.
+  const columnCtx: ColumnRenderContext = {
+    events,
+    eventId,
+    stripeAccountId,
+    updatingId,
+    isLockedByOther,
+    openDetail,
+    updateStatus,
+    setHighlightConfirm,
+  };
+
   // ─── Summary stats ─────────────────────────────────────────────
 
   const totalPaid = registrations.filter((r) => r.status === "PAID").length;
@@ -648,9 +721,24 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
       {/* Table */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">
-            {sorted.length} registration(s)
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-base">
+              {sorted.length} registration(s)
+            </CardTitle>
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="inline-block size-3 rounded-sm border bg-green-50 dark:bg-green-950/40" />
+                Room assigned
+              </span>
+              <ColumnSettings
+                layout={columnLayout}
+                hidden={hiddenColumns}
+                saving={columnsSaving}
+                onSave={handleColumnSave}
+                onReset={handleColumnReset}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -661,262 +749,43 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap w-[120px]">Actions</TableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="seq_number" sortConfig={sortConfig} onSort={requestSort}>No.</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="confirmation_code" sortConfig={sortConfig} onSort={requestSort}>Code</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="registrant_name" sortConfig={sortConfig} onSort={requestSort}>Name</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="status" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="payment_status" sortConfig={sortConfig} onSort={requestSort}>Payment</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="total_amount_cents" sortConfig={sortConfig} onSort={requestSort}>Amount</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="registration_group_name" sortConfig={sortConfig} onSort={requestSort}>Reg. Group</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="room_numbers" sortConfig={sortConfig} onSort={requestSort}>Room</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="registration_type" sortConfig={sortConfig} onSort={requestSort}>Type</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="registrant_email" sortConfig={sortConfig} onSort={requestSort}>Email</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="registrant_phone" sortConfig={sortConfig} onSort={requestSort}>Phone</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="paid_at" sortConfig={sortConfig} onSort={requestSort}>Paid At</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap text-center" sortKey="checked_in" sortConfig={sortConfig} onSort={requestSort}>C-IN</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap text-center" sortKey="checked_out" sortConfig={sortConfig} onSort={requestSort}>C-OUT</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="lodging_type" sortConfig={sortConfig} onSort={requestSort}>Lodging</SortableTableHead>
-                    <TableHead className="whitespace-nowrap">Room Pref.</TableHead>
-                    <SortableTableHead className="whitespace-nowrap text-center" sortKey="people_count" sortConfig={sortConfig} onSort={requestSort}>People</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="start_date" sortConfig={sortConfig} onSort={requestSort}>Dates</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap text-center" sortKey="nights_count" sortConfig={sortConfig} onSort={requestSort}>Nights</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="registrant_church" sortConfig={sortConfig} onSort={requestSort}>Church</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="registrant_department" sortConfig={sortConfig} onSort={requestSort}>Dept.</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="registrant_guardian_name" sortConfig={sortConfig} onSort={requestSort}>Guardian</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="invoice_number" sortConfig={sortConfig} onSort={requestSort}>Invoice</SortableTableHead>
-                    <TableHead className="whitespace-nowrap">Stripe</TableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="notes" sortConfig={sortConfig} onSort={requestSort}>Notes</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="additional_requests" sortConfig={sortConfig} onSort={requestSort}>Requests</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="created_at" sortConfig={sortConfig} onSort={requestSort}>Registered</SortableTableHead>
-                    <SortableTableHead className="whitespace-nowrap" sortKey="updated_at" sortConfig={sortConfig} onSort={requestSort}>Updated</SortableTableHead>
+                    {renderColumns.map((col) => {
+                      const headClass = `whitespace-nowrap${col.center ? " text-center" : ""}${col.headClassName ? ` ${col.headClassName}` : ""}`;
+                      return col.sortKey ? (
+                        <SortableTableHead
+                          key={col.id}
+                          className={headClass}
+                          sortKey={col.sortKey}
+                          sortConfig={sortConfig}
+                          onSort={requestSort}
+                        >
+                          {col.label}
+                        </SortableTableHead>
+                      ) : (
+                        <TableHead key={col.id} className={headClass}>
+                          {col.label}
+                        </TableHead>
+                      );
+                    })}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sorted.map((r) => (
                     <TableRow
                       key={r.id}
-                      className={`hover:bg-muted/50 transition-colors ${r.is_highlighted ? "!bg-yellow-50 dark:!bg-yellow-950/20" : ""}`}
+                      className={`hover:bg-muted/50 transition-colors ${rowClassName(r)}`}
                     >
-                      {/* Actions */}
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setHighlightConfirm({ regId: r.id, current: r.is_highlighted, name: r.registrant_name }); }}
-                            className="p-0.5 rounded hover:bg-muted transition-colors"
-                            title={r.is_highlighted ? "Remove highlight" : "Highlight"}
-                          >
-                            <Star className={`size-3.5 ${r.is_highlighted ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/40"}`} />
-                          </button>
-                          <RegistrationActions
-                            registration={r}
-                            onView={openDetail}
-                            onStatusChange={updateStatus}
-                            updatingId={updatingId}
-                            lockedBy={isLockedByOther(r.id)}
-                          />
-                        </div>
-                      </TableCell>
-                      {/* No. */}
-                      <TableCell className="font-mono text-xs whitespace-nowrap text-muted-foreground">
-                        {extractSeqNumber(r.confirmation_code)}
-                      </TableCell>
-                      {/* Code */}
-                      <TableCell className="font-mono text-sm whitespace-nowrap">
-                        {r.confirmation_code}
-                      </TableCell>
-                      {/* Name */}
-                      <TableCell className="whitespace-nowrap">
-                        <div className="font-medium text-sm">{r.registrant_name}</div>
-                        {r.registrant_name_ko && (
-                          <div className="text-xs text-muted-foreground">
-                            {r.registrant_name_ko}
-                          </div>
-                        )}
-                      </TableCell>
-                      {/* Status */}
-                      <TableCell>
-                        <Badge variant={statusVariant[r.status] ?? "secondary"} className="text-xs">
-                          {r.status}
-                        </Badge>
-                      </TableCell>
-                      {/* Payment — combined method + status */}
-                      <TableCell>
-                        <div className="space-y-0.5">
-                          {r.payment_status && (
-                            <Badge
-                              variant={paymentStatusVariant[r.payment_status] ?? "secondary"}
-                              className="text-xs"
-                            >
-                              {r.payment_status}
-                            </Badge>
-                          )}
-                          {r.payment_method && (
-                            <div className="text-xs text-muted-foreground">
-                              {r.payment_method.replace(/_/g, " ")}
-                            </div>
-                          )}
-                          {!r.payment_status && !r.payment_method && (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      {/* Amount — Stripe fee is Stripe's money, not ours */}
-                      <TableCell className="font-mono text-sm whitespace-nowrap">
-                        {formatMoney(grossCollectedCents(r))}
-                      </TableCell>
-                      {/* Reg. Group */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registration_group_name ?? "-"}
-                      </TableCell>
-                      {/* Room */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.room_numbers.length > 0 ? r.room_numbers.join(", ") : "-"}
-                      </TableCell>
-                      {/* Type */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registration_type}
-                      </TableCell>
-                      {/* Email */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_email ?? "-"}
-                      </TableCell>
-                      {/* Phone */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_phone ?? "-"}
-                      </TableCell>
-                      {/* Paid At */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.paid_at ? formatTimestamp(r.paid_at) : "-"}
-                      </TableCell>
-                      {/* C-IN */}
-                      <TableCell className="text-center">
-                        <Badge variant={r.checked_in ? "default" : "secondary"} className="text-xs">
-                          {r.checked_in ? "Yes" : "No"}
-                        </Badge>
-                      </TableCell>
-                      {/* C-OUT */}
-                      <TableCell className="text-center">
-                        <Badge variant={r.checked_out ? "default" : "secondary"} className="text-xs">
-                          {r.checked_out ? "Yes" : "No"}
-                        </Badge>
-                      </TableCell>
-                      {/* Lodging */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.lodging_type?.replace(/^LODGING_/, "").replace(/_/g, " ") ?? "-"}
-                      </TableCell>
-                      {/* Room Pref. */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.preferences ? (
-                          [
-                            r.preferences.elderly && "Elderly",
-                            r.preferences.handicapped && "Handicapped",
-                            r.preferences.firstFloor && "1st Floor",
-                          ].filter(Boolean).join(", ") || "-"
-                        ) : "-"}
-                      </TableCell>
-                      {/* People */}
-                      <TableCell className="text-center">
-                        <span className="inline-flex items-center gap-1 text-sm">
-                          <Users className="size-3" />
-                          {r.people_count}
-                        </span>
-                      </TableCell>
-                      {/* Dates */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.start_date} ~ {r.end_date}
-                      </TableCell>
-                      {/* Nights */}
-                      <TableCell className="text-center text-xs">
-                        {r.nights_count}
-                      </TableCell>
-                      {/* Church */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_church ?? "-"}
-                      </TableCell>
-                      {/* Dept */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_department ?? "-"}
-                      </TableCell>
-                      {/* Guardian */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.registrant_guardian_name ? (
-                          <div>
-                            <div>{r.registrant_guardian_name}</div>
-                            {r.registrant_guardian_phone && (
-                              <div className="text-muted-foreground">{r.registrant_guardian_phone}</div>
-                            )}
-                          </div>
-                        ) : "-"}
-                      </TableCell>
-                      {/* Invoice */}
-                      <TableCell className="font-mono text-xs whitespace-nowrap">
-                        {r.invoice_id ? (
-                          <div className="flex items-center gap-1.5">
-                            <span>{r.invoice_number}</span>
-                            <a
-                              href={`/api/invoice/${r.invoice_id}/pdf?type=invoice`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline"
-                              title="View Invoice"
-                            >
-                              <ExternalLink className="size-3" />
-                            </a>
-                            {r.payment_status === "SUCCEEDED" && (
-                              <a
-                                href={`/api/invoice/${r.invoice_id}/pdf?type=receipt`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-green-600 hover:underline"
-                                title="View Receipt"
-                              >
-                                <ExternalLink className="size-3" />
-                              </a>
-                            )}
-                          </div>
-                        ) : "-"}
-                      </TableCell>
-                      {/* Stripe Link */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.stripe_payment_intent_id && stripeAccountId ? (
-                          <a
-                            href={`https://dashboard.stripe.com/${stripeAccountId}/${
-                              events.find((e) => e.id === eventId)?.stripe_mode === "live" ? "" : "test/"
-                            }payments/${r.stripe_payment_intent_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-blue-600 hover:underline"
-                          >
-                            <ExternalLink className="size-3" />
-                            View
-                          </a>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      {/* Notes */}
-                      <TableCell className="text-xs max-w-[200px] truncate" title={r.notes ?? ""}>
-                        {r.notes ?? "-"}
-                      </TableCell>
-                      {/* Requests */}
-                      <TableCell className="text-xs max-w-[200px] truncate" title={r.additional_requests ?? ""}>
-                        {r.additional_requests ?? "-"}
-                      </TableCell>
-                      {/* Registered */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {formatTimestamp(r.created_at)}
-                      </TableCell>
-                      {/* Updated */}
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {formatTimestamp(r.updated_at)}
-                      </TableCell>
+                      {renderColumns.map((col) => (
+                        <TableCell key={col.id} className={col.center ? "text-center" : undefined}>
+                          {col.render(r, columnCtx)}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   ))}
                   {sorted.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={30}
+                        colSpan={renderColumns.length}
                         className="text-center text-muted-foreground py-8"
                       >
                         No registrations found.

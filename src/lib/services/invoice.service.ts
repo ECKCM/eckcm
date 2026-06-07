@@ -133,6 +133,62 @@ export async function getOutstandingInvoice(
 }
 
 /**
+ * Build the English line-item description for a custom charge.
+ *
+ * The invoice PDF renders `description_en` with Helvetica (WinAnsi), which cannot
+ * display Hangul. So the reason is inlined ONLY when it's Latin-renderable;
+ * otherwise the PDF shows a clean "Custom Charge" label and the full reason is
+ * preserved in `description_ko` and the adjustment ledger.
+ */
+export function buildCustomChargeDescriptionEn(reason: string): string {
+  const r = reason.trim();
+  const isLatin = /^[\x20-\x7E\xA0-\xFF]*$/.test(r);
+  return isLatin && r ? `Custom Charge: ${r}` : "Custom Charge";
+}
+
+/** Korean line-item description for a custom charge (kept verbatim). */
+export function buildCustomChargeDescriptionKo(reason: string): string {
+  const r = reason.trim();
+  return r ? `추가 결제: ${r}` : "추가 결제";
+}
+
+/**
+ * Update a custom-charge line item to reflect an edited reason, keeping the
+ * invoice/receipt documents in sync. Targets the exact line item when its id is
+ * known; otherwise falls back to a single-line-item invoice (a dedicated `-C`
+ * invoice) and skips folded invoices where the item can't be identified safely.
+ */
+export async function updateCustomChargeLineItem(
+  admin: SupabaseClient,
+  target: { lineItemId?: string | null; invoiceId?: string | null },
+  reason: string
+): Promise<void> {
+  const patch = {
+    description_en: buildCustomChargeDescriptionEn(reason),
+    description_ko: buildCustomChargeDescriptionKo(reason),
+  };
+  if (target.lineItemId) {
+    await admin
+      .from("eckcm_invoice_line_items")
+      .update(patch)
+      .eq("id", target.lineItemId);
+    return;
+  }
+  if (target.invoiceId) {
+    const { data: items } = await admin
+      .from("eckcm_invoice_line_items")
+      .select("id")
+      .eq("invoice_id", target.invoiceId);
+    if (items && items.length === 1) {
+      await admin
+        .from("eckcm_invoice_line_items")
+        .update(patch)
+        .eq("id", items[0].id);
+    }
+  }
+}
+
+/**
  * Apply an admin "Custom Charge" (an additional amount the registrant owes) to a
  * registration as a PENDING amount — NOT auto-paid. The registrant settles it later
  * via the self-service card payment link or a manual payment-status change, at which
@@ -162,14 +218,14 @@ export async function applyChargeToRegistration(
     recordedBy: string;
     adjustmentId?: string | null;
   }
-): Promise<{ invoiceId: string; invoiceNumber: string; folded: boolean }> {
+): Promise<{ invoiceId: string; invoiceNumber: string; folded: boolean; lineItemId: string | null }> {
   if (!Number.isInteger(params.amountCents) || params.amountCents <= 0) {
     throw new Error("Custom charge amount must be a positive integer (cents)");
   }
 
   const method = (params.paymentMethod ?? "MANUAL").toUpperCase();
-  const descEn = `Custom Charge: ${params.reason}`;
-  const descKo = `추가 결제: ${params.reason}`;
+  const descEn = buildCustomChargeDescriptionEn(params.reason);
+  const descKo = buildCustomChargeDescriptionKo(params.reason);
   const paymentMeta = {
     source: "custom_charge",
     adjustment_id: params.adjustmentId ?? null,
@@ -189,15 +245,19 @@ export async function applyChargeToRegistration(
       .maybeSingle();
     const nextSort = ((lastItem?.sort_order as number | null) ?? -1) + 1;
 
-    const { error: lineErr } = await admin.from("eckcm_invoice_line_items").insert({
-      invoice_id: outstanding.id,
-      description_en: descEn,
-      description_ko: descKo,
-      quantity: 1,
-      unit_price_cents: params.amountCents,
-      total_cents: params.amountCents,
-      sort_order: nextSort,
-    });
+    const { data: foldedLine, error: lineErr } = await admin
+      .from("eckcm_invoice_line_items")
+      .insert({
+        invoice_id: outstanding.id,
+        description_en: descEn,
+        description_ko: descKo,
+        quantity: 1,
+        unit_price_cents: params.amountCents,
+        total_cents: params.amountCents,
+        sort_order: nextSort,
+      })
+      .select("id")
+      .single();
     if (lineErr) {
       throw new Error(`Failed to add custom charge line item: ${lineErr.message}`);
     }
@@ -243,6 +303,7 @@ export async function applyChargeToRegistration(
       invoiceId: outstanding.id,
       invoiceNumber: (inv?.invoice_number as string) ?? "",
       folded: true,
+      lineItemId: (foldedLine?.id as string) ?? null,
     };
   }
 
@@ -280,15 +341,19 @@ export async function applyChargeToRegistration(
     );
   }
 
-  const { error: lineItemError } = await admin.from("eckcm_invoice_line_items").insert({
-    invoice_id: invoice.id,
-    description_en: descEn,
-    description_ko: descKo,
-    quantity: 1,
-    unit_price_cents: params.amountCents,
-    total_cents: params.amountCents,
-    sort_order: 0,
-  });
+  const { data: newLine, error: lineItemError } = await admin
+    .from("eckcm_invoice_line_items")
+    .insert({
+      invoice_id: invoice.id,
+      description_en: descEn,
+      description_ko: descKo,
+      quantity: 1,
+      unit_price_cents: params.amountCents,
+      total_cents: params.amountCents,
+      sort_order: 0,
+    })
+    .select("id")
+    .single();
   if (lineItemError) {
     throw new Error(`Failed to create custom charge line item: ${lineItemError.message}`);
   }
@@ -306,5 +371,10 @@ export async function applyChargeToRegistration(
     throw new Error(`Failed to create custom charge payment: ${paymentError.message}`);
   }
 
-  return { invoiceId: invoice.id, invoiceNumber, folded: false };
+  return {
+    invoiceId: invoice.id,
+    invoiceNumber,
+    folded: false,
+    lineItemId: (newLine?.id as string) ?? null,
+  };
 }

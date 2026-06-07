@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-interface LockInfo {
+export interface LockInfo {
   registrationId: string;
   userId: string;
   userName: string;

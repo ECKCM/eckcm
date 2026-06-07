@@ -320,3 +320,32 @@ export async function processAdjustment(
     })
     .eq("id", adjustmentId);
 }
+
+/**
+ * Edit an existing adjustment's reason (and optionally its type).
+ *
+ * Amounts are intentionally NOT editable: the ledger's previous/new/difference
+ * chain and any already-issued invoice/refund must stay consistent, so a wrong
+ * amount is corrected with a new adjustment, not by rewriting history.
+ * Returns the updated record, or null if it doesn't exist / the update failed.
+ */
+export async function updateAdjustment(
+  admin: SupabaseClient,
+  adjustmentId: string,
+  params: { reason: string; adjustmentType?: AdjustmentType }
+): Promise<AdjustmentRecord | null> {
+  const patch: { reason: string; adjustment_type?: AdjustmentType } = {
+    reason: params.reason,
+  };
+  if (params.adjustmentType) patch.adjustment_type = params.adjustmentType;
+
+  const { data, error } = await admin
+    .from("eckcm_registration_adjustments")
+    .update(patch)
+    .eq("id", adjustmentId)
+    .select()
+    .single();
+
+  if (error || !data) return null;
+  return data as AdjustmentRecord;
+}
