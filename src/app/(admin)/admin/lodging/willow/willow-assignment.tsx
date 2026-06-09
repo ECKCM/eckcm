@@ -713,7 +713,12 @@ export function WillowAssignment({
                             </div>
                             <div className="grid grid-cols-2 gap-1.5">
                               {suite.rooms.map((room) => (
-                                <RoomCell key={room.id} room={room} onRemove={unassign} />
+                                <RoomCell
+                                  key={room.id}
+                                  room={room}
+                                  onRemove={unassign}
+                                  hansamoOnly={hansamoOnly}
+                                />
                               ))}
                             </div>
                           </div>
@@ -809,9 +814,11 @@ function ParticipantCard({
 function RoomCell({
   room,
   onRemove,
+  hansamoOnly = false,
 }: {
   room: WillowRoom;
   onRemove: (assignmentId: string) => void;
+  hansamoOnly?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `room-${room.id}` });
   const isFull = room.occupants.length >= room.capacity;
@@ -838,7 +845,10 @@ function RoomCell({
         {room.occupants.length === 0 ? (
           <p className="text-[10px] text-muted-foreground/50 italic">Drop here</p>
         ) : (
-          room.occupants.map((o, i) => (
+          room.occupants.map((o, i) => {
+            // Hansamo viewers can't touch EM occupants — no unassign button.
+            const locked = hansamoOnly && !o.isHansamo;
+            return (
             <div
               key={o.assignmentId}
               className="group flex items-center gap-1 text-[11px] rounded bg-muted/60 px-1.5 py-0.5"
@@ -858,20 +868,24 @@ function RoomCell({
               <span
                 className={cn(
                   "text-[8px] px-1 rounded shrink-0",
+                  locked && "ml-auto",
                   o.isHansamo ? "bg-violet-100 text-violet-700" : "bg-emerald-100 text-emerald-700"
                 )}
               >
                 {o.isHansamo ? "H" : "E"}
               </span>
-              <button
-                onClick={() => onRemove(o.assignmentId)}
-                className="ml-auto opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0"
-                title="Unassign"
-              >
-                <X className="size-3" />
-              </button>
+              {!locked && (
+                <button
+                  onClick={() => onRemove(o.assignmentId)}
+                  className="ml-auto opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0"
+                  title="Unassign"
+                >
+                  <X className="size-3" />
+                </button>
+              )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
