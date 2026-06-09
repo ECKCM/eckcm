@@ -145,14 +145,22 @@ function suiteKeyOf(roomNumber: string): string {
 
 // ─── Main Component ─────────────────────────────────────────────
 
-export function WillowAssignment({ events }: { events: Event[] }) {
+export function WillowAssignment({
+  events,
+  hansamoOnly = false,
+}: {
+  events: Event[];
+  hansamoOnly?: boolean;
+}) {
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
   const [unassigned, setUnassigned] = useState<Participant[]>([]);
   const [rooms, setRooms] = useState<WillowRoom[]>([]);
   const [loading, setLoading] = useState(false);
   const [personSearch, setPersonSearch] = useState("");
   const [roomSearch, setRoomSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>(
+    hansamoOnly ? "HANSAMO" : "ALL"
+  );
   const [sortBy, setSortBy] = useState<SortBy>("name_az");
   const [floorFilter, setFloorFilter] = useState<string>("ALL");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -549,13 +557,18 @@ export function WillowAssignment({ events }: { events: Event[] }) {
                 <Select
                   value={categoryFilter}
                   onValueChange={(v) => setCategoryFilter(v as CategoryFilter)}
+                  disabled={hansamoOnly}
                 >
                   <SelectTrigger className="h-7 w-[120px] text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ALL" className="text-xs">All (EM + Hansamo)</SelectItem>
-                    <SelectItem value="EM" className="text-xs">EM only</SelectItem>
+                    {!hansamoOnly && (
+                      <>
+                        <SelectItem value="ALL" className="text-xs">All (EM + Hansamo)</SelectItem>
+                        <SelectItem value="EM" className="text-xs">EM only</SelectItem>
+                      </>
+                    )}
                     <SelectItem value="HANSAMO" className="text-xs">Hansamo only</SelectItem>
                   </SelectContent>
                 </Select>

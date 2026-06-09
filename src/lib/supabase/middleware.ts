@@ -227,6 +227,16 @@ export async function updateSession(request: NextRequest) {
       !roles.includes("EVENT_ADMIN") &&
       !roles.includes("DEPARTMENT_ADMIN");
 
+    // Department-viewer (Hansamo) scope: if the user has DEPARTMENT_VIEWER_HANSAMO
+    // and no broader admin role, restrict them to /admin/lodging/willow/**.
+    // Like the shuttle-driver scope, this bypasses the standard permission gate
+    // (willow is normally gated on group.read which this viewer doesn't have).
+    const isHansamoWillowViewerOnly =
+      roles.includes("DEPARTMENT_VIEWER_HANSAMO") &&
+      !roles.includes("SUPER_ADMIN") &&
+      !roles.includes("EVENT_ADMIN") &&
+      !roles.includes("DEPARTMENT_ADMIN");
+
     if (isAirportShuttleDriverOnly) {
       const isAirportRoute =
         pathname === "/admin/airport" ||
@@ -235,6 +245,16 @@ export async function updateSession(request: NextRequest) {
       if (!isAirportRoute) {
         const url = request.nextUrl.clone();
         url.pathname = "/admin/airport";
+        return NextResponse.redirect(url);
+      }
+    } else if (isHansamoWillowViewerOnly) {
+      const isWillowRoute =
+        pathname === "/admin/lodging/willow" ||
+        pathname.startsWith("/admin/lodging/willow/") ||
+        pathname.startsWith("/admin/unauthorized");
+      if (!isWillowRoute) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin/lodging/willow";
         return NextResponse.redirect(url);
       }
     } else if (!pathname.startsWith("/admin/unauthorized")) {
