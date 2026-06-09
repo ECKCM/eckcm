@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-09T05:10:54.992Z",
+  "lastUpdated": "2026-06-09T05:31:47.755Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -1984,7 +1984,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-01T23:28:28.943Z",
-        "lastUpdated": "2026-06-02T00:07:25.996Z"
+        "lastUpdated": "2026-06-09T05:31:47.755Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/lodging/willow/willow-assignment.tsx"
     },
@@ -2140,7 +2140,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-09T05:10:54.992Z"
+    "lastActivity": "2026-06-09T05:31:47.755Z"
   },
   "history": [
     {
@@ -13774,6 +13774,36 @@
     {
       "timestamp": "2026-06-09T05:10:54.992Z",
       "feature": "supabase",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T05:30:55.960Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T05:31:04.180Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T05:31:16.319Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T05:31:26.212Z",
+      "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T05:31:47.755Z",
+      "feature": "willow",
       "phase": "do",
       "action": "updated"
     }
