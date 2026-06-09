@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-07T17:52:11.765Z",
+  "lastUpdated": "2026-06-09T05:10:54.992Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -398,9 +398,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T21:01:37.763Z",
-        "lastUpdated": "2026-06-04T05:34:24.418Z"
+        "lastUpdated": "2026-06-09T05:10:29.272Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/title-badge.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/admin-sidebar.tsx"
     },
     "manual": {
       "phase": "do",
@@ -1646,7 +1646,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T14:43:28.520Z",
-        "lastUpdated": "2026-06-01T18:58:15.327Z"
+        "lastUpdated": "2026-06-09T05:10:54.992Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/supabase/middleware.ts"
     },
@@ -2140,7 +2140,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-07T17:52:11.765Z"
+    "lastActivity": "2026-06-09T05:10:54.992Z"
   },
   "history": [
     {
@@ -13756,6 +13756,24 @@
     {
       "timestamp": "2026-06-07T17:52:11.765Z",
       "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T05:10:29.272Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T05:10:41.223Z",
+      "feature": "supabase",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T05:10:54.992Z",
+      "feature": "supabase",
       "phase": "do",
       "action": "updated"
     }
