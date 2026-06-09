@@ -228,10 +228,14 @@ export async function updateSession(request: NextRequest) {
       !roles.includes("DEPARTMENT_ADMIN");
 
     // Department-viewer (Hansamo) scope: if the user has DEPARTMENT_VIEWER_HANSAMO
-    // and no broader admin role, restrict them to /admin/lodging/willow/**.
-    // Like the shuttle-driver scope, this bypasses the standard permission gate
-    // (willow is normally gated on group.read which this viewer doesn't have).
-    const isHansamoWillowViewerOnly =
+    // and no broader admin role, restrict them to the Hansamo roster
+    // (/admin/department-view/**) and the Willow Hall assignment page
+    // (/admin/lodging/willow/**). Like the shuttle-driver scope, this bypasses
+    // the standard permission gate (those routes are normally gated on
+    // participant.read / group.read which this viewer doesn't have); the
+    // department-view pages self-enforce the Hansamo department scope via the
+    // forwarded x-user-department-ids header.
+    const isHansamoViewerOnly =
       roles.includes("DEPARTMENT_VIEWER_HANSAMO") &&
       !roles.includes("SUPER_ADMIN") &&
       !roles.includes("EVENT_ADMIN") &&
@@ -247,14 +251,16 @@ export async function updateSession(request: NextRequest) {
         url.pathname = "/admin/airport";
         return NextResponse.redirect(url);
       }
-    } else if (isHansamoWillowViewerOnly) {
-      const isWillowRoute =
+    } else if (isHansamoViewerOnly) {
+      const isAllowedRoute =
+        pathname === "/admin/department-view" ||
+        pathname.startsWith("/admin/department-view/") ||
         pathname === "/admin/lodging/willow" ||
         pathname.startsWith("/admin/lodging/willow/") ||
         pathname.startsWith("/admin/unauthorized");
-      if (!isWillowRoute) {
+      if (!isAllowedRoute) {
         const url = request.nextUrl.clone();
-        url.pathname = "/admin/lodging/willow";
+        url.pathname = "/admin/department-view";
         return NextResponse.redirect(url);
       }
     } else if (!pathname.startsWith("/admin/unauthorized")) {

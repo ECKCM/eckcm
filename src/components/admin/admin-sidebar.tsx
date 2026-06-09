@@ -206,18 +206,19 @@ export function AdminSidebar({ events, permissions, roles }: AdminSidebarProps) 
     );
   }
 
-  // Hansamo department viewers (without any broader admin role) see only Willow Hall.
-  const isHansamoWillowViewerOnly =
+  // Hansamo department viewers (without any broader admin role) are scoped to
+  // two pages: Department View (Hansamo roster) and Willow Hall (assignment).
+  const isHansamoViewerOnly =
     roles.includes("DEPARTMENT_VIEWER_HANSAMO") &&
     !roles.includes("SUPER_ADMIN") &&
     !roles.includes("EVENT_ADMIN") &&
     !roles.includes("DEPARTMENT_ADMIN");
 
-  if (isHansamoWillowViewerOnly) {
+  if (isHansamoViewerOnly) {
     return (
       <Sidebar>
         <SidebarHeader className="h-14 flex-row items-center justify-start border-b px-4 py-0">
-          <Link href="/admin/lodging/willow" className="flex items-center gap-2">
+          <Link href="/admin/department-view" className="flex items-center gap-2">
             <span className="text-lg font-bold">ECKCM Admin</span>
           </Link>
         </SidebarHeader>
@@ -227,6 +228,15 @@ export function AdminSidebar({ events, permissions, roles }: AdminSidebarProps) 
             <SidebarGroupLabel>Navigation</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <NavLink
+                    href="/admin/department-view"
+                    isActive={pathname.startsWith("/admin/department-view")}
+                    icon={Building2}
+                  >
+                    Department View
+                  </NavLink>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <NavLink
                     href="/admin/lodging/willow"
