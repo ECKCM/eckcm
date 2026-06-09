@@ -206,6 +206,54 @@ export function AdminSidebar({ events, permissions, roles }: AdminSidebarProps) 
     );
   }
 
+  // Hansamo department viewers (without any broader admin role) see only Willow Hall.
+  const isHansamoWillowViewerOnly =
+    roles.includes("DEPARTMENT_VIEWER_HANSAMO") &&
+    !roles.includes("SUPER_ADMIN") &&
+    !roles.includes("EVENT_ADMIN") &&
+    !roles.includes("DEPARTMENT_ADMIN");
+
+  if (isHansamoWillowViewerOnly) {
+    return (
+      <Sidebar>
+        <SidebarHeader className="h-14 flex-row items-center justify-start border-b px-4 py-0">
+          <Link href="/admin/lodging/willow" className="flex items-center gap-2">
+            <span className="text-lg font-bold">ECKCM Admin</span>
+          </Link>
+        </SidebarHeader>
+
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <NavLink
+                    href="/admin/lodging/willow"
+                    isActive={pathname.startsWith("/admin/lodging/willow")}
+                    icon={Trees}
+                  >
+                    Willow Hall
+                  </NavLink>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+        <SidebarFooter className="border-t p-4">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <NavLink href="/dashboard" isActive={false} icon={Settings}>
+                Back to Dashboard
+              </NavLink>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+    );
+  }
+
   return (
     <Sidebar>
       <SidebarHeader className="h-14 flex-row items-center justify-start border-b px-4 py-0">
