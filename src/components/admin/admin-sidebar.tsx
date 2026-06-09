@@ -82,6 +82,7 @@ const navLinks: NavLinkDef[] = [
   { href: "/admin/registrations/create", label: "Register for Others", icon: ClipboardPlus, exact: true, permission: "participant.update" },
   { href: "/admin/events", label: "Events", icon: Calendar, exact: false, permission: "event.manage" },
   { href: "/admin/room-groups", label: "Room Assignment", icon: BedDouble, exact: false, permission: "group.read" },
+  { href: "/admin/church-groups", label: "Church Groups", icon: Church, exact: false, permission: "group.read" },
   { href: "/admin/lodging/upj-rooms", label: "UPJ Lodging", icon: Hotel, exact: false, permission: "group.read" },
   { href: "/admin/lodging/willow", label: "Willow Hall", icon: Trees, exact: false, permission: "group.read" },
   { href: "/admin/lodging/floorplan", label: "Floor Plan", icon: Map, exact: false, permission: "group.read" },
