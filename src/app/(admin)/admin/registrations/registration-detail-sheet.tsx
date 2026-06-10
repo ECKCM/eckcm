@@ -24,8 +24,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -2172,29 +2181,43 @@ function ResendEmailButton({
   status: string;
 }) {
   const [sending, setSending] = useState<null | ResendEmailType>(null);
+  // Custom-recipient dialog state. When `customEmail` is set on send, the
+  // message goes to that address instead of the registrant/participants.
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customType, setCustomType] = useState<ResendEmailType>("confirmation");
+  const [customEmail, setCustomEmail] = useState("");
 
-  const handleSend = async (type: ResendEmailType) => {
+  const handleSend = async (type: ResendEmailType, overrideEmail?: string) => {
     setSending(type);
     try {
       const res = await fetch(`/api/admin/registrations/${registrationId}/resend-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type }),
+        body: JSON.stringify(overrideEmail ? { type, email: overrideEmail } : { type }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         toast.error(data.error || "Failed to resend email");
-      } else if (type === "epass") {
+        setSending(null);
+        return;
+      }
+      const suffix = overrideEmail ? ` to ${overrideEmail}` : "";
+      if (type === "epass") {
         const { sent = 0, skipped = 0, failed = 0 } = data;
         if (sent === 0 && failed === 0) {
           toast.warning(`No ePass emails sent — ${skipped} participant(s) without email.`);
         } else {
-          toast.success(`Sent ${sent} ePass email(s)${skipped ? `, skipped ${skipped}` : ""}${failed ? `, failed ${failed}` : ""}`);
+          toast.success(`Sent ${sent} ePass email(s)${suffix}${skipped ? `, skipped ${skipped}` : ""}${failed ? `, failed ${failed}` : ""}`);
         }
       } else if (type === "payment-link") {
         toast.success(data.to ? `Card payment link emailed to ${data.to}` : "Card payment link emailed");
       } else {
-        toast.success(type === "receipt" ? "Receipt email resent" : "Confirmation email resent");
+        toast.success((type === "receipt" ? "Receipt email resent" : "Confirmation email resent") + suffix);
+      }
+      // Close the custom dialog on a successful custom send.
+      if (overrideEmail) {
+        setCustomOpen(false);
+        setCustomEmail("");
       }
     } catch {
       toast.error("Failed to resend email");
@@ -2202,40 +2225,122 @@ function ResendEmailButton({
     setSending(null);
   };
 
+  const customEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customEmail.trim());
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" disabled={sending !== null}>
-          {sending ? (
-            <Loader2 className="size-3.5 mr-1.5 animate-spin" />
-          ) : (
-            <Send className="size-3.5 mr-1.5" />
-          )}
-          Resend Email
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        <DropdownMenuItem onClick={() => handleSend("confirmation")} disabled={sending !== null}>
-          <Mail className="size-3.5 mr-2" />
-          Registration confirmation
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleSend("receipt")} disabled={sending !== null}>
-          <FileText className="size-3.5 mr-2" />
-          Payment receipt
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleSend("epass")} disabled={sending !== null}>
-          <ShieldCheck className="size-3.5 mr-2" />
-          ePass (per participant)
-        </DropdownMenuItem>
-        {/* Card payment link email — only meaningful while awaiting payment. */}
-        {status === "SUBMITTED" && (
-          <DropdownMenuItem onClick={() => handleSend("payment-link")} disabled={sending !== null}>
-            <CreditCard className="size-3.5 mr-2" />
-            Card payment link
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" disabled={sending !== null}>
+            {sending ? (
+              <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Send className="size-3.5 mr-1.5" />
+            )}
+            Resend Email
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={() => handleSend("confirmation")} disabled={sending !== null}>
+            <Mail className="size-3.5 mr-2" />
+            Registration confirmation
           </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuItem onClick={() => handleSend("receipt")} disabled={sending !== null}>
+            <FileText className="size-3.5 mr-2" />
+            Payment receipt
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleSend("epass")} disabled={sending !== null}>
+            <ShieldCheck className="size-3.5 mr-2" />
+            ePass (per participant)
+          </DropdownMenuItem>
+          {/* Card payment link email — only meaningful while awaiting payment. */}
+          {status === "SUBMITTED" && (
+            <DropdownMenuItem onClick={() => handleSend("payment-link")} disabled={sending !== null}>
+              <CreditCard className="size-3.5 mr-2" />
+              Card payment link
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          {/* Send any of the above to a custom address instead of the
+              registrant's email on file. */}
+          <DropdownMenuItem
+            onClick={() => {
+              setCustomType("confirmation");
+              setCustomOpen(true);
+            }}
+            disabled={sending !== null}
+          >
+            <Mail className="size-3.5 mr-2" />
+            Send to a custom email…
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={customOpen} onOpenChange={setCustomOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send to a custom email</DialogTitle>
+            <DialogDescription>
+              Send the selected email to a specific address instead of the
+              registrant and participants on file.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Email type</label>
+              <Select
+                value={customType}
+                onValueChange={(v) => setCustomType(v as ResendEmailType)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="confirmation">Registration confirmation</SelectItem>
+                  <SelectItem value="receipt">Payment receipt</SelectItem>
+                  <SelectItem value="epass">ePass (all participants)</SelectItem>
+                  {status === "SUBMITTED" && (
+                    <SelectItem value="payment-link">Card payment link</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Recipient email</label>
+              <Input
+                type="email"
+                placeholder="name@example.com"
+                value={customEmail}
+                onChange={(e) => setCustomEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && customEmailValid && sending === null) {
+                    handleSend(customType, customEmail.trim());
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCustomOpen(false)}
+              disabled={sending !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => handleSend(customType, customEmail.trim())}
+              disabled={!customEmailValid || sending !== null}
+            >
+              {sending !== null && (
+                <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+              )}
+              Send
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

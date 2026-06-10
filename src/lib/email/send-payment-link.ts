@@ -13,10 +13,14 @@ import { ensurePaymentLinkToken } from "@/lib/payment/payment-link";
  * no email on file, so the caller can surface a meaningful error.
  *
  * Returns the address it was sent to.
+ *
+ * Pass `toOverride` to send to a custom address instead of the registrant's
+ * email on file (admin "Resend to a custom email").
  */
 export async function sendPaymentLinkEmail(
   registrationId: string,
-  sentBy?: string | null
+  sentBy?: string | null,
+  toOverride?: string | null
 ): Promise<{ to: string }> {
   // Generate (or reuse) the token first — also validates SUBMITTED status.
   const link = await ensurePaymentLinkToken(registrationId);
@@ -44,7 +48,7 @@ export async function sendPaymentLinkEmail(
   const { data: userData } = await admin.auth.admin.getUserById(
     r.created_by_user_id
   );
-  const toEmail = userData?.user?.email;
+  const toEmail = toOverride || userData?.user?.email;
   if (!toEmail) {
     throw new Error("No email on file for this registrant");
   }

@@ -20,6 +20,12 @@ export async function sendConfirmationEmail(
     zellePayerName?: string;
     zellePayerPhone?: string;
     zellePayerEmail?: string;
+    /**
+     * Send only to this address instead of the registrant + participants.
+     * Used by admin "Resend to a custom email" — useful when the email on
+     * file is wrong or the registrant wants it forwarded elsewhere.
+     */
+    toOverride?: string | null;
   }
 ): Promise<void> {
   const admin = createAdminClient();
@@ -382,7 +388,9 @@ export async function sendConfirmationEmail(
       participantEmails.add(email.toLowerCase());
     }
   }
-  const toAddresses = [user.email, ...participantEmails];
+  const toAddresses = options?.toOverride
+    ? [options.toOverride]
+    : [user.email, ...participantEmails];
 
   // Plain text fallback improves deliverability (avoids spam filters)
   const participantNames = participants.map((p, i) => `  ${i + 1}. ${p.name}`).join("\n");
