@@ -153,6 +153,31 @@ export function buildCustomChargeDescriptionKo(reason: string): string {
 }
 
 /**
+ * Build the English line-item description for an adjustment that REDUCES the
+ * total (discount or other downward correction). Same WinAnsi/Hangul constraint
+ * as {@link buildCustomChargeDescriptionEn}.
+ */
+export function buildReductionDescriptionEn(
+  reason: string,
+  adjustmentType?: string
+): string {
+  const label = adjustmentType === "discount" ? "Discount" : "Price Adjustment";
+  const r = reason.trim();
+  const isLatin = /^[\x20-\x7E\xA0-\xFF]*$/.test(r);
+  return isLatin && r ? `${label}: ${r}` : label;
+}
+
+/** Korean line-item description for a reduction (reason kept verbatim). */
+export function buildReductionDescriptionKo(
+  reason: string,
+  adjustmentType?: string
+): string {
+  const label = adjustmentType === "discount" ? "할인" : "금액 조정";
+  const r = reason.trim();
+  return r ? `${label}: ${r}` : label;
+}
+
+/**
  * Update a custom-charge line item to reflect an edited reason, keeping the
  * invoice/receipt documents in sync. Targets the exact line item when its id is
  * known; otherwise falls back to a single-line-item invoice (a dedicated `-C`
@@ -167,6 +192,32 @@ export async function updateCustomChargeLineItem(
     description_en: buildCustomChargeDescriptionEn(reason),
     description_ko: buildCustomChargeDescriptionKo(reason),
   };
+  await patchLineItemDescriptions(admin, target, patch);
+}
+
+/**
+ * Update a reduction (discount) line item to reflect an edited reason/type,
+ * keeping the invoice/receipt documents in sync. Same targeting rules as
+ * {@link updateCustomChargeLineItem}.
+ */
+export async function updateReductionLineItem(
+  admin: SupabaseClient,
+  target: { lineItemId?: string | null; invoiceId?: string | null },
+  reason: string,
+  adjustmentType?: string
+): Promise<void> {
+  const patch = {
+    description_en: buildReductionDescriptionEn(reason, adjustmentType),
+    description_ko: buildReductionDescriptionKo(reason, adjustmentType),
+  };
+  await patchLineItemDescriptions(admin, target, patch);
+}
+
+async function patchLineItemDescriptions(
+  admin: SupabaseClient,
+  target: { lineItemId?: string | null; invoiceId?: string | null },
+  patch: { description_en: string; description_ko: string }
+): Promise<void> {
   if (target.lineItemId) {
     await admin
       .from("eckcm_invoice_line_items")
@@ -376,5 +427,128 @@ export async function applyChargeToRegistration(
     invoiceNumber,
     folded: false,
     lineItemId: (newLine?.id as string) ?? null,
+  };
+}
+
+/**
+ * Apply an adjustment that LOWERS the registration total (discount / downward
+ * correction) to the registration's OUTSTANDING (unpaid) invoice, so what will
+ * actually be collected matches the adjusted total:
+ *   - a negative line item documenting the reduction;
+ *   - lower invoice total_cents;
+ *   - lower (latest) PENDING payment row.
+ *
+ * Without this, the settle flows keep collecting the OLD amount: the manual
+ * payment changer bills invoice.total_cents, and the card link RECOMPUTES the
+ * invoice total from its line items (overwriting registration total_amount_cents
+ * too) — silently erasing the adjustment.
+ *
+ * The line item's sort_order is forced >= 1000: sort_order 999 is reserved for
+ * the manual-payment discount, which the card-link flow deletes before paying
+ * by card. An admin reduction must survive that strip.
+ *
+ * The reduction folds only up to the outstanding invoice's total (an invoice
+ * never goes negative); the adjustment ledger still records the full intent.
+ * Returns null (no-op) when there is no outstanding invoice — e.g. the
+ * registration is fully paid, where money moves back via the refund action.
+ */
+export async function applyReductionToRegistration(
+  admin: SupabaseClient,
+  params: {
+    registrationId: string;
+    amountCents: number; // gross reduction; must be > 0
+    reason: string;
+    adjustmentType?: string;
+  }
+): Promise<{
+  invoiceId: string;
+  invoiceNumber: string;
+  lineItemId: string | null;
+  appliedCents: number;
+} | null> {
+  if (!Number.isInteger(params.amountCents) || params.amountCents <= 0) {
+    throw new Error("Reduction amount must be a positive integer (cents)");
+  }
+
+  const outstanding = await getOutstandingInvoice(admin, params.registrationId);
+  if (!outstanding) return null;
+
+  const applied = Math.min(
+    params.amountCents,
+    Math.max(0, outstanding.total_cents)
+  );
+  if (applied <= 0) return null;
+
+  const { data: lastItem } = await admin
+    .from("eckcm_invoice_line_items")
+    .select("sort_order")
+    .eq("invoice_id", outstanding.id)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextSort = Math.max(
+    ((lastItem?.sort_order as number | null) ?? -1) + 1,
+    1000
+  );
+
+  const { data: line, error: lineErr } = await admin
+    .from("eckcm_invoice_line_items")
+    .insert({
+      invoice_id: outstanding.id,
+      description_en: buildReductionDescriptionEn(
+        params.reason,
+        params.adjustmentType
+      ),
+      description_ko: buildReductionDescriptionKo(
+        params.reason,
+        params.adjustmentType
+      ),
+      quantity: 1,
+      unit_price_cents: -applied,
+      total_cents: -applied,
+      sort_order: nextSort,
+    })
+    .select("id")
+    .single();
+  if (lineErr) {
+    throw new Error(`Failed to add reduction line item: ${lineErr.message}`);
+  }
+
+  await admin
+    .from("eckcm_invoices")
+    .update({ total_cents: outstanding.total_cents - applied })
+    .eq("id", outstanding.id);
+
+  // Keep the pending payment in step so the manual changer / card link settle
+  // the reduced amount.
+  const { data: pending } = await admin
+    .from("eckcm_payments")
+    .select("id, amount_cents")
+    .eq("invoice_id", outstanding.id)
+    .eq("status", "PENDING")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (pending) {
+    await admin
+      .from("eckcm_payments")
+      .update({
+        amount_cents: Math.max(0, (pending.amount_cents ?? 0) - applied),
+      })
+      .eq("id", pending.id);
+  }
+
+  const { data: inv } = await admin
+    .from("eckcm_invoices")
+    .select("invoice_number")
+    .eq("id", outstanding.id)
+    .maybeSingle();
+
+  return {
+    invoiceId: outstanding.id,
+    invoiceNumber: (inv?.invoice_number as string) ?? "",
+    lineItemId: (line?.id as string) ?? null,
+    appliedCents: applied,
   };
 }
