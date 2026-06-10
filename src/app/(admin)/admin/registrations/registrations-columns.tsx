@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Star, Users, ExternalLink } from "lucide-react";
 import { RegistrationActions } from "./registration-actions";
 import type { LockInfo } from "@/lib/hooks/use-registration-lock";
@@ -27,6 +28,9 @@ export interface ColumnRenderContext {
   openDetail: (reg: RegistrationRow) => void;
   updateStatus: (regId: string, newStatus: string) => Promise<void>;
   setHighlightConfirm: (
+    v: { regId: string; current: boolean; name: string } | null
+  ) => void;
+  setProcessedConfirm: (
     v: { regId: string; current: boolean; name: string } | null
   ) => void;
 }
@@ -61,16 +65,28 @@ export const REGISTRATION_COLUMNS: ColumnDef[] = [
     headClassName: "w-[120px]",
     render: (r, ctx) => (
       <div className="flex items-center gap-1">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            ctx.setHighlightConfirm({ regId: r.id, current: r.is_highlighted, name: r.registrant_name });
-          }}
-          className="p-0.5 rounded hover:bg-muted transition-colors"
-          title={r.is_highlighted ? "Remove highlight" : "Highlight"}
-        >
-          <Star className={`size-3.5 ${r.is_highlighted ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/40"}`} />
-        </button>
+        <div className="flex flex-col items-center gap-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              ctx.setHighlightConfirm({ regId: r.id, current: r.is_highlighted, name: r.registrant_name });
+            }}
+            className="p-0.5 rounded hover:bg-muted transition-colors"
+            title={r.is_highlighted ? "Remove highlight" : "Highlight"}
+          >
+            <Star className={`size-3.5 ${r.is_highlighted ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/40"}`} />
+          </button>
+          <Checkbox
+            checked={r.is_processed}
+            onClick={(e) => e.stopPropagation()}
+            onCheckedChange={() =>
+              ctx.setProcessedConfirm({ regId: r.id, current: r.is_processed, name: r.registrant_name })
+            }
+            className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
+            title={r.is_processed ? "Mark as not processed" : "Mark as processed"}
+            aria-label="Processed"
+          />
+        </div>
         <RegistrationActions
           registration={r}
           onView={ctx.openDetail}

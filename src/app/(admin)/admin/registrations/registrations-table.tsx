@@ -33,7 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Users, RefreshCw, DollarSign, UserCheck, Star, Clock, Banknote, Wallet, Scale } from "lucide-react";
+import { Users, RefreshCw, DollarSign, UserCheck, Star, Clock, Banknote, Wallet, Scale, Flag } from "lucide-react";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
@@ -73,6 +73,45 @@ function rowClassName(r: RegistrationRow): string {
   return "";
 }
 
+/**
+ * Registration groups for which an additional request alone does NOT warrant
+ * attention — these groups routinely fill in requests, so only a note, a
+ * highlight, or a pending (non-on-site) payment should surface them.
+ * Matched by registration group name (name_en), trimmed.
+ */
+const REQUESTS_IGNORED_GROUPS = new Set([
+  "Hansamo",
+  "Hansamo Leader",
+  "Hansamo Leader Family",
+  "EM Volunteers",
+  "EM Coordinators",
+]);
+
+/**
+ * "Needs Attention" predicate — registrations an admin should look at:
+ *  - has an internal note,
+ *  - has an additional request from the registrant,
+ *  - is starred (highlighted), or
+ *  - is SUBMITTED awaiting payment by a non-on-site method (Zelle/Check/etc.),
+ *    which means a real follow-up is owed. On-site SUBMITTED regs are expected
+ *    to settle at the event, so they're excluded.
+ *
+ * Exception: for REQUESTS_IGNORED_GROUPS, an additional request on its own
+ * does not qualify — those groups must have a note / highlight / pending
+ * payment to appear.
+ */
+function needsAttention(r: RegistrationRow): boolean {
+  const hasNote = !!r.notes?.trim();
+  const requestsCount = !REQUESTS_IGNORED_GROUPS.has(
+    (r.registration_group_name ?? "").trim()
+  );
+  const hasRequest = requestsCount && !!r.additional_requests?.trim();
+  const isPendingNonOnsite =
+    r.status === "SUBMITTED" &&
+    !(r.payment_method ?? "").toUpperCase().startsWith("ONSITE");
+  return hasNote || hasRequest || r.is_highlighted || isPendingNonOnsite;
+}
+
 export function RegistrationsTable({ events, currentUserId, currentUserName }: RegistrationsTableProps) {
   const [mounted, setMounted] = useState(false);
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
@@ -81,6 +120,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
   const [registrations, setRegistrations] = useState<RegistrationRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [highlightFilter, setHighlightFilter] = useState(false);
+  const [attentionFilter, setAttentionFilter] = useState(false);
   const [regGroupFilter, setRegGroupFilter] = useState("ALL");
   const [departmentFilter, setDepartmentFilter] = useState("ALL");
 
@@ -90,55 +130,74 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
   const [cardSurchargeCents, setCardSurchargeCents] = useState(0);
 
   // Global (shared) column layout: order + visibility. `null` = code default.
+  // Two independent layouts: the normal table view and the Needs Attention view.
   const [columnPrefs, setColumnPrefs] = useState<ColumnPref[] | null>(null);
+  const [attentionColumnPrefs, setAttentionColumnPrefs] = useState<ColumnPref[] | null>(null);
   const [columnsSaving, setColumnsSaving] = useState(false);
-  // Mirror of columnPrefs for stable access inside the persist callback.
+  // Mirrors for stable access inside the persist callback.
   const columnPrefsRef = useRef<ColumnPref[] | null>(null);
+  const attentionColumnPrefsRef = useRef<ColumnPref[] | null>(null);
   useEffect(() => { columnPrefsRef.current = columnPrefs; }, [columnPrefs]);
+  useEffect(() => { attentionColumnPrefsRef.current = attentionColumnPrefs; }, [attentionColumnPrefs]);
+
+  // The active layout follows the current mode: Needs Attention has its own
+  // saved order/visibility so admins can prioritize different columns there.
+  const activePrefs = attentionFilter ? attentionColumnPrefs : columnPrefs;
 
   // Resolved, render-ready columns reconciled against the current registry.
-  const columnLayout = resolveColumnLayout(columnPrefs);
+  const columnLayout = resolveColumnLayout(activePrefs);
   const hiddenColumns = new Set(
-    (columnPrefs ?? []).filter((c) => !c.visible).map((c) => c.id)
+    (activePrefs ?? []).filter((c) => !c.visible).map((c) => c.id)
   );
   const renderColumns = visibleColumns(columnLayout, hiddenColumns);
 
   useEffect(() => setMounted(true), []);
 
-  // Load the shared column layout once.
+  // Load both shared column layouts once.
   useEffect(() => {
     fetch("/api/admin/registration-columns")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data && Array.isArray(data.columns)) setColumnPrefs(data.columns);
+        if (data && Array.isArray(data.attentionColumns)) setAttentionColumnPrefs(data.attentionColumns);
       })
       .catch(() => {});
   }, []);
 
   // Persist a new layout globally (optimistic). On failure, revert + toast.
+  // `mode` selects which layout (normal table vs Needs Attention) is saved.
   // Called only on explicit Save / Reset from the column settings editor.
-  const persistColumnPrefs = useCallback(async (next: ColumnPref[] | null) => {
-    const prev = columnPrefsRef.current;
-    setColumnPrefs(next);
-    setColumnsSaving(true);
-    try {
-      const res = await fetch("/api/admin/registration-columns", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ columns: next }),
-      });
-      if (!res.ok) throw new Error("save failed");
-      toast.success("Column settings saved");
-    } catch {
-      setColumnPrefs(prev);
-      toast.error("Failed to save column settings");
-    } finally {
-      setColumnsSaving(false);
-    }
-  }, []);
+  const persistColumnPrefs = useCallback(
+    async (next: ColumnPref[] | null, mode: "default" | "attention") => {
+      const isAttention = mode === "attention";
+      const ref = isAttention ? attentionColumnPrefsRef : columnPrefsRef;
+      const setter = isAttention ? setAttentionColumnPrefs : setColumnPrefs;
+      const prev = ref.current;
+      setter(next);
+      setColumnsSaving(true);
+      try {
+        const res = await fetch("/api/admin/registration-columns", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ columns: next, mode }),
+        });
+        if (!res.ok) throw new Error("save failed");
+        toast.success("Column settings saved");
+      } catch {
+        setter(prev);
+        toast.error("Failed to save column settings");
+      } finally {
+        setColumnsSaving(false);
+      }
+    },
+    []
+  );
 
-  const handleColumnSave = (prefs: ColumnPref[]) => persistColumnPrefs(prefs);
-  const handleColumnReset = () => persistColumnPrefs(null);
+  // Save/Reset target the layout for the mode currently being viewed.
+  const handleColumnSave = (prefs: ColumnPref[]) =>
+    persistColumnPrefs(prefs, attentionFilter ? "attention" : "default");
+  const handleColumnReset = () =>
+    persistColumnPrefs(null, attentionFilter ? "attention" : "default");
 
   useEffect(() => {
     fetch("/api/admin/stripe-config")
@@ -192,6 +251,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         notes,
         additional_requests,
         is_highlighted,
+        is_processed,
         created_at,
         updated_at,
         registration_group_id,
@@ -410,6 +470,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           lodging_type: lodgingType,
           preferences,
           is_highlighted: r.is_highlighted ?? false,
+          is_processed: r.is_processed ?? false,
           seq_number: parseSeqNumber(r.confirmation_code),
         };
       });
@@ -505,6 +566,32 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
     }
   };
 
+  // ─── Processed (handled) toggle ─────────────────────────────────
+  // Manual admin housekeeping marker. Global, no row styling change.
+  const [processedConfirm, setProcessedConfirm] = useState<{ regId: string; current: boolean; name: string } | null>(null);
+
+  const executeProcessedToggle = async (regId: string, current: boolean) => {
+    const supabase = createClient();
+    const newVal = !current;
+    // Optimistic update
+    setRegistrations((prev) =>
+      prev.map((r) => (r.id === regId ? { ...r, is_processed: newVal } : r))
+    );
+    if (detailReg?.id === regId) {
+      setDetailReg((prev) => prev ? { ...prev, is_processed: newVal } : prev);
+    }
+    const { error } = await supabase
+      .from("eckcm_registrations")
+      .update({ is_processed: newVal })
+      .eq("id", regId);
+    if (error) {
+      setRegistrations((prev) =>
+        prev.map((r) => (r.id === regId ? { ...r, is_processed: current } : r))
+      );
+      toast.error("Failed to update processed status");
+    }
+  };
+
   // ─── Filter ────────────────────────────────────────────────────
 
   // Distinct option lists derived from currently loaded rows.
@@ -517,6 +604,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
 
   const filtered = registrations.filter((r) => {
     if (highlightFilter && !r.is_highlighted) return false;
+    if (attentionFilter && !needsAttention(r)) return false;
     if (statusFilter !== "ALL" && r.status !== statusFilter) return false;
     if (regGroupFilter !== "ALL" && r.registration_group_name !== regGroupFilter) return false;
     if (departmentFilter !== "ALL" && r.registrant_department !== departmentFilter) return false;
@@ -549,6 +637,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
     openDetail,
     updateStatus,
     setHighlightConfirm,
+    setProcessedConfirm,
   };
 
   // ─── Summary stats ─────────────────────────────────────────────
@@ -662,6 +751,26 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           )}
         </Button>
 
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setAttentionFilter(!attentionFilter)}
+          className={`gap-1.5 ${
+            attentionFilter
+              ? "bg-red-600 text-white hover:bg-red-700 hover:text-white border-red-600"
+              : "border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"
+          }`}
+          title="Notes, additional requests, highlighted, or awaiting non-on-site payment"
+        >
+          <Flag className={`size-3.5 ${attentionFilter ? "fill-current" : ""}`} />
+          Needs Attention
+          {attentionFilter && (
+            <span className="text-xs">
+              ({registrations.filter(needsAttention).length})
+            </span>
+          )}
+        </Button>
+
         <Button variant="ghost" size="icon" onClick={loadRegistrations}>
           <RefreshCw className="size-4" />
         </Button>
@@ -734,6 +843,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                 layout={columnLayout}
                 hidden={hiddenColumns}
                 saving={columnsSaving}
+                attentionMode={attentionFilter}
                 onSave={handleColumnSave}
                 onReset={handleColumnReset}
               />
@@ -837,6 +947,36 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                 }}
               >
                 {highlightConfirm.current ? "Remove" : "Highlight"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* Processed Confirmation Dialog */}
+      {processedConfirm && (
+        <AlertDialog open onOpenChange={(open) => !open && setProcessedConfirm(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {processedConfirm.current ? "Mark as Not Processed" : "Mark as Processed"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {processedConfirm.current
+                  ? <>Remove the processed mark from <strong>{processedConfirm.name}</strong>?</>
+                  : <>Mark <strong>{processedConfirm.name}</strong> as processed? This is a manual housekeeping flag shared across all admins — it does not change the registration itself.</>
+                }
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  executeProcessedToggle(processedConfirm.regId, processedConfirm.current);
+                  setProcessedConfirm(null);
+                }}
+              >
+                {processedConfirm.current ? "Unmark" : "Mark Processed"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

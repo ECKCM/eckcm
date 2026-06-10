@@ -50,6 +50,8 @@ export interface RegistrationRow {
   lodging_type: string | null;
   preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null;
   is_highlighted: boolean;
+  /** Admin manual "handled/clean" marker. Global; no effect on row styling. */
+  is_processed: boolean;
   seq_number: number | null;
 }
 

@@ -7,8 +7,33 @@ export const dynamic = "force-dynamic";
 /**
  * Global column layout (order + visibility) for the admin Registrations table.
  * Stored on the singleton eckcm_app_config row and shared across all admins.
- * Shape: Array<{ id: string; visible: boolean }>. NULL = use code default.
+ *
+ * There are two independent layouts: the normal table view and the
+ * "Needs Attention" view. They share one JSONB column for backward
+ * compatibility:
+ *   - Legacy shape (array)            → the default layout; attention = null.
+ *   - Current shape ({ default, attention }) → both layouts.
+ * Each layout is Array<{ id: string; visible: boolean }> or NULL (code default).
  */
+type ColumnLayout = Array<{ id: string; visible: boolean }> | null;
+type StoredColumns =
+  | ColumnLayout
+  | { default?: ColumnLayout; attention?: ColumnLayout };
+
+/** Split the stored value into the two layouts, tolerating the legacy array. */
+function readLayouts(stored: StoredColumns): {
+  columns: ColumnLayout;
+  attentionColumns: ColumnLayout;
+} {
+  if (Array.isArray(stored) || stored === null || stored === undefined) {
+    return { columns: (stored as ColumnLayout) ?? null, attentionColumns: null };
+  }
+  return {
+    columns: stored.default ?? null,
+    attentionColumns: stored.attention ?? null,
+  };
+}
+
 export async function GET() {
   const auth = await requireAdmin();
   if (!auth) {
@@ -26,9 +51,11 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to fetch config" }, { status: 500 });
   }
 
-  return NextResponse.json({
-    columns: data.registration_table_columns ?? null,
-  });
+  const { columns, attentionColumns } = readLayouts(
+    data.registration_table_columns as StoredColumns
+  );
+
+  return NextResponse.json({ columns, attentionColumns });
 }
 
 export async function PATCH(request: Request) {
@@ -40,6 +67,8 @@ export async function PATCH(request: Request) {
 
   const body = await request.json().catch(() => null);
   const columns = body?.columns;
+  // Which layout to write: the normal table view or the Needs Attention view.
+  const mode = body?.mode === "attention" ? "attention" : "default";
 
   // null is allowed and means "reset to code default".
   if (columns !== null) {
@@ -73,7 +102,7 @@ export async function PATCH(request: Request) {
   }
 
   // Persist only the minimal { id, visible } shape (ignore any extra props).
-  const normalized =
+  const normalized: ColumnLayout =
     columns === null
       ? null
       : (columns as Array<{ id: string; visible: boolean }>).map((c) => ({
@@ -82,9 +111,31 @@ export async function PATCH(request: Request) {
         }));
 
   const admin = createAdminClient();
+
+  // Read the current value so we update only the targeted layout and preserve
+  // the other one. Migrate the legacy array shape to the { default, attention }
+  // object on first write.
+  const { data: current, error: readErr } = await admin
+    .from("eckcm_app_config")
+    .select("registration_table_columns")
+    .eq("id", 1)
+    .single();
+
+  if (readErr || !current) {
+    return NextResponse.json({ error: "Failed to fetch config" }, { status: 500 });
+  }
+
+  const existing = readLayouts(
+    current.registration_table_columns as StoredColumns
+  );
+  const merged = {
+    default: mode === "default" ? normalized : existing.columns,
+    attention: mode === "attention" ? normalized : existing.attentionColumns,
+  };
+
   const { error } = await admin
     .from("eckcm_app_config")
-    .update({ registration_table_columns: normalized })
+    .update({ registration_table_columns: merged })
     .eq("id", 1);
 
   if (error) {
@@ -96,8 +147,8 @@ export async function PATCH(request: Request) {
     action: "UPDATE_REGISTRATION_TABLE_COLUMNS",
     entity_type: "app_config",
     entity_id: "1",
-    new_data: { registration_table_columns: normalized },
+    new_data: { registration_table_columns: merged, mode },
   });
 
-  return NextResponse.json({ success: true, columns: normalized });
+  return NextResponse.json({ success: true, columns: normalized, mode });
 }
