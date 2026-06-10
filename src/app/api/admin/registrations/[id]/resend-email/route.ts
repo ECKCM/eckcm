@@ -8,7 +8,11 @@ type ResendType = "confirmation" | "receipt" | "epass" | "payment-link";
 
 /**
  * POST /api/admin/registrations/[id]/resend-email
- * Body: { type: "confirmation" | "receipt" | "epass" | "payment-link" }
+ * Body: {
+ *   type: "confirmation" | "receipt" | "epass" | "payment-link",
+ *   email?: string  // optional: send to this address instead of the
+ *                   // registrant/participants on file
+ * }
  *
  * Re-sends one of the registration-related emails:
  * - confirmation: full confirmation email with both PDFs (invoice + receipt
@@ -18,6 +22,9 @@ type ResendType = "confirmation" | "receipt" | "epass" | "payment-link";
  * - epass: individual ePass email to each participant who has an email.
  * - payment-link: card-payment link email for a SUBMITTED registration
  *   (reuses the existing link if one was already generated).
+ *
+ * When `email` is provided, the message is sent only to that custom address
+ * (for epass, every participant's pass goes to the one address).
  */
 export async function POST(
   request: Request,
@@ -29,7 +36,10 @@ export async function POST(
   }
 
   const { id } = await params;
-  const { type } = (await request.json()) as { type?: ResendType };
+  const { type, email } = (await request.json()) as {
+    type?: ResendType;
+    email?: string;
+  };
 
   if (
     type !== "confirmation" &&
@@ -43,20 +53,33 @@ export async function POST(
     );
   }
 
+  // Optional custom recipient. When omitted, each email type sends to its
+  // default recipients (registrant + participants / per-participant).
+  let toOverride: string | null = null;
+  if (email != null && email.trim() !== "") {
+    const trimmed = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      return NextResponse.json(
+        { error: "Invalid email address" },
+        { status: 400 },
+      );
+    }
+    toOverride = trimmed;
+  }
+
   try {
     if (type === "epass") {
-      const result = await sendEPassEmails(id, admin.user.id);
+      const result = await sendEPassEmails(id, admin.user.id, toOverride);
       return NextResponse.json({ success: true, type, ...result });
     }
     if (type === "payment-link") {
-      const result = await sendPaymentLinkEmail(id, admin.user.id);
+      const result = await sendPaymentLinkEmail(id, admin.user.id, toOverride);
       return NextResponse.json({ success: true, type, ...result });
     }
-    await sendConfirmationEmail(
-      id,
-      admin.user.id,
-      type === "receipt" ? { pdfMode: "receipt-only" } : undefined,
-    );
+    await sendConfirmationEmail(id, admin.user.id, {
+      ...(type === "receipt" ? { pdfMode: "receipt-only" as const } : {}),
+      toOverride,
+    });
     return NextResponse.json({ success: true, type });
   } catch (err) {
     return NextResponse.json(

@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-09T05:31:47.755Z",
+  "lastUpdated": "2026-06-10T00:00:27.839Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -385,9 +385,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:32:03.220Z",
-        "lastUpdated": "2026-06-01T14:21:55.403Z"
+        "lastUpdated": "2026-06-09T23:59:15.033Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/email/send-donation-receipt.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/email/send-epass.ts"
     },
     "admin": {
       "phase": "do",
@@ -840,9 +840,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-30T12:53:31.955Z",
-        "lastUpdated": "2026-06-07T17:52:11.765Z"
+        "lastUpdated": "2026-06-10T00:00:27.839Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/column-settings.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/registrations/registration-detail-sheet.tsx"
     },
     "google-sheets": {
       "phase": "do",
@@ -1334,7 +1334,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-01T01:58:58.897Z",
-        "lastUpdated": "2026-06-03T07:06:49.878Z"
+        "lastUpdated": "2026-06-09T23:33:36.337Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/participants/[membershipId]/transfer/route.ts"
     },
@@ -1581,7 +1581,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-25T18:56:40.957Z",
-        "lastUpdated": "2026-05-31T14:02:52.188Z"
+        "lastUpdated": "2026-06-09T23:59:38.337Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/registrations/[id]/resend-email/route.ts"
     },
@@ -2140,7 +2140,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-09T05:31:47.755Z"
+    "lastActivity": "2026-06-10T00:00:27.839Z"
   },
   "history": [
     {
@@ -13804,6 +13804,108 @@
     {
       "timestamp": "2026-06-09T05:31:47.755Z",
       "feature": "willow",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:33:21.391Z",
+      "feature": "transfer",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:33:23.411Z",
+      "feature": "transfer",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:33:34.434Z",
+      "feature": "transfer",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:33:36.337Z",
+      "feature": "transfer",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:58:34.658Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:58:38.792Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:58:44.328Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:58:48.929Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:58:55.379Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:59:00.297Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:59:05.298Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:59:10.543Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:59:15.033Z",
+      "feature": "email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:59:24.978Z",
+      "feature": "resend-email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:59:38.337Z",
+      "feature": "resend-email",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-09T23:59:51.816Z",
+      "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-10T00:00:27.839Z",
+      "feature": "registrations",
       "phase": "do",
       "action": "updated"
     }

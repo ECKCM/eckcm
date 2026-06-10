@@ -14,10 +14,15 @@ import { ensureEPassTokens, buildEPassUrl } from "@/lib/email/epass-link";
  * consolidated link to the dashboard.
  *
  * Returns counts so the caller can surface a meaningful toast.
+ *
+ * Pass `toOverride` to send every participant's ePass to a single custom
+ * address instead of each participant's own email (admin "Resend to a custom
+ * email"). When set, no participant is skipped for a missing email.
  */
 export async function sendEPassEmails(
   registrationId: string,
   sentBy?: string | null,
+  toOverride?: string | null,
 ): Promise<{ sent: number; skipped: number; failed: number }> {
   const admin = createAdminClient();
 
@@ -70,7 +75,8 @@ export async function sendEPassEmails(
 
   for (const m of memberships) {
     const person = m.eckcm_people;
-    if (!person.email) {
+    const recipient = toOverride || person.email;
+    if (!recipient) {
       skipped++;
       continue;
     }
@@ -94,7 +100,7 @@ export async function sendEPassEmails(
 
     const { data: sendResult, error } = await resend.emails.send({
       from: emailConfig.from,
-      to: [person.email],
+      to: [recipient],
       ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
       subject,
       html,
@@ -103,10 +109,10 @@ export async function sendEPassEmails(
 
     if (error) {
       failed++;
-      console.error(`[sendEPassEmails] Send error for ${person.email}:`, error);
+      console.error(`[sendEPassEmails] Send error for ${recipient}:`, error);
       await logEmail({
         eventId: reg.event_id,
-        toEmail: person.email,
+        toEmail: recipient,
         fromEmail: emailConfig.from,
         subject,
         template: "epass",
@@ -119,7 +125,7 @@ export async function sendEPassEmails(
       sent++;
       await logEmail({
         eventId: reg.event_id,
-        toEmail: person.email,
+        toEmail: recipient,
         fromEmail: emailConfig.from,
         subject,
         template: "epass",

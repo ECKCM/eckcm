@@ -16,7 +16,11 @@ import { ensureRepresentative } from "@/lib/services/representative";
  *      original membership + where it went) so the source registration keeps a
  *      record of who was on it and the original payment can be reconciled.
  *   3. Remove the original membership so active-participant queries (billing,
- *      check-in, e-pass, exports) don't double-count the person.
+ *      check-in, e-pass, exports) don't double-count the person, then carry the
+ *      original participant_code over to the clone. Printed lanyards and E-Pass
+ *      QR codes encode the (signed) participant_code, so the code must follow
+ *      the person or every printed badge dies on transfer. The carry-over can
+ *      only happen after the delete because the code is globally unique.
  *   4. Deactivate the e-pass in the old registration and create a new one in
  *      the target if it's APPROVED or PAID.
  *
@@ -102,8 +106,11 @@ export async function POST(
     return NextResponse.json({ error: "Target registration has no groups" }, { status: 400 });
   }
 
-  // Generate a fresh, unique participant_code for the clone. participant_code
-  // is a global lookup key (used by check-in), so it must not be reused.
+  // Generate a fresh, unique participant_code for the clone. This is only a
+  // temporary placeholder: participant_code is globally unique and the original
+  // membership still exists when the clone is inserted (clone-before-delete
+  // safety), so the original code can only be carried over after the original
+  // row is deleted (step 3a below).
   const candidates: string[] = [];
   for (let i = 0; i < 12; i++) candidates.push(generateSafeConfirmationCode());
   const { data: existingCodes } = await supabase
@@ -195,6 +202,29 @@ export async function POST(
     return NextResponse.json({ error: deleteError.message }, { status: 500 });
   }
 
+  // 3a. Carry the original participant_code over to the clone now that the
+  // original row is gone. Printed lanyards and E-Pass QR codes encode the
+  // signed participant_code — carrying it keeps them scanning correctly after
+  // the transfer. Non-fatal: if this fails the clone keeps its fresh code
+  // (the pre-carry-over behavior) and only that badge would need reprinting.
+  let finalParticipantCode = newParticipantCode;
+  const { error: carryError } = await supabase
+    .from("eckcm_group_memberships")
+    .update({ participant_code: membership.participant_code })
+    .eq("id", clone.id);
+  if (carryError) {
+    console.error(
+      `[transfer] Failed to carry participant_code ${membership.participant_code} to clone ${clone.id}:`,
+      carryError
+    );
+  } else {
+    finalParticipantCode = membership.participant_code;
+    await supabase
+      .from("eckcm_participant_transfers")
+      .update({ new_participant_code: finalParticipantCode })
+      .eq("to_membership_id", clone.id);
+  }
+
   // 3b. Move the transferred person's airport ride assignments. They're
   // per-passenger and keyed by (registration_id, person_id); without this the
   // rows would orphan in the source AND the unique (ride_id, person_id) index
@@ -275,7 +305,7 @@ export async function POST(
       to_membership_id: clone.id,
       person_id: membership.person_id,
       original_participant_code: membership.participant_code,
-      new_participant_code: newParticipantCode,
+      new_participant_code: finalParticipantCode,
     },
   });
 
