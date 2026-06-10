@@ -146,6 +146,10 @@ export function RegistrationDetailSheet({
   const [allRooms, setAllRooms] = useState<{ id: string; room_number: string; building_name: string; floor_number: string }[]>([]);
   // Available lodging options for this event's registration group
   const [lodgingOptions, setLodgingOptions] = useState<{ code: string; name_en: string }[]>([]);
+  // Total already refunded for this registration's payment (cents). Surfaced in the
+  // Payment & Invoice card so a partial refund is visible at a glance — without it,
+  // the card showed the original total with no sign a refund had happened.
+  const [refundedCents, setRefundedCents] = useState(0);
 
   // Load churches, departments, all registrations, and rooms once
   useEffect(() => {
@@ -230,11 +234,13 @@ export function RegistrationDetailSheet({
       setGroups([]);
       setTransfersOut([]);
       setTransfersIn([]);
+      setRefundedCents(0);
       return;
     }
     loadPeople(registration.id);
     loadGroups(registration.id);
     loadTransfers(registration.id);
+    loadRefundedTotal(registration.id);
   }, [registration?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadPeople = async (regId: string) => {
@@ -371,6 +377,22 @@ export function RegistrationDetailSheet({
       setTransfersIn(data.in ?? []);
     } catch {
       // Non-fatal — the rest of the panel still works without transfer history.
+    }
+  };
+
+  // Pull the running refund total from the adjustments summary (same source the
+  // Adjustments tab uses) so the Overview card can show how much was refunded.
+  const loadRefundedTotal = async (regId: string) => {
+    try {
+      const res = await fetch(`/api/admin/registrations/${regId}/adjustments`);
+      if (!res.ok) {
+        setRefundedCents(0);
+        return;
+      }
+      const data = await res.json();
+      setRefundedCents(data.summary?.total_refunded ?? 0);
+    } catch {
+      setRefundedCents(0);
     }
   };
 
@@ -560,6 +582,29 @@ export function RegistrationDetailSheet({
                     </div>
                   </div>
                 )}
+                {/* Refund summary — surfaced whenever any amount has been refunded so
+                    the card reflects the refund (the invoice total itself is kept at
+                    face value; refunds are tracked separately). "Net Kept" = what the
+                    church actually retained = paid − refunded. See the Adjustments tab
+                    for the full per-refund breakdown. */}
+                {refundedCents > 0 && (
+                  <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                    <div>
+                      <p className="text-[11px] text-red-700">Refunded</p>
+                      <p className="text-base font-bold text-red-700">
+                        −{formatMoney(refundedCents)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-muted-foreground">Net Kept</p>
+                      <p className="text-base font-semibold">
+                        {formatMoney(
+                          Math.max(0, reg.payment_amount_cents - refundedCents)
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                   <InfoRow label="Payment Method">
                     {reg.payment_method?.replace(/_/g, " ") ?? "-"}
@@ -583,7 +628,9 @@ export function RegistrationDetailSheet({
                     )}
                   </InfoRow>
                   <InfoRow label="Receipt">
-                    {reg.invoice_id && reg.payment_status === "SUCCEEDED" ? (
+                    {reg.invoice_id &&
+                    (reg.payment_status === "SUCCEEDED" ||
+                      reg.payment_status === "PARTIALLY_REFUNDED") ? (
                       <a
                         href={`/api/invoice/${reg.invoice_id}/pdf?type=receipt`}
                         target="_blank"
@@ -923,7 +970,12 @@ export function RegistrationDetailSheet({
                 registrationId={reg.id}
                 currentAmount={reg.total_amount_cents}
                 paymentMethod={reg.payment_method}
-                onAdjustmentCreated={onRefresh}
+                onAdjustmentCreated={() => {
+                  // Refresh the table AND the Overview card's refunded total so a
+                  // just-processed refund shows up immediately on both tabs.
+                  loadRefundedTotal(reg.id);
+                  onRefresh();
+                }}
               />
             </TabsContent>
           </Tabs>

@@ -35,6 +35,64 @@ export async function deleteUsers(
   return { deleted };
 }
 
+export async function updateUserName(
+  targetUserId: string,
+  firstName: string,
+  lastName: string
+): Promise<{ error?: string; firstName?: string; lastName?: string }> {
+  const auth = await requireSuperAdmin();
+  if (!auth) return { error: "Unauthorized" };
+
+  const first = firstName.trim();
+  const last = lastName.trim();
+  if (!first || !last) {
+    return { error: "First and last name are required" };
+  }
+
+  const admin = createAdminClient();
+
+  // The displayed name comes from the linked person record (eckcm_people),
+  // resolved via eckcm_user_people — same fields the user edits in their own
+  // profile settings.
+  const { data: link } = await admin
+    .from("eckcm_user_people")
+    .select("person_id")
+    .eq("user_id", targetUserId)
+    .maybeSingle();
+
+  if (!link?.person_id) {
+    return {
+      error: "This user has no linked profile, so there is no name to edit.",
+    };
+  }
+
+  const { data: before } = await admin
+    .from("eckcm_people")
+    .select("first_name_en, last_name_en")
+    .eq("id", link.person_id)
+    .maybeSingle();
+
+  const { error: updateError } = await admin
+    .from("eckcm_people")
+    .update({ first_name_en: first, last_name_en: last })
+    .eq("id", link.person_id);
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  await admin.from("eckcm_audit_logs").insert({
+    user_id: auth.user.id,
+    action: "UPDATE_USER_NAME",
+    entity_type: "person",
+    entity_id: link.person_id,
+    old_data: before ?? null,
+    new_data: { first_name_en: first, last_name_en: last },
+  });
+
+  return { firstName: first, lastName: last };
+}
+
 export async function assignStaffRole(
   targetUserId: string,
   eventId: string,

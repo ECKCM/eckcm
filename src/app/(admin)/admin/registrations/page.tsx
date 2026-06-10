@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RegistrationsTable } from "./registrations-table";
+import { getAdminDisplayName } from "@/lib/auth/admin";
 
 export default async function RegistrationsPage() {
   const supabase = await createClient();
@@ -14,11 +15,7 @@ export default async function RegistrationsPage() {
     .order("is_default", { ascending: false })
     .order("year", { ascending: false });
 
-  const displayName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    user.email?.split("@")[0] ||
-    "Admin";
+  const displayName = await getAdminDisplayName(user);
 
   return (
     <div className="flex flex-col">

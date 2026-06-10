@@ -85,7 +85,11 @@ export async function GET(
     return `${p.first_name_en} ${p.last_name_en}`;
   });
 
-  const actuallyPaid = inv.status === "SUCCEEDED";
+  // A partially-refunded invoice was still paid in full first — the receipt for
+  // that payment stays valid (the refund is tracked separately), so treat it as
+  // paid for receipt purposes. Only PENDING/FAILED/fully-REFUNDED block a receipt.
+  const actuallyPaid =
+    inv.status === "SUCCEEDED" || inv.status === "PARTIALLY_REFUNDED";
 
   // Cannot generate receipt if not actually paid
   if (typeParam === "receipt" && !actuallyPaid) {
