@@ -42,6 +42,8 @@ interface ColumnSettingsProps {
   /** Ids currently hidden. */
   hidden: Set<string>;
   saving?: boolean;
+  /** True when editing the Needs Attention layout (vs the normal table). */
+  attentionMode?: boolean;
   /** Persist a new layout. Locked columns are excluded from the payload. */
   onSave: (prefs: ColumnPref[]) => Promise<void> | void;
   /** Restore the default order + all-visible (persisted by the parent). */
@@ -59,6 +61,7 @@ export function ColumnSettings({
   layout,
   hidden,
   saving,
+  attentionMode,
   onSave,
   onReset,
 }: ColumnSettingsProps) {
@@ -120,7 +123,9 @@ export function ColumnSettings({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
         <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-sm font-medium">Table columns</span>
+          <span className="text-sm font-medium">
+            {attentionMode ? "Needs Attention columns" : "Table columns"}
+          </span>
           <Button
             variant="ghost"
             size="sm"
@@ -134,6 +139,9 @@ export function ColumnSettings({
         </div>
         <p className="px-3 pb-2 text-xs text-muted-foreground">
           Drag to reorder, toggle to show/hide. Applies to all admins.
+          {attentionMode
+            ? " This layout is used only in Needs Attention mode."
+            : ""}
         </p>
         <Separator />
         <div className="max-h-[55vh] overflow-y-auto py-1">
