@@ -3,7 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
 import { writeAuditLog } from "@/lib/services/audit.service";
 import { updateAdjustment } from "@/lib/services/adjustment.service";
-import { updateCustomChargeLineItem } from "@/lib/services/invoice.service";
+import {
+  updateCustomChargeLineItem,
+  updateReductionLineItem,
+} from "@/lib/services/invoice.service";
 import type { AdjustmentType } from "@/lib/types/database";
 
 // Types an admin may assign when editing (mirrors the create route; excludes the
@@ -81,10 +84,12 @@ export async function PATCH(
     );
   }
 
-  // Keep the custom-charge invoice/receipt document in sync with the new reason.
+  // Keep the custom-charge / discount invoice document in sync with the new reason.
   const meta = (existing.metadata ?? {}) as {
     custom_charge_invoice_id?: string;
     custom_charge_line_item_id?: string;
+    discount_invoice_id?: string;
+    discount_line_item_id?: string;
   };
   if (meta.custom_charge_line_item_id || meta.custom_charge_invoice_id) {
     try {
@@ -95,6 +100,18 @@ export async function PATCH(
           invoiceId: meta.custom_charge_invoice_id ?? null,
         },
         reason
+      );
+    } catch {
+      // Non-fatal: the adjustment edit succeeded; the document text just stays stale.
+    }
+  }
+  if (meta.discount_line_item_id) {
+    try {
+      await updateReductionLineItem(
+        admin,
+        { lineItemId: meta.discount_line_item_id },
+        reason,
+        updated.adjustment_type
       );
     } catch {
       // Non-fatal: the adjustment edit succeeded; the document text just stays stale.

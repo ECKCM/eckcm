@@ -15,6 +15,7 @@ import {
 } from "@/lib/services/adjustment.service";
 import {
   applyChargeToRegistration,
+  applyReductionToRegistration,
   getPrimaryInvoiceId,
 } from "@/lib/services/invoice.service";
 import { isManualPaymentMethod } from "@/lib/payment/methods";
@@ -347,6 +348,54 @@ export async function POST(
     }
   }
 
+  // ─── Discount / downward correction: fold into the outstanding (unpaid) invoice ───
+  // A non-refund adjustment that LOWERS the total while the registration still owes
+  // money must also lower what will be collected: negative line item + lower invoice
+  // total + lower pending payment. Without this the settle flows keep charging the
+  // OLD amount (the manual changer bills invoice.total_cents; the card link
+  // recomputes the total from line items and would silently ERASE the adjustment).
+  // Refunds are excluded: they move already-paid money and have their own flow below.
+  // Best-effort like the charge branch: the adjustment (the money record) already
+  // committed; a sync failure is logged but does NOT roll back the adjustment.
+  let discountInvoiceId: string | null = null;
+  let discountInvoiceNumber: string | null = null;
+  if (action_taken !== "refund" && adjustment.difference < 0) {
+    try {
+      const result = await applyReductionToRegistration(admin, {
+        registrationId,
+        amountCents: -adjustment.difference,
+        reason: reason.trim(),
+        adjustmentType: adjustment_type,
+      });
+      if (result) {
+        discountInvoiceId = result.invoiceId;
+        discountInvoiceNumber = result.invoiceNumber;
+
+        // Back-link the invoice + line item from the adjustment ledger row so a
+        // reason/type edit can keep the document in sync (best-effort).
+        await admin
+          .from("eckcm_registration_adjustments")
+          .update({
+            metadata: {
+              ...(adjustment.metadata ?? {}),
+              discount_invoice_id: result.invoiceId,
+              discount_invoice_number: result.invoiceNumber,
+              discount_line_item_id: result.lineItemId,
+              discount_applied_cents: result.appliedCents,
+            },
+          })
+          .eq("id", adjustment.id);
+      }
+    } catch (err) {
+      logger.error("[adjustments/create] Reduction invoice sync failed", {
+        registrationId,
+        adjustmentId: adjustment.id,
+        amountCents: -adjustment.difference,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   // ─── Step 2 + 3: Stripe refund flow (rollback adjustment on failure) ───
   if (
     action_taken === "refund" &&
@@ -509,6 +558,8 @@ export async function POST(
       payment_method: paymentMethod,
       custom_charge_invoice_id: customChargeInvoiceId,
       custom_charge_invoice_number: customChargeInvoiceNumber,
+      discount_invoice_id: discountInvoiceId,
+      discount_invoice_number: discountInvoiceNumber,
     },
   });
 
@@ -533,6 +584,8 @@ export async function POST(
     custom_charge_invoice_id: customChargeInvoiceId,
     custom_charge_invoice_number: customChargeInvoiceNumber,
     custom_charge_invoice_error: customChargeInvoiceError,
+    discount_invoice_id: discountInvoiceId,
+    discount_invoice_number: discountInvoiceNumber,
   });
 }
 
