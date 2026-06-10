@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { UserMenu } from "@/components/shared/user-menu";
+import { getAdminDisplayName } from "@/lib/auth/admin";
 
 export default async function AdminLayout({
   children,
@@ -41,11 +42,7 @@ export default async function AdminLayout({
     .order("is_default", { ascending: false })
     .order("year", { ascending: false });
 
-  const displayName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    user.email?.split("@")[0] ||
-    "Admin";
+  const displayName = await getAdminDisplayName(user);
 
   return (
     <PermissionsProvider permissions={permissions}>

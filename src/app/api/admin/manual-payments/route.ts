@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  if (!["zelle", "check"].includes(payment_type)) {
+  if (!["zelle", "check", "cash"].includes(payment_type)) {
     return NextResponse.json({ error: "Invalid payment type" }, { status: 400 });
   }
 

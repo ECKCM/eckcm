@@ -45,7 +45,7 @@ export async function PATCH(
 
   const { data: reg } = await supabase
     .from("eckcm_registrations")
-    .select("id, event_id, eckcm_invoices(id, issued_at, eckcm_payments(id, payment_method, status))")
+    .select("id, event_id, eckcm_invoices(id, status, issued_at, eckcm_payments(id, payment_method, status))")
     .eq("id", registrationId)
     .single();
 
@@ -54,19 +54,36 @@ export async function PATCH(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const invoices = (reg as any).eckcm_invoices ?? [];
-  // Edit the registration's ORIGINAL invoice (the oldest). Custom-charge invoices
-  // are added later and share the MANUAL method, so they must not be picked here.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const invoice = [...invoices].sort(
+  const invoices = [...((reg as any).eckcm_invoices ?? [])].sort(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (a: any, b: any) => new Date(a.issued_at ?? 0).getTime() - new Date(b.issued_at ?? 0).getTime()
-  )[0];
+  );
+  // Match the registration detail card's payment selection: prefer the OUTSTANDING
+  // invoice that carries a manual payment (a folded-in or separate Custom Charge —
+  // the live amount-due payment), falling back to the oldest invoice for fully-paid
+  // / single-invoice regs. Without this the changer edited the oldest invoice's
+  // payment while the card showed the outstanding one, so the method "didn't change".
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const manualOutstanding = invoices.find(
+    (inv: any) =>
+      !["SUCCEEDED", "REFUNDED", "PARTIALLY_REFUNDED"].includes(inv.status) &&
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (inv.eckcm_payments ?? []).some((p: any) =>
+        isManualPaymentMethod((p.payment_method ?? "").toUpperCase())
+      )
+  );
+  const invoice = manualOutstanding ?? invoices[0];
   if (!invoice) {
     return NextResponse.json({ error: "No invoice found for this registration" }, { status: 404 });
   }
 
+  // Within the chosen invoice, target the manual payment (the one this changer
+  // governs), not whatever happens to be first.
   const payments = invoice.eckcm_payments ?? [];
-  const payment = payments[0];
+  const payment =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    payments.find((p: any) => isManualPaymentMethod((p.payment_method ?? "").toUpperCase())) ??
+    payments[0];
   if (!payment) {
     return NextResponse.json({ error: "No payment found for this registration" }, { status: 404 });
   }

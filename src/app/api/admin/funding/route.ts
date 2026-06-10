@@ -11,6 +11,13 @@ export async function GET() {
 
     const admin = createAdminClient();
 
+    // Custom (manually-recorded) funding entries — standalone amounts an admin
+    // tracks by hand, separate from the per-registration allocations below.
+    const { data: manualFunding } = await admin
+      .from("eckcm_manual_funding")
+      .select("id, event_id, name, amount_cents, sponsor_name, note, created_at, updated_at")
+      .order("created_at", { ascending: false });
+
     // Load all FUNDING fee categories
     const { data: fundingSources } = await admin
       .from("eckcm_fee_categories")
@@ -19,7 +26,11 @@ export async function GET() {
       .order("sort_order");
 
     if (!fundingSources || fundingSources.length === 0) {
-      return NextResponse.json({ sources: [], allocations: [] });
+      return NextResponse.json({
+        sources: [],
+        allocations: [],
+        manualFunding: manualFunding ?? [],
+      });
     }
 
     const sourceIds = fundingSources.map((s: any) => s.id);
@@ -111,6 +122,7 @@ export async function GET() {
     return NextResponse.json({
       sources: enrichedSources,
       allocations: enrichedAllocations,
+      manualFunding: manualFunding ?? [],
       groupMap,
     });
   } catch (err) {
@@ -119,4 +131,102 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+/**
+ * POST /api/admin/funding
+ * Record a custom (manual) funding entry — a tracked name + amount (+ optional
+ * sponsor / note). Independent of the per-registration funding allocations.
+ * Body: { name, amount_cents, sponsor_name?, note?, event_id? }
+ */
+export async function POST(request: Request) {
+  const auth = await requireAdmin();
+  if (!auth) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const { user } = auth;
+
+  const body = await request.json();
+  const { name, amount_cents, sponsor_name, note, event_id } = body;
+
+  if (!name || typeof name !== "string" || !name.trim()) {
+    return NextResponse.json({ error: "Funding name is required" }, { status: 400 });
+  }
+  if (typeof amount_cents !== "number" || amount_cents <= 0) {
+    return NextResponse.json({ error: "Amount must be positive" }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("eckcm_manual_funding")
+    .insert({
+      name: name.trim(),
+      amount_cents,
+      sponsor_name: sponsor_name?.trim() || null,
+      note: note?.trim() || null,
+      event_id: event_id || null,
+      recorded_by: user.id,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  await admin.from("eckcm_audit_logs").insert({
+    user_id: user.id,
+    action: "MANUAL_FUNDING_CREATE",
+    entity_type: "manual_funding",
+    entity_id: data.id,
+    new_data: { name: data.name, amount_cents, sponsor_name: data.sponsor_name },
+  });
+
+  return NextResponse.json({ funding: data });
+}
+
+/**
+ * DELETE /api/admin/funding
+ * Remove a custom funding entry.
+ * Body: { id }
+ */
+export async function DELETE(request: Request) {
+  const auth = await requireAdmin();
+  if (!auth) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const { user } = auth;
+
+  const { id } = await request.json();
+  if (!id) {
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+
+  const { data: old } = await admin
+    .from("eckcm_manual_funding")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (!old) {
+    return NextResponse.json({ error: "Funding entry not found" }, { status: 404 });
+  }
+
+  const { error } = await admin.from("eckcm_manual_funding").delete().eq("id", id);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  await admin.from("eckcm_audit_logs").insert({
+    user_id: user.id,
+    action: "MANUAL_FUNDING_DELETE",
+    entity_type: "manual_funding",
+    entity_id: id,
+    old_data: old,
+  });
+
+  return NextResponse.json({ success: true });
 }

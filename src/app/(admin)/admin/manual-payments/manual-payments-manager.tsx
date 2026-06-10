@@ -57,7 +57,7 @@ import { formatCurrency } from "@/lib/utils/formatters";
 
 interface ManualPayment {
   id: string;
-  payment_type: "zelle" | "check";
+  payment_type: "zelle" | "check" | "cash";
   status: "received" | "updated" | "refunded" | "partially_refunded";
   registration_code: string | null;
   first_name: string;
@@ -129,14 +129,22 @@ function typeBadge(type: string) {
   if (type === "zelle") {
     return <Badge className="bg-purple-600 hover:bg-purple-700 text-white">Zelle</Badge>;
   }
+  if (type === "cash") {
+    return <Badge className="bg-green-600 hover:bg-green-700 text-white">Cash</Badge>;
+  }
   return <Badge className="bg-blue-600 hover:bg-blue-700 text-white">Check</Badge>;
+}
+
+/** Display label for a payment type. */
+function typeLabel(type: "zelle" | "check" | "cash"): string {
+  return type === "zelle" ? "Zelle" : type === "cash" ? "Cash" : "Check";
 }
 
 export function ManualPaymentsManager() {
   const [payments, setPayments] = useState<ManualPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogType, setDialogType] = useState<"zelle" | "check">("zelle");
+  const [dialogType, setDialogType] = useState<"zelle" | "check" | "cash">("zelle");
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
@@ -207,8 +215,9 @@ export function ManualPaymentsManager() {
     const active = payments.filter((p) => p.status !== "refunded");
     const zelleTotal = active.filter((p) => p.payment_type === "zelle").reduce((s, p) => s + (p.amount_cents - (p.refunded_cents ?? 0)), 0);
     const checkTotal = active.filter((p) => p.payment_type === "check").reduce((s, p) => s + (p.amount_cents - (p.refunded_cents ?? 0)), 0);
+    const cashTotal = active.filter((p) => p.payment_type === "cash").reduce((s, p) => s + (p.amount_cents - (p.refunded_cents ?? 0)), 0);
     const refundedTotal = payments.reduce((s, p) => s + (p.refunded_cents ?? 0), 0);
-    return { total: active.length, zelleTotal, checkTotal, refundedTotal };
+    return { total: active.length, zelleTotal, checkTotal, cashTotal, refundedTotal };
   }, [payments]);
 
   // Filtered list
@@ -230,7 +239,7 @@ export function ManualPaymentsManager() {
     });
   }, [payments, search, statusFilter, typeFilter]);
 
-  const openDialog = (type: "zelle" | "check") => {
+  const openDialog = (type: "zelle" | "check" | "cash") => {
     setDialogType(type);
     setForm({ ...emptyForm, date_received: todayIso() });
     setDialogOpen(true);
@@ -275,7 +284,7 @@ export function ManualPaymentsManager() {
         return;
       }
 
-      toast.success(`${dialogType === "zelle" ? "Zelle" : "Check"} payment added`);
+      toast.success(`${typeLabel(dialogType)} payment added`);
       setDialogOpen(false);
       loadPayments();
     } finally {
@@ -391,7 +400,7 @@ export function ManualPaymentsManager() {
   return (
     <div className="space-y-4">
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <DollarSign className="h-5 w-5 text-muted-foreground" />
@@ -416,6 +425,15 @@ export function ManualPaymentsManager() {
             <div>
               <p className="text-sm text-muted-foreground">Check</p>
               <p className="text-xl font-bold">{formatCents(stats.checkTotal)}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="h-3 w-3 rounded-full bg-green-600" />
+            <div>
+              <p className="text-sm text-muted-foreground">Cash</p>
+              <p className="text-xl font-bold">{formatCents(stats.cashTotal)}</p>
             </div>
           </CardContent>
         </Card>
@@ -458,6 +476,7 @@ export function ManualPaymentsManager() {
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="zelle">Zelle</SelectItem>
             <SelectItem value="check">Check</SelectItem>
+            <SelectItem value="cash">Cash</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" size="icon" onClick={loadPayments} disabled={loading}>
@@ -469,6 +488,9 @@ export function ManualPaymentsManager() {
           </Button>
           <Button onClick={() => openDialog("check")} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="mr-1 h-4 w-4" /> Add Check
+          </Button>
+          <Button onClick={() => openDialog("cash")} className="bg-green-600 hover:bg-green-700">
+            <Plus className="mr-1 h-4 w-4" /> Add Cash
           </Button>
         </div>
       </div>
@@ -593,7 +615,7 @@ export function ManualPaymentsManager() {
         <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
-              Add {dialogType === "zelle" ? "Zelle" : "Check"} Payment
+              Add {typeLabel(dialogType)} Payment
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -684,7 +706,7 @@ export function ManualPaymentsManager() {
             </div>
 
             <Button onClick={handleSave} disabled={saving} className="w-full">
-              {saving ? "Saving..." : `Add ${dialogType === "zelle" ? "Zelle" : "Check"} Payment`}
+              {saving ? "Saving..." : `Add ${typeLabel(dialogType)} Payment`}
             </Button>
           </div>
         </DialogContent>
@@ -800,7 +822,7 @@ export function ManualPaymentsManager() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Type</span>
-                    <span>{refundTarget.payment_type === "zelle" ? "Zelle" : "Check"}</span>
+                    <span>{typeLabel(refundTarget.payment_type)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Original Amount</span>
@@ -897,7 +919,7 @@ export function ManualPaymentsManager() {
         title="Delete Payment"
         description={
           deleteTarget
-            ? `Are you sure you want to permanently delete the ${deleteTarget.payment_type === "zelle" ? "Zelle" : "Check"} payment of ${formatCents(deleteTarget.amount_cents)} from ${deleteTarget.first_name} ${deleteTarget.last_name}? This cannot be undone.`
+            ? `Are you sure you want to permanently delete the ${typeLabel(deleteTarget.payment_type)} payment of ${formatCents(deleteTarget.amount_cents)} from ${deleteTarget.first_name} ${deleteTarget.last_name}? This cannot be undone.`
             : ""
         }
       />

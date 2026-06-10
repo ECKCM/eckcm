@@ -31,11 +31,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Shield, Trash2 } from "lucide-react";
+import { Pencil, Shield, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
-import { assignStaffRole, deleteUsers } from "./actions";
+import { assignStaffRole, deleteUsers, updateUserName } from "./actions";
 
 interface User {
   id: string;
@@ -84,6 +84,46 @@ export function UsersManager({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Name editing
+  const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [savingName, setSavingName] = useState(false);
+
+  const editingUser = users.find((u) => u.id === editUserId) ?? null;
+
+  const openEditName = (user: User) => {
+    setEditUserId(user.id);
+    setEditFirstName(user.firstName ?? "");
+    setEditLastName(user.lastName ?? "");
+  };
+
+  const handleSaveName = async () => {
+    if (!editUserId) return;
+    setSavingName(true);
+    const result = await updateUserName(editUserId, editFirstName, editLastName);
+    setSavingName(false);
+
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success("Name updated");
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === editUserId
+          ? {
+              ...u,
+              firstName: result.firstName ?? u.firstName,
+              lastName: result.lastName ?? u.lastName,
+            }
+          : u
+      )
+    );
+    setEditUserId(null);
+  };
 
   // Mounted guard for Radix hydration
   useState(() => {
@@ -349,9 +389,22 @@ export function UsersManager({
                       <Badge variant="outline">{user.role}</Badge>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {user.firstName && user.lastName
-                        ? `${user.firstName} ${user.lastName}`
-                        : "—"}
+                      <div className="flex items-center gap-1.5">
+                        <span>
+                          {user.firstName && user.lastName
+                            ? `${user.firstName} ${user.lastName}`
+                            : "—"}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground"
+                          aria-label="Edit name"
+                          onClick={() => openEditName(user)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
@@ -393,6 +446,51 @@ export function UsersManager({
         title={`Delete ${selectedIds.size} user(s)?`}
         description="This will permanently delete the selected user(s) and all their related data (registrations, payments, invoices, etc). This action cannot be undone."
       />
+
+      <Dialog
+        open={editUserId !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditUserId(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Edit Name{editingUser ? ` — ${editingUser.email}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <Label htmlFor="edit-first-name">First Name</Label>
+              <Input
+                id="edit-first-name"
+                value={editFirstName}
+                onChange={(e) => setEditFirstName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-last-name">Last Name</Label>
+              <Input
+                id="edit-last-name"
+                value={editLastName}
+                onChange={(e) => setEditLastName(e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This updates the user&apos;s profile name (English). Because
+              registrations reference this profile, the new name also shows on
+              their existing registrations, prints, and e-passes.
+            </p>
+            <Button
+              onClick={handleSaveName}
+              className="w-full"
+              disabled={savingName || !editFirstName.trim() || !editLastName.trim()}
+            >
+              {savingName ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
