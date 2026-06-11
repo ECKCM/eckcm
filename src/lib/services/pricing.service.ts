@@ -616,12 +616,14 @@ export function computeWaivedBenefits(
   defaultEst: PriceEstimate,
 ): PriceLineItem[] {
   const waived: PriceLineItem[] = [];
+  // Meals are waived per-participant (handled separately below), NOT at the
+  // category-total level: one paying family member must not suppress another
+  // participant's (e.g. a Music Volunteer representative's) waived meal line.
   const categories: { cat: NonNullable<PriceLineItem["category"]>; ct: number; dt: number }[] = [
     { cat: "registration", ct: current.registrationFee, dt: defaultEst.registrationFee },
     { cat: "lodging", ct: current.lodgingFee, dt: defaultEst.lodgingFee },
     { cat: "additional_lodging", ct: current.additionalLodgingFee, dt: defaultEst.additionalLodgingFee },
     { cat: "key_deposit", ct: current.keyDeposit, dt: defaultEst.keyDeposit },
-    { cat: "meal", ct: current.mealFee, dt: defaultEst.mealFee },
     { cat: "vbs", ct: current.vbsFee, dt: defaultEst.vbsFee },
   ];
 
@@ -642,6 +644,35 @@ export function computeWaivedBenefits(
           amount: 0,
         });
       }
+    }
+  }
+
+  // Meals: evaluate the waiver per participant so a group containing both
+  // charged members and waived members (e.g. a volunteer rep whose meals are
+  // free while accompanying family pay) shows a "(Waived)" line for each
+  // waived participant. current/defaultEst share participant IDs because both
+  // estimates run over the same roomGroups.
+  const mealTotal = (items: PriceLineItem[] | undefined) =>
+    (items ?? []).filter((i) => i.category === "meal").reduce((s, i) => s + i.amount, 0);
+
+  for (const participantId of Object.keys(defaultEst.participantBreakdown)) {
+    const defMealItems = defaultEst.participantBreakdown[participantId].filter(
+      (i) => i.category === "meal"
+    );
+    if (defMealItems.length === 0) continue;
+    // Participant's meals would cost money in the default group...
+    if (mealTotal(defMealItems) <= 0) continue;
+    // ...but cost $0 in the current group → meals are waived for this person.
+    if (mealTotal(current.participantBreakdown[participantId]) > 0) continue;
+
+    for (const item of defMealItems) {
+      waived.push({
+        description: `${item.description} (Waived)`,
+        descriptionKo: `${item.descriptionKo} (면제)`,
+        quantity: item.quantity,
+        unitPrice: 0,
+        amount: 0,
+      });
     }
   }
 

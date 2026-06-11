@@ -135,8 +135,8 @@ interface RegistrationCard {
   regGroupName: string | null;
   /** Representative's department (eckcm_departments.name_en), if any. */
   repDepartment: string | null;
-  /** Representative's age at the event (eckcm_people.age_at_event), if known. */
-  repAge: number | null;
+  /** Ages at the event of every participant in the registration (rep first). */
+  memberAges: (number | null)[];
   /** Representative's participant title (badge label + color/icon), if assigned. */
   repTitle: { name: string; color: string | null; icon: string | null } | null;
 }
@@ -314,6 +314,11 @@ export function ChurchGroups({
 
       const memberships = g.eckcm_group_memberships ?? [];
       const memberCount = memberships.length;
+      // Ages at the event of this group's members, in membership order.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const groupAges: (number | null)[] = memberships.map(
+        (m: any) => m.eckcm_people?.age_at_event ?? null
+      );
       const isVip = g.lodging_type === AC_VIP_CODE;
       const isWillow = isWillowCode(g.lodging_type);
 
@@ -372,6 +377,7 @@ export function ChurchGroups({
           existing.assignableCount += 1;
           if (roomId) existing.assignedCount += 1;
         }
+        existing.memberAges.push(...groupAges);
         // Fill in church/rep from a later group only if still missing.
         if (existing.churchKey === NO_CHURCH_KEY && rep) {
           const d = deriveChurch(rep);
@@ -384,13 +390,19 @@ export function ChurchGroups({
           existing.repNameKo = rep.display_name_ko ?? null;
           existing.repNameEn = `${rep.first_name_en ?? ""} ${rep.last_name_en ?? ""}`.trim() || "Unknown";
           existing.repDepartment = rep.eckcm_departments?.name_en ?? null;
-          existing.repAge = rep.age_at_event ?? null;
           existing.repTitle = repTitle;
         }
         continue;
       }
 
       const church = deriveChurch(rep);
+
+      // Representative's age first, then the rest — for the "(35,81,45)" list.
+      const repIdx = memberships.indexOf(repMembership);
+      const memberAges =
+        repIdx > 0
+          ? [groupAges[repIdx], ...groupAges.slice(0, repIdx), ...groupAges.slice(repIdx + 1)]
+          : groupAges;
 
       byRegistration.set(reg.id, {
         registrationId: reg.id,
@@ -414,7 +426,7 @@ export function ChurchGroups({
         stayVaries: stay.varies,
         regGroupName: reg.eckcm_registration_groups?.name_en ?? null,
         repDepartment: rep?.eckcm_departments?.name_en ?? null,
-        repAge: rep?.age_at_event ?? null,
+        memberAges,
         repTitle,
       });
     }
@@ -912,12 +924,14 @@ function RegistrationCardView({
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">
             {card.repNameKo || card.repNameEn}
-            {card.repAge != null && (
+            {card.memberAges.length > 0 && (
               <span
                 className="ml-1 text-xs font-normal text-muted-foreground"
-                title="Representative's age at event"
+                title={`Ages of all participants: ${card.memberAges
+                  .map((a) => a ?? "?")
+                  .join(", ")}`}
               >
-                ({card.repAge})
+                ({card.memberAges.map((a) => a ?? "?").join(",")})
               </span>
             )}
           </p>
