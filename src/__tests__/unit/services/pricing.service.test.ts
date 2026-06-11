@@ -850,6 +850,7 @@ describe("calculateEstimate", () => {
         registrationFee: 0,
         lodgingFee: 5000, // not waived (has cost)
         mealFee: 0,
+        participantBreakdown: { p1: [] },
       });
       const defaultEst = makeEstimate({
         registrationFee: 10000,
@@ -873,14 +874,26 @@ describe("calculateEstimate", () => {
             category: "lodging",
           },
           {
-            description: "Meals",
-            descriptionKo: "식사",
+            description: "Meals - P1 (General, Full Day)",
+            descriptionKo: "식사 - P1 (General, 종일)",
             quantity: 1,
             unitPrice: 3000,
             amount: 3000,
             category: "meal",
           },
         ],
+        participantBreakdown: {
+          p1: [
+            {
+              description: "Meals - P1 (General, Full Day)",
+              descriptionKo: "식사 - P1 (General, 종일)",
+              quantity: 1,
+              unitPrice: 3000,
+              amount: 3000,
+              category: "meal",
+            },
+          ],
+        },
       });
 
       const waived = computeWaivedBenefits(current, defaultEst);
@@ -888,8 +901,62 @@ describe("calculateEstimate", () => {
       expect(waived.length).toBe(2);
       expect(waived.map((w) => w.description)).toEqual([
         "Registration Fee (Waived)",
-        "Meals (Waived)",
+        "Meals - P1 (General, Full Day) (Waived)",
       ]);
+    });
+
+    it("waives meals per-participant: a paying member does not suppress a waived rep's meal line", () => {
+      // Regression: Music Volunteer group (R26LEE0545). The representative's
+      // meals are free (current $0) while an accompanying member pays the
+      // default meal rate. Previously the member's charge made the category
+      // total > 0 and suppressed the rep's "(Waived)" line entirely.
+      const current = makeEstimate({
+        mealFee: 30000, // member Danhee's charged meals
+        participantBreakdown: {
+          rep: [], // representative has no meal line in the volunteer group
+          member: [
+            {
+              description: "Meals - DANHEE LEE (General, Full Day)",
+              descriptionKo: "식사 - DANHEE LEE (General, 종일)",
+              quantity: 6,
+              unitPrice: 5000,
+              amount: 30000,
+              category: "meal",
+            },
+          ],
+        },
+      });
+      const defaultEst = makeEstimate({
+        mealFee: 60000,
+        participantBreakdown: {
+          rep: [
+            {
+              description: "Meals - JUNHEE LEE (General, Full Day)",
+              descriptionKo: "식사 - JUNHEE LEE (General, 종일)",
+              quantity: 6,
+              unitPrice: 5000,
+              amount: 30000,
+              category: "meal",
+            },
+          ],
+          member: [
+            {
+              description: "Meals - DANHEE LEE (General, Full Day)",
+              descriptionKo: "식사 - DANHEE LEE (General, 종일)",
+              quantity: 6,
+              unitPrice: 5000,
+              amount: 30000,
+              category: "meal",
+            },
+          ],
+        },
+      });
+
+      const waived = computeWaivedBenefits(current, defaultEst);
+      // Only the representative (current meal $0) is waived; the member pays.
+      expect(waived.length).toBe(1);
+      expect(waived[0].description).toBe("Meals - JUNHEE LEE (General, Full Day) (Waived)");
+      expect(waived[0].amount).toBe(0);
     });
   });
 });
