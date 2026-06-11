@@ -31,17 +31,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-const BUILDING_ORDER = ["LLC", "WLW", "MAP", "OAK"];
+// Willow Hall (WLW) is managed on its own dedicated page, so it is intentionally
+// excluded here.
+const BUILDING_ORDER = ["LLC", "MAP", "OAK"];
 const ACTIVE_STATUSES = ["SUBMITTED", "APPROVED", "PAID"];
 
 interface EventOption {
@@ -233,6 +227,8 @@ export function FloorplanAssignmentManager({ events }: { events: EventOption[] }
   const buildings = useMemo(() => {
     const map = new Map<string, { code: string; name: string; totalRooms: number }>();
     for (const room of rooms) {
+      // Willow Hall has its own dedicated page — keep it off the floorplan tabs.
+      if (room.buildingCode === "WLW") continue;
       const existing = map.get(room.buildingCode);
       map.set(room.buildingCode, {
         code: room.buildingCode,
@@ -457,11 +453,6 @@ export function FloorplanAssignmentManager({ events }: { events: EventOption[] }
           <span>
             <strong className="text-foreground">{stats.people}</strong> people
           </span>
-          {selectedBuildingCode === "WLW" ? (
-            <Badge variant="secondary" className="text-[10px]">
-              Temporary list view
-            </Badge>
-          ) : null}
         </div>
       </div>
 
@@ -491,9 +482,11 @@ export function FloorplanAssignmentManager({ events }: { events: EventOption[] }
             </div>
           ) : rooms.length === 0 ? (
             <EmptyRoomsState />
-          ) : selectedBuildingCode === "WLW" ? (
-            <WillowListView
+          ) : selectedBuildingCode === "OAK" || selectedBuildingCode === "MAP" ? (
+            <OakMapleFloorPlan
               rooms={visibleRooms}
+              floor={selectedFloor ?? 1}
+              buildingName={selectedBuilding?.name ?? (selectedBuildingCode === "MAP" ? "Maple Hall" : "Oak Hall")}
               selectedRoomId={selectedRoomId}
               onSelectRoom={setSelectedRoomId}
             />
@@ -761,6 +754,198 @@ function SchematicFloorPlan({
   );
 }
 
+// ─── Oak/Maple Hall photo-accurate floor plan ───────────────────
+// Oak Hall and Maple Hall are identical twin buildings: their floor-plan
+// sheets (public/upj-lodging/Oak-FloorPlan.xlsx & Maple-FloorPlan.xlsx) and
+// room inventories share the exact same offsets (entrance 0–7, center 16–26,
+// apartment 30–37; floor 1 has no offset 33). This one template serves both
+// buildings and both floors (1xx / 2xx). Keys are the 2-digit room offset
+// (roomNumber % 100). Room metadata + occupancy come from the live inventory.
+const OAK_TILE_W = 74;
+const OAK_TILE_H = 64;
+const OAK_VIEW_W = 968;
+const OAK_VIEW_H = 724;
+
+interface OakSlot {
+  x: number;
+  y: number;
+}
+
+const OAK_LAYOUT: Record<number, OakSlot> = {
+  // Center wing (top, vertical): tall column rising above the lobby
+  // Left column (even, top→bottom)
+  26: { x: 407, y: 80 }, 24: { x: 407, y: 150 }, 22: { x: 407, y: 220 },
+  20: { x: 407, y: 290 }, 18: { x: 407, y: 360 }, 16: { x: 407, y: 430 },
+  // Right column (odd, top→bottom); stairs sit above 25
+  25: { x: 487, y: 150 }, 23: { x: 487, y: 220 }, 21: { x: 487, y: 290 },
+  19: { x: 487, y: 360 }, 17: { x: 487, y: 430 },
+  // Entrance wing (bottom-left row): top row 7/5/3/1, bottom row 6/4/2/0
+  7: { x: 37, y: 550 }, 5: { x: 117, y: 550 }, 3: { x: 197, y: 550 }, 1: { x: 277, y: 550 },
+  6: { x: 37, y: 620 }, 4: { x: 117, y: 620 }, 2: { x: 197, y: 620 }, 0: { x: 277, y: 620 },
+  // Apartment wing (bottom-right row): top row 30/32/34/36, bottom row 31/33/35/37
+  30: { x: 617, y: 550 }, 32: { x: 697, y: 550 }, 34: { x: 777, y: 550 }, 36: { x: 857, y: 550 },
+  31: { x: 617, y: 620 }, 33: { x: 697, y: 620 }, 35: { x: 777, y: 620 }, 37: { x: 857, y: 620 },
+};
+
+const OAK_STAIRS: OakSlot = { x: 487, y: 80 };
+
+function OakMapleFloorPlan({
+  rooms,
+  floor,
+  buildingName,
+  selectedRoomId,
+  onSelectRoom,
+}: {
+  rooms: Room[];
+  floor: number;
+  buildingName: string;
+  selectedRoomId: string | null;
+  onSelectRoom: (roomId: string) => void;
+}) {
+  const [zoom, setZoom] = useState(1);
+  const zoomIn = () => setZoom((z) => Math.min(ZOOM_MAX, Number((z + ZOOM_STEP).toFixed(2))));
+  const zoomOut = () => setZoom((z) => Math.max(ZOOM_MIN, Number((z - ZOOM_STEP).toFixed(2))));
+  const zoomReset = () => setZoom(1);
+
+  const { placed, overflow } = useMemo(() => {
+    const placed: { room: Room; slot: OakSlot }[] = [];
+    const overflow: Room[] = [];
+    const used = new Set<number>();
+    for (const room of rooms) {
+      const offset = numericRoomNumber(room) % 100;
+      const slot = OAK_LAYOUT[offset];
+      if (slot && !used.has(offset)) {
+        used.add(offset);
+        placed.push({ room, slot });
+      } else {
+        overflow.push(room);
+      }
+    }
+    return { placed, overflow };
+  }, [rooms]);
+
+  if (!rooms.length) {
+    return (
+      <div className="flex min-h-[360px] items-center justify-center rounded-lg border bg-background text-sm text-muted-foreground">
+        No {buildingName} rooms for this floor.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-none border bg-white shadow-sm">
+      <div className="flex items-center justify-end gap-1 border-b bg-background/95 p-1">
+        <Button type="button" variant="ghost" size="icon" className="size-7" onClick={zoomOut} disabled={zoom <= ZOOM_MIN} aria-label="Zoom out">
+          <ZoomOut className="size-3.5" />
+        </Button>
+        <span className="min-w-[40px] text-center text-xs font-medium tabular-nums text-muted-foreground">
+          {Math.round(zoom * 100)}%
+        </span>
+        <Button type="button" variant="ghost" size="icon" className="size-7" onClick={zoomIn} disabled={zoom >= ZOOM_MAX} aria-label="Zoom in">
+          <ZoomIn className="size-3.5" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" className="size-7" onClick={zoomReset} disabled={zoom === 1} aria-label="Reset zoom">
+          <Maximize2 className="size-3.5" />
+        </Button>
+      </div>
+      <style>{`
+        .oak-scroll::-webkit-scrollbar { width: 14px; height: 14px; }
+        .oak-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+        .oak-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 7px; border: 3px solid #f1f5f9; }
+        .oak-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .oak-scroll::-webkit-scrollbar-corner { background: #f1f5f9; }
+      `}</style>
+      <div className="oak-scroll overflow-scroll max-h-[70vh]">
+        <svg
+          viewBox={`0 0 ${OAK_VIEW_W} ${OAK_VIEW_H + (overflow.length ? 96 : 0)}`}
+          xmlns="http://www.w3.org/2000/svg"
+          role="img"
+          aria-label={`${buildingName} floor ${floor} plan`}
+          style={{ display: "block", width: `${OAK_VIEW_W * zoom}px`, maxWidth: "none", height: "auto" }}
+        >
+          <defs>
+            <style>{`
+              .fp-title { font: 800 18px system-ui, -apple-system, "Segoe UI", sans-serif; fill:#0f172a; }
+              .fp-muted { font: 700 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill:#64748b; }
+              .fp-frame { fill:#ffffff; stroke:#e2e8f0; stroke-width:1.2; }
+              .fp-lobby rect { fill:#eff6ff; stroke:#2563eb; stroke-width:1.6; }
+              .fp-lobby text { font: 800 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill:#1e3a8a; text-anchor:middle; dominant-baseline:middle; }
+              .fp-stairs rect { fill:#f1f5f9; stroke:#94a3b8; stroke-width:1.5; stroke-dasharray:5 4; }
+              .fp-stairs text { font: 700 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill:#64748b; text-anchor:middle; dominant-baseline:middle; }
+              .fp-room rect { fill:#f8fafc; stroke:#64748b; stroke-width:2; transition: fill .15s, stroke .15s; }
+              .fp-room:hover rect { fill:#e0f2fe; stroke:#0284c7; }
+              .fp-room.selected rect { fill:#bfdbfe; stroke:#2563eb; stroke-width:3; }
+              .fp-room.assigned rect { fill:#e5e7eb; stroke:#64748b; }
+              .fp-room.full rect { fill:#dbeafe; stroke:#2563eb; }
+              .fp-room.ada rect { fill:#ecfeff; stroke:#0891b2; }
+              .fp-room.apartment rect { fill:#f5f3ff; stroke:#7c3aed; }
+              .fp-room.unavailable rect { fill:#fee2e2; stroke:#dc2626; stroke-dasharray:7 4; }
+              .fp-room text { pointer-events:none; fill:#111827; text-anchor:middle; dominant-baseline:middle; }
+              .fp-room .num { font: 850 16px system-ui, -apple-system, "Segoe UI", sans-serif; }
+              .fp-room .sub { font: 700 10px system-ui, -apple-system, "Segoe UI", sans-serif; fill:#64748b; }
+            `}</style>
+          </defs>
+
+          <text x="24" y="34" className="fp-title">{buildingName} — Floor {floor}</text>
+          <text x="24" y="54" className="fp-muted">Click a room, then select a registration group on the right.</text>
+
+          {/* Center wing — tall vertical column up top */}
+          <rect x="391" y="64" width="186" height="446" rx="10" className="fp-frame" />
+
+          {/* Bottom row — entrance wing | Main Lobby | apartment wing, even 24px gaps */}
+          <rect x="21" y="534" width="346" height="166" rx="10" className="fp-frame" />
+          <rect x="601" y="534" width="346" height="166" rx="10" className="fp-frame" />
+          <g className="fp-lobby" aria-hidden="true">
+            <rect x="391" y="534" width="186" height="166" rx="10" />
+            <text x="484" y="617">Main Lobby</text>
+          </g>
+
+          {/* Stairs marker (top of center wing) */}
+          <g className="fp-stairs" aria-hidden="true">
+            <rect x={OAK_STAIRS.x} y={OAK_STAIRS.y} width={OAK_TILE_W} height={OAK_TILE_H} rx="8" />
+            <text x={OAK_STAIRS.x + OAK_TILE_W / 2} y={OAK_STAIRS.y + OAK_TILE_H / 2}>Stairs</text>
+          </g>
+
+          {/* Rooms */}
+          {placed.map(({ room, slot }) => (
+            <RoomSvgTile
+              key={room.dbRoomId}
+              room={room}
+              x={slot.x}
+              y={slot.y}
+              width={OAK_TILE_W}
+              height={OAK_TILE_H}
+              selected={room.dbRoomId === selectedRoomId}
+              onSelect={onSelectRoom}
+            />
+          ))}
+
+          {/* Any rooms not in the template (defensive) render in an overflow row */}
+          {overflow.length ? (
+            <>
+              <text x="24" y={OAK_VIEW_H + 30} className="fp-muted">
+                Other rooms
+              </text>
+              {overflow.map((room, index) => (
+                <RoomSvgTile
+                  key={room.dbRoomId}
+                  room={room}
+                  x={24 + index * (OAK_TILE_W + 6)}
+                  y={OAK_VIEW_H + 40}
+                  width={OAK_TILE_W}
+                  height={OAK_TILE_H}
+                  selected={room.dbRoomId === selectedRoomId}
+                  onSelect={onSelectRoom}
+                />
+              ))}
+            </>
+          ) : null}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 function CellTile({
   cell,
   x,
@@ -854,76 +1039,6 @@ function RoomSvgTile({
         {occupancy}
       </text>
     </g>
-  );
-}
-
-function WillowListView({
-  rooms,
-  selectedRoomId,
-  onSelectRoom,
-}: {
-  rooms: Room[];
-  selectedRoomId: string | null;
-  onSelectRoom: (roomId: string) => void;
-}) {
-  return (
-    <div className="overflow-hidden rounded-lg border bg-background">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/40">
-            <TableHead className="w-28">Room</TableHead>
-            <TableHead className="w-24">Type</TableHead>
-            <TableHead className="w-24 text-center">Assigned</TableHead>
-            <TableHead>Registration</TableHead>
-            <TableHead>Note</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rooms.map((room) => (
-            <TableRow
-              key={room.dbRoomId}
-              className={cn(
-                "cursor-pointer",
-                selectedRoomId === room.dbRoomId && "bg-primary/10",
-                !room.isAvailable && "opacity-50",
-              )}
-              onClick={() => onSelectRoom(room.dbRoomId)}
-            >
-              <TableCell className="font-mono text-xs font-medium">{room.roomNumber}</TableCell>
-              <TableCell className="text-xs">{room.type}</TableCell>
-              <TableCell className="text-center">
-                <Badge variant={room.participants.length ? "secondary" : "outline"} className="text-[10px]">
-                  {room.participants.length}/{room.eventCapacity}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-xs">
-                {room.assignments?.length ? (
-                  <div className="flex flex-wrap gap-1">
-                    {room.assignments.map((assignment) => (
-                      <Badge key={assignment.assignmentId} variant="outline" className="font-mono text-[10px]">
-                        {assignment.groupCode}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
-              <TableCell className="max-w-[260px] truncate text-xs text-muted-foreground" title={room.note}>
-                {room.note || "-"}
-              </TableCell>
-            </TableRow>
-          ))}
-          {rooms.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                No Willow rooms found for this floor.
-              </TableCell>
-            </TableRow>
-          ) : null}
-        </TableBody>
-      </Table>
-    </div>
   );
 }
 

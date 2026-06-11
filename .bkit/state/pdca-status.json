@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-11T05:55:47.373Z",
+  "lastUpdated": "2026-06-11T23:48:14.004Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -156,7 +156,10 @@
     "contexts",
     "search",
     "analytics",
-    "church-groups"
+    "church-groups",
+    "participant-code.service.ts",
+    "repair",
+    "participant-code.service.test.ts"
   ],
   "primaryFeature": "payment-complete",
   "features": {
@@ -1221,9 +1224,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T23:03:35.831Z",
-        "lastUpdated": "2026-05-30T03:52:06.882Z"
+        "lastUpdated": "2026-06-11T22:32:53.646Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/pay/[token]/pay-client.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/epass/[token]/epass-viewer.tsx"
     },
     "[id]": {
       "phase": "do",
@@ -1234,9 +1237,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T23:03:46.628Z",
-        "lastUpdated": "2026-06-01T16:20:03.375Z"
+        "lastUpdated": "2026-06-11T22:33:09.507Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/donations/[id]/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/dashboard/epass/[id]/epass-detail.tsx"
     },
     "epass": {
       "phase": "do",
@@ -1247,9 +1250,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T23:03:55.926Z",
-        "lastUpdated": "2026-03-31T23:03:58.429Z"
+        "lastUpdated": "2026-06-11T22:33:43.951Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/dashboard/epass/epass-list.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(protected)/dashboard/epass/page.tsx"
     },
     "app-config": {
       "phase": "do",
@@ -1468,9 +1471,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-23T09:32:53.973Z",
-        "lastUpdated": "2026-05-23T09:32:57.409Z"
+        "lastUpdated": "2026-06-11T23:48:14.004Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/lodging/floorplan/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/lodging/floorplan/floorplan-assignment-manager.tsx"
     },
     "department-view": {
       "phase": "do",
@@ -1663,7 +1666,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T17:56:06.323Z",
-        "lastUpdated": "2026-05-27T17:56:06.323Z"
+        "lastUpdated": "2026-06-11T22:33:49.874Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/participant-lookup.ts"
     },
@@ -2186,6 +2189,45 @@
         "lastUpdated": "2026-06-11T05:54:39.922Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/church-groups/church-groups.tsx"
+    },
+    "participant-code.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-11T22:32:29.808Z",
+        "lastUpdated": "2026-06-11T22:32:29.808Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/participant-code.service.ts"
+    },
+    "repair": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-11T22:34:02.993Z",
+        "lastUpdated": "2026-06-11T22:34:08.826Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/epass/repair/route.ts"
+    },
+    "participant-code.service.test.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-11T22:34:37.501Z",
+        "lastUpdated": "2026-06-11T22:34:37.501Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/__tests__/unit/services/participant-code.service.test.ts"
     }
   },
   "pipeline": {
@@ -2196,7 +2238,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-11T05:55:47.373Z"
+    "lastActivity": "2026-06-11T23:48:14.004Z"
   },
   "history": [
     {
@@ -14862,6 +14904,306 @@
     {
       "timestamp": "2026-06-11T05:55:47.373Z",
       "feature": "pricing.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T08:02:53.118Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T08:03:31.074Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:10:20.719Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:10:29.022Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:10:34.018Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:10:41.092Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:10:49.184Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:10:55.844Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:16:26.194Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:16:35.050Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:16:39.606Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:16:48.514Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:21:55.572Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:22:00.509Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:22:09.063Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:27:08.880Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:27:13.581Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:27:22.399Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:31:19.120Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:32:29.808Z",
+      "feature": "participant-code.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:32:38.414Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:32:41.182Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:32:53.646Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:33:00.537Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:33:04.802Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:33:09.507Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:33:33.297Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:33:39.449Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:33:43.951Z",
+      "feature": "epass",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:33:46.105Z",
+      "feature": "participant-lookup.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:33:49.874Z",
+      "feature": "participant-lookup.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:34:02.993Z",
+      "feature": "repair",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:34:08.826Z",
+      "feature": "repair",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:34:32.805Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:34:37.501Z",
+      "feature": "participant-code.service.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:34:46.189Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:34:51.269Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:35:00.955Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T22:50:36.707Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T23:37:08.681Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T23:37:16.066Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T23:37:20.976Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T23:37:25.795Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T23:37:30.813Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T23:37:38.181Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T23:47:38.468Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T23:47:45.311Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T23:47:51.367Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T23:48:00.792Z",
+      "feature": "floorplan",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-11T23:48:14.004Z",
+      "feature": "floorplan",
       "phase": "do",
       "action": "updated"
     }
