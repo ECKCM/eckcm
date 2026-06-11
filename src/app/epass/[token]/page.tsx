@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import { notFound } from "next/navigation";
 import { EPassViewer } from "./epass-viewer";
 import { signParticipantCode } from "@/lib/services/epass.service";
+import { resolveParticipantCode } from "@/lib/services/participant-code.service";
 
 /**
  * Parse slug format: "FirstNameLastName_<token>" or plain "<token>"
@@ -55,15 +56,13 @@ export default async function EPassPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = epass as any;
 
-  // Fetch participant_code from group_memberships
-  const { data: membership } = await admin
-    .from("eckcm_group_memberships")
-    .select("participant_code, eckcm_groups!inner(registration_id)")
-    .eq("person_id", data.person_id)
-    .eq("eckcm_groups.registration_id", data.registration_id)
-    .maybeSingle();
-
-  const participantCode = (membership as any)?.participant_code ?? null;
+  // Resolve participant_code robustly: tolerates duplicate membership rows
+  // and self-heals NULL codes so the QR never silently disappears.
+  const participantCode = await resolveParticipantCode(
+    admin,
+    data.person_id,
+    data.registration_id,
+  );
 
   // Fetch app config for HMAC secret and booklet URL
   const { data: appConfig } = await admin

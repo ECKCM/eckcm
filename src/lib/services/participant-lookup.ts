@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { verifySignedCode } from "@/lib/services/epass.service";
+import { resolveParticipantCode } from "@/lib/services/participant-code.service";
 
 export interface ResolvedParticipant {
   personId: string;
@@ -191,19 +192,21 @@ export async function resolveParticipant(
   }
 
   const d = epass as unknown as EpassJoined;
-  // For legacy token resolutions we also try to recover the participant code via membership
-  const { data: membership } = await admin
-    .from("eckcm_group_memberships")
-    .select("participant_code")
-    .eq("person_id", d.person_id)
-    .eq("eckcm_groups.registration_id", d.registration_id)
-    .maybeSingle();
+  // For legacy token resolutions we also try to recover the participant code
+  // via membership. resolveParticipantCode tolerates duplicate rows and heals
+  // NULL codes — the previous inline query filtered on a join it never
+  // embedded in the select, so it errored and resolved nothing.
+  const recoveredCode = await resolveParticipantCode(
+    admin,
+    d.person_id,
+    d.registration_id
+  );
 
   return {
     ok: true,
     participant: {
       personId: d.person_id,
-      participantCode: (membership as { participant_code?: string } | null)?.participant_code ?? null,
+      participantCode: recoveredCode,
       legalName: `${d.eckcm_people.first_name_en} ${d.eckcm_people.last_name_en}`,
       koreanName: d.eckcm_people.display_name_ko,
       gender: d.eckcm_people.gender,

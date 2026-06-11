@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
 import { generateEPassToken } from "@/lib/services/epass.service";
+import { assignParticipantCode } from "@/lib/services/participant-code.service";
 import { logger } from "@/lib/logger";
 
 /**
  * POST /api/admin/epass/repair
  * Finds PAID registrations with missing e-pass tokens and generates them.
+ * Also backfills memberships whose participant_code is NULL (a NULL code
+ * makes the e-pass QR impossible to render).
  * Optionally scoped to a specific registrationId or eventId.
  *
  * Body: { registrationId?: string, eventId?: string }
@@ -132,9 +135,32 @@ export async function POST(request: Request) {
   const details = results.filter((r): r is NonNullable<typeof r> => r !== null);
   const totalGenerated = details.reduce((sum, d) => sum + d.tokensGenerated, 0);
 
+  // 5. Backfill memberships whose participant_code is NULL. Without a code
+  // the e-pass page cannot render a QR, so repair assigns fresh codes the
+  // same way the e-pass pages self-heal on view.
+  const regIds = registrations.map((reg) => reg.id);
+  let codesBackfilled = 0;
+  for (let i = 0; i < regIds.length; i += 100) {
+    const chunk = regIds.slice(i, i + 100);
+    const { data: nullCodeRows } = await admin
+      .from("eckcm_group_memberships")
+      .select("id, eckcm_groups!inner(registration_id)")
+      .is("participant_code", null)
+      .in("eckcm_groups.registration_id", chunk);
+
+    for (const row of nullCodeRows ?? []) {
+      const code = await assignParticipantCode(admin, row.id);
+      if (code) codesBackfilled++;
+    }
+  }
+  if (codesBackfilled > 0) {
+    logger.info("[epass/repair] Backfilled participant codes", { codesBackfilled });
+  }
+
   return NextResponse.json({
     repaired: details.length,
     totalTokensGenerated: totalGenerated,
+    codesBackfilled,
     details,
   });
 }

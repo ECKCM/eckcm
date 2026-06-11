@@ -126,8 +126,9 @@ export function EPassViewer({ epass, bookletUrl }: EPassViewerProps) {
               )}
             </div>
 
-            {/* QR Code */}
-            {epass.qrValue && (
+            {/* QR Code — when the code cannot be resolved, show an explicit
+                fallback with the manual check-in code instead of an empty gap */}
+            {epass.qrValue ? (
               <div className="bg-white p-3 rounded-lg">
                 <QRCodeSVG
                   value={epass.qrValue}
@@ -136,6 +137,23 @@ export function EPassViewer({ epass, bookletUrl }: EPassViewerProps) {
                   fgColor="#000000"
                   bgColor="#ffffff"
                 />
+              </div>
+            ) : (
+              <div className="w-full rounded-lg border border-amber-300 bg-amber-50 p-4 text-center dark:border-amber-700 dark:bg-amber-950">
+                <p className="font-semibold text-amber-800 dark:text-amber-300">
+                  QR code unavailable
+                </p>
+                <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                  QR 코드를 불러올 수 없습니다. 체크인 데스크에서 아래 코드를
+                  보여주세요.
+                  <br />
+                  Please show the code below at the check-in desk.
+                </p>
+                {(epass.participantCode || epass.confirmationCode) && (
+                  <p className="mt-2 font-mono text-2xl font-bold tracking-wider text-amber-900 dark:text-amber-200">
+                    {epass.participantCode || epass.confirmationCode}
+                  </p>
+                )}
               </div>
             )}
 

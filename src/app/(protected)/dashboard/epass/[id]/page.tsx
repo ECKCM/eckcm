@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signParticipantCode } from "@/lib/services/epass.service";
+import { resolveParticipantCode } from "@/lib/services/participant-code.service";
 import { EPassDetail } from "./epass-detail";
 
 export default async function EPassDetailPage({
@@ -49,20 +50,17 @@ export default async function EPassDetailPage({
     notFound();
   }
 
-  // Fetch participant_code from group_memberships
+  // Resolve participant_code robustly: tolerates duplicate membership rows
+  // and self-heals NULL codes so the QR never silently disappears.
   const admin = createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const t = token as any;
 
-  const { data: membership } = await admin
-    .from("eckcm_group_memberships")
-    .select("participant_code, eckcm_groups!inner(registration_id)")
-    .eq("person_id", t.person_id)
-    .eq("eckcm_groups.registration_id", t.registration_id)
-    .maybeSingle();
-
-  const participantCode =
-    (membership as any)?.participant_code ?? null;
+  const participantCode = await resolveParticipantCode(
+    admin,
+    t.person_id,
+    t.registration_id,
+  );
 
   // Sign participant code with HMAC if secret is configured
   let qrValue = participantCode;
