@@ -119,6 +119,8 @@ interface RegistrationCard {
   /** Non-Willow groups (assignable via this tool). */
   assignableCount: number;
   preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null;
+  /** Free-text "additional requests" the representative entered at registration. */
+  additionalRequests: string | null;
 }
 
 interface ChurchSection {
@@ -214,7 +216,7 @@ export function ChurchGroups({
         preferences,
         registration_id,
         created_at,
-        eckcm_registrations!inner(id, confirmation_code, status, created_at),
+        eckcm_registrations!inner(id, confirmation_code, status, created_at, additional_requests),
         eckcm_group_memberships(
           role,
           eckcm_people(
@@ -319,6 +321,7 @@ export function ChurchGroups({
         assignedCount: !isWillow && roomId ? 1 : 0,
         assignableCount: isWillow ? 0 : 1,
         preferences: (g.preferences as RegistrationCard["preferences"]) ?? null,
+        additionalRequests: (reg.additional_requests ?? null) as string | null,
       });
     }
 
@@ -470,6 +473,7 @@ export function ChurchGroups({
         c.repNameEn.toLowerCase().includes(q) ||
         (c.repNameKo?.toLowerCase().includes(q) ?? false) ||
         c.churchLabel.toLowerCase().includes(q) ||
+        (c.additionalRequests?.toLowerCase().includes(q) ?? false) ||
         c.groups.some((g) => g.roomNumber?.toLowerCase().includes(q))
       );
     };
@@ -724,6 +728,33 @@ export function ChurchGroups({
   );
 }
 
+// ─── Additional-requests highlighting ───────────────────────────
+// Roommate / adjacency requests are the ones that affect room assignment,
+// so flag these keywords (longer alternatives first to avoid partial 방 hits).
+const REQUEST_KEYWORDS = ["옆방", "방", "같이", "room", "next"];
+const REQUEST_HIGHLIGHT_RE = new RegExp(`(${REQUEST_KEYWORDS.join("|")})`, "gi");
+
+/** Render free text with assignment-relevant keywords highlighted. */
+function HighlightedRequest({ text }: { text: string }) {
+  const parts = text.split(REQUEST_HIGHLIGHT_RE);
+  return (
+    <>
+      {parts.map((part, i) =>
+        REQUEST_KEYWORDS.some((k) => k.toLowerCase() === part.toLowerCase()) ? (
+          <mark
+            key={i}
+            className="rounded-sm bg-yellow-200 px-0.5 font-medium text-foreground dark:bg-yellow-500/40"
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
 // ─── Registration Card ──────────────────────────────────────────
 
 function RegistrationCardView({
@@ -802,6 +833,18 @@ function RegistrationCardView({
                 {p}
               </Badge>
             ))}
+          </div>
+        )}
+
+        {/* Additional requests (highlight roommate / adjacency keywords) */}
+        {card.additionalRequests && card.additionalRequests.trim() && (
+          <div className="rounded-md border border-dashed bg-muted/40 px-2 py-1.5">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Additional requests
+            </p>
+            <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-snug">
+              <HighlightedRequest text={card.additionalRequests} />
+            </p>
           </div>
         )}
 

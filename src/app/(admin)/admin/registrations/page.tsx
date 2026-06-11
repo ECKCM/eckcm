@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RegistrationsTable } from "./registrations-table";
@@ -23,11 +24,13 @@ export default async function RegistrationsPage() {
         <h1 className="text-lg font-semibold">Registrations</h1>
       </div>
       <div className="p-6">
-        <RegistrationsTable
-          events={events ?? []}
-          currentUserId={user.id}
-          currentUserName={displayName}
-        />
+        <Suspense fallback={null}>
+          <RegistrationsTable
+            events={events ?? []}
+            currentUserId={user.id}
+            currentUserName={displayName}
+          />
+        </Suspense>
       </div>
     </div>
   );

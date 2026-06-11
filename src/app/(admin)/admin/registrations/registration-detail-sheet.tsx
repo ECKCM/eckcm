@@ -95,6 +95,7 @@ import {
   MIN_REFUND_CENTS,
 } from "./registrations-types";
 import { isManualPaymentMethod, EDITABLE_PAYMENT_METHODS } from "@/lib/payment/methods";
+import { MoneyValue } from "@/contexts/money-visibility-context";
 
 interface RegistrationDetailSheetProps {
   registration: RegistrationRow | null;
@@ -526,17 +527,19 @@ export function RegistrationDetailSheet({
             <TabsContent value="overview" className="space-y-5 mt-4">
               {/* Key Metrics */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-lg border p-3 text-center">
-                  <p className="text-2xl font-bold">
-                    {(() => {
-                      if (reg.status === "CANCELLED" || reg.status === "REFUNDED") return formatMoney(0);
-                      if (
-                        (reg.payment_status === "PARTIALLY_REFUNDED" || reg.payment_status === "REFUNDED") &&
-                        reg.total_amount_cents > 0 &&
-                        reg.total_amount_cents <= calculateProcessingFee(reg.payment_amount_cents, reg.payment_method)
-                      ) return formatMoney(0);
-                      return formatMoney(reg.total_amount_cents);
-                    })()}
+                <div className="min-w-0 overflow-hidden rounded-lg border p-3 text-center">
+                  <p className="truncate text-xl font-bold tabular-nums sm:text-2xl">
+                    <MoneyValue>
+                      {(() => {
+                        if (reg.status === "CANCELLED" || reg.status === "REFUNDED") return formatMoney(0);
+                        if (
+                          (reg.payment_status === "PARTIALLY_REFUNDED" || reg.payment_status === "REFUNDED") &&
+                          reg.total_amount_cents > 0 &&
+                          reg.total_amount_cents <= calculateProcessingFee(reg.payment_amount_cents, reg.payment_method)
+                        ) return formatMoney(0);
+                        return formatMoney(reg.total_amount_cents);
+                      })()}
+                    </MoneyValue>
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Total Amount
@@ -571,13 +574,13 @@ export function RegistrationDetailSheet({
                     <div>
                       <p className="text-[11px] text-muted-foreground">Amount Paid</p>
                       <p className="text-base font-semibold">
-                        {formatMoney(reg.paid_amount_cents)}
+                        <MoneyValue>{formatMoney(reg.paid_amount_cents)}</MoneyValue>
                       </p>
                     </div>
                     <div>
                       <p className="text-[11px] text-amber-700">Balance Due</p>
                       <p className="text-base font-bold text-amber-700">
-                        {formatMoney(reg.balance_due_cents)}
+                        <MoneyValue>{formatMoney(reg.balance_due_cents)}</MoneyValue>
                       </p>
                     </div>
                   </div>
@@ -592,15 +595,17 @@ export function RegistrationDetailSheet({
                     <div>
                       <p className="text-[11px] text-red-700">Refunded</p>
                       <p className="text-base font-bold text-red-700">
-                        −{formatMoney(refundedCents)}
+                        <MoneyValue>{`−${formatMoney(refundedCents)}`}</MoneyValue>
                       </p>
                     </div>
                     <div>
                       <p className="text-[11px] text-muted-foreground">Net Kept</p>
                       <p className="text-base font-semibold">
-                        {formatMoney(
-                          Math.max(0, reg.payment_amount_cents - refundedCents)
-                        )}
+                        <MoneyValue>
+                          {formatMoney(
+                            Math.max(0, reg.payment_amount_cents - refundedCents)
+                          )}
+                        </MoneyValue>
                       </p>
                     </div>
                   </div>

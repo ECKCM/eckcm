@@ -38,6 +38,7 @@ import {
   Map,
   Trees,
   Tag,
+  BarChart3,
 } from "lucide-react";
 import {
   Sidebar,
@@ -76,6 +77,7 @@ type NavLinkDef = {
 };
 
 const navLinks: NavLinkDef[] = [
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3, exact: false, permission: "participant.read" },
   { href: "/admin/registrations", label: "Registrations", icon: FileText, exact: true, permission: "participant.read" },
   { href: "/admin/participants", label: "Participants", icon: UserCheck, exact: false, permission: "participant.read" },
   { href: "/admin/department-view", label: "Department View", icon: Building2, exact: false, permission: ["participant.read", "department.view"] },
