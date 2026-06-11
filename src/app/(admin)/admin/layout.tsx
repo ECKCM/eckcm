@@ -12,6 +12,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { UserMenu } from "@/components/shared/user-menu";
 import { getAdminDisplayName } from "@/lib/auth/admin";
+import { GlobalSearch } from "@/components/admin/global-search";
+import {
+  MoneyVisibilityProvider,
+  MoneyToggle,
+} from "@/contexts/money-visibility-context";
 
 export default async function AdminLayout({
   children,
@@ -53,18 +58,27 @@ export default async function AdminLayout({
           roles={roles}
         />
         <SidebarInset className="admin-inset min-w-0 overflow-x-clip">
-          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 sm:px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="h-6" />
-            <div className="flex-1" />
-            <AdminPresence
-              currentUserId={user.id}
-              currentUserEmail={user.email ?? ""}
-              currentUserName={displayName}
-            />
-            <UserMenu isAdmin={isSuperAdmin} />
-          </header>
-          {children}
+          <MoneyVisibilityProvider>
+            <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 sm:px-4">
+              <SidebarTrigger className="-ml-1" />
+              <Separator orientation="vertical" className="h-6" />
+              <div className="flex min-w-0 flex-1 items-center">
+                <GlobalSearch permissions={permissions} />
+              </div>
+              {/* Presence avatars take meaningful width — keep them for tablets
+                  and up, but hide on phones so the search box stays usable. */}
+              <div className="hidden sm:flex">
+                <AdminPresence
+                  currentUserId={user.id}
+                  currentUserEmail={user.email ?? ""}
+                  currentUserName={displayName}
+                />
+              </div>
+              <MoneyToggle />
+              <UserMenu isAdmin={isSuperAdmin} />
+            </header>
+            {children}
+          </MoneyVisibilityProvider>
         </SidebarInset>
       </SidebarProvider>
     </PermissionsProvider>

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { MoneyValue } from "@/contexts/money-visibility-context";
 import { useRealtime, useChangeDetector } from "@/lib/hooks/use-realtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -500,6 +502,32 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
     loadRegistrations();
   }, [loadRegistrations]);
 
+  // ─── Deep-link: open a specific registration from global search ───
+  // The palette navigates to /admin/registrations?view=<id>&event=<eventId>.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const viewParam = searchParams.get("view");
+  const eventParam = searchParams.get("event");
+
+  // Switch to the requested event (search results can target any event).
+  useEffect(() => {
+    if (eventParam && eventParam !== eventId) setEventId(eventParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventParam]);
+
+  // Once the target registration is loaded, open its detail sheet, then strip
+  // the query so closing the sheet (or a refresh) doesn't reopen it. The URL is
+  // cleared on open, so searching the same registration again re-triggers this.
+  useEffect(() => {
+    if (!viewParam) return;
+    const target = registrations.find((r) => r.id === viewParam);
+    if (target) {
+      openDetail(target);
+      router.replace("/admin/registrations", { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewParam, registrations]);
+
   // Live updates — Realtime + smart polling fallback
   const _reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const _reload = () => {
@@ -678,9 +706,9 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <Select value={eventId} onValueChange={setEventId}>
-          <SelectTrigger className="w-[250px]">
+          <SelectTrigger className="w-full min-[560px]:w-[230px]">
             <SelectValue placeholder="Select event" />
           </SelectTrigger>
           <SelectContent>
@@ -693,7 +721,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         </Select>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[calc(50%-0.25rem)] min-[560px]:w-[150px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -706,7 +734,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         </Select>
 
         <Select value={regGroupFilter} onValueChange={setRegGroupFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[calc(50%-0.25rem)] min-[560px]:w-[190px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -718,7 +746,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         </Select>
 
         <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[calc(50%-0.25rem)] min-[560px]:w-[190px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -733,7 +761,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
           placeholder="Search code, name, room..."
           value={search}
           onValueChange={setSearch}
-          containerClassName="max-w-[250px]"
+          containerClassName="w-full min-[560px]:w-auto min-[560px]:max-w-[230px]"
         />
 
         <Button
@@ -796,7 +824,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         <SummaryCard
           icon={<DollarSign className="size-4 text-amber-600" />}
           label="Amount Due"
-          value={formatMoney(amountDue)}
+          value={<MoneyValue>{formatMoney(amountDue)}</MoneyValue>}
         />
         <SummaryCard
           icon={<Users className="size-4 text-blue-600" />}
@@ -811,19 +839,27 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
         <SummaryCard
           icon={<Banknote className="size-4 text-green-600" />}
           label="Net Collected"
-          value={formatMoney(netCollected)}
+          value={<MoneyValue>{formatMoney(netCollected)}</MoneyValue>}
         />
         <SummaryCard
           icon={<Wallet className="size-4 text-emerald-600" />}
           label="Gross Collected"
-          value={formatMoney(grossCollected)}
+          value={<MoneyValue>{formatMoney(grossCollected)}</MoneyValue>}
         />
         <SummaryCard
           icon={<Scale className="size-4 text-muted-foreground" />}
           label="Card Fee Balance"
-          value={`${feeBalanceCents >= 0 ? "+" : "−"}${formatMoney(Math.abs(feeBalanceCents))}`}
+          value={
+            <MoneyValue>
+              {`${feeBalanceCents >= 0 ? "+" : "−"}${formatMoney(Math.abs(feeBalanceCents))}`}
+            </MoneyValue>
+          }
           valueClassName={feeBalanceCents >= 0 ? "text-green-600" : "text-red-600"}
-          hint={`Surcharge ${formatMoney(cardSurchargeCents)} − Fees ${formatMoney(actualStripeFeesCents)}`}
+          hint={
+            <MoneyValue>
+              {`Surcharge ${formatMoney(cardSurchargeCents)} − Fees ${formatMoney(actualStripeFeesCents)}`}
+            </MoneyValue>
+          }
         />
       </div>
 
@@ -1050,18 +1086,20 @@ function SummaryCard({
 }: {
   icon: React.ReactNode;
   label: string;
-  value: string | number;
-  hint?: string;
+  value: React.ReactNode;
+  hint?: React.ReactNode;
   valueClassName?: string;
 }) {
   return (
-    <div className="rounded-lg border bg-card p-3">
+    <div className="min-w-0 overflow-hidden rounded-lg border bg-card p-3">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         {icon}
-        {label}
+        <span className="truncate">{label}</span>
       </div>
-      <p className={`text-xl font-bold mt-1 ${valueClassName ?? ""}`}>{value}</p>
-      {hint && <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
+      <p className={`mt-1 truncate text-lg font-bold tabular-nums sm:text-xl ${valueClassName ?? ""}`}>
+        {value}
+      </p>
+      {hint && <p className="truncate text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
     </div>
   );
 }

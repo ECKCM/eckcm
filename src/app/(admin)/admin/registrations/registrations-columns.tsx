@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Star, Users, ExternalLink } from "lucide-react";
 import { RegistrationActions } from "./registration-actions";
+import { MoneyValue } from "@/contexts/money-visibility-context";
 import type { LockInfo } from "@/lib/hooks/use-registration-lock";
 import {
   type Event,
@@ -162,7 +163,9 @@ export const REGISTRATION_COLUMNS: ColumnDef[] = [
     sortKey: "total_amount_cents",
     // Stripe fee is Stripe's money, not ours.
     render: (r) => (
-      <span className="font-mono text-sm whitespace-nowrap">{formatMoney(grossCollectedCents(r))}</span>
+      <span className="font-mono text-sm whitespace-nowrap">
+        <MoneyValue>{formatMoney(grossCollectedCents(r))}</MoneyValue>
+      </span>
     ),
   },
   {
