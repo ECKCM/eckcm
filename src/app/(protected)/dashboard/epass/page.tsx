@@ -3,6 +3,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signParticipantCode } from "@/lib/services/epass.service";
+import {
+  pickBestMembership,
+  resolveParticipantCode,
+  type MembershipCodeRow,
+} from "@/lib/services/participant-code.service";
 import { EPassList } from "./epass-list";
 
 export default async function EPassPage() {
@@ -104,15 +109,29 @@ export default async function EPassPage() {
 
   const { data: memberships } = await admin
     .from("eckcm_group_memberships")
-    .select("person_id, participant_code, eckcm_groups!inner(registration_id)")
+    .select(
+      "id, person_id, participant_code, status, created_at, eckcm_groups!inner(registration_id)"
+    )
     .in("person_id", personIds)
     .in("eckcm_groups.registration_id", registrationIds);
 
-  // Build lookup: person_id:registration_id -> participant_code
-  const codeMap = new Map<string, string>();
+  // Build lookup: person_id:registration_id -> participant_code.
+  // A person can have duplicate membership rows or rows with NULL codes, so
+  // collect every row per key and rank, instead of letting the last row win
+  // (which could clobber a valid code with NULL and hide the QR).
+  const rowsByKey = new Map<string, MembershipCodeRow[]>();
   for (const m of (memberships ?? []) as any[]) {
     const regId = m.eckcm_groups?.registration_id;
-    if (regId) codeMap.set(`${m.person_id}:${regId}`, m.participant_code);
+    if (!regId) continue;
+    const key = `${m.person_id}:${regId}`;
+    const list = rowsByKey.get(key) ?? [];
+    list.push(m);
+    rowsByKey.set(key, list);
+  }
+  const codeMap = new Map<string, string>();
+  for (const [key, rows] of rowsByKey) {
+    const code = pickBestMembership(rows)?.participant_code;
+    if (code) codeMap.set(key, code);
   }
 
   // Fetch HMAC secret for signing
@@ -123,15 +142,22 @@ export default async function EPassPage() {
     .single();
   const hmacSecret = (config as any)?.epass_hmac_secret as string | null;
 
-  // Merge participant_code and qr_value into tokens
-  const enriched = (tokens as any[]).map((t: any) => {
-    const code = codeMap.get(`${t.person_id}:${t.registration_id}`) ?? null;
-    return {
-      ...t,
-      participant_code: code,
-      qr_value: code && hmacSecret ? signParticipantCode(code, hmacSecret) : code,
-    };
-  });
+  // Merge participant_code and qr_value into tokens. Tokens whose code could
+  // not be resolved from the batch query (NULL-code membership) get a
+  // self-heal attempt so the QR still renders.
+  const enriched = await Promise.all(
+    (tokens as any[]).map(async (t: any) => {
+      let code = codeMap.get(`${t.person_id}:${t.registration_id}`) ?? null;
+      if (!code) {
+        code = await resolveParticipantCode(admin, t.person_id, t.registration_id);
+      }
+      return {
+        ...t,
+        participant_code: code,
+        qr_value: code && hmacSecret ? signParticipantCode(code, hmacSecret) : code,
+      };
+    })
+  );
 
   return <EPassList tokens={enriched as any} myPersonIds={myPersonIds} />;
 }

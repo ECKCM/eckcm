@@ -138,7 +138,7 @@ export function EPassDetail({ token }: EPassDetailProps) {
               )}
             </div>
 
-            {token.qr_value && (
+            {token.qr_value ? (
               <div className="bg-white p-3 rounded-lg">
                 <QRCodeSVG
                   value={token.qr_value}
@@ -147,6 +147,23 @@ export function EPassDetail({ token }: EPassDetailProps) {
                   fgColor="#000000"
                   bgColor="#ffffff"
                 />
+              </div>
+            ) : (
+              <div className="w-full rounded-lg border border-amber-300 bg-amber-50 p-4 text-center dark:border-amber-700 dark:bg-amber-950">
+                <p className="font-semibold text-amber-800 dark:text-amber-300">
+                  QR code unavailable
+                </p>
+                <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                  QR 코드를 불러올 수 없습니다. 체크인 데스크에서 아래 코드를
+                  보여주세요.
+                  <br />
+                  Please show the code below at the check-in desk.
+                </p>
+                {(token.participant_code || reg.confirmation_code) && (
+                  <p className="mt-2 font-mono text-2xl font-bold tracking-wider text-amber-900 dark:text-amber-200">
+                    {token.participant_code || reg.confirmation_code}
+                  </p>
+                )}
               </div>
             )}
           </div>
