@@ -44,8 +44,12 @@ import {
   Check,
   Loader2,
   CalendarDays,
+  Tag,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { weekdayShort, formatDateShort } from "@/lib/print/registration-summary";
+import { TitleBadge } from "@/components/admin/title-badge";
 
 // ─── Lodging scope ──────────────────────────────────────────────
 // "ac"  → A/C + A/C-VIP only (default).
@@ -121,6 +125,20 @@ interface RegistrationCard {
   preferences: { elderly: boolean; handicapped: boolean; firstFloor: boolean } | null;
   /** Free-text "additional requests" the representative entered at registration. */
   additionalRequests: string | null;
+  /** Earliest arrival date (YYYY-MM-DD) across all members of the registration. */
+  stayStart: string | null;
+  /** Latest departure date (YYYY-MM-DD) across all members of the registration. */
+  stayEnd: string | null;
+  /** True when members' stay ranges differ within the registration. */
+  stayVaries: boolean;
+  /** Registration group name (eckcm_registration_groups.name_en), if any. */
+  regGroupName: string | null;
+  /** Representative's department (eckcm_departments.name_en), if any. */
+  repDepartment: string | null;
+  /** Representative's age at the event (eckcm_people.age_at_event), if known. */
+  repAge: number | null;
+  /** Representative's participant title (badge label + color/icon), if assigned. */
+  repTitle: { name: string; color: string | null; icon: string | null } | null;
 }
 
 interface ChurchSection {
@@ -162,6 +180,42 @@ function deriveChurch(rep: any): { key: string; label: string } {
     if (linked) return { key: linked.toLowerCase(), label: linked };
   }
   return { key: NO_CHURCH_KEY, label: NO_CHURCH_LABEL };
+}
+
+/**
+ * Earliest arrival / latest departure across a group's members. Per-member
+ * overrides (stay_start/end_date) fall back to the registration's default
+ * range; `varies` flags registrations whose members have differing dates.
+ */
+function stayEnvelope(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  memberships: any[],
+  regStart: string | null,
+  regEnd: string | null
+): { start: string | null; end: string | null; varies: boolean } {
+  const ranges = memberships.length
+    ? memberships.map((m) => ({
+        start: (m.stay_start_date ?? regStart) as string | null,
+        end: (m.stay_end_date ?? regEnd) as string | null,
+      }))
+    : [{ start: regStart, end: regEnd }];
+  let start: string | null = null;
+  let end: string | null = null;
+  let varies = false;
+  for (const r of ranges) {
+    // YYYY-MM-DD strings order correctly under plain string comparison.
+    if (r.start && (!start || r.start < start)) start = r.start;
+    if (r.end && (!end || r.end > end)) end = r.end;
+    if (r.start !== ranges[0].start || r.end !== ranges[0].end) varies = true;
+  }
+  return { start, end, varies };
+}
+
+/** "Mon – Fri" (single weekday when arrival = departure) for a stay range. */
+function stayWeekdayLabel(start: string, end: string): string {
+  return start === end
+    ? weekdayShort(start)
+    : `${weekdayShort(start)} – ${weekdayShort(end)}`;
 }
 
 interface RoomOption {
@@ -216,15 +270,23 @@ export function ChurchGroups({
         preferences,
         registration_id,
         created_at,
-        eckcm_registrations!inner(id, confirmation_code, status, created_at, additional_requests),
+        eckcm_registrations!inner(
+          id, confirmation_code, status, created_at, additional_requests, start_date, end_date,
+          eckcm_registration_groups(name_en)
+        ),
         eckcm_group_memberships(
           role,
+          stay_start_date,
+          stay_end_date,
+          eckcm_participant_titles(name, color, icon),
           eckcm_people(
             first_name_en,
             last_name_en,
             display_name_ko,
             church_other,
-            eckcm_churches(name_en)
+            age_at_event,
+            eckcm_churches(name_en),
+            eckcm_departments(name_en)
           )
         ),
         eckcm_room_assignments(
@@ -263,10 +325,22 @@ export function ChurchGroups({
       const roomId: string | null = ra?.room_id ?? null;
       const roomNumber: string | null = ra?.eckcm_rooms?.room_number ?? null;
 
-      // Representative — role REPRESENTATIVE, else first member.
+      // Representative — role REPRESENTATIVE, else first member. Keep the
+      // membership row too: the participant title hangs off the membership.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let rep: any = memberships.find((m: any) => m.role === "REPRESENTATIVE")?.eckcm_people;
-      if (!rep) rep = memberships[0]?.eckcm_people ?? null;
+      let repMembership: any = memberships.find((m: any) => m.role === "REPRESENTATIVE");
+      if (!repMembership?.eckcm_people) repMembership = memberships[0] ?? null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rep: any = repMembership?.eckcm_people ?? null;
+      const repTitle: RegistrationCard["repTitle"] = repMembership?.eckcm_participant_titles
+        ? {
+            name: repMembership.eckcm_participant_titles.name,
+            color: repMembership.eckcm_participant_titles.color ?? null,
+            icon: repMembership.eckcm_participant_titles.icon ?? null,
+          }
+        : null;
+
+      const stay = stayEnvelope(memberships, reg.start_date ?? null, reg.end_date ?? null);
 
       const unit: GroupUnit = {
         groupId: g.id,
@@ -284,6 +358,16 @@ export function ChurchGroups({
         existing.groups.push(unit);
         existing.memberCount += memberCount;
         existing.isVip = existing.isVip || isVip;
+        // Widen the stay envelope; differing per-group ranges count as variance.
+        if (stay.varies || stay.start !== existing.stayStart || stay.end !== existing.stayEnd) {
+          existing.stayVaries = true;
+        }
+        if (stay.start && (!existing.stayStart || stay.start < existing.stayStart)) {
+          existing.stayStart = stay.start;
+        }
+        if (stay.end && (!existing.stayEnd || stay.end > existing.stayEnd)) {
+          existing.stayEnd = stay.end;
+        }
         if (!isWillow) {
           existing.assignableCount += 1;
           if (roomId) existing.assignedCount += 1;
@@ -299,6 +383,9 @@ export function ChurchGroups({
         if (existing.repNameEn === "Unknown" && rep) {
           existing.repNameKo = rep.display_name_ko ?? null;
           existing.repNameEn = `${rep.first_name_en ?? ""} ${rep.last_name_en ?? ""}`.trim() || "Unknown";
+          existing.repDepartment = rep.eckcm_departments?.name_en ?? null;
+          existing.repAge = rep.age_at_event ?? null;
+          existing.repTitle = repTitle;
         }
         continue;
       }
@@ -322,6 +409,13 @@ export function ChurchGroups({
         assignableCount: isWillow ? 0 : 1,
         preferences: (g.preferences as RegistrationCard["preferences"]) ?? null,
         additionalRequests: (reg.additional_requests ?? null) as string | null,
+        stayStart: stay.start,
+        stayEnd: stay.end,
+        stayVaries: stay.varies,
+        regGroupName: reg.eckcm_registration_groups?.name_en ?? null,
+        repDepartment: rep?.eckcm_departments?.name_en ?? null,
+        repAge: rep?.age_at_event ?? null,
+        repTitle,
       });
     }
 
@@ -473,6 +567,9 @@ export function ChurchGroups({
         c.repNameEn.toLowerCase().includes(q) ||
         (c.repNameKo?.toLowerCase().includes(q) ?? false) ||
         c.churchLabel.toLowerCase().includes(q) ||
+        (c.regGroupName?.toLowerCase().includes(q) ?? false) ||
+        (c.repDepartment?.toLowerCase().includes(q) ?? false) ||
+        (c.repTitle?.name.toLowerCase().includes(q) ?? false) ||
         (c.additionalRequests?.toLowerCase().includes(q) ?? false) ||
         c.groups.some((g) => g.roomNumber?.toLowerCase().includes(q))
       );
@@ -811,15 +908,76 @@ function RegistrationCardView({
           </div>
         </div>
 
-        {/* Representative name */}
+        {/* Representative name (+ age at event) */}
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">
             {card.repNameKo || card.repNameEn}
+            {card.repAge != null && (
+              <span
+                className="ml-1 text-xs font-normal text-muted-foreground"
+                title="Representative's age at event"
+              >
+                ({card.repAge})
+              </span>
+            )}
           </p>
           {card.repNameKo && (
             <p className="text-xs text-muted-foreground truncate">{card.repNameEn}</p>
           )}
         </div>
+
+        {/* Registration group + representative's title & department */}
+        {(card.regGroupName || card.repTitle || card.repDepartment) && (
+          <div className="flex flex-wrap gap-1">
+            {card.regGroupName && (
+              <Badge
+                variant="outline"
+                className="text-[10px] px-1 py-0 gap-0.5 max-w-full"
+                title="Registration group"
+              >
+                <Tag className="size-2.5 shrink-0" />
+                <span className="truncate">{card.regGroupName}</span>
+              </Badge>
+            )}
+            {card.repTitle && (
+              <span title="Representative's title" className="inline-flex max-w-full">
+                <TitleBadge
+                  name={card.repTitle.name}
+                  color={card.repTitle.color}
+                  icon={card.repTitle.icon}
+                  className="text-[10px] px-1.5 py-0"
+                />
+              </span>
+            )}
+            {card.repDepartment && (
+              <Badge
+                variant="outline"
+                className="text-[10px] px-1 py-0 gap-0.5 max-w-full text-sky-700 border-sky-300 dark:text-sky-400 dark:border-sky-800"
+                title="Representative's department"
+              >
+                <Briefcase className="size-2.5 shrink-0" />
+                <span className="truncate">{card.repDepartment}</span>
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* Stay dates — earliest arrival to latest departure across members */}
+        {card.stayStart && card.stayEnd && (
+          <p
+            className="flex items-center gap-1 text-xs text-muted-foreground"
+            title={
+              `${formatDateShort(card.stayStart)} – ${formatDateShort(card.stayEnd)}` +
+              (card.stayVaries ? " (some members have different dates)" : "")
+            }
+          >
+            <CalendarDays className="size-3 shrink-0" />
+            <span className="truncate">
+              {stayWeekdayLabel(card.stayStart, card.stayEnd)}
+              {card.stayVaries && <span className="ml-0.5 text-amber-600 dark:text-amber-400">*</span>}
+            </span>
+          </p>
+        )}
 
         {/* Preferences */}
         {prefs.length > 0 && (
