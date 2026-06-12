@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast, Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/search-input";
 import { badgeVariants } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Building2, Printer, Hotel } from "lucide-react";
+import { Building2, Printer, Hotel, Download, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ─── Types (shared with the server page) ────────────────────────
@@ -48,13 +49,38 @@ export interface PublicBuilding {
 export function UPJLodgingTable({
   buildings,
   generatedAt,
+  token,
 }: {
   buildings: PublicBuilding[];
   generatedAt: string;
+  token: string;
 }) {
   const [buildingFilter, setBuildingFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [occupiedOnly, setOccupiedOnly] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch(
+        `/api/upj-lodging/${encodeURIComponent(token)}/export`,
+      );
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `UPJ-Lodging-Export-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Excel files exported");
+    } catch {
+      toast.error("Failed to export Excel files");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -108,15 +134,31 @@ export function UPJLodgingTable({
             <h1 className="text-base font-semibold sm:text-lg">
               2026 ECKCM UPJ Lodging Assignments
             </h1>
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto gap-1.5 print:hidden"
-              onClick={() => window.print()}
-            >
-              <Printer className="size-3.5" />
-              Print
-            </Button>
+            <div className="ml-auto flex items-center gap-2 print:hidden">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={handleExport}
+                disabled={exporting}
+              >
+                {exporting ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Download className="size-3.5" />
+                )}
+                Export Excel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => window.print()}
+              >
+                <Printer className="size-3.5" />
+                Print
+              </Button>
+            </div>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Representative + member 1 per room · Generated {generatedAt} ET
@@ -202,6 +244,7 @@ export function UPJLodgingTable({
           Confidential — for UPJ staff use only.
         </p>
       </main>
+      <Toaster richColors position="top-center" />
     </div>
   );
 }

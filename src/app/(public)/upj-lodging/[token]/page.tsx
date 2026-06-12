@@ -93,5 +93,11 @@ export default async function UPJLodgingStaffPage({
     timeStyle: "short",
   }).format(new Date());
 
-  return <UPJLodgingTable buildings={buildings} generatedAt={generatedAt} />;
+  return (
+    <UPJLodgingTable
+      buildings={buildings}
+      generatedAt={generatedAt}
+      token={token}
+    />
+  );
 }

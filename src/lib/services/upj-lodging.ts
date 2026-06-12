@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import path from "path";
+import JSZip from "jszip";
 import { createHmac, timingSafeEqual } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ACTIVE_REGISTRATION_STATUSES } from "@/lib/utils/constants";
@@ -441,6 +442,28 @@ export async function buildOccupancyByRoomNumber(
   }
 
   return byRoom;
+}
+
+/**
+ * Build the 4-file UPJ Excel ZIP, each template filled with the room's
+ * representative + member 1. Shared by the admin export route and the
+ * token-gated UPJ staff export route.
+ */
+export async function generateUpjExportZip(
+  supabase: SupabaseClient,
+): Promise<ArrayBuffer> {
+  const participantsByRoom = await buildOccupancyByRoomNumber(supabase);
+
+  const buffers = await Promise.all(
+    BUILDING_FILES.map((_, i) => exportBuildingExcel(i, participantsByRoom)),
+  );
+
+  const zip = new JSZip();
+  for (let i = 0; i < BUILDING_FILES.length; i++) {
+    zip.file(BUILDING_FILES[i].filename, buffers[i]);
+  }
+
+  return zip.generateAsync({ type: "arraybuffer" });
 }
 
 // ─── UPJ staff capability link ───────────────────────────────────
