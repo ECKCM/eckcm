@@ -1,5 +1,8 @@
 import ExcelJS from "exceljs";
 import path from "path";
+import { createHmac, timingSafeEqual } from "crypto";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { ACTIVE_REGISTRATION_STATUSES } from "@/lib/utils/constants";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -53,6 +56,13 @@ const DEFAULT_BUILDING_CATEGORY: Record<string, string> = {
   MAP: "LODGING_NON_AC",
   OAK: "LODGING_NON_AC",
 };
+
+/**
+ * Willow Hall is assigned per-person and capped per room by the room's
+ * `capacity` (the DB trigger trg_willow_room_capacity_guard reads it). Import
+ * seeds every Willow room with this value so a re-import keeps the cap in sync.
+ */
+export const WILLOW_ROOM_CAPACITY = 3;
 
 /**
  * Derive event capacity from room type.
@@ -169,7 +179,10 @@ async function parseBuildingFile(
       floor: floorFromRoomNumber(roomNumber),
       type: first.type,
       hostCapacity: hostCap,
-      eventCapacity: eventCapacityForType(first.type, hostCap),
+      eventCapacity:
+        buildingCode === "WLW"
+          ? WILLOW_ROOM_CAPACITY
+          : eventCapacityForType(first.type, hostCap),
       lodgingCategory: defaultCategory,
       note: mergeNotes(roomSlots),
       isAvailable,
@@ -256,6 +269,21 @@ export async function exportBuildingExcel(
     row.getCell(2).value = p.lastName;   // Last Name
     if (p.arrival) row.getCell(3).value = formatDateForExcel(p.arrival);
     if (p.departure) row.getCell(4).value = formatDateForExcel(p.departure);
+
+    // Force a visible, non-themed black font on every cell we write. Some of the
+    // original templates (Maple/Oak/Willow) style empty cells with a theme font
+    // (`Aptos Narrow`, scheme "minor") that several viewers — Numbers, Google
+    // Sheets, macOS Preview — render as blank. Rebuilding the font without the
+    // `scheme` reference and pinning an explicit color guarantees the names and
+    // dates actually show up.
+    for (const col of [1, 2, 3, 4]) {
+      const cell = row.getCell(col);
+      cell.font = {
+        name: cell.font?.name ?? "Calibri",
+        size: cell.font?.size ?? 11,
+        color: { argb: "FF000000" },
+      };
+    }
     row.commit();
 
     roomSlotIndex.set(roomNumber, slotIdx + 1);
@@ -272,4 +300,176 @@ function formatDateForExcel(dateStr: string): string {
   const dd = String(d.getDate()).padStart(2, "0");
   const yy = String(d.getFullYear()).slice(-2);
   return `${mm}/${dd}/${yy}`;
+}
+
+// ─── Occupancy (shared by Excel export + UPJ staff online table) ─
+
+/** UPJ only tracks the representative + first member per room. */
+export const UPJ_MAX_OCCUPANTS_PER_ROOM = 2;
+
+/** Rank that sorts the REPRESENTATIVE membership ahead of plain members. */
+function representativeRank(role: string | null | undefined): number {
+  return role === "REPRESENTATIVE" ? 0 : 1;
+}
+
+/**
+ * Build `room_number → occupants` for the whole event, capped at the two people
+ * UPJ cares about: the registration representative followed by member 1. Both
+ * occupants carry the registration's arrival/departure (so a room with >2 people
+ * still shows the same stay dates on both rows). Willow Hall is per-person and,
+ * by long-standing UPJ convention, contributes only its first assigned person.
+ *
+ * This is the single source of truth for both the Excel export and the
+ * read-only online table — keep them consistent by going through here.
+ */
+export async function buildOccupancyByRoomNumber(
+  supabase: SupabaseClient,
+): Promise<Map<string, AssignedParticipant[]>> {
+  const byRoom = new Map<string, AssignedParticipant[]>();
+
+  // room id ↔ room number
+  const { data: dbRooms } = await supabase
+    .from("eckcm_rooms")
+    .select("id, room_number");
+  const numberByRoomId = new Map<string, string>();
+  for (const r of (dbRooms ?? []) as { id: string; room_number: string }[]) {
+    numberByRoomId.set(r.id, r.room_number);
+  }
+
+  // ── Group-based assignments (LLC / Maple / Oak) ──────────────
+  // NOTE: deliberately no `.in("room_id", …)` filter — with the full room
+  // inventory that builds a >16KB URL that Node's fetch rejects, silently
+  // zeroing out assignments. Assignments are few, so fetch them all.
+  // IMPORTANT: eckcm_group_memberships has NO `sort_order` column — selecting it
+  // makes PostgREST reject the whole nested query, silently zeroing the export.
+  // Order members the same way representative.ts does: by `created_at`.
+  const { data: assignmentsRaw } = await supabase
+    .from("eckcm_room_assignments")
+    .select(`
+      room_id,
+      eckcm_groups!inner(
+        eckcm_registrations!inner(start_date, end_date, status),
+        eckcm_group_memberships(
+          role, created_at,
+          eckcm_people(first_name_en, last_name_en)
+        )
+      )
+    `);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const a of (assignmentsRaw ?? []) as any[]) {
+    const roomNumber = numberByRoomId.get(a.room_id);
+    if (!roomNumber) continue;
+
+    const group = a.eckcm_groups;
+    if (!group) continue;
+
+    const reg = Array.isArray(group.eckcm_registrations)
+      ? group.eckcm_registrations[0]
+      : group.eckcm_registrations;
+    if (!reg || !ACTIVE_REGISTRATION_STATUSES.includes(reg.status)) continue;
+
+    const memberships = (group.eckcm_group_memberships ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((m: any) => m.eckcm_people)
+      // Representative first, then earliest-joined member (matches representative.ts).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .sort((x: any, y: any) =>
+        representativeRank(x.role) - representativeRank(y.role) ||
+        String(x.created_at ?? "").localeCompare(String(y.created_at ?? "")));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const occupants: AssignedParticipant[] = memberships.map((m: any) => ({
+      firstName: m.eckcm_people.first_name_en ?? "",
+      lastName: m.eckcm_people.last_name_en ?? "",
+      displayNameKo: null,
+      arrival: reg.start_date ?? null,
+      departure: reg.end_date ?? null,
+    }));
+
+    const existing = byRoom.get(roomNumber);
+    if (existing) existing.push(...occupants);
+    else byRoom.set(roomNumber, occupants);
+  }
+
+  // Cap each room at representative + member 1.
+  for (const [roomNumber, list] of byRoom) {
+    if (list.length > UPJ_MAX_OCCUPANTS_PER_ROOM) {
+      byRoom.set(roomNumber, list.slice(0, UPJ_MAX_OCCUPANTS_PER_ROOM));
+    }
+  }
+
+  // ── Willow Hall: per-person, first assigned person only ──────
+  const { data: willowRaw } = await supabase
+    .from("eckcm_willow_assignments")
+    .select(`
+      room_id, assigned_at,
+      eckcm_group_memberships!inner(
+        stay_start_date, stay_end_date,
+        eckcm_people!inner(first_name_en, last_name_en),
+        eckcm_groups!inner(
+          eckcm_registrations!inner(start_date, end_date, status)
+        )
+      )
+    `)
+    .order("assigned_at", { ascending: true });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const w of (willowRaw ?? []) as any[]) {
+    const roomNumber = numberByRoomId.get(w.room_id);
+    if (!roomNumber) continue;
+    // Rows are earliest-first; keep only the first person per Willow room.
+    if (byRoom.has(roomNumber)) continue;
+
+    const m = w.eckcm_group_memberships;
+    const person = m?.eckcm_people;
+    if (!person) continue;
+    const reg = Array.isArray(m.eckcm_groups?.eckcm_registrations)
+      ? m.eckcm_groups.eckcm_registrations[0]
+      : m.eckcm_groups?.eckcm_registrations;
+    if (!reg || !ACTIVE_REGISTRATION_STATUSES.includes(reg.status)) continue;
+
+    byRoom.set(roomNumber, [
+      {
+        firstName: person.first_name_en ?? "",
+        lastName: person.last_name_en ?? "",
+        displayNameKo: null,
+        arrival: m.stay_start_date ?? reg.start_date ?? null,
+        departure: m.stay_end_date ?? reg.end_date ?? null,
+      },
+    ]);
+  }
+
+  return byRoom;
+}
+
+// ─── UPJ staff capability link ───────────────────────────────────
+//
+// The online table is shared with off-site UPJ staff who have no admin login,
+// so it lives behind an unguessable capability URL — the same model as e-pass.
+// The token is derived (not stored) from the existing `epass_hmac_secret`, so
+// there's nothing new to provision: rotating that secret rotates this link too.
+
+/**
+ * Derive the UPJ staff link token from a server secret. Returns null when no
+ * secret is configured (feature simply stays disabled rather than exposing a
+ * guessable link).
+ */
+export function deriveUpjToken(secret: string | null | undefined): string | null {
+  const s = secret || process.env.UPJ_LODGING_SECRET || null;
+  if (!s) return null;
+  return createHmac("sha256", s).update("upj-lodging-v1").digest("hex").slice(0, 40);
+}
+
+/** Constant-time comparison of a candidate token against the derived one. */
+export function upjTokenMatches(
+  candidate: string,
+  secret: string | null | undefined,
+): boolean {
+  const expected = deriveUpjToken(secret);
+  if (!expected || !candidate) return false;
+  const a = Buffer.from(candidate);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }

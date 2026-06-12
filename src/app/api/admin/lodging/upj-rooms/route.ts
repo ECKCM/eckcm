@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
 import { ACTIVE_REGISTRATION_STATUSES } from "@/lib/utils/constants";
-import { parseAllBuildings } from "@/lib/services/upj-lodging";
+import { parseAllBuildings, deriveUpjToken } from "@/lib/services/upj-lodging";
 
 /**
  * GET /api/admin/lodging/upj-rooms
@@ -16,8 +16,8 @@ export async function GET() {
 
   const supabase = createAdminClient();
 
-  // 1. Fetch rooms + fee categories in parallel (independent queries)
-  const [roomsResult, feeCatResult] = await Promise.all([
+  // 1. Fetch rooms + fee categories + the UPJ link secret in parallel
+  const [roomsResult, feeCatResult, configResult] = await Promise.all([
     supabase
       .from("eckcm_rooms")
       .select(`
@@ -32,7 +32,19 @@ export async function GET() {
       .select("code, name_en")
       .like("code", "LODGING_%")
       .eq("is_active", true),
+    supabase
+      .from("eckcm_app_config")
+      .select("epass_hmac_secret")
+      .eq("id", 1)
+      .single(),
   ]);
+
+  // Capability link UPJ staff use to view the read-only table (no admin login).
+  const upjToken = deriveUpjToken(
+    (configResult.data as { epass_hmac_secret?: string | null } | null)
+      ?.epass_hmac_secret,
+  );
+  const upjStaffPath = upjToken ? `/upj-lodging/${upjToken}` : null;
 
   if (roomsResult.error) {
     return NextResponse.json({ error: roomsResult.error.message }, { status: 500 });
@@ -268,7 +280,7 @@ export async function GET() {
     name: fc.name_en,
   }));
 
-  return NextResponse.json({ rooms, categories: categoryOptions });
+  return NextResponse.json({ rooms, categories: categoryOptions, upjStaffPath });
 }
 
 /**
