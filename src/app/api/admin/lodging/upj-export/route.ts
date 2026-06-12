@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
-import JSZip from "jszip";
-import {
-  exportBuildingExcel,
-  buildOccupancyByRoomNumber,
-  BUILDING_FILES,
-} from "@/lib/services/upj-lodging";
+import { generateUpjExportZip } from "@/lib/services/upj-lodging";
 
 /**
  * GET /api/admin/lodging/upj-export
@@ -19,22 +14,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createAdminClient();
-
-  // Single source of truth for occupancy, shared with the UPJ staff online table.
-  const participantsByRoom = await buildOccupancyByRoomNumber(supabase);
-
-  // Generate updated Excel files in parallel and ZIP them.
-  const buffers = await Promise.all(
-    BUILDING_FILES.map((_, i) => exportBuildingExcel(i, participantsByRoom))
-  );
-
-  const zip = new JSZip();
-  for (let i = 0; i < BUILDING_FILES.length; i++) {
-    zip.file(BUILDING_FILES[i].filename, buffers[i]);
-  }
-
-  const zipBuffer = await zip.generateAsync({ type: "arraybuffer" });
+  const zipBuffer = await generateUpjExportZip(createAdminClient());
 
   return new NextResponse(zipBuffer, {
     headers: {

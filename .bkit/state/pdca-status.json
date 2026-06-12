@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-12T19:42:04.151Z",
+  "lastUpdated": "2026-06-12T21:29:13.863Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -160,7 +160,8 @@
     "participant-code.service.ts",
     "repair",
     "participant-code.service.test.ts",
-    "upj-lodging.ts"
+    "upj-lodging.ts",
+    "export"
   ],
   "primaryFeature": "payment-complete",
   "features": {
@@ -1225,9 +1226,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T23:03:35.831Z",
-        "lastUpdated": "2026-06-12T19:15:29.018Z"
+        "lastUpdated": "2026-06-12T21:29:13.863Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/upj-lodging/[token]/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/upj-lodging/[token]/upj-lodging-table.tsx"
     },
     "[id]": {
       "phase": "do",
@@ -2005,7 +2006,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-01T23:31:57.574Z",
-        "lastUpdated": "2026-06-12T18:38:35.586Z"
+        "lastUpdated": "2026-06-12T21:28:12.001Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/lodging/upj-export/route.ts"
     },
@@ -2239,9 +2240,22 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-12T18:37:28.459Z",
-        "lastUpdated": "2026-06-12T19:42:04.151Z"
+        "lastUpdated": "2026-06-12T21:28:02.618Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/upj-lodging.ts"
+    },
+    "export": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-12T21:28:20.912Z",
+        "lastUpdated": "2026-06-12T21:28:20.912Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/upj-lodging/[token]/export/route.ts"
     }
   },
   "pipeline": {
@@ -2252,7 +2266,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-12T19:42:04.151Z"
+    "lastActivity": "2026-06-12T21:29:13.863Z"
   },
   "history": [
     {
@@ -15350,6 +15364,60 @@
     {
       "timestamp": "2026-06-12T19:42:04.151Z",
       "feature": "upj-lodging.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-12T21:27:53.086Z",
+      "feature": "upj-lodging.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-12T21:28:02.618Z",
+      "feature": "upj-lodging.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-12T21:28:12.001Z",
+      "feature": "upj-export",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-12T21:28:20.912Z",
+      "feature": "export",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-12T21:28:26.708Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-12T21:28:41.468Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-12T21:28:51.678Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-12T21:28:59.334Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-12T21:29:13.863Z",
+      "feature": "[token]",
       "phase": "do",
       "action": "updated"
     }
