@@ -45,6 +45,7 @@ import {
   Upload,
   Pencil,
   Snowflake,
+  Share2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -108,6 +109,7 @@ export function UPJLodgingManager() {
   const [viewMode, setViewMode] = useState<ViewMode>("event");
   const [buildingFilter, setBuildingFilter] = useState("ALL");
   const [search, setSearch] = useState("");
+  const [upjStaffPath, setUpjStaffPath] = useState<string | null>(null);
 
   const loadRooms = useCallback(async () => {
     setLoading(true);
@@ -117,6 +119,7 @@ export function UPJLodgingManager() {
       const data = await res.json();
       setRooms(data.rooms ?? []);
       setCategories(data.categories ?? []);
+      setUpjStaffPath(data.upjStaffPath ?? null);
     } catch (err) {
       toast.error("Failed to load UPJ rooms");
       console.error(err);
@@ -147,6 +150,21 @@ export function UPJLodgingManager() {
     } finally {
       setExporting(false);
     }
+  };
+
+  const handleShareUpjLink = async () => {
+    if (!upjStaffPath) {
+      toast.error("UPJ staff link unavailable — configure the e-pass secret first.");
+      return;
+    }
+    const url = `${window.location.origin}${upjStaffPath}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("UPJ staff link copied to clipboard");
+    } catch {
+      toast.message(url);
+    }
+    window.open(upjStaffPath, "_blank", "noopener");
   };
 
   const handleImport = async (force = false) => {
@@ -336,6 +354,17 @@ export function UPJLodgingManager() {
                 <BedDouble className="size-3.5" />
                 Assign Rooms
               </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShareUpjLink}
+              disabled={!upjStaffPath}
+              className="gap-1.5"
+              title="Open and copy the read-only link for UPJ staff"
+            >
+              <Share2 className="size-3.5" />
+              UPJ Staff View
             </Button>
             <Button
               variant="outline"
