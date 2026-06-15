@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signParticipantCode } from "@/lib/services/epass.service";
+import {
+  pickBestMembership,
+  type MembershipCodeRow,
+} from "@/lib/services/participant-code.service";
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -57,18 +61,37 @@ export async function GET(req: NextRequest) {
 
   const { data: memberships } = await admin
     .from("eckcm_group_memberships")
-    .select("person_id, participant_code, eckcm_groups!inner(registration_id)")
+    .select(
+      "id, person_id, participant_code, status, created_at, eckcm_groups!inner(registration_id)"
+    )
     .in("person_id", personIds.length > 0 ? personIds : ["__none__"])
     .in(
       "eckcm_groups.registration_id",
       registrationIds.length > 0 ? registrationIds : ["__none__"]
     );
 
-  // Build lookup: person_id:registration_id -> participant_code
-  const codeMap = new Map<string, string>();
-  for (const m of (memberships ?? []) as unknown as { person_id: string; participant_code: string; eckcm_groups: { registration_id: string } }[]) {
+  // Build lookup: person_id:registration_id -> participant_code.
+  // A person can have duplicate membership rows (and rows with NULL codes), so
+  // collect every row per key and pick with the SAME deterministic resolver the
+  // e-pass surfaces use. Plain last-row-wins here would hand the offline scanner
+  // a different code than the participant's phone shows, so an offline scan of a
+  // valid pass would fail to match.
+  const rowsByKey = new Map<string, MembershipCodeRow[]>();
+  for (const m of (memberships ?? []) as unknown as (MembershipCodeRow & {
+    person_id: string;
+    eckcm_groups: { registration_id: string };
+  })[]) {
     const regId = m.eckcm_groups?.registration_id;
-    if (regId) codeMap.set(`${m.person_id}:${regId}`, m.participant_code);
+    if (!regId) continue;
+    const key = `${m.person_id}:${regId}`;
+    const list = rowsByKey.get(key) ?? [];
+    list.push(m);
+    rowsByKey.set(key, list);
+  }
+  const codeMap = new Map<string, string>();
+  for (const [key, rows] of rowsByKey) {
+    const code = pickBestMembership(rows)?.participant_code;
+    if (code) codeMap.set(key, code);
   }
 
   // Fetch HMAC secret for signing cached codes
