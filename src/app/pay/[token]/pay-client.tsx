@@ -44,7 +44,7 @@ export function PayByLinkClient({ token }: { token: string }) {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setErrorMsg(data.error || "결제 링크를 불러오지 못했습니다.");
+        setErrorMsg(data.error || "Could not load the payment link.");
         setPhase("error");
         return;
       }
@@ -75,7 +75,7 @@ export function PayByLinkClient({ token }: { token: string }) {
 
     if (paymentIntentId) {
       if (redirectStatus === "failed") {
-        setErrorMsg("결제가 실패했습니다. 다시 시도해 주세요.");
+        setErrorMsg("Payment failed. Please try again.");
         setPhase("error");
         return;
       }
@@ -90,12 +90,12 @@ export function PayByLinkClient({ token }: { token: string }) {
             setPhase("success");
           } else {
             const data = await res.json().catch(() => ({}));
-            setErrorMsg(data.error || "결제 확인에 실패했습니다. 관리자에게 문의해 주세요.");
+            setErrorMsg(data.error || "Could not confirm the payment. Please contact the administrator.");
             setPhase("error");
           }
         })
         .catch(() => {
-          setErrorMsg("결제 확인 중 오류가 발생했습니다.");
+          setErrorMsg("An error occurred while confirming the payment.");
           setPhase("error");
         });
       return;
@@ -120,7 +120,7 @@ export function PayByLinkClient({ token }: { token: string }) {
           <CardContent className="py-12 space-y-4 text-center">
             <Loader2 className="h-10 w-10 animate-spin mx-auto text-muted-foreground" />
             <p className="text-muted-foreground">
-              {phase === "confirming" ? "결제를 확인하는 중입니다…" : "결제 정보를 불러오는 중입니다…"}
+              {phase === "confirming" ? "Confirming your payment…" : "Loading payment details…"}
             </p>
           </CardContent>
         </Card>
@@ -134,12 +134,12 @@ export function PayByLinkClient({ token }: { token: string }) {
         <Card>
           <CardContent className="py-12 space-y-4 text-center">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
-            <h2 className="text-xl font-semibold">결제가 완료되었습니다</h2>
+            <h2 className="text-xl font-semibold">Payment complete</h2>
             <p className="text-muted-foreground">
-              등록이 확정되었습니다. 확인 이메일과 E-Pass가 발송됩니다.
+              Your registration is confirmed. A confirmation email and E-Pass will be sent.
             </p>
             <Button asChild>
-              <Link href="/dashboard">내 등록 보기</Link>
+              <Link href="/dashboard">View my registration</Link>
             </Button>
           </CardContent>
         </Card>
@@ -153,10 +153,10 @@ export function PayByLinkClient({ token }: { token: string }) {
         <Card>
           <CardContent className="py-12 space-y-4 text-center">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
-            <h2 className="text-xl font-semibold">이미 결제 완료된 등록입니다</h2>
-            <p className="text-muted-foreground">추가 결제가 필요하지 않습니다.</p>
+            <h2 className="text-xl font-semibold">This registration is already paid</h2>
+            <p className="text-muted-foreground">No additional payment is required.</p>
             <Button asChild variant="outline">
-              <Link href="/dashboard">내 등록 보기</Link>
+              <Link href="/dashboard">View my registration</Link>
             </Button>
           </CardContent>
         </Card>
@@ -172,7 +172,7 @@ export function PayByLinkClient({ token }: { token: string }) {
             <XCircle className="h-14 w-14 text-destructive mx-auto" />
             <p className="text-destructive font-medium">{errorMsg}</p>
             <p className="text-sm text-muted-foreground">
-              문제가 계속되면 등록 관리자에게 문의해 주세요.
+              If the problem persists, please contact the registration administrator.
             </p>
           </CardContent>
         </Card>
@@ -188,25 +188,25 @@ export function PayByLinkClient({ token }: { token: string }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="size-5" />
-            카드로 결제하기
+            Pay by card
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Order summary */}
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">결제 금액</span>
+              <span className="text-muted-foreground">Amount</span>
               <span className="font-medium">{formatCurrency(baseCents)}</span>
             </div>
             {coversFees && feeCents > 0 && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">카드 수수료</span>
+                <span className="text-muted-foreground">Card fee</span>
                 <span className="font-medium">{formatCurrency(feeCents)}</span>
               </div>
             )}
             <Separator />
             <div className="flex justify-between text-base">
-              <span className="font-semibold">총 결제액</span>
+              <span className="font-semibold">Total</span>
               <span className="font-bold">{formatCurrency(amount)}</span>
             </div>
           </div>
@@ -218,7 +218,7 @@ export function PayByLinkClient({ token }: { token: string }) {
               className="mt-0.5"
             />
             <span className="text-muted-foreground">
-              카드 처리 수수료(2.9% + $0.30)를 함께 부담합니다
+              I&apos;ll also cover the card processing fee (2.9% + $0.30)
             </span>
           </label>
 
@@ -238,7 +238,7 @@ export function PayByLinkClient({ token }: { token: string }) {
 
           <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
             <Lock className="size-3" />
-            Stripe로 안전하게 처리됩니다
+            Securely processed by Stripe
           </p>
         </CardContent>
       </Card>
@@ -263,7 +263,7 @@ function CardForm({ token }: { token: string }) {
     try {
       const { error: submitError } = await elements.submit();
       if (submitError) {
-        toast.error(submitError.message || "결제 정보를 확인해 주세요.");
+        toast.error(submitError.message || "Please check your payment details.");
         setProcessing(false);
         return;
       }
@@ -277,7 +277,7 @@ function CardForm({ token }: { token: string }) {
       });
 
       if (error) {
-        toast.error(error.message || "결제에 실패했습니다.");
+        toast.error(error.message || "Payment failed.");
         setProcessing(false);
         return;
       }
@@ -293,7 +293,7 @@ function CardForm({ token }: { token: string }) {
         setProcessing(false);
       }
     } catch {
-      toast.error("예기치 못한 오류가 발생했습니다.");
+      toast.error("An unexpected error occurred.");
       setProcessing(false);
     }
   };
@@ -304,10 +304,10 @@ function CardForm({ token }: { token: string }) {
       <Button type="submit" className="w-full" disabled={!stripe || processing}>
         {processing ? (
           <>
-            <Loader2 className="size-4 animate-spin" /> 처리 중…
+            <Loader2 className="size-4 animate-spin" /> Processing…
           </>
         ) : (
-          "결제하기"
+          "Pay now"
         )}
       </Button>
     </form>

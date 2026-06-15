@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
 import { ensureRepresentative } from "@/lib/services/representative";
+import { logger } from "@/lib/logger";
 
 /**
  * DELETE /api/admin/registrations/[id]/participants/[membershipId]
@@ -66,12 +67,34 @@ export async function DELETE(
     );
   }
 
-  // Deactivate e-pass tokens for this person in this registration
-  await supabase
+  // Deactivate the e-pass token(s) for this person in this registration. This is
+  // critical: once the membership below is deleted the person no longer belongs
+  // here, so any token left active becomes a ghost that surfaces a broken
+  // "QR unavailable" pass in the e-pass dashboard. The previous fire-and-forget
+  // update silently left tokens active when it errored, so we verify the outcome
+  // and log loudly. Guarded with .eq("is_active", true) so it no-ops cleanly,
+  // and .select() lets us confirm how many were actually deactivated.
+  const { data: deactivated, error: deactivateError } = await supabase
     .from("eckcm_epass_tokens")
     .update({ is_active: false })
     .eq("person_id", membership.person_id)
-    .eq("registration_id", registrationId);
+    .eq("registration_id", registrationId)
+    .eq("is_active", true)
+    .select("id");
+
+  if (deactivateError) {
+    logger.error("[remove-participant] Failed to deactivate e-pass token(s)", {
+      personId: membership.person_id,
+      registrationId,
+      error: String(deactivateError),
+    });
+  } else {
+    logger.info("[remove-participant] Deactivated e-pass token(s)", {
+      personId: membership.person_id,
+      registrationId,
+      deactivatedCount: deactivated?.length ?? 0,
+    });
+  }
 
   // Delete the membership
   const { error: deleteError } = await supabase

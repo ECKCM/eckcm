@@ -2,7 +2,10 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signParticipantCode } from "@/lib/services/epass.service";
-import { resolveParticipantCode } from "@/lib/services/participant-code.service";
+import {
+  hasMembershipInRegistration,
+  resolveParticipantCode,
+} from "@/lib/services/participant-code.service";
 import { EPassDetail } from "./epass-detail";
 
 export default async function EPassDetailPage({
@@ -50,12 +53,23 @@ export default async function EPassDetailPage({
     notFound();
   }
 
-  // Resolve participant_code robustly: tolerates duplicate membership rows
-  // and self-heals NULL codes so the QR never silently disappears.
   const admin = createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const t = token as any;
 
+  // A membership is the source of truth for belonging to the registration. If
+  // it's gone the person was transferred away (clone model) and this is a stale
+  // ghost token — don't render a broken pass for it. The list view already
+  // hides these; this guards direct-URL access by id.
+  const stillBelongs = await hasMembershipInRegistration(
+    admin,
+    t.person_id,
+    t.registration_id,
+  );
+  if (!stillBelongs) notFound();
+
+  // Resolve participant_code robustly: tolerates duplicate membership rows
+  // and self-heals NULL codes so the QR never silently disappears.
   const participantCode = await resolveParticipantCode(
     admin,
     t.person_id,
