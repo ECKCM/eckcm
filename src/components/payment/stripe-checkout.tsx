@@ -90,6 +90,7 @@ export function StripeCheckout({
           stripe={getStripe()}
           options={{
             clientSecret,
+            locale: "en",
             appearance: {
               theme: "stripe",
               variables: {

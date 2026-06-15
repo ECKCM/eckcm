@@ -24,14 +24,35 @@ import { logger } from "@/lib/logger";
 export interface MembershipCodeRow {
   id: string;
   participant_code: string | null;
+  // `status` is intentionally NOT used for ranking — it is mutable and would
+  // make the chosen code (and therefore the QR) change when a row flips
+  // ACTIVE↔REMOVED. Kept on the type only because callers select it.
   status: string | null;
   created_at: string | null;
 }
 
 /**
- * Pick the membership row whose code should back the QR.
- * Preference: has a code > ACTIVE status > most recently created.
- * Pure function so the ranking is unit-testable.
+ * Pick the membership row whose code should back the QR — DETERMINISTICALLY.
+ *
+ * The QR must be PERMANENT: the same (person, registration) must resolve to
+ * the same participant_code on every surface and on every render. So the
+ * ranking uses only IMMUTABLE attributes and never mutable ones:
+ *
+ *   1. has a code   — a NULL code can't back a QR. This is monotonic (a code
+ *      is only ever assigned, never cleared), so it can never flip the chosen
+ *      row away once one has a code.
+ *   2. oldest created_at — the ORIGINAL membership. Its code is the one that
+ *      was emailed in the confirmation and printed on the first badges, so it
+ *      is the canonical permanent code. Choosing the oldest also means a newer
+ *      duplicate row (from a recovery / re-add / manual op) can NEVER displace
+ *      it, so the QR cannot drift when extra rows appear later.
+ *   3. smallest id  — final tiebreak so the result is fully deterministic even
+ *      when created_at ties or is missing.
+ *
+ * Earlier versions ranked by ACTIVE-status then most-recent created_at. Both
+ * are mutable, so a status flip or a freshly-inserted duplicate row silently
+ * changed which code won and the participant's QR changed under them. That is
+ * exactly the bug this ordering removes. Pure function so it is unit-testable.
  */
 export function pickBestMembership<T extends MembershipCodeRow>(
   rows: T[],
@@ -41,10 +62,16 @@ export function pickBestMembership<T extends MembershipCodeRow>(
     const aHasCode = a.participant_code ? 0 : 1;
     const bHasCode = b.participant_code ? 0 : 1;
     if (aHasCode !== bHasCode) return aHasCode - bHasCode;
-    const aActive = a.status === "ACTIVE" ? 0 : 1;
-    const bActive = b.status === "ACTIVE" ? 0 : 1;
-    if (aActive !== bActive) return aActive - bActive;
-    return (b.created_at ?? "").localeCompare(a.created_at ?? "");
+    // Oldest first. A missing created_at sorts last (sentinel "￿" is
+    // greater than any real ISO timestamp) so a known timestamp always wins.
+    const aTime = a.created_at ?? "￿";
+    const bTime = b.created_at ?? "￿";
+    if (aTime !== bTime) return aTime < bTime ? -1 : 1;
+    // Fully deterministic final tiebreak on the immutable row id.
+    const aId = a.id ?? "";
+    const bId = b.id ?? "";
+    if (aId !== bId) return aId < bId ? -1 : 1;
+    return 0;
   })[0];
 }
 

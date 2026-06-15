@@ -225,7 +225,7 @@ export function PayByLinkClient({ token }: { token: string }) {
           {clientSecret && stripePromise ? (
             <Elements
               stripe={stripePromise}
-              options={{ clientSecret, appearance: STRIPE_APPEARANCE }}
+              options={{ clientSecret, appearance: STRIPE_APPEARANCE, locale: "en" }}
               key={clientSecret}
             >
               <CardForm token={token} />

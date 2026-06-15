@@ -665,7 +665,7 @@ export default function PaymentStep() {
             clientSecret && stripePromise ? (
               <Elements
                 stripe={stripePromise}
-                options={{ clientSecret, appearance: STRIPE_APPEARANCE }}
+                options={{ clientSecret, appearance: STRIPE_APPEARANCE, locale: "en" }}
                 key={clientSecret}
               >
                 <StripePaymentForm
