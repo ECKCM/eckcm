@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
 import { generateSafeConfirmationCode } from "@/lib/services/confirmation-code.service";
 import { ensureRepresentative } from "@/lib/services/representative";
+import { logger } from "@/lib/logger";
 
 /**
  * POST /api/admin/registrations/[id]/participants/[membershipId]/transfer
@@ -237,12 +238,38 @@ export async function POST(
   await ensureRepresentative(supabase, targetRegistrationId);
   await ensureRepresentative(supabase, registrationId);
 
-  // 4. Deactivate e-pass in old registration
-  await supabase
+  // 4. Deactivate the e-pass token(s) in the OLD registration. This is critical:
+  // the person no longer has a membership there, so any token left active
+  // becomes a ghost that surfaces a broken "QR unavailable" pass in the e-pass
+  // dashboard. The previous fire-and-forget update silently left some tokens
+  // active when it errored, so we now verify the outcome and log loudly. The
+  // update is also guarded with .eq("is_active", true) to no-op cleanly when
+  // there is nothing to deactivate, while .select() lets us confirm the count.
+  const { data: deactivated, error: deactivateError } = await supabase
     .from("eckcm_epass_tokens")
     .update({ is_active: false })
     .eq("person_id", membership.person_id)
-    .eq("registration_id", registrationId);
+    .eq("registration_id", registrationId)
+    .eq("is_active", true)
+    .select("id");
+
+  if (deactivateError) {
+    // Non-fatal: the transfer itself is already committed (clone + tracking +
+    // membership removal). But a lingering active token is a real bug, so make
+    // it visible in production logs for follow-up cleanup.
+    logger.error("[transfer] Failed to deactivate source e-pass token(s)", {
+      personId: membership.person_id,
+      fromRegistrationId: registrationId,
+      toRegistrationId: targetRegistrationId,
+      error: String(deactivateError),
+    });
+  } else {
+    logger.info("[transfer] Deactivated source e-pass token(s)", {
+      personId: membership.person_id,
+      fromRegistrationId: registrationId,
+      deactivatedCount: deactivated?.length ?? 0,
+    });
+  }
 
   // Create e-pass in target registration if it's APPROVED or PAID
   if (targetReg.status === "APPROVED" || targetReg.status === "PAID") {

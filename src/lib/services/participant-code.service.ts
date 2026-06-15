@@ -140,6 +140,45 @@ export async function assignParticipantCode(
 }
 
 /**
+ * Whether a person still has any membership row in a given registration.
+ *
+ * A membership is the single source of truth for "this person belongs to this
+ * registration". After a participant transfer (clone model) the original
+ * membership is removed, so this returns false even though a stale e-pass token
+ * may still exist. Callers use this to distinguish a genuinely-belonging person
+ * (show the pass, self-heal the code if needed) from a transferred-away / ghost
+ * token (show a "no longer on this registration" notice instead of a broken QR).
+ *
+ * Never throws. On a query error it returns false and logs, so a transient
+ * failure degrades to the safe "not shown" path rather than rendering a broken
+ * pass.
+ */
+export async function hasMembershipInRegistration(
+  admin: SupabaseClient,
+  personId: string,
+  registrationId: string,
+): Promise<boolean> {
+  const { count, error } = await admin
+    .from("eckcm_group_memberships")
+    .select("id, eckcm_groups!inner(registration_id)", {
+      count: "exact",
+      head: true,
+    })
+    .eq("person_id", personId)
+    .eq("eckcm_groups.registration_id", registrationId);
+
+  if (error) {
+    logger.error("[participant-code] Membership existence check failed", {
+      personId,
+      registrationId,
+      error: String(error),
+    });
+    return false;
+  }
+  return (count ?? 0) > 0;
+}
+
+/**
  * Resolve the participant_code backing a person's E-Pass in one registration.
  * Never throws. Returns null only when the person has no membership in the
  * registration at all (e.g. they were removed) or the database is unreachable

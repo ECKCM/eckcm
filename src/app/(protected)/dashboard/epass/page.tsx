@@ -142,11 +142,55 @@ export default async function EPassPage() {
     .single();
   const hmacSecret = (config as any)?.epass_hmac_secret as string | null;
 
-  // Merge participant_code and qr_value into tokens. Tokens whose code could
-  // not be resolved from the batch query (NULL-code membership) get a
-  // self-heal attempt so the QR still renders.
+  // A membership row is the single source of truth for "this person belongs to
+  // this registration". When a participant is transferred out (clone model),
+  // their original membership is removed but a stale e-pass token can linger —
+  // sometimes even with is_active=true if the transfer's deactivation step
+  // didn't run. Such ghost tokens have NO membership, so they must not appear
+  // here (they show a broken "QR unavailable" pass for someone who already
+  // moved to another registration). We therefore keep a token only when a
+  // membership exists for its (person, registration) pair.
+  //
+  // We rank rows by membership presence, NOT by token is_active, because 100+
+  // legitimate participants have is_active=false tokens (SUBMITTED pending
+  // payment, or REFUNDED) — filtering on is_active alone would wrongly hide
+  // them. Visibility/up-to-date status is driven by the registration status and
+  // membership, consistent with the "exclude cancelled/refunded" rule.
+  const hasMembership = (t: any) =>
+    rowsByKey.has(`${t.person_id}:${t.registration_id}`);
+
+  const visibleTokens = (tokens as any[]).filter((t: any) => {
+    // Drop ghost tokens: token without any membership in the registration
+    // (transferred-away or otherwise orphaned).
+    if (!hasMembership(t)) return false;
+    // Drop refunded/cancelled registrations — never a valid e-pass to display.
+    const status = t.eckcm_registrations?.status;
+    if (status === "REFUNDED" || status === "CANCELLED") return false;
+    return true;
+  });
+
+  if (visibleTokens.length === 0) {
+    return (
+      <div className="mx-auto max-w-2xl p-4 pt-8 space-y-6">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 w-9 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          </Link>
+          <h1 className="text-2xl font-bold">E-Pass</h1>
+        </div>
+        <p className="text-muted-foreground">No E-Pass found.</p>
+      </div>
+    );
+  }
+
+  // Merge participant_code and qr_value into tokens. Every visible token has a
+  // membership, so its code resolves from the batch query; self-heal covers the
+  // rare NULL-code membership so the QR still renders.
   const enriched = await Promise.all(
-    (tokens as any[]).map(async (t: any) => {
+    visibleTokens.map(async (t: any) => {
       let code = codeMap.get(`${t.person_id}:${t.registration_id}`) ?? null;
       if (!code) {
         code = await resolveParticipantCode(admin, t.person_id, t.registration_id);
