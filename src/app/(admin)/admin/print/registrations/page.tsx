@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Printer, Loader2 } from "lucide-react";
-import { formatStayDates } from "@/lib/print/registration-summary";
+import { formatStayDates, formatRoomsCompact } from "@/lib/print/registration-summary";
 
 /* ─── Types (match /api/admin/print/registrations payload) ─────────────────── */
 
@@ -38,6 +38,7 @@ interface Participant {
   guardianPhone: string | null;
   title: Title | null;
   role: string;
+  participantCode: string | null;
 }
 
 interface LineItem {
@@ -58,6 +59,7 @@ interface RegistrationSummary {
   registrationType: string;
   status: string;
   paymentMethod: string;
+  hasAirport: boolean;
   registrationGroup: string | null;
   roomNumbers: string[];
   keyDeposit: string;
@@ -147,7 +149,7 @@ const PRINT_CSS = `
 /* Info strip */
 .reg-info {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 6px 14px;
   margin: 10px 0;
 }
@@ -162,6 +164,24 @@ const PRINT_CSS = `
   letter-spacing: 0.06em;
   color: #2563eb;
   margin: 8px 0 4px;
+}
+/* Participants heading row: title on the left, every participant code listed on
+   the right (e.g. "GTR432, HTPERE"). */
+.reg-section-h-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.reg-pcodes {
+  font-family: ui-monospace, monospace;
+  font-size: 8pt;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #334155;
+  text-align: right;
+  word-break: break-word;
 }
 
 /* Tables */
@@ -230,11 +250,8 @@ const PRINT_CSS = `
     print-color-adjust: exact;
   }
   .reg-no-print { display: none !important; }
-  /* Hide the admin layout chrome (header + sidebar) so the first sheet starts at
-     the top of the page instead of being pushed down. Scoped to print. */
-  .admin-inset > header { display: none !important; }
-  .admin-inset { margin: 0 !important; }
-  div.group.peer[data-side] { display: none !important; }
+  /* Admin chrome (sidebar + header) is hidden globally by the admin layout's
+     print styles, so this page only resets its own workbench. */
   .reg-workbench { background: #fff !important; padding: 0 !important; gap: 0 !important; display: block !important; }
   .reg-sheet { box-shadow: none !important; margin: 0 !important; break-after: page; page-break-after: always; }
   .reg-sheet:last-child { break-after: auto; page-break-after: auto; }
@@ -250,6 +267,7 @@ export default function PrintRegistrationsPage() {
   const [registrations, setRegistrations] = useState<RegistrationSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [blackAndWhite, setBlackAndWhite] = useState(false);
 
   useEffect(() => {
@@ -271,15 +289,23 @@ export default function PrintRegistrationsPage() {
   const loadRegistrations = async () => {
     if (!eventId) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(
         `/api/admin/print/registrations?eventId=${eventId}&status=${status}`
       );
       const data = await res.json();
-      setRegistrations(data.registrations ?? []);
+      if (!res.ok) {
+        setError(data?.error || `Request failed (${res.status})`);
+        setRegistrations([]);
+      } else {
+        setRegistrations(data.registrations ?? []);
+      }
       setLoaded(true);
-    } catch {
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load registrations");
       setRegistrations([]);
+      setLoaded(true);
     } finally {
       setLoading(false);
     }
@@ -354,7 +380,13 @@ export default function PrintRegistrationsPage() {
           </label>
         </div>
 
-        {loaded && (
+        {error && (
+          <p className="text-sm font-medium text-destructive">
+            Could not load registrations: {error}
+          </p>
+        )}
+
+        {loaded && !error && (
           <p className="text-sm text-muted-foreground">
             {registrations.length} registration
             {registrations.length !== 1 ? "s" : ""} found
@@ -393,7 +425,9 @@ function RegistrationSheet({ reg }: { reg: RegistrationSummary }) {
           <div className="reg-hk">
             <div>
               <div className="reg-hk-l">Room #</div>
-              <div className="reg-hk-v">{reg.roomNumbers.join(", ") || "—"}</div>
+              <div className="reg-hk-v" title={reg.roomNumbers.join(", ")}>
+                {formatRoomsCompact(reg.roomNumbers)}
+              </div>
             </div>
             <div>
               <div className="reg-hk-l">Key Deposit</div>
@@ -418,11 +452,20 @@ function RegistrationSheet({ reg }: { reg: RegistrationSummary }) {
           value={reg.registrationType === "others" ? "Others" : "Self"}
         />
         <Info label="Reg. Group" value={reg.registrationGroup || "—"} />
+        <Info label="Airport" value={reg.hasAirport ? "Yes" : "No"} />
       </div>
 
-      {/* Participants */}
-      <div className="reg-section-h">
-        Participants ({reg.participants.length})
+      {/* Participants — heading on the left, every participant code on the right */}
+      <div className="reg-section-h reg-section-h-row">
+        <span>Participants ({reg.participants.length})</span>
+        {reg.participants.some((p) => p.participantCode) && (
+          <span className="reg-pcodes">
+            {reg.participants
+              .map((p) => p.participantCode)
+              .filter(Boolean)
+              .join(", ")}
+          </span>
+        )}
       </div>
       <table className="reg-table reg-ptable">
         <thead>

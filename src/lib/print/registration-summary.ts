@@ -63,6 +63,18 @@ export function formatStayDates(
   return formatDateShort((start ?? end) as string);
 }
 
+/**
+ * Compact room-number display for tight print cells (label + summary header).
+ * A single room shows as-is; 2+ rooms collapse to an ellipsis (the full list
+ * costs too much horizontal space); none → "—". Pair with a `title` attribute
+ * holding the full joined list for on-screen hover.
+ */
+export function formatRoomsCompact(rooms: string[]): string {
+  if (rooms.length === 0) return "—";
+  if (rooms.length === 1) return rooms[0];
+  return "…";
+}
+
 export interface MealRow {
   meal_date: string;
   meal_type: string;
