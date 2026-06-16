@@ -51,6 +51,26 @@ export default async function AdminLayout({
 
   return (
     <PermissionsProvider permissions={permissions}>
+      {/* When any admin page invokes window.print(), hide the persistent app
+          chrome (sidebar + sticky header) and drop the inset offset so the
+          printed content starts at the top-left of the sheet. Print pages
+          (lanyard / registrations / qr-cards) only mark their own on-screen
+          controls no-print; the layout chrome lives here, so it must be hidden
+          here. data-sidebar / data-admin-header are stable hooks that don't
+          depend on the sidebar's utility-class soup. */}
+      <style>{`
+        @media print {
+          .group.peer[data-side],
+          [data-sidebar="sidebar"],
+          [data-admin-header] {
+            display: none !important;
+          }
+          .admin-inset {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
+      `}</style>
       <SidebarProvider>
         <AdminSidebar
           events={events ?? []}
@@ -59,7 +79,10 @@ export default async function AdminLayout({
         />
         <SidebarInset className="admin-inset min-w-0 overflow-x-clip">
           <MoneyVisibilityProvider>
-            <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 sm:px-4">
+            <header
+              data-admin-header
+              className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 sm:px-4"
+            >
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="h-6" />
               <div className="flex min-w-0 flex-1 items-center">

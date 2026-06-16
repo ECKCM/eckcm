@@ -46,7 +46,7 @@ export default function PrintLanyardPage() {
   } = useLanyardData();
 
   // Layout + print calibration (persisted per browser/printer).
-  const [showGrid, setShowGrid] = useState(true);
+  const [showGrid, setShowGrid] = useState(false);
   const [calibrate, setCalibrate] = useState(false);
   const [onePage, setOnePage] = useState(false); // limit render to a single sheet
   const [scale, setScale] = useState(100); // percent
@@ -67,7 +67,6 @@ export default function PrintLanyardPage() {
         if (typeof c.scale === "number") setScale(c.scale);
         if (typeof c.offsetX === "number") setOffsetX(c.offsetX);
         if (typeof c.offsetY === "number") setOffsetY(c.offsetY);
-        if (typeof c.showGrid === "boolean") setShowGrid(c.showGrid);
       }
     } catch {
       /* ignore */
@@ -77,9 +76,9 @@ export default function PrintLanyardPage() {
   useEffect(() => {
     localStorage.setItem(
       "lanyard-calibration",
-      JSON.stringify({ scale, offsetX, offsetY, showGrid })
+      JSON.stringify({ scale, offsetX, offsetY })
     );
-  }, [scale, offsetX, offsetY, showGrid]);
+  }, [scale, offsetX, offsetY]);
 
   const resetCalibration = () => {
     setScale(100);

@@ -289,7 +289,7 @@ export function LanyardSheets({
 export function useLanyardData() {
   const [events, setEvents] = useState<EventOption[]>([]);
   const [eventId, setEventId] = useState("");
-  const [status, setStatus] = useState("PAID");
+  const [status, setStatus] = useState("ALL");
   const [event, setEvent] = useState<EventMeta | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(false);

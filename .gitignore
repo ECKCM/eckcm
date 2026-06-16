@@ -46,6 +46,9 @@ yarn-error.log*
 # supabase
 supabase/.temp/
 
+# Local registration data exports (contain registrant PII — keep local only)
+*_registrations.csv
+
 # vercel
 .vercel
 

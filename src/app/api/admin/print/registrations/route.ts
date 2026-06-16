@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/formatters";
 import { extractSeqFromConfirmationCode } from "@/lib/services/invoice.service";
 import { formatPaymentMethod } from "@/lib/payment/methods";
+import { chunkedIn } from "@/lib/supabase/chunked-in";
 import {
   formatMeals,
   formatStayDates,
@@ -80,61 +81,61 @@ export async function GET(req: NextRequest) {
     mealsResult,
     invoicesResult,
     titlesResult,
+    ridesResult,
   ] = await Promise.all([
     // Room groups: lodging type, key count, and group-level room assignment.
-    admin
-      .from("eckcm_groups")
-      .select(
-        `
-        id, registration_id, display_group_code, lodging_type, key_count,
-        eckcm_room_assignments(eckcm_rooms(room_number))
-      `
-      )
-      .in("registration_id", regIds),
+    chunkedIn(
+      admin,
+      "eckcm_groups",
+      `id, registration_id, display_group_code, lodging_type, key_count, eckcm_room_assignments(eckcm_rooms(room_number))`,
+      "registration_id",
+      regIds
+    ),
     // Participants (one row per group membership).
-    admin
-      .from("eckcm_group_memberships")
-      .select(
-        `
-        id,
-        role,
-        title_id,
-        participant_code,
-        stay_start_date,
-        stay_end_date,
-        eckcm_people!inner(
-          id, first_name_en, last_name_en, display_name_ko,
-          gender, age_at_event, is_k12, grade,
-          phone, email, church_other,
-          guardian_name, guardian_phone,
-          eckcm_churches(name_en),
-          eckcm_departments(name_en)
-        ),
-        eckcm_groups!inner(registration_id, display_group_code)
-      `
-      )
-      .in("eckcm_groups.registration_id", regIds),
+    chunkedIn(
+      admin,
+      "eckcm_group_memberships",
+      `id, role, title_id, participant_code, stay_start_date, stay_end_date, eckcm_people!inner(id, first_name_en, last_name_en, display_name_ko, gender, age_at_event, is_k12, grade, phone, email, church_other, guardian_name, guardian_phone, eckcm_churches(name_en), eckcm_departments(name_en)), eckcm_groups!inner(registration_id, display_group_code)`,
+      "eckcm_groups.registration_id",
+      regIds
+    ),
     // Meal selections (per person, per date, per meal type).
-    admin
-      .from("eckcm_meal_selections")
-      .select("registration_id, person_id, meal_date, meal_type, is_selected")
-      .in("registration_id", regIds),
+    chunkedIn(
+      admin,
+      "eckcm_meal_selections",
+      "registration_id, person_id, meal_date, meal_type, is_selected",
+      "registration_id",
+      regIds
+    ),
     // First (most recent) invoice per registration for the pricing breakdown.
-    admin
-      .from("eckcm_invoices")
-      .select(
-        `
-        registration_id,
-        total_cents,
-        eckcm_invoice_line_items(description_en, quantity, unit_price_cents, total_cents),
-        eckcm_payments(payment_method, status)
-      `
-      )
-      .in("registration_id", regIds)
-      .order("issued_at", { ascending: false }),
-    // Participant title taxonomy (name / color / icon).
+    // Chunked on registration_id so each reg's invoices stay in one chunk and
+    // the per-chunk issued_at ordering preserves "first seen = most recent".
+    chunkedIn(
+      admin,
+      "eckcm_invoices",
+      `registration_id, total_cents, eckcm_invoice_line_items(description_en, quantity, unit_price_cents, total_cents), eckcm_payments(payment_method, status)`,
+      "registration_id",
+      regIds,
+      { order: { column: "issued_at", ascending: false } }
+    ),
+    // Participant title taxonomy (name / color / icon) — small, no id filter.
     admin.from("eckcm_participant_titles").select("id, name, color, icon"),
+    // Airport rides: existence of any passenger row = this registration is on
+    // the airport pickup list (set at registration submit / admin assignment).
+    chunkedIn(
+      admin,
+      "eckcm_registration_rides",
+      "registration_id",
+      "registration_id",
+      regIds
+    ),
   ]);
+
+  // Registrations that have at least one airport ride passenger row.
+  const airportRegIds = new Set<string>();
+  for (const r of (ridesResult.data ?? []) as any[]) {
+    if (r.registration_id) airportRegIds.add(r.registration_id);
+  }
 
   // Groups by registration.
   const groupsByReg = new Map<string, any[]>();
@@ -155,17 +156,20 @@ export async function GET(req: NextRequest) {
   }
 
   // Willow Hall participant-level room assignments (keyed by membership).
+  // membershipIds is larger than regIds, so this is chunked too — a single
+  // `.in()` here overflowed the request URL and silently dropped all rooms.
   const willowRoomByMembership = new Map<string, string>();
-  if (membershipIds.length > 0) {
-    const { data: willow } = await admin
-      .from("eckcm_willow_assignments")
-      .select("membership_id, eckcm_rooms(room_number)")
-      .in("membership_id", membershipIds);
-    for (const w of (willow ?? []) as any[]) {
-      const roomNumber = w.eckcm_rooms?.room_number;
-      if (w.membership_id && roomNumber) {
-        willowRoomByMembership.set(w.membership_id, roomNumber);
-      }
+  const willowResult = await chunkedIn(
+    admin,
+    "eckcm_willow_assignments",
+    "membership_id, eckcm_rooms(room_number)",
+    "membership_id",
+    membershipIds
+  );
+  for (const w of willowResult.data as any[]) {
+    const roomNumber = w.eckcm_rooms?.room_number;
+    if (w.membership_id && roomNumber) {
+      willowRoomByMembership.set(w.membership_id, roomNumber);
     }
   }
 
@@ -270,6 +274,7 @@ export async function GET(req: NextRequest) {
         guardianPhone: p.guardian_phone,
         title: m.title_id ? titleById.get(m.title_id) ?? null : null,
         role: m.role ?? "MEMBER",
+        participantCode: m.participant_code ?? null,
       };
     });
 
@@ -307,6 +312,7 @@ export async function GET(req: NextRequest) {
       registrationType: reg.registration_type ?? "self",
       status: reg.status,
       paymentMethod,
+      hasAirport: airportRegIds.has(reg.id),
       registrationGroup: regGroup?.name_en ?? null,
       roomNumbers: [...roomSet].sort((a, b) =>
         a.localeCompare(b, undefined, { numeric: true })

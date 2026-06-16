@@ -85,6 +85,7 @@ export const NAV_TARGETS: NavTarget[] = [
 
   // ─── Print ──────────────────────────────────────────────────────
   { href: "/admin/print/registrations", label: "Registration Summaries", group: "Print", icon: Printer, permission: "print.registration", keywords: ["print", "pdf", "summary"] },
+  { href: "/admin/print/labels", label: "Registration Labels", group: "Print", icon: Printer, permission: "print.registration", keywords: ["print", "label", "registration", "envelope", "avery", "8160", "room", "key", "sticker"] },
   { href: "/admin/print/lanyard", label: "Lanyards", group: "Print", icon: Printer, permission: "print.lanyard", keywords: ["print", "badge", "name tag", "lanyard"] },
   { href: "/admin/print/qr-cards", label: "QR Cards", group: "Print", icon: Printer, permission: "print.qrcard", keywords: ["print", "qr", "card", "scan"] },
 
