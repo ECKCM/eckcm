@@ -66,6 +66,7 @@ interface RegistrationSummary {
   participants: Participant[];
   lineItems: LineItem[];
   total: string;
+  additionalRequests: string | null;
 }
 
 interface EventOption {
@@ -149,12 +150,25 @@ const PRINT_CSS = `
 /* Info strip */
 .reg-info {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* Event, Dates, Nights, Payment, Type, Reg. Group, Airport.
+     Type is short ("Self"/"Others") so it's narrowed; the freed width goes to
+     Reg. Group, which holds long group names. Tracks still sum to 7fr so the
+     strip's overall width is unchanged. */
+  grid-template-columns: 1fr 1fr 1fr 1fr 0.6fr 1.4fr 1fr;
   gap: 6px 14px;
   margin: 10px 0;
 }
+/* min-width:0 lets each grid cell shrink to its track so long values (e.g. a
+   long Reg. Group) can ellipsis instead of wrapping to a new line. */
+.reg-info > div { min-width: 0; }
 .reg-info .lbl { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
-.reg-info .val { font-size: 10.5pt; font-weight: 600; }
+.reg-info .val {
+  font-size: 10.5pt;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* Section heading */
 .reg-section-h {
@@ -182,6 +196,22 @@ const PRINT_CSS = `
   color: #334155;
   text-align: right;
   word-break: break-word;
+}
+/* Pricing-breakdown note: sits right next to the title (left-aligned), always a
+   single line, ellipsis when it overflows. min-width:0 lets it shrink inside the
+   flex row so the ellipsis kicks in. */
+.reg-note {
+  flex: 1;
+  min-width: 0;
+  font-size: 8pt;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #334155;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Tables */
@@ -263,7 +293,7 @@ const PRINT_CSS = `
 export default function PrintRegistrationsPage() {
   const [events, setEvents] = useState<EventOption[]>([]);
   const [eventId, setEventId] = useState<string>("");
-  const [status, setStatus] = useState("PAID");
+  const [status, setStatus] = useState("ALL");
   const [registrations, setRegistrations] = useState<RegistrationSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -490,7 +520,14 @@ function RegistrationSheet({ reg }: { reg: RegistrationSummary }) {
       {/* Pricing breakdown */}
       {reg.lineItems.length > 0 && (
         <div className="reg-pricing-wrap">
-          <div className="reg-section-h">Pricing Breakdown</div>
+          <div className="reg-section-h reg-section-h-row">
+            <span>Pricing Breakdown</span>
+            {reg.additionalRequests?.trim() && (
+              <span className="reg-note" title={reg.additionalRequests}>
+                Additional Requests: {reg.additionalRequests}
+              </span>
+            )}
+          </div>
           <table className="reg-table">
             <thead>
               <tr>
@@ -543,7 +580,9 @@ function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="lbl">{label}</div>
-      <div className="val">{value}</div>
+      <div className="val" title={value}>
+        {value}
+      </div>
     </div>
   );
 }

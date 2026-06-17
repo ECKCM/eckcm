@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signParticipantCode } from "@/lib/services/epass.service";
 import { extractSeqFromConfirmationCode } from "@/lib/services/invoice.service";
+import { computeMealCategory } from "@/lib/services/participant-lookup";
 
 /**
  * GET /api/admin/print/lanyard?eventId=xxx&status=PAID
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
   const [eventResult, configResult, titlesResult] = await Promise.all([
     admin
       .from("eckcm_events")
-      .select("name_en, name_ko, year")
+      .select("name_en, name_ko, year, event_start_date")
       .eq("id", eventId)
       .single(),
     admin
@@ -60,6 +61,11 @@ export async function GET(req: NextRequest) {
   const secret =
     (configResult.data as { epass_hmac_secret?: string | null } | null)
       ?.epass_hmac_secret ?? null;
+
+  // Event start date drives the meal-category age band (mirrors the E-Pass).
+  const eventStartDate =
+    (eventResult.data as { event_start_date?: string | null } | null)
+      ?.event_start_date ?? null;
 
   const titleById = new Map<
     string,
@@ -80,6 +86,7 @@ export async function GET(req: NextRequest) {
       title_id,
       eckcm_people!inner(
         first_name_en, last_name_en, display_name_ko,
+        birth_date,
         church_other,
         eckcm_churches(name_en)
       ),
@@ -121,6 +128,12 @@ export async function GET(req: NextRequest) {
         ? null
         : churchRaw;
 
+    // Meal age band (mirrors the E-Pass): adult / youth / free / null.
+    const mealCategory = computeMealCategory(
+      (p.birth_date as string | null) ?? null,
+      eventStartDate
+    );
+
     return {
       nameEn: `${p.first_name_en ?? ""} ${p.last_name_en ?? ""}`.trim(),
       nameKo: (p.display_name_ko as string | null) ?? null,
@@ -131,6 +144,7 @@ export async function GET(req: NextRequest) {
       confirmationCode: (reg?.confirmation_code as string | null) ?? null,
       participantCode,
       qrValue,
+      mealCategory,
     };
   });
 

@@ -39,7 +39,10 @@ export async function GET(req: NextRequest) {
   // ── Registrations (id + code + status only) ──
   let regQuery = admin
     .from("eckcm_registrations")
-    .select("id, confirmation_code, status")
+    .select(
+      `id, confirmation_code, status,
+       eckcm_invoices(status, issued_at, eckcm_payments(payment_method, status))`
+    )
     .eq("event_id", eventId)
     .order("created_at", { ascending: true });
 
@@ -170,6 +173,30 @@ export async function GET(req: NextRequest) {
       if (willowRoom) roomSet.add(willowRoom);
     }
 
+    // Payment method (drives the label's status dot) — mirror the registrations
+    // table: oldest invoice, or the outstanding one for SUBMITTED regs, then its
+    // SUCCEEDED payment (else first). On-site regs carry an ONSITE* payment row
+    // from submission, so they're flagged even before they pay at the venue.
+    const invoices = [...(reg.eckcm_invoices ?? [])].sort(
+      (a: any, b: any) =>
+        new Date(a.issued_at ?? 0).getTime() - new Date(b.issued_at ?? 0).getTime()
+    );
+    const outstandingInvoice = invoices.find(
+      (inv: any) =>
+        !["SUCCEEDED", "REFUNDED", "PARTIALLY_REFUNDED"].includes(inv.status) &&
+        (inv.eckcm_payments ?? []).length > 0
+    );
+    const invoice =
+      reg.status === "SUBMITTED" && outstandingInvoice
+        ? outstandingInvoice
+        : invoices[0];
+    const payments = invoice?.eckcm_payments ?? [];
+    const repPayment =
+      payments.find((p: any) => p.status === "SUCCEEDED") ?? payments[0] ?? null;
+    const isOnSite = (repPayment?.payment_method ?? "")
+      .toUpperCase()
+      .startsWith("ONSITE");
+
     return {
       id: reg.id,
       confirmationCode: reg.confirmation_code as string | null,
@@ -179,6 +206,8 @@ export async function GET(req: NextRequest) {
       keyCount,
       hasWillowKey,
       occupancy: memberships.length,
+      status: reg.status as string,
+      isOnSite,
       roomNumbers: [...roomSet].sort((a, b) =>
         a.localeCompare(b, undefined, { numeric: true })
       ),

@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
       nights_count,
       registration_type,
       status,
+      additional_requests,
       eckcm_events!inner(name_en, event_start_date, event_end_date),
       eckcm_registration_groups(name_en)
     `
@@ -321,6 +322,7 @@ export async function GET(req: NextRequest) {
       participants,
       lineItems,
       total: fmt(reg.total_amount_cents),
+      additionalRequests: reg.additional_requests ?? null,
     };
   });
 

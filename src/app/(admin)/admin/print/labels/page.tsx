@@ -24,6 +24,9 @@ interface LabelRecord {
   keyCount: number;
   hasWillowKey: boolean;
   occupancy: number;
+  // Lifecycle + payment, for the status dot (DRAFT|SUBMITTED|APPROVED|PAID|CANCELLED|REFUNDED).
+  status: string;
+  isOnSite: boolean;
   roomNumbers: string[];
 }
 
@@ -143,6 +146,9 @@ const PRINT_CSS = `
   gap: 0.08in;
 }
 .lbl-name {
+  /* min-width:0 lets a long last name shrink + ellipsis ("...") inside the flex
+     row instead of overflowing the cell or wrapping to a second line. */
+  min-width: 0;
   font-size: 12pt;
   font-weight: 700;
   line-height: 1.05;
@@ -161,6 +167,27 @@ const PRINT_CSS = `
 }
 .lbl-chip { display: flex; align-items: center; gap: 2px; line-height: 1; }
 .lbl-chip svg { flex: 0 0 auto; }
+
+/* Status dot — sits left of the key chip; payment/lifecycle at a glance.
+   black ✕ = cancelled/refunded · red = on-site · yellow = pending · green = approved/paid. */
+.lbl-dot {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 0.5pt solid rgba(15, 23, 42, 0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.lbl-dot svg { display: block; color: #fff; }
+.lbl-dot-onsite { background: #dc2626; border-color: #b91c1c; }
+.lbl-dot-pending { background: #eab308; border-color: #ca8a04; }
+.lbl-dot-settled { background: #16a34a; border-color: #15803d; }
+.lbl-dot-cancel { background: #111827; border-color: #111827; }
 
 /* Bottom row: church. */
 .lbl-church {
@@ -458,6 +485,67 @@ function CodeText({ code }: { code: string }) {
   );
 }
 
+/** A single uppercase letter rendered as SVG text so it is geometrically centered
+ *  in the 16px dot. Flex-centered HTML text sits optically high because of the
+ *  font baseline; here `dominant-baseline:central` handles vertical centering and
+ *  `text-anchor:middle` handles horizontal. text-anchor centers the glyph's
+ *  ADVANCE box, but letters like "P" read left-heavy, so x is nudged per glyph to
+ *  center the visible ink (values measured against a 10× center crosshair). */
+function DotLetter({ char }: { char: string }) {
+  const x = char === "P" ? 8.7 : char === "S" ? 8.2 : 8;
+  return (
+    <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
+      <text
+        x={x}
+        y={8}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize="11"
+        fontWeight="800"
+        fontFamily='ui-sans-serif, system-ui, "Apple SD Gothic Neo", sans-serif'
+        fill="#fff"
+      >
+        {char}
+      </text>
+    </svg>
+  );
+}
+
+/** Colored status dot rendered left of the key count, each with a letter code.
+ *  Precedence: cancelled/refunded (black ✕) → on-site (red O) →
+ *  approved/paid (green P) → payment pending, non on-site (yellow S). */
+function StatusDot({ rec }: { rec: LabelRecord }) {
+  if (rec.status === "CANCELLED" || rec.status === "REFUNDED") {
+    return (
+      <span className="lbl-dot lbl-dot-cancel" title="Cancelled / Refunded">
+        <DotLetter char="X" />
+      </span>
+    );
+  }
+  if (rec.isOnSite) {
+    return (
+      <span className="lbl-dot lbl-dot-onsite" title="On-site payment">
+        <DotLetter char="O" />
+      </span>
+    );
+  }
+  if (rec.status === "APPROVED" || rec.status === "PAID") {
+    return (
+      <span className="lbl-dot lbl-dot-settled" title="Approved / Paid">
+        <DotLetter char="P" />
+      </span>
+    );
+  }
+  if (rec.status === "SUBMITTED") {
+    return (
+      <span className="lbl-dot lbl-dot-pending" title="Payment pending">
+        <DotLetter char="S" />
+      </span>
+    );
+  }
+  return null;
+}
+
 function LabelBadge({ rec }: { rec: LabelRecord }) {
   // Keys: numeric for normal lodging, "W" for Willow-only, "2+W" when both.
   const keyText = rec.hasWillowKey
@@ -480,6 +568,7 @@ function LabelBadge({ rec }: { rec: LabelRecord }) {
       <div className="lbl-mid">
         <span className="lbl-name">{rec.lastName}</span>
         <span className="lbl-meta">
+          <StatusDot rec={rec} />
           <span className="lbl-chip" title="Keys">
             <Key size={11} /> {keyText}
           </span>
