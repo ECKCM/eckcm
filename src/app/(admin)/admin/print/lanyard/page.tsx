@@ -108,8 +108,15 @@ export default function PrintLanyardPage() {
     ["--cal-y" as string]: `${offsetY}mm`,
   } as React.CSSProperties;
 
+  // Only attach the calibration transform when it differs from the default —
+  // a transformed sheet zooms and breaks pagination when printing from Safari.
+  const isCalibrated = scale !== 100 || offsetX !== 0 || offsetY !== 0;
+
   return (
-    <div className="lanyard-root flex flex-col" style={rootStyle}>
+    <div
+      className={`lanyard-root flex flex-col${isCalibrated ? " lanyard-calibrated" : ""}`}
+      style={rootStyle}
+    >
       <style>{PRINT_CSS}</style>
 
       {/* Header */}

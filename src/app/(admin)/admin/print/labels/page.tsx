@@ -70,10 +70,17 @@ const PRINT_CSS = `
   column-gap: 0.125in;
   row-gap: 0;
   box-shadow: 0 2px 12px rgba(0,0,0,0.35);
-  transform: scale(var(--cal-scale)) translate(var(--cal-x), var(--cal-y));
-  transform-origin: top left;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+}
+
+/* Calibration transform is applied ONLY when the user actually nudges scale/offset.
+   Safari renders a transformed element at screen resolution when printing and
+   breaks pagination (content zooms and spills across many pages), so at the
+   default 100%/0/0 we must leave the sheet untransformed. */
+.labels-calibrated .labels-sheet {
+  transform: scale(var(--cal-scale)) translate(var(--cal-x), var(--cal-y));
+  transform-origin: top left;
 }
 
 /* One 8160 cell. */
@@ -278,8 +285,15 @@ export default function PrintLabelsPage() {
     ["--cal-y" as string]: `${offsetY}mm`,
   } as React.CSSProperties;
 
+  // Only attach the calibration transform when it differs from the default —
+  // a transformed sheet zooms and breaks pagination when printing from Safari.
+  const isCalibrated = scale !== 100 || offsetX !== 0 || offsetY !== 0;
+
   return (
-    <div className="labels-root flex flex-col" style={rootStyle}>
+    <div
+      className={`labels-root flex flex-col${isCalibrated ? " labels-calibrated" : ""}`}
+      style={rootStyle}
+    >
       <style>{PRINT_CSS}</style>
 
       {/* Header */}

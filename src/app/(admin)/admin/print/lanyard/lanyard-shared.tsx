@@ -71,6 +71,12 @@ export const PRINT_CSS = `
   grid-auto-rows: 2.25in;
   gap: 0;
   box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+}
+
+/* Calibration transform applied ONLY when scale/offset are nudged off default.
+   A transformed sheet zooms and breaks pagination when printing from Safari, so
+   the untouched 100%/0/0 case must stay untransformed. */
+.lanyard-calibrated .lanyard-sheet {
   transform: scale(var(--cal-scale)) translate(var(--cal-x), var(--cal-y));
   transform-origin: top left;
 }
