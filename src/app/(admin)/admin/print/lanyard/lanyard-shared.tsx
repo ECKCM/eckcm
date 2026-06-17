@@ -30,6 +30,7 @@ export interface Badge {
   confirmationCode: string | null;
   participantCode: string | null;
   qrValue: string | null;
+  mealCategory: "adult" | "youth" | "free" | null;
 }
 
 export const STATUS_OPTIONS = ["PAID", "APPROVED", "SUBMITTED", "ALL"];
@@ -236,7 +237,13 @@ export function LanyardBadge({ badge }: { badge: Badge }) {
             {badge.title.name}
           </div>
         )}
-        <div className="lan-v lan-name">{displayName}</div>
+        <div
+          className="lan-v lan-name"
+          // Youth meal tier → green name (quick visual cue for meal-line staff).
+          style={badge.mealCategory === "youth" ? { color: "#16a34a" } : undefined}
+        >
+          {displayName}
+        </div>
       </div>
 
       {/* Top section (worn) — event header, far right. */}
