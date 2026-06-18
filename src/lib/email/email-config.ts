@@ -28,7 +28,9 @@ export async function getEmailConfig(): Promise<EmailConfig> {
       .single();
 
     const fromName = data?.email_from_name || process.env.EMAIL_FROM_NAME || "ECKCM";
-    const fromAddress = data?.email_from_address || "noreply@my.eckcm.com";
+    // Default MUST be on a Resend-verified domain. eckcm.com is verified;
+    // my.eckcm.com is NOT — using it silently breaks all sending.
+    const fromAddress = data?.email_from_address || "noreply@eckcm.com";
 
     cachedConfig = {
       fromName,
@@ -41,11 +43,12 @@ export async function getEmailConfig(): Promise<EmailConfig> {
     cacheTime = now;
     return cachedConfig;
   } catch {
-    // Fallback to env var
-    const fallback = process.env.EMAIL_FROM || "ECKCM <noreply@my.eckcm.com>";
+    // Fallback to env var. Default from MUST be on the Resend-verified
+    // domain (eckcm.com), never the unverified my.eckcm.com.
+    const fallback = process.env.EMAIL_FROM || "ECKCM <noreply@eckcm.com>";
     return {
       fromName: "ECKCM",
-      fromAddress: "noreply@my.eckcm.com",
+      fromAddress: "noreply@eckcm.com",
       from: fallback,
       zelleEmail: "",
       zelleAccountHolder: "",
