@@ -9,7 +9,6 @@
  * Uses isomorphic-dompurify so the same call works in the Node runtime that
  * Next.js route handlers run on.
  */
-import DOMPurify from "isomorphic-dompurify";
 import { convert as htmlToText } from "html-to-text";
 
 const ALLOWED_TAGS = [
@@ -64,7 +63,15 @@ const ALLOWED_ATTR = [
   "border",
 ];
 
-export function sanitizeEmailHtml(rawHtml: string): string {
+export async function sanitizeEmailHtml(rawHtml: string): Promise<string> {
+  // Import isomorphic-dompurify lazily, INSIDE the function, instead of at the
+  // module top level. It pulls in jsdom, whose dynamic requires fail to resolve
+  // at module-load time in the bundled serverless runtime — that throw happened
+  // before the route handler even ran, surfacing as a bare Next.js 500 HTML
+  // page for every request to any route that imported this module (announcement,
+  // templates). Deferring the import keeps the failure (if any) inside the
+  // request, where it can be caught and reported.
+  const { default: DOMPurify } = await import("isomorphic-dompurify");
   return DOMPurify.sanitize(rawHtml, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,

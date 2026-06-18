@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
-  const cleanBody = sanitizeEmailHtml(body);
+  const cleanBody = await sanitizeEmailHtml(body);
   if (!cleanBody.trim()) {
     return NextResponse.json(
       { error: "Body is empty after sanitization" },
