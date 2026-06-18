@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { name, subject, body_html, department_ids } = parsed.data;
-  const cleanHtml = await sanitizeEmailHtml(body_html);
+  const cleanHtml = sanitizeEmailHtml(body_html);
   if (!cleanHtml.trim()) {
     return NextResponse.json(
       { error: "Body is empty after sanitization" },
