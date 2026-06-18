@@ -1170,6 +1170,11 @@ interface DepartmentOption {
   short_code: string | null;
 }
 
+interface RegistrationGroupOption {
+  id: string;
+  name_en: string;
+}
+
 interface EmailTemplate {
   id: string;
   name: string;
@@ -1187,9 +1192,15 @@ interface RecipientPreview {
 function AnnouncementTab() {
   const [events, setEvents] = useState<EventOption[]>([]);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [registrationGroups, setRegistrationGroups] = useState<RegistrationGroupOption[]>([]);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [eventId, setEventId] = useState("");
+  // The announcement is filtered by EITHER departments OR registration groups,
+  // never both at once — `filterMode` picks which selector is active.
+  const [filterMode, setFilterMode] = useState<"departments" | "groups">("departments");
   const [selectedDeptIds, setSelectedDeptIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [testEmailsInput, setTestEmailsInput] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
@@ -1233,6 +1244,15 @@ function AnnouncementTab() {
         if (data) setDepartments(data);
       });
 
+    supabase
+      .from("eckcm_registration_groups")
+      .select("id, name_en")
+      .eq("is_active", true)
+      .order("sort_order")
+      .then(({ data }) => {
+        if (data) setRegistrationGroups(data);
+      });
+
     // Pull the reply-to address so the live preview footer matches what
     // the server will inject when the email is actually sent.
     fetch("/api/admin/email/config")
@@ -1270,8 +1290,11 @@ function AnnouncementTab() {
     setPreviewLoading(true);
     setPreviewError(null);
     const params = new URLSearchParams({ eventId });
-    if (selectedDeptIds.length > 0) {
+    if (filterMode === "departments" && selectedDeptIds.length > 0) {
       params.set("departmentIds", selectedDeptIds.join(","));
+    }
+    if (filterMode === "groups" && selectedGroupIds.length > 0) {
+      params.set("registrationGroupIds", selectedGroupIds.join(","));
     }
     const handle = setTimeout(() => {
       fetch(`/api/admin/email/recipients?${params}`)
@@ -1296,7 +1319,7 @@ function AnnouncementTab() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [eventId, selectedDeptIds]);
+  }, [eventId, filterMode, selectedDeptIds, selectedGroupIds]);
 
   // ── Template helpers ───────────────────────────────────────────────────
   const activeTemplate = useMemo(
@@ -1312,6 +1335,9 @@ function AnnouncementTab() {
     setSubject(t.subject);
     setBody(t.body_html);
     setSelectedDeptIds(t.department_ids ?? []);
+    // Templates only persist a department filter, so surface it by switching
+    // back to department mode when a saved filter is loaded.
+    if ((t.department_ids ?? []).length > 0) setFilterMode("departments");
     toast.success(`Loaded template "${t.name}"`);
   }
 
@@ -1418,10 +1444,33 @@ function AnnouncementTab() {
     setDeleteTemplateId(null);
   }
 
+  // Parse the free-text test-recipient field into a clean address list.
+  // Accepts commas, semicolons, spaces, or newlines as separators.
+  const parsedTestEmails = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          testEmailsInput
+            .split(/[\s,;]+/)
+            .map((e) => e.trim().toLowerCase())
+            .filter(Boolean)
+        )
+      ),
+    [testEmailsInput]
+  );
+  const invalidTestEmails = useMemo(
+    () => parsedTestEmails.filter((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)),
+    [parsedTestEmails]
+  );
+
   // ── Send ───────────────────────────────────────────────────────────────
   async function handleSend(testOnly: boolean) {
     if (!eventId || !subject.trim() || !body.trim()) {
       toast.error("Please fill in event, subject, and body");
+      return;
+    }
+    if (testOnly && invalidTestEmails.length > 0) {
+      toast.error(`Invalid email${invalidTestEmails.length === 1 ? "" : "s"}: ${invalidTestEmails.join(", ")}`);
       return;
     }
     setSending(true);
@@ -1434,8 +1483,10 @@ function AnnouncementTab() {
           eventId,
           subject,
           body,
-          departmentIds: selectedDeptIds,
+          departmentIds: filterMode === "departments" ? selectedDeptIds : [],
+          registrationGroupIds: filterMode === "groups" ? selectedGroupIds : [],
           testOnly,
+          ...(testOnly ? { testEmails: parsedTestEmails } : {}),
         }),
       });
 
@@ -1464,7 +1515,12 @@ function AnnouncementTab() {
           `${data.error || `Send failed (HTTP ${res.status})`}${detail}`
         );
       } else if (testOnly) {
-        toast.success("Test email sent to your email");
+        const n = data.sentCount ?? 1;
+        toast.success(
+          parsedTestEmails.length > 0
+            ? `Test email sent to ${n} address${n === 1 ? "" : "es"}`
+            : "Test email sent to your email"
+        );
       } else {
         setResult(data as { sentCount: number; failCount: number; total: number });
         toast.success(`Sent to ${data.sentCount ?? 0} recipient(s)`);
@@ -1492,6 +1548,19 @@ function AnnouncementTab() {
     }
     return `${selectedDeptIds.length} departments selected`;
   }, [selectedDeptIds, departments]);
+
+  const selectedGroupLabel = useMemo(() => {
+    if (selectedGroupIds.length === 0) return "All registration groups";
+    if (selectedGroupIds.length === registrationGroups.length)
+      return `All registration groups (${registrationGroups.length})`;
+    if (selectedGroupIds.length <= 2) {
+      return registrationGroups
+        .filter((g) => selectedGroupIds.includes(g.id))
+        .map((g) => g.name_en)
+        .join(", ");
+    }
+    return `${selectedGroupIds.length} groups selected`;
+  }, [selectedGroupIds, registrationGroups]);
 
   return (
     <div className="space-y-6">
@@ -1596,20 +1665,63 @@ function AnnouncementTab() {
             </Select>
           </div>
 
-          {/* Department multi-select */}
+          {/* Filter by — departments OR registration groups */}
           <div className="space-y-1">
-            <Label>Departments</Label>
-            <DepartmentMultiSelect
-              departments={departments}
-              selected={selectedDeptIds}
-              onChange={setSelectedDeptIds}
-              triggerLabel={selectedDeptLabel}
-            />
-            <p className="text-xs text-muted-foreground">
-              Empty selection sends to <b>all</b> participants of the event.
-              Filtering matches each participant&rsquo;s <i>own</i> department.
-            </p>
+            <Label>Filter by</Label>
+            <Select
+              value={filterMode}
+              onValueChange={(v) => setFilterMode(v as "departments" | "groups")}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="departments">Departments</SelectItem>
+                <SelectItem value="groups">Registration Groups</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          {filterMode === "departments" ? (
+            <div className="space-y-1">
+              <Label>Departments</Label>
+              <OptionMultiSelect
+                options={departments.map((d) => ({
+                  id: d.id,
+                  label: d.short_code || d.name_en,
+                }))}
+                selected={selectedDeptIds}
+                onChange={setSelectedDeptIds}
+                triggerLabel={selectedDeptLabel}
+                emptyText="No departments"
+                noun="departments"
+              />
+              <p className="text-xs text-muted-foreground">
+                Empty selection sends to <b>all</b> participants of the event.
+                Filtering matches each participant&rsquo;s <i>own</i> department.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <Label>Registration Groups</Label>
+              <OptionMultiSelect
+                options={registrationGroups.map((g) => ({
+                  id: g.id,
+                  label: g.name_en,
+                }))}
+                selected={selectedGroupIds}
+                onChange={setSelectedGroupIds}
+                triggerLabel={selectedGroupLabel}
+                emptyText="No registration groups"
+                noun="groups"
+              />
+              <p className="text-xs text-muted-foreground">
+                Empty selection sends to <b>all</b> participants of the event.
+                Filtering matches each registration&rsquo;s group (the
+                classification under Settings &rsaquo; Groups).
+              </p>
+            </div>
+          )}
 
           {/* Recipient preview */}
           <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
@@ -1682,15 +1794,54 @@ function AnnouncementTab() {
             unsubscribeEmail={unsubscribeEmail}
           />
 
+          {/* Test recipients */}
+          <div className="space-y-1 border-t pt-4">
+            <Label>Test recipients (optional)</Label>
+            <Input
+              value={testEmailsInput}
+              onChange={(e) => setTestEmailsInput(e.target.value)}
+              placeholder="test1@gmail.com, test2@gmail.com"
+            />
+            <p className="text-xs text-muted-foreground">
+              {parsedTestEmails.length > 0 ? (
+                invalidTestEmails.length > 0 ? (
+                  <span className="text-red-600">
+                    Invalid: {invalidTestEmails.join(", ")}
+                  </span>
+                ) : (
+                  <>
+                    Test will send to{" "}
+                    <b>
+                      {parsedTestEmails.length} address
+                      {parsedTestEmails.length === 1 ? "" : "es"}
+                    </b>
+                    .
+                  </>
+                )
+              ) : (
+                <>
+                  Leave empty to send the test to your own email. Separate
+                  multiple addresses with commas. Max 10.
+                </>
+              )}
+            </p>
+          </div>
+
           {/* Send buttons */}
-          <div className="flex flex-wrap gap-2 border-t pt-4">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               onClick={() => handleSend(true)}
-              disabled={sending || !subject || !body}
+              disabled={
+                sending || !subject || !body || invalidTestEmails.length > 0
+              }
             >
               <Send className="mr-1 size-3" />
-              {sending ? "Sending…" : "Send test to me"}
+              {sending
+                ? "Sending…"
+                : parsedTestEmails.length > 0
+                  ? `Send test to ${parsedTestEmails.length} address${parsedTestEmails.length === 1 ? "" : "es"}`
+                  : "Send test to me"}
             </Button>
             <Button
               onClick={() => setConfirmOpen(true)}
@@ -1744,15 +1895,27 @@ function AnnouncementTab() {
               <b>Event:</b>{" "}
               {events.find((e) => e.id === eventId)?.name_en ?? ""}
             </p>
-            <p>
-              <b>Departments:</b>{" "}
-              {selectedDeptIds.length === 0
-                ? "All"
-                : departments
-                    .filter((d) => selectedDeptIds.includes(d.id))
-                    .map((d) => d.name_en)
-                    .join(", ")}
-            </p>
+            {filterMode === "departments" ? (
+              <p>
+                <b>Departments:</b>{" "}
+                {selectedDeptIds.length === 0
+                  ? "All"
+                  : departments
+                      .filter((d) => selectedDeptIds.includes(d.id))
+                      .map((d) => d.name_en)
+                      .join(", ")}
+              </p>
+            ) : (
+              <p>
+                <b>Registration Groups:</b>{" "}
+                {selectedGroupIds.length === 0
+                  ? "All"
+                  : registrationGroups
+                      .filter((g) => selectedGroupIds.includes(g.id))
+                      .map((g) => g.name_en)
+                      .join(", ")}
+              </p>
+            )}
             <p>
               <b>Subject:</b> {subject}
             </p>
@@ -1905,24 +2068,33 @@ function AnnouncementLivePreview({
   );
 }
 
-// ─── Department multi-select ────────────────────────────────────────────────
+// ─── Generic option multi-select ─────────────────────────────────────────────
 
-interface DepartmentMultiSelectProps {
-  departments: DepartmentOption[];
+interface MultiSelectOption {
+  id: string;
+  label: string;
+}
+
+interface OptionMultiSelectProps {
+  options: MultiSelectOption[];
   selected: string[];
   onChange: (ids: string[]) => void;
   triggerLabel: string;
+  emptyText: string;
+  /** Plural noun for the "N of M selected" counter, e.g. "departments". */
+  noun: string;
 }
 
-function DepartmentMultiSelect({
-  departments,
+function OptionMultiSelect({
+  options,
   selected,
   onChange,
   triggerLabel,
-}: DepartmentMultiSelectProps) {
+  emptyText,
+  noun,
+}: OptionMultiSelectProps) {
   const [open, setOpen] = useState(false);
-  const allSelected =
-    departments.length > 0 && selected.length === departments.length;
+  const allSelected = options.length > 0 && selected.length === options.length;
   const noneSelected = selected.length === 0;
 
   function toggle(id: string) {
@@ -1934,7 +2106,7 @@ function DepartmentMultiSelect({
   }
 
   function selectAll() {
-    onChange(departments.map((d) => d.id));
+    onChange(options.map((o) => o.id));
   }
   function clearAll() {
     onChange([]);
@@ -1959,7 +2131,7 @@ function DepartmentMultiSelect({
       >
         <div className="flex items-center justify-between border-b px-3 py-2 text-xs">
           <span className="text-muted-foreground">
-            {selected.length} of {departments.length} selected
+            {selected.length} of {options.length} {noun} selected
           </span>
           <div className="flex gap-2">
             <button
@@ -1982,36 +2154,23 @@ function DepartmentMultiSelect({
           </div>
         </div>
         <div className="max-h-[280px] overflow-y-auto py-1">
-          {departments.length === 0 ? (
+          {options.length === 0 ? (
             <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-              No departments
+              {emptyText}
             </div>
           ) : (
-            departments.map((d) => {
-              const checked = selected.includes(d.id);
+            options.map((o) => {
+              const checked = selected.includes(o.id);
               return (
                 <label
-                  key={d.id}
+                  key={o.id}
                   className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent"
                 >
                   <Checkbox
                     checked={checked}
-                    onCheckedChange={() => toggle(d.id)}
+                    onCheckedChange={() => toggle(o.id)}
                   />
-                  <span className="flex-1 truncate">
-                    {d.short_code ? (
-                      <span className="text-muted-foreground">
-                        {d.short_code}:{" "}
-                      </span>
-                    ) : null}
-                    {d.name_en}
-                    {d.name_ko ? (
-                      <span className="text-muted-foreground">
-                        {" "}
-                        ({d.name_ko})
-                      </span>
-                    ) : null}
-                  </span>
+                  <span className="flex-1 truncate">{o.label}</span>
                 </label>
               );
             })

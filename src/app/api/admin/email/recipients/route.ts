@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 const querySchema = z.object({
   eventId: z.string().uuid(),
   departmentIds: z.array(z.string().uuid()).default([]),
+  registrationGroupIds: z.array(z.string().uuid()).default([]),
 });
 
 /**
@@ -30,8 +31,13 @@ export async function GET(req: NextRequest) {
     .flatMap((v) => v.split(","))
     .map((v) => v.trim())
     .filter(Boolean);
+  const registrationGroupIds = url.searchParams
+    .getAll("registrationGroupIds")
+    .flatMap((v) => v.split(","))
+    .map((v) => v.trim())
+    .filter(Boolean);
 
-  const parsed = querySchema.safeParse({ eventId, departmentIds });
+  const parsed = querySchema.safeParse({ eventId, departmentIds, registrationGroupIds });
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid request", details: parsed.error.flatten().fieldErrors },
@@ -45,6 +51,7 @@ export async function GET(req: NextRequest) {
       admin,
       eventId: parsed.data.eventId,
       departmentIds: parsed.data.departmentIds,
+      registrationGroupIds: parsed.data.registrationGroupIds,
     });
 
     const sample = emails.slice(0, 5).map(obfuscateEmail);
