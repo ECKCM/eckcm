@@ -41,7 +41,7 @@ export async function PATCH(
   if (parsed.data.name !== undefined) patch.name = parsed.data.name;
   if (parsed.data.subject !== undefined) patch.subject = parsed.data.subject;
   if (parsed.data.body_html !== undefined) {
-    const cleanHtml = await sanitizeEmailHtml(parsed.data.body_html);
+    const cleanHtml = sanitizeEmailHtml(parsed.data.body_html);
     if (!cleanHtml.trim()) {
       return NextResponse.json(
         { error: "Body is empty after sanitization" },
