@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
 
     let testSent = 0;
     let testFailed = 0;
+    let lastError: string | null = null;
     for (const target of targets) {
       try {
         const { data: sendResult, error } = await resend.emails.send({
@@ -113,6 +114,13 @@ export async function POST(req: NextRequest) {
 
         if (error) {
           testFailed++;
+          lastError = error.message;
+          logger.error("[admin/email/announcement] Resend rejected test", {
+            error: error.message,
+            name: (error as { name?: string }).name,
+            from: emailConfig.from,
+            target,
+          });
           continue;
         }
 
@@ -129,6 +137,7 @@ export async function POST(req: NextRequest) {
         });
       } catch (error) {
         testFailed++;
+        lastError = error instanceof Error ? error.message : String(error);
         logger.error("[admin/email/announcement] Test send failed", {
           error: String(error),
           target,
@@ -137,7 +146,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (testSent === 0) {
-      return NextResponse.json({ error: "Failed to send test email" }, { status: 500 });
+      return NextResponse.json(
+        { error: `Failed to send test email${lastError ? `: ${lastError}` : ""}` },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
