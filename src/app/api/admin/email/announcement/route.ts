@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
 
   const { eventId, subject, body, departmentIds, registrationGroupIds, testOnly, testEmails } =
     parsed.data;
+
+  try {
   const admin = createAdminClient();
 
   const { data: event } = await admin
@@ -248,4 +250,15 @@ export async function POST(req: NextRequest) {
     failCount,
     total: recipientEmails.length,
   });
+  } catch (error) {
+    // Anything thrown before the inner handlers (e.g. getResendClient() when
+    // no API key is configured) would otherwise bubble up as a bare Next.js
+    // 500 HTML page with no clue. Surface the real reason instead.
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error("[admin/email/announcement] Unhandled failure", { error: message });
+    return NextResponse.json(
+      { error: `Announcement failed: ${message}` },
+      { status: 500 }
+    );
+  }
 }
