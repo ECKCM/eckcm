@@ -15,7 +15,11 @@ const schema = z.object({
   subject: z.string().trim().min(1).max(200),
   body: z.string().trim().min(1).max(50000),
   departmentIds: z.array(z.string().uuid()).max(50).optional().default([]),
+  registrationGroupIds: z.array(z.string().uuid()).max(50).optional().default([]),
   testOnly: z.boolean().optional().default(false),
+  // When testOnly, send to these addresses instead of the admin's own. Empty
+  // falls back to the logged-in admin's email.
+  testEmails: z.array(z.string().trim().email()).max(10).optional().default([]),
 });
 
 export async function POST(req: NextRequest) {
@@ -33,7 +37,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { eventId, subject, body, departmentIds, testOnly } = parsed.data;
+  const { eventId, subject, body, departmentIds, registrationGroupIds, testOnly, testEmails } =
+    parsed.data;
   const admin = createAdminClient();
 
   const { data: event } = await admin
@@ -76,42 +81,71 @@ export async function POST(req: NextRequest) {
   const resend = await getResendClient();
 
   if (testOnly) {
-    const adminEmail = auth.user.email;
-    if (!adminEmail) {
-      return NextResponse.json({ error: "No admin email" }, { status: 400 });
+    // Dedupe + lowercase the custom addresses; fall back to the admin's own
+    // email when none were supplied so "Send test to me" keeps working.
+    const customTargets = Array.from(
+      new Set(testEmails.map((e) => e.trim().toLowerCase()).filter(Boolean))
+    );
+    const targets =
+      customTargets.length > 0
+        ? customTargets
+        : auth.user.email
+          ? [auth.user.email.toLowerCase()]
+          : [];
+
+    if (targets.length === 0) {
+      return NextResponse.json({ error: "No test recipient address" }, { status: 400 });
     }
 
-    try {
-      const { data: sendResult, error } = await resend.emails.send({
-        from: emailConfig.from,
-        to: adminEmail,
-        ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
-        subject: subjectWithBrand,
-        html,
-        text,
-        headers,
-      });
+    let testSent = 0;
+    let testFailed = 0;
+    for (const target of targets) {
+      try {
+        const { data: sendResult, error } = await resend.emails.send({
+          from: emailConfig.from,
+          to: target,
+          ...(emailConfig.replyTo ? { replyTo: emailConfig.replyTo } : {}),
+          subject: subjectWithBrand,
+          html,
+          text,
+          headers,
+        });
 
-      if (error) {
-        return NextResponse.json({ error: "Failed to send test email" }, { status: 500 });
+        if (error) {
+          testFailed++;
+          continue;
+        }
+
+        testSent++;
+        await logEmail({
+          eventId,
+          toEmail: target,
+          fromEmail: emailConfig.from,
+          subject: subjectWithBrand,
+          template: "announcement",
+          status: "sent",
+          resendId: sendResult?.id,
+          sentBy: adminUserId,
+        });
+      } catch (error) {
+        testFailed++;
+        logger.error("[admin/email/announcement] Test send failed", {
+          error: String(error),
+          target,
+        });
       }
+    }
 
-      await logEmail({
-        eventId,
-        toEmail: adminEmail,
-        fromEmail: emailConfig.from,
-        subject: subjectWithBrand,
-        template: "announcement",
-        status: "sent",
-        resendId: sendResult?.id,
-        sentBy: adminUserId,
-      });
-
-      return NextResponse.json({ success: true, sentCount: 1, testOnly: true });
-    } catch (error) {
-      logger.error("[admin/email/announcement] Test send failed", { error: String(error) });
+    if (testSent === 0) {
       return NextResponse.json({ error: "Failed to send test email" }, { status: 500 });
     }
+
+    return NextResponse.json({
+      success: true,
+      sentCount: testSent,
+      failCount: testFailed,
+      testOnly: true,
+    });
   }
 
   let recipientEmails: string[];
@@ -120,6 +154,7 @@ export async function POST(req: NextRequest) {
       admin,
       eventId,
       departmentIds,
+      registrationGroupIds,
     });
   } catch (error) {
     logger.error("[admin/email/announcement] Recipient resolve failed", { error: String(error) });
