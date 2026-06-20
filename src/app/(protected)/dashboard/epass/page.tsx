@@ -8,6 +8,7 @@ import {
   resolveParticipantCode,
   type MembershipCodeRow,
 } from "@/lib/services/participant-code.service";
+import { getVisibleRegistrationIds } from "@/lib/services/epass-visibility.service";
 import { EPassList } from "./epass-list";
 
 export default async function EPassPage() {
@@ -18,12 +19,33 @@ export default async function EPassPage() {
 
   if (!user) redirect("/login");
 
-  // Get E-Pass tokens for registrations created by this user
-  // Note: We query through registration.created_by_user_id rather than eckcm_user_people
-  // because registration creates separate person records not linked via eckcm_user_people
-  const { data: tokens } = await supabase
-    .from("eckcm_epass_tokens")
-    .select(`
+  const admin = createAdminClient();
+
+  // Which registrations' passes this user may see: the ones they created PLUS
+  // the other side of any transfer that touched them. A transferred participant
+  // (clone model) ends up in a different registration — usually another user's
+  // — so the original "created_by = me" filter silently dropped their pass.
+  // Widening to the transfer's counterpart registration restores it for both
+  // the original registrant and the current owner. Per-pass "not yours →
+  // dimmed" is unchanged (driven by person identity, below).
+  const visibleRegIds = await getVisibleRegistrationIds(admin, user.id);
+
+  // Get E-Pass tokens for every registration this user may see.
+  //
+  // Use the ADMIN client, not the user-scoped one: the RLS policy "Users read
+  // own epass" only exposes tokens whose registration.created_by_user_id =
+  // auth.uid(), which would re-hide exactly the transferred-in passes we just
+  // widened visibleRegIds to include. Access is instead enforced in the app by
+  // visibleRegIds (own registrations + transfer counterparts), which is
+  // strictly MORE precise than the created_by RLS rule. This is consistent with
+  // the membership/code/config reads below, which already use admin.
+  //
+  // We query by registration_id (not eckcm_user_people) because registration
+  // creates separate person records not linked via eckcm_user_people.
+  const { data: tokens } = visibleRegIds.length
+    ? await admin
+        .from("eckcm_epass_tokens")
+        .select(`
       id,
       token,
       is_active,
@@ -42,8 +64,9 @@ export default async function EPassPage() {
         eckcm_events!inner(name_en, name_ko, year)
       )
     `)
-    .eq("eckcm_registrations.created_by_user_id", user.id)
-    .order("created_at", { ascending: false });
+        .in("registration_id", visibleRegIds)
+        .order("created_at", { ascending: false })
+    : { data: null };
 
   if (!tokens || tokens.length === 0) {
     return (
@@ -98,8 +121,7 @@ export default async function EPassPage() {
     })
     .map((t: any) => t.person_id);
 
-  // Fetch participant_codes from group_memberships
-  const admin = createAdminClient();
+  // Fetch participant_codes from group_memberships (admin client created above).
   const personRegPairs = (tokens as any[]).map((t: any) => ({
     person_id: t.person_id,
     registration_id: t.registration_id,

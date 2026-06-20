@@ -13,6 +13,8 @@ import {
   Camera,
   Keyboard,
   Antenna,
+  Flashlight,
+  FlashlightOff,
 } from "lucide-react";
 import { CameraErrorFallback } from "@/components/checkin/camera-error-fallback";
 import { ManualIdInput } from "@/components/checkin/manual-id-input";
@@ -21,12 +23,21 @@ import { InvalidQrOverlay } from "@/components/checkin/invalid-qr-overlay";
 import { useCameraPermission } from "@/lib/checkin/use-camera-permission";
 import {
   useCameraDevices,
+  type CameraDevice,
   type CameraFacing,
 } from "@/lib/checkin/use-camera-devices";
 import { useHidScanner } from "@/lib/checkin/use-hid-scanner";
 import { parseQRValue, type ParsedQR } from "@/lib/checkin/qr-parser";
 
 type InputMode = "camera" | "hardware";
+
+/** Device state needed to render <CameraSelect> outside the scanner viewport. */
+export interface CameraSelectController {
+  devices: CameraDevice[];
+  selectedDeviceId: string | null;
+  setSelectedDeviceId: (deviceId: string) => void;
+  refresh: () => void;
+}
 
 interface ScannerShellProps {
   /** Called when a recognized QR or manual code is parsed. */
@@ -53,6 +64,14 @@ interface ScannerShellProps {
   showManualInput?: boolean;
   /** Show the camera selector (only relevant in camera mode). */
   showCameraSelect?: boolean;
+  /**
+   * When provided, ScannerShell does NOT render the camera selector below the
+   * viewport. Instead it reports whether a selector should show plus the
+   * device controller, so the parent can render <CameraSelect> wherever it
+   * wants (e.g. lower in a phone layout). `controller` is null when the
+   * selector shouldn't show (hardware mode / permission not granted).
+   */
+  onCameraSelectChange?: (controller: CameraSelectController | null) => void;
   /** Show the Camera / Hardware mode toggle. */
   showInputModeToggle?: boolean;
   /** Used to namespace localStorage keys per surface (e.g. "kiosk"). */
@@ -88,6 +107,7 @@ export function ScannerShell({
   showManualInput = true,
   showCameraSelect = true,
   showInputModeToggle = true,
+  onCameraSelectChange,
   cameraStorageNamespace = "default",
   className,
 }: ScannerShellProps) {
@@ -106,6 +126,40 @@ export function ScannerShell({
   });
   const [invalidFlashId, setInvalidFlashId] = useState<number | null>(null);
   const lastScannedRef = useRef<string | null>(null);
+
+  // Torch/flash: implemented directly (the library's built-in torch button is
+  // disabled below) so we control its position — bottom-LEFT, opposite the
+  // bottom-right Pause button. We reach the live MediaStreamTrack through the
+  // <video> the Scanner renders inside the viewport.
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [torchOn, setTorchOn] = useState(false);
+
+  const getVideoTrack = useCallback((): MediaStreamTrack | null => {
+    const video = viewportRef.current?.querySelector("video");
+    const stream = (video?.srcObject ?? null) as MediaStream | null;
+    return stream?.getVideoTracks?.()[0] ?? null;
+  }, []);
+
+  const toggleTorch = useCallback(async () => {
+    const track = getVideoTrack();
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      // `torch` isn't in the standard MediaTrackConstraintSet type yet, but is
+      // supported on Android Chrome. Cast through unknown.
+      await track.applyConstraints({
+        advanced: [{ torch: next }],
+      } as unknown as MediaTrackConstraints);
+      setTorchOn(next);
+    } catch {
+      // Device/browser doesn't support torch (e.g. iOS Safari) — no-op.
+    }
+  }, [getVideoTrack, torchOn]);
+
+  // Torch turns off with the camera; reset our state so the icon matches.
+  useEffect(() => {
+    if (!scanning) setTorchOn(false);
+  }, [scanning]);
 
   // Restore input mode preference per surface.
   useEffect(() => {
@@ -183,6 +237,36 @@ export function ScannerShell({
     ? { deviceId: { exact: devices.selectedDeviceId } }
     : { facingMode: { ideal: defaultCameraFacing } };
 
+  // Whether the camera selector should be visible at all.
+  const cameraSelectVisible =
+    showCameraSelect && inputMode === "camera" && camera.status === "granted";
+
+  // When the parent wants to place the selector itself, hand it the device
+  // controller (or null when it shouldn't show). Kept in an effect so we never
+  // setState-in-render in the parent.
+  const { devices: deviceList, selectedDeviceId, setSelectedDeviceId } = devices;
+  const refreshDevices = devices.refresh;
+  useEffect(() => {
+    if (!onCameraSelectChange) return;
+    onCameraSelectChange(
+      cameraSelectVisible
+        ? {
+            devices: deviceList,
+            selectedDeviceId,
+            setSelectedDeviceId,
+            refresh: refreshDevices,
+          }
+        : null
+    );
+  }, [
+    onCameraSelectChange,
+    cameraSelectVisible,
+    deviceList,
+    selectedDeviceId,
+    setSelectedDeviceId,
+    refreshDevices,
+  ]);
+
   // Wake lock while the scanner is live (either mode).
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   useEffect(() => {
@@ -249,7 +333,10 @@ export function ScannerShell({
 
       <Card>
         <CardContent className="p-0 overflow-hidden relative">
-          <div className="aspect-square max-w-[400px] mx-auto relative">
+          <div
+            ref={viewportRef}
+            className="aspect-square max-w-[400px] mx-auto relative"
+          >
             {disabled ? (
               <div className="w-full h-full flex flex-col items-center justify-center bg-muted/50 px-6 text-center gap-2">
                 <Pause className="h-10 w-10 text-muted-foreground" />
@@ -289,16 +376,26 @@ export function ScannerShell({
                 constraints={constraints}
                 onScan={handleScan}
                 onError={(err) => {
-                  const msg = err instanceof Error ? err.name : "";
-                  if (msg === "NotAllowedError") {
+                  const name = err instanceof Error ? err.name : "";
+                  if (name === "NotAllowedError") {
                     camera.deny();
+                  } else if (
+                    name === "AbortError" ||
+                    name === "OverconstrainedError"
+                  ) {
+                    // Transient: fired when the stream restarts (e.g. switching
+                    // cameras remounts <Scanner> and aborts the old stream).
+                    // Not a real failure — keep scanning so the camera doesn't
+                    // die every time the device changes.
                   } else {
                     onScanningChange(false);
                   }
                 }}
                 allowMultiple={false}
                 scanDelay={500}
-                components={{ finder: true }}
+                // torch disabled — we render our own flash button (bottom-left)
+                // so we control its position vs the Pause button.
+                components={{ finder: true, torch: false }}
                 styles={{
                   container: { width: "100%", height: "100%" },
                   video: { objectFit: "cover" as const },
@@ -324,7 +421,29 @@ export function ScannerShell({
             )}
           </div>
 
-          {/* Pause/resume only meaningful for camera mode. */}
+          {/* Flash (torch) — bottom-LEFT. Only while the camera is live. */}
+          {!disabled &&
+            !processing &&
+            scanning &&
+            inputMode === "camera" &&
+            camera.status === "granted" && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="absolute bottom-3 left-3 gap-1"
+                onClick={toggleTorch}
+                aria-label={torchOn ? "Turn flash off" : "Turn flash on"}
+              >
+                {torchOn ? (
+                  <FlashlightOff className="h-4 w-4" />
+                ) : (
+                  <Flashlight className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+
+          {/* Pause/resume — bottom-RIGHT, opposite the flash button. */}
           {!disabled &&
             !processing &&
             inputMode === "camera" &&
@@ -350,7 +469,9 @@ export function ScannerShell({
         </CardContent>
       </Card>
 
-      {showCameraSelect && inputMode === "camera" && camera.status === "granted" && (
+      {/* When onCameraSelectChange is provided, the parent renders the selector
+          itself (e.g. lower in a phone layout) — so we don't place it inline. */}
+      {!onCameraSelectChange && cameraSelectVisible && (
         <CameraSelect
           devices={devices.devices}
           value={devices.selectedDeviceId}

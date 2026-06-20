@@ -32,7 +32,12 @@ export function CameraSelect({
   onRefresh,
   className,
 }: CameraSelectProps) {
-  if (devices.length === 0) {
+  // Some browsers (notably iOS Safari before camera permission settles) return
+  // devices with an empty deviceId. Radix's SelectItem forbids empty-string
+  // values, and an unselectable camera is useless anyway, so drop them.
+  const selectable = devices.filter((d) => d.deviceId !== "");
+
+  if (selectable.length === 0) {
     return null;
   }
 
@@ -44,7 +49,7 @@ export function CameraSelect({
           <SelectValue placeholder="Select camera" />
         </SelectTrigger>
         <SelectContent>
-          {devices.map((d) => {
+          {selectable.map((d) => {
             const facing = describeFacing(d.facing);
             return (
               <SelectItem key={d.deviceId} value={d.deviceId}>

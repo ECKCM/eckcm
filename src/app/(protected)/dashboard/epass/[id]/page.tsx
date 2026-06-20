@@ -6,6 +6,7 @@ import {
   hasMembershipInRegistration,
   resolveParticipantCode,
 } from "@/lib/services/participant-code.service";
+import { getVisibleRegistrationIds } from "@/lib/services/epass-visibility.service";
 import { EPassDetail } from "./epass-detail";
 
 export default async function EPassDetailPage({
@@ -21,8 +22,19 @@ export default async function EPassDetailPage({
 
   if (!user) redirect("/login");
 
-  // Get E-Pass token with person and registration info
-  const { data: token } = await supabase
+  const admin = createAdminClient();
+
+  // Get E-Pass token with person and registration info.
+  //
+  // Use the ADMIN client: the RLS policy "Users read own epass" only exposes a
+  // token when its registration.created_by_user_id = auth.uid(), so a
+  // transferred-in pass (which lives in another user's registration) would
+  // return null here and 404 even though the user is allowed to view it. Access
+  // is enforced below by visibleRegIds instead — own registrations plus the
+  // other side of any transfer that touched them — which is strictly more
+  // precise than the created_by RLS rule. Consistent with the membership/code
+  // reads further down, which already use admin.
+  const { data: token } = await admin
     .from("eckcm_epass_tokens")
     .select(`
       id,
@@ -47,13 +59,17 @@ export default async function EPassDetailPage({
 
   if (!token) notFound();
 
-  // Verify this user owns this E-Pass (via registration creator)
-  const reg = (token as any).eckcm_registrations;
-  if (reg?.created_by_user_id !== user.id) {
+  // Verify this user may see this E-Pass. Not just "did I create its
+  // registration" — a transferred participant lives in another registration
+  // (often another user's), so we also allow the other side of any transfer
+  // that touched a registration the user created. Matches the list view; the
+  // "not yours → dimmed/warned" treatment is layered on top by the list, while
+  // a direct-URL visit here still renders (it's a valid pass the user may view).
+  const visibleRegIds = await getVisibleRegistrationIds(admin, user.id);
+  if (!visibleRegIds.includes((token as any).registration_id)) {
     notFound();
   }
 
-  const admin = createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const t = token as any;
 

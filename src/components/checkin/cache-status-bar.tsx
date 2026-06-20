@@ -3,7 +3,14 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Wifi, WifiOff, Database, RefreshCw } from "lucide-react";
+import {
+  Wifi,
+  WifiOff,
+  Database,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import type { CacheStatus } from "@/lib/checkin/use-epass-cache";
 
 interface CacheStatusBarProps {
@@ -15,6 +22,12 @@ interface CacheStatusBarProps {
   onSyncPending?: () => void;
   syncing?: boolean;
   className?: string;
+  /**
+   * Phone-first surfaces (main check-in) collapse the cache details behind a
+   * toggle so only the essential connectivity + pending-sync signal shows.
+   * The full bar stays the default for desktop scanner stations.
+   */
+  collapsible?: boolean;
 }
 
 /**
@@ -38,8 +51,10 @@ export function CacheStatusBar({
   onSyncPending,
   syncing = false,
   className,
+  collapsible = false,
 }: CacheStatusBarProps) {
   const [isOnline, setIsOnline] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
@@ -53,6 +68,10 @@ export function CacheStatusBar({
     };
   }, []);
 
+  // Cache count + Resync are details; hide them on collapsible surfaces until
+  // the operator expands. Connectivity and pending-sync always stay visible.
+  const showDetails = !collapsible || expanded;
+
   return (
     <div className={`flex flex-wrap items-center gap-2 text-sm ${className ?? ""}`}>
       <Badge variant={isOnline ? "default" : "destructive"} className="gap-1">
@@ -60,27 +79,29 @@ export function CacheStatusBar({
         {isOnline ? "Online" : "Offline"}
       </Badge>
 
-      <Badge
-        variant={
-          status === "ready"
-            ? "secondary"
-            : status === "error"
-              ? "destructive"
-              : "outline"
-        }
-        className="gap-1"
-      >
-        <Database className="h-3 w-3" />
-        {status === "loading"
-          ? "Syncing cache…"
-          : status === "ready"
-            ? `Cache: ${count}`
-            : status === "error"
-              ? "Cache error"
-              : "No cache"}
-      </Badge>
+      {showDetails && (
+        <Badge
+          variant={
+            status === "ready"
+              ? "secondary"
+              : status === "error"
+                ? "destructive"
+                : "outline"
+          }
+          className="gap-1"
+        >
+          <Database className="h-3 w-3" />
+          {status === "loading"
+            ? "Syncing cache…"
+            : status === "ready"
+              ? `Cache: ${count}`
+              : status === "error"
+                ? "Cache error"
+                : "No cache"}
+        </Badge>
+      )}
 
-      {onResync && (
+      {showDetails && onResync && (
         <Button
           variant="ghost"
           size="sm"
@@ -108,6 +129,25 @@ export function CacheStatusBar({
           className="h-6 px-2 text-xs"
         >
           Sync now
+        </Button>
+      )}
+
+      {collapsible && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setExpanded((v) => !v)}
+          className="h-6 px-2 text-xs gap-1 ml-auto"
+        >
+          {expanded ? (
+            <>
+              <ChevronUp className="h-3 w-3" /> Less
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-3 w-3" /> Cache
+            </>
+          )}
         </Button>
       )}
     </div>

@@ -9,16 +9,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Beaker, Radio } from "lucide-react";
 import {
   ScanResultCard,
   type ScanResult,
 } from "@/components/checkin/scan-result-card";
 import { RecentCheckins } from "@/components/checkin/recent-checkins";
-import { ScannerShell } from "@/components/checkin/scanner-shell";
+import {
+  ScannerShell,
+  type CameraSelectController,
+} from "@/components/checkin/scanner-shell";
+import { CameraSelect } from "@/components/checkin/camera-select";
+import {
+  ParticipantSearch,
+  type SearchableParticipant,
+} from "@/components/checkin/participant-search";
 import { CacheStatusBar } from "@/components/checkin/cache-status-bar";
 import { feedback } from "@/lib/checkin/scanner-feedback";
 import { toVerifyBody, type ParsedQR } from "@/lib/checkin/qr-parser";
 import { useEpassCache } from "@/lib/checkin/use-epass-cache";
+import { useScanSession } from "@/lib/checkin/use-scan-session";
 import {
   addPendingCheckin,
   getPendingCheckins,
@@ -50,8 +62,22 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [resumeCountdown, setResumeCountdown] = useState<number | null>(null);
+  const [mode, setMode] = useState<"live" | "test">("live");
+  const [switchingMode, setSwitchingMode] = useState(false);
+  // Camera selector is hoisted out of the scanner so it can sit below search.
+  const [cameraSelect, setCameraSelect] =
+    useState<CameraSelectController | null>(null);
+  // Searchable roster for manual check-in by name / phone / email / reg code.
+  const [roster, setRoster] = useState<SearchableParticipant[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Test mode routes scans through a sandbox scan session (is_sandbox=true) so
+  // nothing lands in real attendance. Live mode submits with no session.
+  const sandbox = useScanSession({
+    storageKey: "checkin.scanSessionId.main-sandbox",
+  });
 
   // Offline cache: auto-loads when event changes, auto-refreshes when new
   // registrations come in via realtime, and is used for instant scan preview.
@@ -77,6 +103,9 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
           .map((l) => ({
             status: l.status,
             person: { name: l.personName, koreanName: l.koreanName },
+            registration: l.registrationStatus
+              ? { status: l.registrationStatus }
+              : undefined,
             confirmationCode: l.confirmationCode ?? undefined,
             errorMessage: l.errorMessage,
             checkinType: l.checkinType,
@@ -94,6 +123,38 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
   }, []);
+
+  // Switching events while in test mode would point scans at a sandbox session
+  // bound to the old event — drop back to live so the operator re-arms test
+  // explicitly for the new event.
+  useEffect(() => {
+    if (mode === "test") setMode("live");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEventId]);
+
+  // Load the searchable roster once per event for manual check-in search.
+  useEffect(() => {
+    if (!selectedEventId) {
+      setRoster([]);
+      return;
+    }
+    let cancelled = false;
+    setRosterLoading(true);
+    fetch(`/api/checkin/participants?eventId=${selectedEventId}`)
+      .then((r) => (r.ok ? r.json() : { participants: [] }))
+      .then((d) => {
+        if (!cancelled) setRoster(d.participants ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setRoster([]);
+      })
+      .finally(() => {
+        if (!cancelled) setRosterLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEventId]);
 
   const syncPendingCheckins = useCallback(async () => {
     setSyncing(true);
@@ -152,9 +213,11 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
         return prev - 1;
       });
     }, 1000);
+    // Resume the camera but keep the last result (and its Fast Track / On Site
+    // line banner) on screen. It stays until the NEXT scan replaces it — the
+    // operator never loses the line they need to route the current person.
     resumeTimerRef.current = setTimeout(() => {
       setScanning(true);
-      setScanResult(null);
     }, RESUME_DELAY_MS);
   }, []);
 
@@ -169,20 +232,27 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
           isOffline: true,
         };
       }
-      if (!cached.isActive) {
+      // Mirror the server's MAIN line-router rule: PAID/APPROVED → Fast Track,
+      // SUBMITTED → On Site, anything else → hard stop. An inactive pass only
+      // blocks paid registrations (SUBMITTED walk-ins are inactive by nature).
+      const status = cached.registrationStatus;
+      const isPaid = status === "PAID" || status === "APPROVED";
+      if (!isPaid && status !== "SUBMITTED") {
         return {
           status: "error",
           person: { name: cached.personName, koreanName: cached.koreanName },
-          errorMessage: "E-Pass is inactive",
+          registration: { status },
+          errorMessage: `Registration is ${status.toLowerCase()}`,
           timestamp: new Date(),
           isOffline: true,
         };
       }
-      if (cached.registrationStatus !== "PAID") {
+      if (isPaid && !cached.isActive) {
         return {
           status: "error",
           person: { name: cached.personName, koreanName: cached.koreanName },
-          errorMessage: "Registration is not paid",
+          registration: { status },
+          errorMessage: "E-Pass is inactive",
           timestamp: new Date(),
           isOffline: true,
         };
@@ -209,6 +279,7 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
           koreanName: cached.koreanName,
           participantCode: cached.participantCode,
         },
+        registration: { status: cached.registrationStatus },
         confirmationCode: cached.confirmationCode,
         checkinType: "MAIN",
         timestamp: new Date(),
@@ -236,6 +307,7 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
             koreanName: cached.koreanName,
             participantCode: cached.participantCode,
           },
+          registration: { status: cached.registrationStatus },
           confirmationCode: cached.confirmationCode,
           checkinType: "MAIN",
           timestamp: new Date(),
@@ -246,6 +318,10 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
 
       let result: ScanResult;
 
+      // Test mode goes through the sandbox scan session and never falls back to
+      // the offline pending queue (which would pollute real attendance on sync).
+      const testMode = mode === "test" && !!sandbox.session;
+
       if (isOnline) {
         try {
           const res = await fetch("/api/checkin/verify", {
@@ -254,6 +330,7 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
             body: JSON.stringify({
               ...toVerifyBody(parsed),
               checkinType: "MAIN",
+              ...(testMode ? { scanSessionId: sandbox.session!.id } : {}),
             }),
           });
           const data = await res.json();
@@ -284,8 +361,22 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
             };
           }
         } catch {
-          result = await handleOfflineScan(parsed);
+          result = testMode
+            ? {
+                status: "error",
+                errorMessage: "Test mode needs a connection",
+                timestamp: new Date(),
+                isSandbox: true,
+              }
+            : await handleOfflineScan(parsed);
         }
+      } else if (testMode) {
+        result = {
+          status: "error",
+          errorMessage: "Test mode needs a connection",
+          timestamp: new Date(),
+          isSandbox: true,
+        };
       } else {
         result = await handleOfflineScan(parsed);
       }
@@ -318,12 +409,13 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
         timestamp: result.timestamp.toISOString(),
         isOffline: result.isOffline ?? false,
         errorMessage: result.errorMessage,
+        registrationStatus: result.registration?.status ?? null,
       });
 
       setProcessing(false);
       startResumeCountdown();
     },
-    [isOnline, cache, handleOfflineScan, startResumeCountdown]
+    [isOnline, cache, handleOfflineScan, startResumeCountdown, mode, sandbox.session]
   );
 
   const handleScanningChange = useCallback((next: boolean) => {
@@ -334,11 +426,71 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
     if (next) setScanResult(null);
   }, []);
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
+  const handleModeChange = useCallback(
+    async (next: "live" | "test") => {
+      if (next === mode || switchingMode) return;
+      if (next === "test") {
+        if (!selectedEventId) return;
+        setSwitchingMode(true);
+        try {
+          // Reuse an existing sandbox session for this event; otherwise start
+          // a fresh one. A session from another event is replaced.
+          const needsNew =
+            !sandbox.session ||
+            sandbox.session.event_id !== selectedEventId ||
+            sandbox.status === "ENDED";
+          if (needsNew) {
+            const started = await sandbox.start({
+              eventId: selectedEventId,
+              kind: "OTHER",
+              label: "Main check-in · test",
+              isSandbox: true,
+            });
+            if (!started) return; // start failed — stay in live mode
+          } else if (sandbox.status === "PAUSED") {
+            await sandbox.resume();
+          }
+          setMode("test");
+        } finally {
+          setSwitchingMode(false);
+        }
+      } else {
+        // Leaving test: end the sandbox session so it doesn't linger.
+        setSwitchingMode(true);
+        try {
+          if (sandbox.session && sandbox.status !== "ENDED") {
+            await sandbox.end();
+          }
+          setMode("live");
+        } finally {
+          setSwitchingMode(false);
+        }
+      }
+    },
+    [mode, switchingMode, selectedEventId, sandbox]
+  );
+
+  // Manual check-in via the search dropdown — selecting a participant runs the
+  // exact same check-in flow as a camera scan. The code comes from the roster,
+  // so it's already a valid participant code.
+  const handleSearchSelect = useCallback(
+    (participantCode: string) => {
+      if (processing) return;
+      handleScan({ kind: "participantCode", participantCode });
+    },
+    [processing, handleScan]
+  );
+
+  const statusBar = (
+    /*
+      Compact status row: event label + connectivity + pending-sync. The cache
+      details (count, resync) stay hidden behind the toggle so this row never
+      eats vertical space the scanner needs on a phone.
+    */
+    <div className="flex flex-wrap items-center gap-2">
+      {events.length > 1 ? (
         <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-          <SelectTrigger className="w-full sm:w-[260px]">
+          <SelectTrigger className="h-8 w-auto min-w-[180px] text-sm">
             <SelectValue placeholder="Select event" />
           </SelectTrigger>
           <SelectContent>
@@ -349,7 +501,13 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      ) : (
+        events[0] && (
+          <span className="text-sm font-medium">
+            {events[0].name_en} ({events[0].year})
+          </span>
+        )
+      )}
 
       <CacheStatusBar
         status={cache.status}
@@ -358,10 +516,34 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
         pendingSyncCount={pendingSyncCount}
         onSyncPending={syncPendingCheckins}
         syncing={syncing}
+        collapsible
+        className="flex-1"
       />
+    </div>
+  );
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="space-y-4">
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/*
+        Phone-first: the camera sits at the very top, then the scan result
+        (with the Fast Track / On Site line banner), then the compact status
+        row, then recent check-ins — all stacked so everything fits one screen.
+        On desktop it splits into a two-column station layout.
+      */}
+      <div className="space-y-3">
+        {/*
+          Order is strictly: camera → Fast Track / On Site banner → manual
+          search → Test/Live switch → status. The camera owns the very top of
+          the phone screen; everything else stacks below it. In test mode the
+          scanner gets a purple ring so the operator can't miss it.
+        */}
+        <div
+          className={
+            mode === "test"
+              ? "rounded-lg ring-2 ring-purple-400 dark:ring-purple-600"
+              : undefined
+          }
+        >
           <ScannerShell
             onScan={handleScan}
             scanning={scanning}
@@ -370,19 +552,78 @@ export function MainCheckinClient({ events }: MainCheckinClientProps) {
             resumeCountdown={resumeCountdown}
             defaultCameraFacing="environment"
             cameraStorageNamespace="main"
+            // Phone-first: camera goes at the very top, so the Camera/QR Scanner
+            // mode toggle is hidden. Hardware-scanner stations use /kiosk.
+            showInputModeToggle={false}
+            // Manual input is hoisted out (below the line banner) so it sits
+            // right under the result, not at the bottom of the scanner block.
+            showManualInput={false}
+            // Camera selector is hoisted out too — rendered below search.
+            onCameraSelectChange={setCameraSelect}
           />
-          <ScanResultCard result={scanResult} />
+        </div>
+        <ScanResultCard result={scanResult} minimal />
+        <div className="pb-4">
+          <ParticipantSearch
+            participants={roster}
+            onSelect={handleSearchSelect}
+            disabled={processing}
+            loading={rosterLoading}
+          />
         </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Recent Check-ins</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RecentCheckins checkins={recentCheckins} />
-          </CardContent>
-        </Card>
+        {/*
+          Test / Live switch — above the camera selector. Test routes scans
+          through a sandbox session so nothing hits real attendance.
+        */}
+        <div className="flex items-center justify-between gap-2">
+          <Tabs
+            value={mode}
+            onValueChange={(v) => handleModeChange(v as "live" | "test")}
+          >
+            <TabsList className="h-8">
+              <TabsTrigger value="live" className="gap-1 text-xs px-2.5">
+                <Radio className="h-3.5 w-3.5" />
+                Live
+              </TabsTrigger>
+              <TabsTrigger value="test" className="gap-1 text-xs px-2.5">
+                <Beaker className="h-3.5 w-3.5" />
+                Test
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {mode === "test" && (
+            <Badge
+              variant="outline"
+              className="gap-1 text-xs border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-700 dark:bg-purple-950 dark:text-purple-300"
+            >
+              <Beaker className="h-3 w-3" />
+              {switchingMode ? "Starting…" : "Sandbox — not recorded"}
+            </Badge>
+          )}
+        </div>
+
+        {/* Camera selector — moved out of the scanner viewport to here. */}
+        {cameraSelect && (
+          <CameraSelect
+            devices={cameraSelect.devices}
+            value={cameraSelect.selectedDeviceId}
+            onChange={cameraSelect.setSelectedDeviceId}
+            onRefresh={cameraSelect.refresh}
+          />
+        )}
+
+        {statusBar}
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Recent Check-ins</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RecentCheckins checkins={recentCheckins} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
