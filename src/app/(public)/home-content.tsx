@@ -31,7 +31,7 @@ export function HomeContent() {
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-4 w-full">
           <Button asChild size="lg" variant="secondary" className="w-full shadow-xl">
-            <Link href="/dashboard/epass">{t("home.findEPass")}</Link>
+            <Link href="/find-epass">{t("home.findEPass")}</Link>
           </Button>
           <div className="flex w-full gap-4">
             <Button asChild size="lg" variant="secondary" className="flex-1 shadow-xl">

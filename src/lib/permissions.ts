@@ -12,6 +12,7 @@ const ROUTE_PERMISSIONS: [string, RouteRule][] = [
   // Participants & related views
   ["/admin/guardian-consents", "participant.read"],
   ["/admin/participants", "participant.read"],
+  ["/admin/epass", "participant.read"],
   ["/admin/inventory", "participant.read"],
   ["/admin/airport", "participant.read"],
 

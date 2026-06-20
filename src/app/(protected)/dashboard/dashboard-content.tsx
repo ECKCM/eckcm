@@ -255,7 +255,7 @@ export function DashboardContent({
           variant="outline"
           className="h-auto py-4 flex-col"
           disabled={!bookletUrl}
-          onClick={() => bookletUrl && window.open(bookletUrl, "_blank")}
+          onClick={() => router.push("/booklet")}
         >
           <BookOpen className="h-5 w-5" />
           <span className="text-lg">{t("dashboard.booklet")}</span>

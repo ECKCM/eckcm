@@ -83,19 +83,23 @@ export function useCameraDevices({
   // Pick a sensible default once devices are known.
   useEffect(() => {
     if (initializedRef.current) return;
-    if (devices.length === 0) return;
+    // Ignore devices with an empty deviceId — browsers report these before
+    // camera permission settles, and they can't be selected or constrained.
+    // Wait until a real device id arrives before locking in a default.
+    const real = devices.filter((d) => d.deviceId !== "");
+    if (real.length === 0) return;
 
     const stored =
       typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
-    const storedMatch = stored && devices.find((d) => d.deviceId === stored);
+    const storedMatch = stored && real.find((d) => d.deviceId === stored);
 
     if (storedMatch) {
       setSelectedDeviceIdState(storedMatch.deviceId);
     } else {
       const preferred =
-        devices.find((d) => d.facing === defaultFacing) ??
-        devices.find((d) => d.facing === "unknown") ??
-        devices[0];
+        real.find((d) => d.facing === defaultFacing) ??
+        real.find((d) => d.facing === "unknown") ??
+        real[0];
       setSelectedDeviceIdState(preferred.deviceId);
     }
     initializedRef.current = true;

@@ -57,6 +57,71 @@ export interface ScanResult {
 
 interface ScanResultCardProps {
   result: ScanResult | null;
+  /**
+   * Phone-first main check-in: show only the line banner, status, Legal Name,
+   * and Reg code. Hides Korean name, Participant ID, and the gender / meal /
+   * registration-status badges and counters to keep the card glanceable.
+   */
+  minimal?: boolean;
+}
+
+/**
+ * Pre-paid registrations (PAID / APPROVED) get the "Fast Track" line — they
+ * just walk through. Everyone else (typically SUBMITTED / on-site payers) goes
+ * to the "On Site" line for manual handling. Offline cache scans only ever pass
+ * PAID registrations, so a missing status is treated as Fast Track.
+ */
+export type CheckinLine = "fast_track" | "on_site";
+
+export function resolveCheckinLine(status?: string): CheckinLine {
+  if (!status) return "fast_track";
+  return status === "PAID" || status === "APPROVED" ? "fast_track" : "on_site";
+}
+
+const LINE_CONFIG: Record<
+  CheckinLine,
+  { label: string; cardClass: string; badgeClass: string; chipClass: string }
+> = {
+  fast_track: {
+    label: "Fast Track",
+    cardClass:
+      "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100",
+    badgeClass:
+      "border-emerald-400 bg-emerald-500 text-white dark:border-emerald-600 dark:bg-emerald-600",
+    chipClass:
+      "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  },
+  on_site: {
+    label: "On Site",
+    cardClass:
+      "bg-orange-100 text-orange-900 dark:bg-orange-900/40 dark:text-orange-100",
+    badgeClass:
+      "border-orange-400 bg-orange-500 text-white dark:border-orange-600 dark:bg-orange-600",
+    chipClass:
+      "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-700 dark:bg-orange-950 dark:text-orange-300",
+  },
+};
+
+/** Big, glanceable line banner so operators can route people instantly. */
+export function CheckinLineBanner({ line }: { line: CheckinLine }) {
+  const cfg = LINE_CONFIG[line];
+  return (
+    <div
+      className={`flex items-center justify-center rounded-md px-3 py-2 text-lg font-extrabold uppercase tracking-wide ${cfg.cardClass}`}
+    >
+      {cfg.label}
+    </div>
+  );
+}
+
+/** Compact line chip for dense lists (Recent Check-ins). */
+export function CheckinLineChip({ line }: { line: CheckinLine }) {
+  const cfg = LINE_CONFIG[line];
+  return (
+    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${cfg.chipClass}`}>
+      {cfg.label}
+    </Badge>
+  );
 }
 
 const MEAL_LABEL: Record<MealCategory, string> = {
@@ -118,7 +183,7 @@ function RegistrationStatusBadge({ status }: { status?: string }) {
   );
 }
 
-export function ScanResultCard({ result }: ScanResultCardProps) {
+export function ScanResultCard({ result, minimal = false }: ScanResultCardProps) {
   if (!result) {
     return (
       <Card className="border-dashed">
@@ -167,13 +232,33 @@ export function ScanResultCard({ result }: ScanResultCardProps) {
   const registration = result.registration;
   const confirmationCode = registration?.confirmationCode ?? result.confirmationCode;
   const participantCode = person?.participantCode;
-  const showInactive = person?.isEpassActive === false;
+
+  // Show the line banner for any successful main check-in (not errors, not
+  // dining scans). Pending/optimistic previews still show it so operators can
+  // route immediately without waiting for the server round-trip.
+  const showLine =
+    result.status !== "error" && result.checkinType !== "DINING";
+  const line = resolveCheckinLine(registration?.status);
+
+  // On Site (unpaid) passes are inactive by nature, so don't flag it — that's
+  // expected, not a problem. Only surface "E-Pass Inactive" for paid/Fast Track
+  // passes, where an inactive pass is a real anomaly worth flagging.
+  const showInactive = person?.isEpassActive === false && line !== "on_site";
 
   return (
     <Card className={config.bg}>
-      <CardContent className="flex items-start gap-4 py-5">
-        <div className="shrink-0 mt-1">{config.icon}</div>
-        <div className="flex-1 min-w-0 space-y-2">
+      <CardContent
+        className={
+          minimal
+            ? "px-3 py-3"
+            : "flex items-start gap-4 py-5"
+        }
+      >
+        {/* Minimal drops the big status icon so the line banner + name/reg
+            code can use the full width from the left edge. */}
+        {!minimal && <div className="shrink-0 mt-1">{config.icon}</div>}
+        <div className={minimal ? "min-w-0 space-y-2" : "flex-1 min-w-0 space-y-2"}>
+          {showLine && <CheckinLineBanner line={line} />}
           <div className="flex items-center gap-1.5 flex-wrap">
             {result.isPending ? (
               <Badge variant="outline" className="gap-1">
@@ -203,56 +288,82 @@ export function ScanResultCard({ result }: ScanResultCardProps) {
             )}
           </div>
 
-          {person && (
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground/70">
-                Legal Name
-              </p>
-              <p className="text-xl font-bold truncate">{person.name}</p>
-              {person.koreanName && (
-                <p className="text-base text-muted-foreground truncate">
-                  {person.koreanName}
-                </p>
-              )}
-            </div>
-          )}
-
-          {(confirmationCode || participantCode) && (
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {confirmationCode && (
+          {minimal ? (
+            // Phone-first: reg code first (bold) + name (regular) on one line,
+            // no labels.
+            (person || confirmationCode) && (
+              <div className="flex items-baseline gap-3">
+                {confirmationCode && (
+                  <p className="font-mono tracking-wider text-xl font-bold shrink-0">
+                    {confirmationCode}
+                  </p>
+                )}
+                {person && (
+                  <p className="text-xl font-normal truncate min-w-0">
+                    {person.name}
+                  </p>
+                )}
+              </div>
+            )
+          ) : (
+            <>
+              {person && (
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground/70">
-                    Reg ID
+                    Legal Name
                   </p>
-                  <p className="font-mono tracking-wider">{confirmationCode}</p>
+                  <p className="text-xl font-bold truncate">{person.name}</p>
+                  {person.koreanName && (
+                    <p className="text-base text-muted-foreground truncate">
+                      {person.koreanName}
+                    </p>
+                  )}
                 </div>
               )}
-              {participantCode && (
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground/70">
-                    Participant ID
-                  </p>
-                  <p className="font-mono tracking-wider">{participantCode}</p>
+
+              {(confirmationCode || participantCode) && (
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {confirmationCode && (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground/70">
+                        Reg ID
+                      </p>
+                      <p className="font-mono tracking-wider">
+                        {confirmationCode}
+                      </p>
+                    </div>
+                  )}
+                  {participantCode && (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground/70">
+                        Participant ID
+                      </p>
+                      <p className="font-mono tracking-wider">
+                        {participantCode}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
+            </>
           )}
 
-          {(registration?.status || person?.gender || person?.mealCategory) && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <RegistrationStatusBadge status={registration?.status} />
-              <GenderBadge gender={person?.gender} />
-              <MealCategoryBadge category={person?.mealCategory ?? null} />
-            </div>
-          )}
+          {!minimal &&
+            (registration?.status || person?.gender || person?.mealCategory) && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <RegistrationStatusBadge status={registration?.status} />
+                <GenderBadge gender={person?.gender} />
+                <MealCategoryBadge category={person?.mealCategory ?? null} />
+              </div>
+            )}
 
-          {result.mealType && (
+          {!minimal && result.mealType && (
             <p className="text-sm text-muted-foreground">
               {result.mealDate} &middot; {result.mealType}
             </p>
           )}
 
-          {result.checkedInAt && (
+          {!minimal && result.checkedInAt && (
             <p className="text-xs text-muted-foreground">
               In: {new Date(result.checkedInAt).toLocaleTimeString()}
               {result.checkedOutAt &&
@@ -260,15 +371,19 @@ export function ScanResultCard({ result }: ScanResultCardProps) {
             </p>
           )}
 
-          {typeof result.totalCount === "number" && result.status !== "error" && (
-            <div className="flex items-center gap-1.5 pt-1 border-t text-sm text-muted-foreground">
-              <User className="h-3.5 w-3.5" />
-              <span>
-                Total checked in:{" "}
-                <span className="font-semibold text-foreground">{result.totalCount}</span>
-              </span>
-            </div>
-          )}
+          {!minimal &&
+            typeof result.totalCount === "number" &&
+            result.status !== "error" && (
+              <div className="flex items-center gap-1.5 pt-1 border-t text-sm text-muted-foreground">
+                <User className="h-3.5 w-3.5" />
+                <span>
+                  Total checked in:{" "}
+                  <span className="font-semibold text-foreground">
+                    {result.totalCount}
+                  </span>
+                </span>
+              </div>
+            )}
         </div>
       </CardContent>
     </Card>

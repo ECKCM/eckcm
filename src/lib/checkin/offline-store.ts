@@ -36,6 +36,12 @@ export interface CheckinLogEntry {
   timestamp: string;
   isOffline: boolean;
   errorMessage?: string;
+  /**
+   * Registration status at scan time (PAID / APPROVED / SUBMITTED / ...).
+   * Drives the Fast Track vs On Site line chip in Recent Check-ins.
+   * Optional for backward-compat with logs written before this field existed.
+   */
+  registrationStatus?: string | null;
 }
 
 let dbInstance: IDBPDatabase | null = null;

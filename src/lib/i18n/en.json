@@ -44,6 +44,20 @@
     "donation": "Donation",
     "support": "Support"
   },
+  "findEpass": {
+    "title": "Find My E-Pass",
+    "description": "Enter your details to open your E-Pass.",
+    "nameHint": "Enter your name in English, exactly as you registered.",
+    "code": "Registration Code or Participant Code",
+    "codeHint": "Enter the Registration Code from your registration confirmation email, or the Participant Code shown on your E-Pass.",
+    "submit": "Find My E-Pass",
+    "searching": "Searching…",
+    "notFound": "No matching E-Pass found. Please double-check your name, date of birth, and code, then try again.",
+    "error": "Something went wrong. Please try again.",
+    "troublePrefix": "Having trouble finding your E-Pass?",
+    "supportLink": "Contact Support",
+    "backToHome": "Back to Home"
+  },
   "auth": {
     "email": "Email",
     "password": "Password",
@@ -135,6 +149,12 @@
     "contactSupportDesc": "For any changes or cancellations, please contact the ECKCM registration team.",
     "booklet": "Booklet",
     "viewBooklet": "View event booklet"
+  },
+  "booklet": {
+    "title": "Event Booklet",
+    "downloadPdf": "Download PDF",
+    "notReady": "The booklet is not available yet. Please check back soon.",
+    "backToHome": "Back to Home"
   },
   "registration": {
     "eventNotFound": "Event not found.",

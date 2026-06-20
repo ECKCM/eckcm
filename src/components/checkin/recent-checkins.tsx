@@ -2,7 +2,11 @@
 
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { ScanResult } from "./scan-result-card";
+import {
+  CheckinLineChip,
+  resolveCheckinLine,
+  type ScanResult,
+} from "./scan-result-card";
 
 interface RecentCheckinsProps {
   checkins: ScanResult[];
@@ -57,6 +61,11 @@ export function RecentCheckins({ checkins }: RecentCheckinsProps) {
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              {checkin.status !== "error" && checkin.checkinType !== "DINING" && (
+                <CheckinLineChip
+                  line={resolveCheckinLine(checkin.registration?.status)}
+                />
+              )}
               {checkin.isOffline && (
                 <Badge variant="outline" className="text-[10px] px-1 py-0">
                   Offline

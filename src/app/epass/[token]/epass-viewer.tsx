@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, BookOpen } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/context";
 
 interface EPassViewerProps {
@@ -50,6 +51,7 @@ function getMealCategory(birthDate: string, eventDate: string): string {
 
 export function EPassViewer({ epass, bookletUrl }: EPassViewerProps) {
   const { t } = useI18n();
+  const router = useRouter();
   const { person, registration } = epass;
   const { event } = registration;
   const meal = getMealCategory(person.birthDate, event.startDate);
@@ -165,10 +167,10 @@ export function EPassViewer({ epass, bookletUrl }: EPassViewerProps) {
             variant="outline"
             className="w-full gap-2"
             disabled={!bookletUrl}
-            onClick={() => bookletUrl && window.open(bookletUrl, "_blank")}
+            onClick={() => router.push("/booklet")}
           >
             <BookOpen className="size-4" />
-            Booklet
+            {t("dashboard.booklet")}
           </Button>
         </div>
       </Card>

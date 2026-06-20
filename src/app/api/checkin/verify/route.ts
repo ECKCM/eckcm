@@ -147,29 +147,42 @@ export async function POST(req: NextRequest) {
   }
 
   const p = resolution.participant;
+  const status = p.registration.status;
+  const isPaid = status === "PAID" || status === "APPROVED";
 
-  if (!p.isEpassActive) {
-    return NextResponse.json(
+  const reject = (error: string) =>
+    NextResponse.json(
       {
-        error: "E-Pass is inactive",
+        error,
         person: toPersonPayload(p),
         registration: toRegistrationPayload(p),
         event: toEventPayload(p),
       },
       { status: 403 }
     );
-  }
 
-  if (p.registration.status !== "PAID" && p.registration.status !== "APPROVED") {
-    return NextResponse.json(
-      {
-        error: "Registration is not paid",
-        person: toPersonPayload(p),
-        registration: toRegistrationPayload(p),
-        event: toEventPayload(p),
-      },
-      { status: 403 }
-    );
+  // MAIN check-in doubles as a line router for the front-of-house desk:
+  //   PAID / APPROVED → Fast Track line
+  //   SUBMITTED       → On Site line (unpaid walk-in — still a valid check-in)
+  //   anything else   → hard stop (CANCELLED / REFUNDED / DRAFT)
+  // Other check-in types (DINING, etc.) keep the strict paid + active rule.
+  if (checkinType === "MAIN") {
+    if (!isPaid && status !== "SUBMITTED") {
+      return reject(`Registration is ${status.toLowerCase()}`);
+    }
+    // An inactive E-Pass only blocks paid passes — that signals an intentional
+    // admin deactivation. Unpaid SUBMITTED walk-ins are inactive by nature
+    // (the pass activates on payment) and still route to On Site.
+    if (isPaid && !p.isEpassActive) {
+      return reject("E-Pass is inactive");
+    }
+  } else {
+    if (!p.isEpassActive) {
+      return reject("E-Pass is inactive");
+    }
+    if (!isPaid) {
+      return reject("Registration is not paid");
+    }
   }
 
   const personPayload = toPersonPayload(p);

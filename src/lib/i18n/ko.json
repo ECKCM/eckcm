@@ -44,6 +44,20 @@
     "donation": "기부",
     "support": "고객 지원"
   },
+  "findEpass": {
+    "title": "내 E-Pass 찾기",
+    "description": "정보를 입력하면 E-Pass가 열립니다.",
+    "nameHint": "등록할 때 입력한 영문 이름을 정확히 입력하세요.",
+    "code": "Registration Code 또는 Participant Code",
+    "codeHint": "등록 확인 이메일의 Registration Code 또는 E-Pass에 표시된 Participant Code를 입력하세요.",
+    "submit": "내 E-Pass 찾기",
+    "searching": "찾는 중…",
+    "notFound": "일치하는 E-Pass를 찾을 수 없습니다. 이름, 생년월일, 코드를 다시 확인하고 시도해 주세요.",
+    "error": "오류가 발생했습니다. 다시 시도해 주세요.",
+    "troublePrefix": "E-Pass를 찾는 데 문제가 있나요?",
+    "supportLink": "고객 지원 문의",
+    "backToHome": "홈으로 돌아가기"
+  },
   "auth": {
     "email": "이메일",
     "password": "비밀번호",
@@ -135,6 +149,12 @@
     "contactSupportDesc": "모든 변경사항이나 취소는 야영회 등록팀에게 문의해 주세요.",
     "booklet": "책자",
     "viewBooklet": "야영회 책자 보기"
+  },
+  "booklet": {
+    "title": "야영회 책자",
+    "downloadPdf": "PDF 다운로드",
+    "notReady": "책자가 아직 준비되지 않았습니다. 잠시 후 다시 확인해 주세요.",
+    "backToHome": "홈으로"
   },
   "registration": {
     "eventNotFound": "행사를 찾을 수 없습니다.",

@@ -63,3 +63,6 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Booklet conversion output (large; uploaded to storage, not committed)
+/booklet-out/
