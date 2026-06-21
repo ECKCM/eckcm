@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createHash } from "crypto";
 import { verifySignedCode } from "@/lib/services/epass.service";
+import { getHmacSecret } from "@/lib/services/app-config-cache";
 
 interface MembershipJoined {
   person_id: string;
@@ -88,12 +89,7 @@ export async function POST(req: NextRequest) {
   if (participantCode) {
     let resolvedCode = participantCode;
     if (participantCode.includes(".")) {
-      const { data: config } = await admin
-        .from("eckcm_app_config")
-        .select("epass_hmac_secret")
-        .eq("id", 1)
-        .single();
-      const secret = (config as unknown as { epass_hmac_secret: string | null } | null)?.epass_hmac_secret ?? null;
+      const secret = await getHmacSecret(admin);
       if (secret) {
         const { valid, participantCode: code } = verifySignedCode(participantCode, secret);
         if (!valid) {

@@ -14,11 +14,13 @@ export default async function CheckoutPage() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-2 border-b px-4 py-3">
+      {/* Header is desktop-only — on phones every pixel goes to the scanner
+          and scan result, so the title bar is hidden. */}
+      <div className="hidden sm:flex items-center gap-2 border-b px-4 py-3">
         <CheckinBackButton />
         <h1 className="text-lg font-semibold">Check-out</h1>
       </div>
-      <div className="p-6">
+      <div className="p-3 sm:p-6">
         <CheckoutClient events={events ?? []} />
       </div>
     </div>

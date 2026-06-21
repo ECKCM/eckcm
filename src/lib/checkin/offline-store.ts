@@ -13,6 +13,13 @@ interface EPassCacheEntry {
   eventId: string;
   eventName: string;
   eventYear: number;
+  /** Event start date (YYYY-MM-DD) — paired with birthDate to compute the
+   *  meal tier (General/Youth/Free) entirely offline. */
+  eventStartDate: string | null;
+  /** Participant birth date (YYYY-MM-DD). Used for offline meal-tier classification. */
+  birthDate: string | null;
+  /** "MALE" | "FEMALE" | null — shown on the result card. */
+  gender: string | null;
   isActive: boolean;
   registrationStatus: string;
 }

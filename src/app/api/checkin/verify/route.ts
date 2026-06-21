@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
+import { getHmacSecret } from "@/lib/services/app-config-cache";
 import {
   resolveParticipant,
   computeMealCategory,
@@ -118,15 +119,13 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  let hmacSecret: string | null = null;
-  if (participantCode && participantCode.includes(".")) {
-    const { data: config } = await admin
-      .from("eckcm_app_config")
-      .select("epass_hmac_secret")
-      .eq("id", 1)
-      .single();
-    hmacSecret = (config as unknown as { epass_hmac_secret: string | null } | null)?.epass_hmac_secret ?? null;
-  }
+  // HMAC secret is read out of `eckcm_app_config` — a single row that changes
+  // only when an admin rotates it. We cache it in-process via getHmacSecret()
+  // so warm Fluid Compute instances skip the round-trip on every scan.
+  const hmacSecret =
+    participantCode && participantCode.includes(".")
+      ? await getHmacSecret(admin)
+      : null;
 
   const resolution = await resolveParticipant(admin, {
     token,

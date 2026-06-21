@@ -78,25 +78,25 @@ type NavLinkDef = {
 };
 
 const navLinks: NavLinkDef[] = [
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3, exact: false, permission: "participant.read" },
   { href: "/admin/registrations", label: "Registrations", icon: FileText, exact: true, permission: "participant.read" },
-  { href: "/admin/participants", label: "Participants", icon: UserCheck, exact: false, permission: "participant.read" },
+  { href: "/admin/checkin", label: "Check-in", icon: ScanLine, exact: false, permission: "checkin.main" },
+  { href: "/admin/lodging/floorplan", label: "Floor Plan", icon: Map, exact: false, permission: "group.read" },
+  { href: "/admin/lodging/willow", label: "Willow Hall", icon: Trees, exact: false, permission: "group.read" },
   { href: "/admin/epass", label: "E-Pass Links", icon: QrCode, exact: false, permission: "participant.read" },
-  { href: "/admin/department-view", label: "Department View", icon: Building2, exact: false, permission: ["participant.read", "department.view"] },
   { href: "/admin/registrations/create", label: "Register for Others", icon: ClipboardPlus, exact: true, permission: "participant.update" },
+  { href: "/admin/manual-payments", label: "Zelle / Check", icon: DollarSign, exact: false, permission: ["settings.manage", "participant.update"] },
+  { href: "/admin/airport", label: "Airport", icon: Plane, exact: false, permission: "participant.read" },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3, exact: false, permission: "participant.read" },
+  { href: "/admin/participants", label: "Participants", icon: UserCheck, exact: false, permission: "participant.read" },
+  { href: "/admin/department-view", label: "Department View", icon: Building2, exact: false, permission: ["participant.read", "department.view"] },
   { href: "/admin/events", label: "Events", icon: Calendar, exact: false, permission: "event.manage" },
   { href: "/admin/room-groups", label: "Room Assignment", icon: BedDouble, exact: false, permission: "group.read" },
   { href: "/admin/church-groups", label: "Church Groups", icon: Church, exact: false, permission: "group.read" },
   { href: "/admin/lodging/upj-rooms", label: "UPJ Lodging", icon: Hotel, exact: false, permission: "group.read" },
-  { href: "/admin/lodging/willow", label: "Willow Hall", icon: Trees, exact: false, permission: "group.read" },
-  { href: "/admin/lodging/floorplan", label: "Floor Plan", icon: Map, exact: false, permission: "group.read" },
   { href: "/admin/invoices", label: "Invoices", icon: FileText, exact: false, permission: "invoice.read" },
   { href: "/admin/inventory", label: "Inventory", icon: Package, exact: false, permission: "participant.read" },
-  { href: "/admin/airport", label: "Airport", icon: Plane, exact: false, permission: "participant.read" },
-  { href: "/admin/checkin", label: "Check-in", icon: ScanLine, exact: false, permission: "checkin.main" },
   { href: "/admin/settings/links", label: "Links", icon: Link2, exact: false, permission: "links.manage" },
   { href: "/admin/guardian-consents", label: "Guardian Consents", icon: ShieldCheck, exact: false, permission: "participant.read" },
-  { href: "/admin/manual-payments", label: "Zelle / Check", icon: DollarSign, exact: false, permission: ["settings.manage", "participant.update"] },
   { href: "/admin/funding", label: "Funding Tracker", icon: HandCoins, exact: false, permission: "settings.manage" },
   { href: "/admin/donations", label: "Donations", icon: Heart, exact: false, permission: "settings.manage" },
   { href: "/admin/audit", label: "Audit Logs", icon: ScrollText, exact: false, permission: "audit.read" },
@@ -204,6 +204,64 @@ export function AdminSidebar({ events, permissions, roles }: AdminSidebarProps) 
             <SidebarMenuItem>
               <NavLink href="/dashboard" isActive={false} icon={Settings}>
                 Back to Dashboard
+              </NavLink>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+    );
+  }
+
+  // UPJ Staff (without any broader admin role) only see Meal Check-in,
+  // Scan Sessions, and a link back to the UPJ Staff dashboard.
+  const isUpjStaffOnly =
+    roles.includes("UPJ_STAFF") &&
+    !roles.includes("SUPER_ADMIN") &&
+    !roles.includes("EVENT_ADMIN") &&
+    !roles.includes("DEPARTMENT_ADMIN");
+
+  if (isUpjStaffOnly) {
+    return (
+      <Sidebar>
+        <SidebarHeader className="h-14 flex-row items-center justify-start border-b px-4 py-0">
+          <Link href="/upj-staff" className="flex items-center gap-2">
+            <span className="text-lg font-bold">UPJ Staff</span>
+          </Link>
+        </SidebarHeader>
+
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <NavLink
+                    href="/admin/checkin/kiosk"
+                    isActive={pathname.startsWith("/admin/checkin/kiosk")}
+                    icon={UtensilsCrossed}
+                  >
+                    Meal Kiosk
+                  </NavLink>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <NavLink
+                    href="/admin/checkin/scan-sessions"
+                    isActive={pathname.startsWith("/admin/checkin/scan-sessions")}
+                    icon={ScanLine}
+                  >
+                    Scan Sessions
+                  </NavLink>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+        <SidebarFooter className="border-t p-4">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <NavLink href="/upj-staff" isActive={false} icon={LayoutDashboard}>
+                Back to UPJ Dashboard
               </NavLink>
             </SidebarMenuItem>
           </SidebarMenu>

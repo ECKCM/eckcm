@@ -1,0 +1,21 @@
+-- UPJ Staff — single-purpose admin role.
+--
+-- A staff member with this role (and no broader admin role) is scoped, in
+-- middleware, to:
+--   • /upj-staff/**            (UPJ Staff dashboard)
+--   • /admin/checkin/meal      (Meal Check-in)
+--   • /admin/checkin/scan-sessions  (Scan Sessions)
+-- and bounced back to /upj-staff for anything else under /admin.
+--
+-- This mirrors the AIRPORT_SHUTTLE_DRIVER / DEPARTMENT_VIEWER_HANSAMO pattern:
+-- access is enforced by the hardcoded route scope in
+-- src/lib/supabase/middleware.ts, NOT by table-driven permissions — so this
+-- role intentionally grants no permission codes. UPJ staff get the public
+-- UPJ Lodging table via the existing /upj-lodging/{token} capability URL.
+--
+-- This file only adds the enum value. The role row is inserted in the
+-- follow-up file 20260620130100_seed-upj-staff-role.sql, which runs in its
+-- own transaction so the new enum value is committed first (Postgres forbids
+-- using a freshly-added enum value within the same txn).
+
+ALTER TYPE eckcm_staff_role ADD VALUE IF NOT EXISTS 'UPJ_STAFF';

@@ -27,6 +27,10 @@ interface EPassToken {
   registration_id: string;
   participant_code: string | null;
   qr_value: string | null;
+  // True when this pass belongs to one of the user's own SELF registrations
+  // (registration_type='self'). Together with "is this the user's own pass"
+  // it defines the "My registration" tab — see the split in EPassList.
+  is_my_self_registration: boolean;
   eckcm_people: {
     first_name_en: string;
     last_name_en: string;
@@ -322,13 +326,16 @@ export function EPassList({ tokens, myPersonIds }: { tokens: EPassToken[]; myPer
     }, 1000);
   }
 
-  const myTokens = tokens.filter(
-    (tk) => tk.eckcm_registrations.registration_type !== "others"
-  );
-  const othersTokens = tokens.filter(
-    (tk) => tk.eckcm_registrations.registration_type === "others"
-  );
-  const hasBothTabs = othersTokens.length > 0;
+  // "My registration" = the user's OWN e-pass (wherever it lives) PLUS everyone
+  // in the user's SELF registration(s). The user's own pass may NOT be in a self
+  // registration — e.g. they transferred themselves into an "others"-type
+  // registration — so it's a separate clause, not implied by the self check.
+  // Everything else (people the user registered under "others", or people
+  // followed in via a transfer) goes under the "others" tab.
+  const isMine = (tk: EPassToken) => isMyPass(tk) || tk.is_my_self_registration;
+  const myTokens = tokens.filter(isMine);
+  const othersTokens = tokens.filter((tk) => !isMine(tk));
+  const hasBothTabs = myTokens.length > 0 && othersTokens.length > 0;
 
   const cardListProps = { myPersonIds, isMyPass, getCardStyle, onCardClick: handleCardClick };
 

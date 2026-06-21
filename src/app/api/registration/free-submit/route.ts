@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 import { generateEPassToken } from "@/lib/services/epass.service";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 import { syncRegistration } from "@/lib/services/google-sheets.service";
+import { requireAdmin } from "@/lib/auth/admin";
 
 /**
  * Free ($0) registration submit.
@@ -70,6 +71,20 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Registration has a non-zero balance and requires payment" },
         { status: 409 }
+      );
+    }
+
+    // Admin-only registration gate. Block non-staff from finalizing a $0
+    // registration into SUBMITTED while the event is locked to staff.
+    const { data: eventRow } = await admin
+      .from("eckcm_events")
+      .select("admin_only_registration")
+      .eq("id", registration.event_id)
+      .single();
+    if (eventRow?.admin_only_registration && !(await requireAdmin())) {
+      return NextResponse.json(
+        { error: "Registration is currently restricted to staff" },
+        { status: 403 }
       );
     }
 

@@ -235,9 +235,12 @@ export function ScanResultCard({ result, minimal = false }: ScanResultCardProps)
 
   // Show the line banner for any successful main check-in (not errors, not
   // dining scans). Pending/optimistic previews still show it so operators can
-  // route immediately without waiting for the server round-trip.
+  // route immediately without waiting for the server round-trip. Check-out has
+  // no arrival lines, so it never shows the banner.
   const showLine =
-    result.status !== "error" && result.checkinType !== "DINING";
+    result.status !== "error" &&
+    result.checkinType !== "DINING" &&
+    result.checkinType !== "CHECKOUT";
   const line = resolveCheckinLine(registration?.status);
 
   // On Site (unpaid) passes are inactive by nature, so don't flag it — that's

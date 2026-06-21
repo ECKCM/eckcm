@@ -16,6 +16,7 @@ import { deleteDraftRegistration } from "@/lib/services/registration.service";
 import { recalculateInventorySafe } from "@/lib/services/inventory.service";
 import { loadFundingForGroup, toFundingDiscounts, recordFundingAllocations } from "@/lib/services/funding.service";
 import { syncRegistration } from "@/lib/services/google-sheets.service";
+import { requireAdmin } from "@/lib/auth/admin";
 
 async function cleanupFailedRegistration(
   admin: SupabaseClient,
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
     admin.from("eckcm_registration_group_fee_categories")
       .select("eckcm_fee_categories!inner(code, name_en, pricing_type, amount_cents, age_min, age_max, min_nights)")
       .eq("registration_group_id", registrationGroupId),
-    admin.from("eckcm_events").select("event_start_date, event_end_date, early_registration_start, early_registration_end").eq("id", eventId).single(),
+    admin.from("eckcm_events").select("event_start_date, event_end_date, early_registration_start, early_registration_end, admin_only_registration").eq("id", eventId).single(),
   ]);
 
   const appConfig = appConfigRes.data;
@@ -92,6 +93,15 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Registration group not found" },
       { status: 404 }
+    );
+  }
+
+  // 0b. Admin-only registration gate. When the event is locked to staff,
+  // refuse submissions from anyone who is not SUPER_ADMIN / EVENT_ADMIN.
+  if (event?.admin_only_registration && !(await requireAdmin())) {
+    return NextResponse.json(
+      { error: "Registration is currently restricted to staff" },
+      { status: 403 }
     );
   }
 

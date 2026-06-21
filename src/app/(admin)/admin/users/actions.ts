@@ -1,7 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireSuperAdmin } from "@/lib/auth/admin";
+import { requireSuperAdmin, invalidateStaffRolesCache } from "@/lib/auth/admin";
 
 export async function deleteUsers(
   userIds: string[]
@@ -25,6 +25,7 @@ export async function deleteUsers(
       errors.push(`${userId}: ${error.message}`);
     } else {
       deleted++;
+      invalidateStaffRolesCache(userId);
     }
   }
 
@@ -143,6 +144,10 @@ export async function assignStaffRole(
     event_id: eventId,
     new_data: { role: roleName, role_id: roleId },
   });
+
+  // Drop any cached SUPER_ADMIN/EVENT_ADMIN check for this user so the new
+  // role takes effect on their very next request, not after TTL.
+  invalidateStaffRolesCache(targetUserId);
 
   return {};
 }

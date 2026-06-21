@@ -12,6 +12,8 @@ import {
   RefreshCw,
   Loader2,
   Play,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import {
   realtimeCheckinToScanResult,
@@ -160,6 +162,19 @@ export function ScanSessionDetailClient({
                 <Square className="h-4 w-4 mr-1" /> End
               </Button>
             )}
+            {/* Export — Excel is the UPJ default, CSV is a fallback for
+                non-Excel tooling. The .xlsx ships with a Summary sheet of
+                tier totals so UPJ can glance the headcount without a pivot. */}
+            <Button asChild size="sm" variant="default">
+              <a href={`/api/scan-sessions/${session.id}/export?format=xlsx`}>
+                <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+              </a>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <a href={`/api/scan-sessions/${session.id}/export?format=csv`}>
+                <FileText className="h-4 w-4 mr-1" /> CSV
+              </a>
+            </Button>
             <Button
               size="sm"
               variant="ghost"

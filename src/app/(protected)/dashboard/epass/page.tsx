@@ -8,7 +8,11 @@ import {
   resolveParticipantCode,
   type MembershipCodeRow,
 } from "@/lib/services/participant-code.service";
-import { getVisibleRegistrationIds } from "@/lib/services/epass-visibility.service";
+import {
+  getEPassVisibility,
+  visibilityRegistrationIds,
+  isTokenVisible,
+} from "@/lib/services/epass-visibility.service";
 import { EPassList } from "./epass-list";
 
 export default async function EPassPage() {
@@ -21,28 +25,26 @@ export default async function EPassPage() {
 
   const admin = createAdminClient();
 
-  // Which registrations' passes this user may see: the ones they created PLUS
-  // the other side of any transfer that touched them. A transferred participant
-  // (clone model) ends up in a different registration — usually another user's
-  // — so the original "created_by = me" filter silently dropped their pass.
-  // Widening to the transfer's counterpart registration restores it for both
-  // the original registrant and the current owner. Per-pass "not yours →
-  // dimmed" is unchanged (driven by person identity, below).
-  const visibleRegIds = await getVisibleRegistrationIds(admin, user.id);
+  // What this user may see: every pass in registrations they created, PLUS the
+  // specific people their registrations transferred to/from (followed to the
+  // other registration). We follow the PERSON, not the whole counterpart
+  // registration, so unrelated people in that registration are NOT pulled in.
+  const visibility = await getEPassVisibility(admin, user.id);
+  const fetchRegIds = visibilityRegistrationIds(visibility);
 
-  // Get E-Pass tokens for every registration this user may see.
+  // Get E-Pass tokens for those registrations.
   //
   // Use the ADMIN client, not the user-scoped one: the RLS policy "Users read
   // own epass" only exposes tokens whose registration.created_by_user_id =
-  // auth.uid(), which would re-hide exactly the transferred-in passes we just
-  // widened visibleRegIds to include. Access is instead enforced in the app by
-  // visibleRegIds (own registrations + transfer counterparts), which is
-  // strictly MORE precise than the created_by RLS rule. This is consistent with
-  // the membership/code/config reads below, which already use admin.
+  // auth.uid(), which would re-hide exactly the transferred-in passes we want.
+  // Access is enforced in the app by `visibility` (own registrations + the
+  // specific transferred (person, registration) pairs), which is strictly more
+  // precise than the created_by RLS rule. Consistent with the membership/code/
+  // config reads below, which already use admin.
   //
   // We query by registration_id (not eckcm_user_people) because registration
   // creates separate person records not linked via eckcm_user_people.
-  const { data: tokens } = visibleRegIds.length
+  const { data: fetchedTokens } = fetchRegIds.length
     ? await admin
         .from("eckcm_epass_tokens")
         .select(`
@@ -64,9 +66,16 @@ export default async function EPassPage() {
         eckcm_events!inner(name_en, name_ko, year)
       )
     `)
-        .in("registration_id", visibleRegIds)
+        .in("registration_id", fetchRegIds)
         .order("created_at", { ascending: false })
     : { data: null };
+
+  // Trim strangers: a transfer-target registration may contain other people the
+  // user has nothing to do with. Keep only tokens whose (person, registration)
+  // is actually visible — own registration, or the exact transferred pair.
+  const tokens = (fetchedTokens ?? []).filter((t: any) =>
+    isTokenVisible(visibility, t.person_id, t.registration_id),
+  );
 
   if (!tokens || tokens.length === 0) {
     return (
@@ -211,6 +220,7 @@ export default async function EPassPage() {
   // Merge participant_code and qr_value into tokens. Every visible token has a
   // membership, so its code resolves from the batch query; self-heal covers the
   // rare NULL-code membership so the QR still renders.
+  const ownRegSet = new Set(visibility.ownRegistrationIds);
   const enriched = await Promise.all(
     visibleTokens.map(async (t: any) => {
       let code = codeMap.get(`${t.person_id}:${t.registration_id}`) ?? null;
@@ -221,6 +231,14 @@ export default async function EPassPage() {
         ...t,
         participant_code: code,
         qr_value: code && hmacSecret ? signParticipantCode(code, hmacSecret) : code,
+        // Tab routing: "My registration" holds the people in the user's own SELF
+        // registration(s). People the user registered under an "others"-type
+        // registration, or people followed in via a transfer, go under "others".
+        // (The user's OWN pass is added to "My" separately in EPassList, since it
+        // may sit in an others-type registration after a self-transfer.)
+        is_my_self_registration:
+          ownRegSet.has(t.registration_id) &&
+          t.eckcm_registrations?.registration_type === "self",
       };
     })
   );

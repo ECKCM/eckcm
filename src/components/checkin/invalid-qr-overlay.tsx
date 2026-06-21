@@ -9,6 +9,21 @@ interface InvalidQrOverlayProps {
   message?: string;
   /** Auto-hide duration in ms. Defaults to 1500. */
   durationMs?: number;
+  /**
+   * The exact raw text the scanner produced for the rejected scan. Surfaced
+   * so the operator can see *why* it was rejected (HID mangling, wrong code,
+   * stray characters, etc.) instead of staring at a generic red flash.
+   */
+  rawValue?: string | null;
+}
+
+/** Make every byte visible — spaces become "·", control bytes become hex. */
+function visualizeRaw(value: string): string {
+  return value
+    .replace(/\r/g, "␍")
+    .replace(/\n/g, "␊")
+    .replace(/\t/g, "␉")
+    .replace(/ /g, "·");
 }
 
 /**
@@ -19,6 +34,7 @@ export function InvalidQrOverlay({
   trigger,
   message = "Invalid QR code",
   durationMs = 1500,
+  rawValue,
 }: InvalidQrOverlayProps) {
   const [visible, setVisible] = useState(false);
 
@@ -40,7 +56,17 @@ export function InvalidQrOverlay({
     >
       <AlertOctagon className="h-32 w-32 mb-6 drop-shadow-lg" />
       <p className="text-4xl font-bold tracking-tight">{message}</p>
-      <p className="text-lg opacity-80 mt-2">Tap anywhere to dismiss</p>
+      {rawValue ? (
+        <div className="mt-6 max-w-[90vw] rounded-lg bg-black/35 px-4 py-3 text-center backdrop-blur-sm">
+          <p className="text-xs uppercase tracking-widest text-white/70">
+            Scanner saw ({rawValue.length} chars)
+          </p>
+          <p className="mt-1 break-all font-mono text-base text-white">
+            {visualizeRaw(rawValue)}
+          </p>
+        </div>
+      ) : null}
+      <p className="text-lg opacity-80 mt-4">Tap anywhere to dismiss</p>
     </div>
   );
 }
