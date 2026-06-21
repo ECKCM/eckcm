@@ -50,6 +50,7 @@ const ROUTE_PERMISSIONS: [string, RouteRule][] = [
 
   // Print
   ["/admin/print/registrations", "print.registration"],
+  ["/admin/print/receipts", "print.registration"],
   ["/admin/print/labels", "print.registration"],
   ["/admin/print/lanyard", "print.lanyard"],
   ["/admin/print/qr-cards", "print.qrcard"],
