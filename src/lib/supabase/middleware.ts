@@ -7,6 +7,45 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 const MAX_STAFF_SESSION_MS = 24 * 60 * 60 * 1000; // 1 day
 
 /**
+ * Fetch all active staff role names for a user. Returns [] for regular
+ * participants (no active assignment). Centralised so the various scope
+ * checks in this middleware don't drift apart.
+ */
+async function getStaffRoleNames(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  userId: string,
+): Promise<string[]> {
+  const { data } = await supabase
+    .from("eckcm_staff_assignments")
+    .select("eckcm_roles(name)")
+    .eq("user_id", userId)
+    .eq("is_active", true);
+  return (data ?? [])
+    .map((a) => (a.eckcm_roles as unknown as { name: string } | null)?.name)
+    .filter((name): name is string => Boolean(name));
+}
+
+/** True when the user has UPJ_STAFF and no broader admin role. */
+function isUpjStaffOnlyRole(roles: string[]): boolean {
+  return (
+    roles.includes("UPJ_STAFF") &&
+    !roles.includes("SUPER_ADMIN") &&
+    !roles.includes("EVENT_ADMIN") &&
+    !roles.includes("DEPARTMENT_ADMIN")
+  );
+}
+
+/** True when the user can view the /upj-staff dashboard. */
+function hasUpjDashboardAccess(roles: string[]): boolean {
+  return (
+    roles.includes("UPJ_STAFF") ||
+    roles.includes("SUPER_ADMIN") ||
+    roles.includes("EVENT_ADMIN")
+  );
+}
+
+/**
  * Whether this user's session should be force-expired.
  *
  * Anchored on `last_sign_in_at`, which is set at actual authentication and
@@ -121,14 +160,66 @@ export async function updateSession(request: NextRequest) {
     return response;
   }
 
-  // Protected routes: redirect to login if not authenticated
+  // Protected participant routes (/dashboard, /register). UPJ_STAFF-only users
+  // are external lodging partners with no participant profile or registration
+  // flow, so they're bounced to /upj-staff instead of seeing an empty profile.
   if (
-    !user &&
-    request.nextUrl.pathname.startsWith("/dashboard")
+    request.nextUrl.pathname.startsWith("/dashboard") ||
+    request.nextUrl.pathname.startsWith("/register")
   ) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    if (!user) {
+      if (request.nextUrl.pathname.startsWith("/dashboard")) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        return NextResponse.redirect(url);
+      }
+      // /register/** when signed out is handled by the protected layout
+      // (it kicks off the registration sign-in flow with the right next= param).
+    } else {
+      const roleNames = await getStaffRoleNames(supabase, user.id);
+      if (isUpjStaffOnlyRole(roleNames)) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/upj-staff";
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
+  // UPJ Staff section. /upj-staff/login is the public sign-in for UPJ staff;
+  // everything else under /upj-staff requires an active UPJ_STAFF assignment
+  // (or any broader admin role, so super-admins can preview the dashboard).
+  if (request.nextUrl.pathname.startsWith("/upj-staff")) {
+    const isLoginPage = request.nextUrl.pathname === "/upj-staff/login";
+
+    if (isLoginPage) {
+      // Already-signed-in UPJ users go straight to the dashboard.
+      if (user) {
+        const roleNames = await getStaffRoleNames(supabase, user.id);
+        if (hasUpjDashboardAccess(roleNames)) {
+          const url = request.nextUrl.clone();
+          url.pathname = "/upj-staff";
+          return NextResponse.redirect(url);
+        }
+      }
+      return supabaseResponse;
+    }
+
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/upj-staff/login";
+      return NextResponse.redirect(url);
+    }
+
+    const roleNames = await getStaffRoleNames(supabase, user.id);
+    if (!hasUpjDashboardAccess(roleNames)) {
+      // Signed in but not UPJ — bounce to the regular dashboard instead of
+      // leaving them on an empty page.
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+
+    return supabaseResponse;
   }
 
   // Admin routes: require authentication + active staff assignment
@@ -241,6 +332,18 @@ export async function updateSession(request: NextRequest) {
       !roles.includes("EVENT_ADMIN") &&
       !roles.includes("DEPARTMENT_ADMIN");
 
+    // UPJ Staff scope: if the user has UPJ_STAFF and no broader admin role,
+    // restrict them to /admin/checkin/meal and /admin/checkin/scan-sessions
+    // (the two admin pages reachable from the /upj-staff dashboard). Like the
+    // other narrow scopes, this bypasses the standard permission gate — those
+    // routes are normally gated on checkin.dining / checkin.main which UPJ
+    // staff intentionally don't have as table-driven permissions.
+    const isUpjStaffOnly =
+      roles.includes("UPJ_STAFF") &&
+      !roles.includes("SUPER_ADMIN") &&
+      !roles.includes("EVENT_ADMIN") &&
+      !roles.includes("DEPARTMENT_ADMIN");
+
     if (isAirportShuttleDriverOnly) {
       const isAirportRoute =
         pathname === "/admin/airport" ||
@@ -261,6 +364,18 @@ export async function updateSession(request: NextRequest) {
       if (!isAllowedRoute) {
         const url = request.nextUrl.clone();
         url.pathname = "/admin/department-view";
+        return NextResponse.redirect(url);
+      }
+    } else if (isUpjStaffOnly) {
+      const isAllowedRoute =
+        pathname === "/admin/checkin/kiosk" ||
+        pathname.startsWith("/admin/checkin/kiosk/") ||
+        pathname === "/admin/checkin/scan-sessions" ||
+        pathname.startsWith("/admin/checkin/scan-sessions/") ||
+        pathname.startsWith("/admin/unauthorized");
+      if (!isAllowedRoute) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/upj-staff";
         return NextResponse.redirect(url);
       }
     } else if (!pathname.startsWith("/admin/unauthorized")) {
@@ -296,14 +411,17 @@ export async function updateSession(request: NextRequest) {
     return newResponse;
   }
 
-  // Auth routes: redirect to dashboard if already authenticated
+  // Auth routes: redirect to the right home if already authenticated.
+  // UPJ_STAFF-only users go to /upj-staff (their dashboard), everyone else
+  // to /dashboard (participant profile).
   if (
     user &&
     (request.nextUrl.pathname === "/login" ||
       request.nextUrl.pathname === "/signup")
   ) {
+    const roleNames = await getStaffRoleNames(supabase, user.id);
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = isUpjStaffOnlyRole(roleNames) ? "/upj-staff" : "/dashboard";
     return NextResponse.redirect(url);
   }
 

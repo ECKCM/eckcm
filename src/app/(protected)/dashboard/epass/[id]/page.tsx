@@ -6,7 +6,10 @@ import {
   hasMembershipInRegistration,
   resolveParticipantCode,
 } from "@/lib/services/participant-code.service";
-import { getVisibleRegistrationIds } from "@/lib/services/epass-visibility.service";
+import {
+  getEPassVisibility,
+  isTokenVisible,
+} from "@/lib/services/epass-visibility.service";
 import { EPassDetail } from "./epass-detail";
 
 export default async function EPassDetailPage({
@@ -30,9 +33,10 @@ export default async function EPassDetailPage({
   // token when its registration.created_by_user_id = auth.uid(), so a
   // transferred-in pass (which lives in another user's registration) would
   // return null here and 404 even though the user is allowed to view it. Access
-  // is enforced below by visibleRegIds instead — own registrations plus the
-  // other side of any transfer that touched them — which is strictly more
-  // precise than the created_by RLS rule. Consistent with the membership/code
+  // is enforced below by the visibility check instead — own registrations plus
+  // the specific (person, registration) pairs reached via a transfer — which is
+  // strictly more precise than the created_by RLS rule. Consistent with the
+  // membership/code
   // reads further down, which already use admin.
   const { data: token } = await admin
     .from("eckcm_epass_tokens")
@@ -60,13 +64,19 @@ export default async function EPassDetailPage({
   if (!token) notFound();
 
   // Verify this user may see this E-Pass. Not just "did I create its
-  // registration" — a transferred participant lives in another registration
-  // (often another user's), so we also allow the other side of any transfer
-  // that touched a registration the user created. Matches the list view; the
-  // "not yours → dimmed/warned" treatment is layered on top by the list, while
-  // a direct-URL visit here still renders (it's a valid pass the user may view).
-  const visibleRegIds = await getVisibleRegistrationIds(admin, user.id);
-  if (!visibleRegIds.includes((token as any).registration_id)) {
+  // registration" — a participant they registered may have been transferred to
+  // another registration, so we also allow the exact (person, registration)
+  // pair reached via a transfer. We check the SPECIFIC pair (not just the
+  // registration) so a direct-URL visit can't reach an unrelated person who
+  // merely shares a transfer-target registration. Matches the list view.
+  const visibility = await getEPassVisibility(admin, user.id);
+  if (
+    !isTokenVisible(
+      visibility,
+      (token as any).person_id,
+      (token as any).registration_id,
+    )
+  ) {
     notFound();
   }
 

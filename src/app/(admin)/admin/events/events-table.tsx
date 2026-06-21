@@ -24,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Star, Trash2 } from "lucide-react";
+import { Plus, Star, Trash2, Lock, Unlock } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +51,7 @@ interface Event {
   location: string | null;
   is_active: boolean;
   is_default: boolean;
+  admin_only_registration: boolean;
 }
 
 const PAGE_SIZE = 7;
@@ -76,6 +77,7 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
 
   const [deleteTarget, setDeleteTarget] = useState<Event | null>(null);
   const [toggleTarget, setToggleTarget] = useState<Event | null>(null);
+  const [lockTarget, setLockTarget] = useState<Event | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -151,6 +153,36 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
     );
     toast.success(
       event.is_active ? "Event deactivated" : "Event activated"
+    );
+  };
+
+  const confirmToggleLock = async () => {
+    if (!lockTarget) return;
+    const event = lockTarget;
+    setLockTarget(null);
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("eckcm_events")
+      .update({ admin_only_registration: !event.admin_only_registration })
+      .eq("id", event.id);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setEvents(
+      events.map((e) =>
+        e.id === event.id
+          ? { ...e, admin_only_registration: !e.admin_only_registration }
+          : e
+      )
+    );
+    toast.success(
+      event.admin_only_registration
+        ? "Public registration re-opened"
+        : "Locked to staff only"
     );
   };
 
@@ -307,6 +339,7 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
             <SortableTableHead sortKey="location" sortConfig={sortConfig} onSort={requestSort}>Location</SortableTableHead>
             <SortableTableHead sortKey="is_default" sortConfig={sortConfig} onSort={requestSort}>Default</SortableTableHead>
             <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={requestSort}>Status</SortableTableHead>
+            <SortableTableHead sortKey="admin_only_registration" sortConfig={sortConfig} onSort={requestSort}>Public Reg</SortableTableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -314,7 +347,7 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
           {sorted.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={7}
+                colSpan={8}
                 className="text-center text-muted-foreground py-8"
               >
                 No events yet. Create your first event.
@@ -356,7 +389,41 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
                     {event.is_active ? "Active" : "Inactive"}
                   </Badge>
                 </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={event.admin_only_registration ? "destructive" : "secondary"}
+                    className="gap-1"
+                  >
+                    {event.admin_only_registration ? (
+                      <>
+                        <Lock className="size-3" />
+                        Staff Only
+                      </>
+                    ) : (
+                      <>
+                        <Unlock className="size-3" />
+                        Open
+                      </>
+                    )}
+                  </Badge>
+                </TableCell>
                 <TableCell className="text-right space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setLockTarget(event)}
+                    title={
+                      event.admin_only_registration
+                        ? "Re-open public registration"
+                        : "Lock registration to staff only"
+                    }
+                  >
+                    {event.admin_only_registration ? (
+                      <Unlock className="size-4" />
+                    ) : (
+                      <Lock className="size-4" />
+                    )}
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -422,6 +489,36 @@ export function EventsTable({ events: initial }: { events: Event[] }) {
                 : ""}
             >
               {toggleTarget?.is_active ? "Deactivate" : "Activate"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Lock to staff / Re-open public registration confirmation */}
+      <AlertDialog open={!!lockTarget} onOpenChange={(open) => { if (!open) setLockTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {lockTarget?.admin_only_registration
+                ? "Re-open public registration for"
+                : "Lock registration to staff only for"}{" "}
+              &ldquo;{lockTarget?.name_en}&rdquo;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {lockTarget?.admin_only_registration
+                ? "Anyone will be able to register for this event again. The event will remain Active."
+                : "Only SUPER_ADMIN and EVENT_ADMIN will be able to register. Everyone else will see a restricted-access message. The event stays Active so staff can dry-run the flow."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmToggleLock}
+              className={!lockTarget?.admin_only_registration
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : ""}
+            >
+              {lockTarget?.admin_only_registration ? "Re-open" : "Lock to Staff"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

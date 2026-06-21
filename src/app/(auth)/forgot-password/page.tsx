@@ -4,7 +4,6 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 import type { TurnstileInstance } from "@marsidev/react-turnstile";
 import { TurnstileWidget } from "@/components/shared/turnstile-widget";
-import { createClient } from "@/lib/supabase/client";
 import { sanitizeEmailInput } from "@/lib/utils/field-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,22 +33,34 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/callback?next=/reset-password`,
-      captchaToken,
-    });
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          captchaToken,
+          redirectPath: "/reset-password",
+        }),
+      });
 
-    if (error) {
-      setError(error.message);
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(data.error ?? "Failed to send reset email");
+        setCaptchaToken(undefined);
+        turnstileRef.current?.reset();
+        setLoading(false);
+        return;
+      }
+
+      setSent(true);
+    } catch {
+      setError("Network error. Please try again.");
       setCaptchaToken(undefined);
       turnstileRef.current?.reset();
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setSent(true);
-    setLoading(false);
   };
 
   if (sent) {

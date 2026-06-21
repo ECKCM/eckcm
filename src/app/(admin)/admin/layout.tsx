@@ -70,6 +70,21 @@ export default async function AdminLayout({
             padding: 0 !important;
           }
         }
+        /* Kiosk surfaces (e.g. /admin/checkin/kiosk) are designed to occupy
+           the whole screen for at-a-glance scanning. The client toggles
+           html.kiosk-mode on mount; we hide the persistent admin chrome
+           (sidebar + sticky header) so the kiosk's own header isn't
+           visually duplicated and its full-screen / control buttons stay
+           reachable on tablet widths. */
+        html.kiosk-mode .group.peer[data-side],
+        html.kiosk-mode [data-sidebar="sidebar"],
+        html.kiosk-mode [data-admin-header] {
+          display: none !important;
+        }
+        html.kiosk-mode .admin-inset {
+          margin: 0 !important;
+          padding: 0 !important;
+        }
       `}</style>
       <SidebarProvider>
         <AdminSidebar

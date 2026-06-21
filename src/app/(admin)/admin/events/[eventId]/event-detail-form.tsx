@@ -40,6 +40,7 @@ interface EventDetailFormProps {
     payment_test_mode: boolean;
     is_default: boolean;
     allow_add_group: boolean;
+    admin_only_registration: boolean;
   };
 }
 
@@ -82,6 +83,7 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
     payment_test_mode: event.payment_test_mode ?? false,
     is_default: event.is_default ?? false,
     allow_add_group: event.allow_add_group ?? true,
+    admin_only_registration: event.admin_only_registration ?? false,
   });
 
   const handleSave = async () => {
@@ -114,6 +116,7 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
         stripe_mode: form.stripe_mode,
         payment_test_mode: form.payment_test_mode,
         allow_add_group: form.allow_add_group,
+        admin_only_registration: form.admin_only_registration,
       })
       .eq("id", event.id);
 
@@ -124,7 +127,7 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
     }
 
     toast.success("Event updated");
-    logActivity({ action: "UPDATE", entity_type: "event", entity_id: event.id, event_id: event.id, new_data: { name_en: form.name_en, is_active: form.is_active, is_default: form.is_default } });
+    logActivity({ action: "UPDATE", entity_type: "event", entity_id: event.id, event_id: event.id, new_data: { name_en: form.name_en, is_active: form.is_active, is_default: form.is_default, admin_only_registration: form.admin_only_registration } });
     router.refresh();
   };
 
@@ -303,6 +306,19 @@ export function EventDetailForm({ event }: EventDetailFormProps) {
           <Label>Allow Add Group</Label>
           {!form.allow_add_group && (
             <Badge variant="secondary">Single Group Only</Badge>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={form.admin_only_registration}
+            onCheckedChange={(checked) =>
+              setForm({ ...form, admin_only_registration: checked })
+            }
+          />
+          <Label>Lock to Staff Only</Label>
+          {form.admin_only_registration && (
+            <Badge variant="destructive">Staff Only</Badge>
           )}
         </div>
 

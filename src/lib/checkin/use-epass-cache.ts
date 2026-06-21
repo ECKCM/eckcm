@@ -29,6 +29,12 @@ export interface CacheLookupHit {
   confirmationCode: string;
   isActive: boolean;
   registrationStatus: string;
+  /** YYYY-MM-DD. Combined with eventStartDate to derive the meal tier offline. */
+  birthDate: string | null;
+  /** YYYY-MM-DD. Pairs with birthDate for the meal-tier calculation. */
+  eventStartDate: string | null;
+  /** "MALE" | "FEMALE" | null — shown as a badge on the result card. */
+  gender: string | null;
 }
 
 /**
@@ -145,6 +151,9 @@ export function useEpassCache({ eventId, onSync }: UseEpassCacheOptions) {
         confirmationCode: entry.confirmationCode,
         isActive: entry.isActive,
         registrationStatus: entry.registrationStatus,
+        birthDate: entry.birthDate ?? null,
+        eventStartDate: entry.eventStartDate ?? null,
+        gender: entry.gender ?? null,
       };
     }
     const entry = await lookupToken(parsed.token);
@@ -157,6 +166,9 @@ export function useEpassCache({ eventId, onSync }: UseEpassCacheOptions) {
       confirmationCode: entry.confirmationCode,
       isActive: entry.isActive,
       registrationStatus: entry.registrationStatus,
+      birthDate: entry.birthDate ?? null,
+      eventStartDate: entry.eventStartDate ?? null,
+      gender: entry.gender ?? null,
     };
   }, []);
 

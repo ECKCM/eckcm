@@ -8,7 +8,19 @@ interface AuthResult {
   roles: AdminRole[];
 }
 
+// Short-lived in-process cache for staff role lookups. The check-in scanner
+// hits requireAdmin() on every verify; without caching that's an extra round
+// trip per scan to read a row that almost never changes within a session.
+// 5 seconds is short enough that a role revocation is felt within "one scan"
+// of operator time but long enough to coalesce a real burst.
+const ROLE_CACHE_TTL_MS = 5_000;
+const roleCache = new Map<string, { roles: AdminRole[]; expiresAt: number }>();
+
 async function getStaffRoles(userId: string): Promise<AdminRole[]> {
+  const now = Date.now();
+  const hit = roleCache.get(userId);
+  if (hit && hit.expiresAt > now) return hit.roles;
+
   const supabase = await createClient();
   const { data: assignments } = await supabase
     .from("eckcm_staff_assignments")
@@ -16,13 +28,23 @@ async function getStaffRoles(userId: string): Promise<AdminRole[]> {
     .eq("user_id", userId)
     .eq("is_active", true);
 
-  if (!assignments) return [];
-
-  return assignments
+  const roles = (assignments ?? [])
     .map((a) => (a.eckcm_roles as unknown as { name: string })?.name)
     .filter((name): name is AdminRole =>
       name === "SUPER_ADMIN" || name === "EVENT_ADMIN"
     );
+
+  roleCache.set(userId, { roles, expiresAt: now + ROLE_CACHE_TTL_MS });
+  return roles;
+}
+
+/**
+ * Drop a user's cached roles. Call this from any endpoint that grants or
+ * revokes staff assignments so the change is felt instantly, not on TTL.
+ */
+export function invalidateStaffRolesCache(userId?: string): void {
+  if (userId) roleCache.delete(userId);
+  else roleCache.clear();
 }
 
 /** Require SUPER_ADMIN or EVENT_ADMIN. Returns user + roles or null. */

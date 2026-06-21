@@ -4,6 +4,7 @@ import { COLOR_THEME_IDS } from "@/lib/color-theme";
 import type { ColorThemeId } from "@/lib/color-theme";
 import { requireAdmin, requireSuperAdmin } from "@/lib/auth/admin";
 import { validateMealSchedule } from "@/lib/meal-schedule";
+import { invalidateAppConfigCache } from "@/lib/services/app-config-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -142,6 +143,12 @@ export async function PATCH(request: Request) {
       { error: "Failed to update config" },
       { status: 500 }
     );
+  }
+
+  // Drop any warm-instance app_config cache so the next scanner verify
+  // picks up the rotated HMAC secret immediately instead of waiting for TTL.
+  if ("epass_hmac_secret" in updates) {
+    invalidateAppConfigCache();
   }
 
   // 5. Audit log (mask secrets)

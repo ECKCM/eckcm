@@ -125,6 +125,7 @@ export function ScannerShell({
     fast: false,
   });
   const [invalidFlashId, setInvalidFlashId] = useState<number | null>(null);
+  const [lastInvalidRaw, setLastInvalidRaw] = useState<string | null>(null);
   const lastScannedRef = useRef<string | null>(null);
 
   // Torch/flash: implemented directly (the library's built-in torch button is
@@ -198,6 +199,12 @@ export function ScannerShell({
 
       const parsed = parseQRValue(rawValue);
       if (!parsed) {
+        setLastInvalidRaw(rawValue);
+        console.warn("[scanner-shell] unparseable scan", {
+          length: rawValue.length,
+          raw: rawValue,
+          json: JSON.stringify(rawValue),
+        });
         flashInvalid();
         return;
       }
@@ -487,7 +494,7 @@ export function ScannerShell({
         />
       )}
 
-      <InvalidQrOverlay trigger={invalidFlashId} />
+      <InvalidQrOverlay trigger={invalidFlashId} rawValue={lastInvalidRaw} />
     </div>
   );
 }

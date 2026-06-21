@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createHash } from "crypto";
 import { verifySignedCode } from "@/lib/services/epass.service";
+import { getHmacSecret } from "@/lib/services/app-config-cache";
 
 interface CheckinItem {
   token?: string;
@@ -49,13 +50,8 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const results: SyncResult[] = [];
 
-  // Fetch HMAC secret once for the batch
-  const { data: appConfig } = await admin
-    .from("eckcm_app_config")
-    .select("epass_hmac_secret")
-    .eq("id", 1)
-    .single();
-  const hmacSecret = (appConfig as unknown as { epass_hmac_secret: string | null } | null)?.epass_hmac_secret ?? null;
+  // Cached HMAC secret — warm-instance read on most batches.
+  const hmacSecret = await getHmacSecret(admin);
 
   for (const item of checkins) {
     try {

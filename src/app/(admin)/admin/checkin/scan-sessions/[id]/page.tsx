@@ -24,12 +24,15 @@ export default async function ScanSessionDetailPage({
 
   if (!session) notFound();
 
+  const isEnded = session.status === "ENDED";
+
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 border-b px-4 py-3">
         <CheckinBackButton href="/admin/checkin/scan-sessions" />
         <h1 className="text-lg font-semibold">
-          Scan Session: {session.label ?? session.kind}
+          {isEnded ? "Session Summary" : "Scan Session"}:{" "}
+          {session.label ?? session.kind}
         </h1>
       </div>
       <div className="p-6">

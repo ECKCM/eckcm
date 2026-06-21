@@ -25,6 +25,11 @@ import {
   TrendingUp,
   RefreshCw,
   ArrowRight,
+  DollarSign,
+  Scale,
+  HandCoins,
+  Heart,
+  Sigma,
 } from "lucide-react";
 import { MoneyValue } from "@/contexts/money-visibility-context";
 import { formatCurrency } from "@/lib/utils/formatters";
@@ -63,6 +68,28 @@ const STATUS_COLOR: Record<string, string> = {
   REFUNDED: "text-red-600",
 };
 
+interface MoneyStats {
+  funding: { allocatedCents: number; manualCents: number; totalCents: number };
+  donations: {
+    grossCents: number;
+    netCents: number;
+    pendingCents: number;
+    receivedCount: number;
+    pendingCount: number;
+  };
+}
+
+const EMPTY_MONEY: MoneyStats = {
+  funding: { allocatedCents: 0, manualCents: 0, totalCents: 0 },
+  donations: {
+    grossCents: 0,
+    netCents: 0,
+    pendingCents: 0,
+    receivedCount: 0,
+    pendingCount: 0,
+  },
+};
+
 export function DashboardView({ events }: { events: EventOption[] }) {
   const defaultEvent =
     events.find((e) => e.is_default)?.id ?? events[0]?.id ?? "";
@@ -71,17 +98,41 @@ export function DashboardView({ events }: { events: EventOption[] }) {
   const [loading, setLoading] = useState(false);
   const [granularity, setGranularity] = useState<Granularity>("day");
   const [metric, setMetric] = useState<Metric>("new");
+  const [cardSurchargeCents, setCardSurchargeCents] = useState(0);
+  const [moneyStats, setMoneyStats] = useState<MoneyStats>(EMPTY_MONEY);
 
   const load = useCallback(async () => {
     if (!eventId) return;
     setLoading(true);
     const supabase = createClient();
-    const { data } = await supabase
-      .from("eckcm_registrations")
-      .select(DASH_SELECT)
-      .eq("event_id", eventId)
-      .order("created_at", { ascending: true });
-    setRows(mapDashRows(data ?? []));
+    const [regResult, surchargeRes, moneyRes] = await Promise.all([
+      supabase
+        .from("eckcm_registrations")
+        .select(DASH_SELECT)
+        .eq("event_id", eventId)
+        .order("created_at", { ascending: true }),
+      fetch(`/api/admin/registrations/card-surcharge?eventId=${eventId}`).catch(
+        () => null
+      ),
+      fetch(`/api/admin/dashboard-money?eventId=${eventId}`).catch(() => null),
+    ]);
+    setRows(mapDashRows(regResult.data ?? []));
+    if (surchargeRes && surchargeRes.ok) {
+      try {
+        const data = await surchargeRes.json();
+        setCardSurchargeCents(data.surchargeCents ?? 0);
+      } catch {
+        // leave previous value
+      }
+    }
+    if (moneyRes && moneyRes.ok) {
+      try {
+        const data = (await moneyRes.json()) as MoneyStats;
+        setMoneyStats(data);
+      } catch {
+        // leave previous value
+      }
+    }
     setLoading(false);
   }, [eventId]);
 
@@ -93,21 +144,51 @@ export function DashboardView({ events }: { events: EventOption[] }) {
   const stats = useMemo(() => {
     const byStatus = (s: string) => rows.filter((r) => r.status === s);
     const paid = byStatus("PAID");
+    const submitted = byStatus("SUBMITTED");
     const activeRows = rows.filter((r) => ACTIVE_STATUSES.has(r.status));
     const peopleConfirmed = rows
       .filter((r) => r.status === "PAID" || r.status === "APPROVED")
       .reduce((s, r) => s + r.people_count, 0);
+    const peopleSubmitted = rows
+      .filter(
+        (r) =>
+          r.status === "PAID" ||
+          r.status === "APPROVED" ||
+          r.status === "SUBMITTED"
+      )
+      .reduce((s, r) => s + r.people_count, 0);
     const net = paid.reduce((s, r) => s + netCollectedCents(r), 0);
     const gross = paid.reduce((s, r) => s + grossCollectedCents(r), 0);
+    const amountDue = submitted.reduce((s, r) => s + r.total_amount_cents, 0);
     return {
+      total: rows.length,
       totalActive: activeRows.length,
       paid: paid.length,
-      submitted: byStatus("SUBMITTED").length,
+      submitted: submitted.length,
       peopleConfirmed,
+      peopleSubmitted,
       net,
       gross,
+      amountDue,
     };
   }, [rows]);
+
+  // Card fee reconciliation — surcharge collected from card payers minus the
+  // actual Stripe fees taken (gross − net). Positive = the per-person premium
+  // more than covered fees; negative = the church absorbed the difference.
+  const actualStripeFeesCents = stats.gross - stats.net;
+  const feeBalanceCents = cardSurchargeCents - actualStripeFeesCents;
+
+  // Grand total — every money stream the dashboard tracks. NET for paid
+  // registrations and donations (real money in hand after Stripe fees), plus
+  // the funding total (sponsor commitments + manually-recorded amounts), plus
+  // the outstanding Amount Due (SUBMITTED regs still owed) so the figure is
+  // the total expected take, not just what has cleared.
+  const grandTotalCents =
+    stats.net +
+    stats.amountDue +
+    moneyStats.donations.netCents +
+    moneyStats.funding.totalCents;
 
   const collections = useMemo(() => collectionsByMethod(rows), [rows]);
 
@@ -195,23 +276,129 @@ export function DashboardView({ events }: { events: EventOption[] }) {
         </Link>
       </div>
 
-      {/* Stat tiles */}
+      {/* Registration counts — mirrors /admin/registrations summary cards */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        <StatTile icon={<Users className="size-4 text-muted-foreground" />} label="Registrations" value={stats.totalActive} />
-        <StatTile icon={<UserCheck className="size-4 text-green-600" />} label="Paid" value={stats.paid} />
-        <StatTile icon={<Clock className="size-4 text-amber-600" />} label="Pending" value={stats.submitted} />
-        <StatTile icon={<Users className="size-4 text-blue-600" />} label="People (Confirmed)" value={stats.peopleConfirmed} />
         <StatTile
-          icon={<Wallet className="size-4 text-emerald-600" />}
-          label="Total Collected"
-          value={<MoneyValue>{formatCurrency(collections.totalGrossCents, { decimals: 0 })}</MoneyValue>}
+          icon={<Users className="size-4 text-muted-foreground" />}
+          label="Total Registrations"
+          value={stats.total}
         />
+        <StatTile
+          icon={<UserCheck className="size-4 text-green-600" />}
+          label="Paid"
+          value={stats.paid}
+        />
+        <StatTile
+          icon={<Clock className="size-4 text-amber-600" />}
+          label="Unpaid (Submitted)"
+          value={stats.submitted}
+        />
+        <StatTile
+          icon={<DollarSign className="size-4 text-amber-600" />}
+          label="Amount Due"
+          value={<MoneyValue>{formatMoney(stats.amountDue)}</MoneyValue>}
+        />
+        <StatTile
+          icon={<Users className="size-4 text-blue-600" />}
+          label="People (Confirmed)"
+          value={stats.peopleConfirmed}
+        />
+        <StatTile
+          icon={<Users className="size-4 text-sky-600" />}
+          label="People (Submitted)"
+          value={stats.peopleSubmitted}
+        />
+      </div>
+
+      {/* Registration money */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <StatTile
           icon={<Banknote className="size-4 text-green-600" />}
           label="Net Collected"
-          value={<MoneyValue>{formatCurrency(stats.net, { decimals: 0 })}</MoneyValue>}
+          value={<MoneyValue>{formatMoney(stats.net)}</MoneyValue>}
+        />
+        <StatTile
+          icon={<Wallet className="size-4 text-emerald-600" />}
+          label="Gross Collected"
+          value={<MoneyValue>{formatMoney(stats.gross)}</MoneyValue>}
+        />
+        <StatTile
+          icon={<Scale className="size-4 text-muted-foreground" />}
+          label="Card Fee Balance"
+          value={
+            <MoneyValue>
+              {`${feeBalanceCents >= 0 ? "+" : "−"}${formatMoney(
+                Math.abs(feeBalanceCents)
+              )}`}
+            </MoneyValue>
+          }
+          valueClassName={
+            feeBalanceCents >= 0 ? "text-green-600" : "text-red-600"
+          }
+          hint={
+            <MoneyValue>
+              {`Surcharge ${formatMoney(
+                cardSurchargeCents
+              )} − Fees ${formatMoney(actualStripeFeesCents)}`}
+            </MoneyValue>
+          }
         />
       </div>
+
+      {/* Funding & Donations */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <StatTile
+          icon={<HandCoins className="size-4 text-orange-600" />}
+          label="Funding Total"
+          value={
+            <MoneyValue>
+              {formatMoney(moneyStats.funding.totalCents)}
+            </MoneyValue>
+          }
+          hint={
+            <MoneyValue>
+              {`Allocated ${formatMoney(
+                moneyStats.funding.allocatedCents
+              )} + Manual ${formatMoney(moneyStats.funding.manualCents)}`}
+            </MoneyValue>
+          }
+        />
+        <StatTile
+          icon={<Heart className="size-4 text-pink-600" />}
+          label="Donations Received"
+          value={
+            <MoneyValue>
+              {formatMoney(moneyStats.donations.grossCents)}
+            </MoneyValue>
+          }
+          hint={
+            <MoneyValue>
+              {`Net ${formatMoney(moneyStats.donations.netCents)} · ${
+                moneyStats.donations.receivedCount
+              } donor${moneyStats.donations.receivedCount === 1 ? "" : "s"}`}
+            </MoneyValue>
+          }
+        />
+        <StatTile
+          icon={<Clock className="size-4 text-amber-600" />}
+          label="Donations Pending"
+          value={
+            <MoneyValue>
+              {formatMoney(moneyStats.donations.pendingCents)}
+            </MoneyValue>
+          }
+          hint={`${moneyStats.donations.pendingCount} awaiting receipt`}
+        />
+      </div>
+
+      {/* Grand Total — every money stream summed */}
+      <GrandTotalCard
+        totalCents={grandTotalCents}
+        regNetCents={stats.net}
+        amountDueCents={stats.amountDue}
+        donationNetCents={moneyStats.donations.netCents}
+        fundingCents={moneyStats.funding.totalCents}
+      />
 
       {/* Trend chart */}
       <Card>
@@ -379,10 +566,14 @@ function StatTile({
   icon,
   label,
   value,
+  hint,
+  valueClassName,
 }: {
   icon: React.ReactNode;
   label: string;
   value: React.ReactNode;
+  hint?: React.ReactNode;
+  valueClassName?: string;
 }) {
   return (
     <div className="min-w-0 overflow-hidden rounded-lg border bg-card p-3">
@@ -390,9 +581,71 @@ function StatTile({
         {icon}
         <span className="truncate">{label}</span>
       </div>
-      <p className="mt-1 truncate text-xl font-bold leading-tight tabular-nums sm:text-2xl">
+      <p
+        className={`mt-1 truncate text-xl font-bold leading-tight tabular-nums sm:text-2xl ${
+          valueClassName ?? ""
+        }`}
+      >
         {value}
       </p>
+      {hint && (
+        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          {hint}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function GrandTotalCard({
+  totalCents,
+  regNetCents,
+  amountDueCents,
+  donationNetCents,
+  fundingCents,
+}: {
+  totalCents: number;
+  regNetCents: number;
+  amountDueCents: number;
+  donationNetCents: number;
+  fundingCents: number;
+}) {
+  return (
+    <div className="rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-emerald-100/40 p-5 dark:border-emerald-900 dark:from-emerald-950/40 dark:to-emerald-950/10">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-medium text-emerald-900 dark:text-emerald-200">
+            <Sigma className="size-4" />
+            Grand Total (Expected)
+          </div>
+          <p className="mt-1 truncate text-3xl font-bold leading-tight tabular-nums text-emerald-900 dark:text-emerald-100 sm:text-4xl">
+            <MoneyValue>{formatCurrency(totalCents, { decimals: 0 })}</MoneyValue>
+          </p>
+          <p className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-300/80">
+            Registration net + Amount due + Donation net + Funding total
+          </p>
+        </div>
+        <div className="grid shrink-0 grid-cols-4 gap-x-4 gap-y-1 text-right text-xs sm:text-sm">
+          <span className="text-muted-foreground">Reg. Net</span>
+          <span className="text-muted-foreground">Amount Due</span>
+          <span className="text-muted-foreground">Donations Net</span>
+          <span className="text-muted-foreground">Funding</span>
+          <span className="font-semibold tabular-nums">
+            <MoneyValue>{formatCurrency(regNetCents, { decimals: 0 })}</MoneyValue>
+          </span>
+          <span className="font-semibold tabular-nums">
+            <MoneyValue>{formatCurrency(amountDueCents, { decimals: 0 })}</MoneyValue>
+          </span>
+          <span className="font-semibold tabular-nums">
+            <MoneyValue>
+              {formatCurrency(donationNetCents, { decimals: 0 })}
+            </MoneyValue>
+          </span>
+          <span className="font-semibold tabular-nums">
+            <MoneyValue>{formatCurrency(fundingCents, { decimals: 0 })}</MoneyValue>
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

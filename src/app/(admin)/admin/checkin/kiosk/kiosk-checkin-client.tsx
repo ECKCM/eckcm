@@ -30,7 +30,6 @@ import {
   Minimize2,
   Camera,
   Keyboard,
-  Beaker,
   Sparkles,
   Coffee,
   Sun,
@@ -41,13 +40,18 @@ import {
   Play,
   Pause,
   Square,
-  Users,
-  Database,
   ArrowLeft,
+  Radio,
+  Beaker,
+  Clock,
+  Timer,
+  UserRound,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { feedback } from "@/lib/checkin/scanner-feedback";
-import { parseQRValue, toVerifyBody } from "@/lib/checkin/qr-parser";
+import { computeMealCategory } from "@/lib/checkin/meal-category";
+import { parseQRValue, toVerifyBody, type ParsedQR } from "@/lib/checkin/qr-parser";
 import { useCameraPermission } from "@/lib/checkin/use-camera-permission";
 import {
   useCameraDevices,
@@ -71,6 +75,12 @@ import {
 import { CameraSelect } from "@/components/checkin/camera-select";
 import { InvalidQrOverlay } from "@/components/checkin/invalid-qr-overlay";
 import { RecentCheckins } from "@/components/checkin/recent-checkins";
+import { SurveillanceCamera } from "@/components/checkin/surveillance-camera";
+import {
+  ParticipantSearch,
+  type SearchableParticipant,
+} from "@/components/checkin/participant-search";
+import { CacheStatusBar } from "@/components/checkin/cache-status-bar";
 
 interface EventOption {
   id: string;
@@ -80,7 +90,8 @@ interface EventOption {
   end_date: string | null;
 }
 
-type InputMode = "camera" | "hardware" | "fake";
+type InputMode = "hardware" | "camera";
+type ScanMode = "live" | "simulation";
 
 const MEAL_ICON: Record<MealKey, React.ReactNode> = {
   breakfast: <Coffee className="h-5 w-5" />,
@@ -107,62 +118,216 @@ interface DisplayedResult {
   detail?: string;
   participantCode?: string | null;
   mealCategory?: "adult" | "youth" | "free" | null;
-  totalCount?: number;
+  gender?: string | null;
+}
+
+interface Tally {
+  total: number;
+  general: number;
+  youth: number;
+  free: number;
+  unknown: number;
+}
+
+interface MealStats {
+  meal: Tally;
+  session: Tally | null;
+}
+
+type MealCategoryKey = "general" | "youth" | "free" | "unknown";
+
+function emptyTally(): Tally {
+  return { total: 0, general: 0, youth: 0, free: 0, unknown: 0 };
 }
 
 function todayISO() {
-  return new Date().toISOString().split("T")[0];
+  // Eastern Time basis — the gathering is on the US East Coast, so "today"
+  // should follow the venue clock, not the operator's locale.
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return fmt.format(new Date()); // en-CA yields YYYY-MM-DD
+}
+
+// Dates inside the event window that have no meals served (arrival /
+// departure days, off-site excursion days, etc). The picker hides them so
+// the operator can't accidentally start a session for a meal that doesn't
+// exist. TODO: lift to `eckcm_app_config.meal_blackout_dates` so each year
+// can be edited without a code change.
+const MEAL_BLACKOUT_DATES = new Set<string>([
+  "2026-06-21",
+  "2026-06-28",
+]);
+
+/** Inclusive list of ISO dates between start and end (both YYYY-MM-DD). */
+function enumerateDates(start: string, end: string): string[] {
+  if (!start || !end) return [];
+  const out: string[] = [];
+  // Parse as plain Y-M-D in UTC midnight so the day-by-day stepping isn't
+  // skewed by the operator's local timezone DST.
+  const cur = new Date(`${start}T00:00:00Z`);
+  const stop = new Date(`${end}T00:00:00Z`);
+  if (Number.isNaN(cur.getTime()) || Number.isNaN(stop.getTime())) return [];
+  while (cur <= stop) {
+    out.push(cur.toISOString().split("T")[0]);
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return out;
+}
+
+/** Render a YYYY-MM-DD as "Sat · Aug 1" for the date picker. */
+function formatDateLabel(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+const RESUME_DELAY_MS = 1000;
+
+function formatElapsed(ms: number): string {
+  if (ms < 0) ms = 0;
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
+  return `${m}m ${String(s).padStart(2, "0")}s`;
+}
+
+function formatClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 export function KioskCheckinClient({ events }: { events: EventOption[] }) {
-  // Persisted setup (per kiosk device).
+  const router = useRouter();
   const [selectedEventId, setSelectedEventId] = useState(events[0]?.id ?? "");
   const [mealDate, setMealDate] = useState(todayISO());
   const [schedule, setSchedule] = useState<MealSchedule>(DEFAULT_MEAL_SCHEDULE);
   const [mealKey, setMealKey] = useState<MealKey>("lunch");
-  const [inputMode, setInputMode] = useState<InputMode>("camera");
-  const [cameraFacing, setCameraFacing] = useState<CameraFacing>("user");
+  const [inputMode, setInputMode] = useState<InputMode>("hardware");
+  const [scanMode, setScanMode] = useState<ScanMode>("live");
+  const [cameraFacing, setCameraFacing] = useState<CameraFacing>("environment");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [switchingMode, setSwitchingMode] = useState(false);
 
-  // Per-scan ephemeral state.
   const [processing, setProcessing] = useState(false);
   const [invalidFlashId, setInvalidFlashId] = useState<number | null>(null);
+  const [lastInvalidRaw, setLastInvalidRaw] = useState<string | null>(null);
   const [display, setDisplay] = useState<DisplayedResult | null>(null);
+  const [resumeCountdown, setResumeCountdown] = useState<number | null>(null);
   const lastScannedRef = useRef<string | null>(null);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Monotonic scan counter so a late verify response can't overwrite the
+  // display when the operator has already moved on to the next person.
+  const scanSeqRef = useRef(0);
+  // Simulation mode bookkeeping. We don't send anything to the server while
+  // simulating — instead, we dedupe + count entirely in-memory, scoped to
+  // (mealKey, mealDate) so switching meal/date resets without losing the
+  // sibling meal's tally. The dedupe Map remembers each scanned person's
+  // meal category so the panel can break the count into General / Youth /
+  // Free / Unknown instead of just total. `simBump` is a render trigger
+  // because mutating a ref doesn't re-render on its own.
+  const simDedupeRef = useRef<Map<string, Map<string, MealCategoryKey>>>(
+    new Map()
+  );
+  const [simBump, setSimBump] = useState(0);
+  // Two-step End: first press pauses + arms the End button (label flips to
+  // "Confirm End"); a second press within 5 s opens the destructive confirm.
+  // Stops a misplaced tap from killing the session in one go.
+  const [endArmed, setEndArmed] = useState(false);
+  const [endDialogOpen, setEndDialogOpen] = useState(false);
+  const endArmedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Roster for manual participant search (fallback when QR fails).
+  const [roster, setRoster] = useState<SearchableParticipant[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
 
   const camera = useCameraPermission();
   const devices = useCameraDevices({
     defaultFacing: cameraFacing,
     storageKey: "checkin.kiosk.cameraDeviceId",
-    enabled: camera.status === "granted",
+    enabled: camera.status === "granted" && inputMode === "camera",
   });
-  const scanSession = useScanSession({ storageKey: "checkin.scanSessionId.kiosk" });
+  const liveSession = useScanSession({
+    storageKey: "checkin.scanSessionId.kiosk.live",
+  });
+  const simSession = useScanSession({
+    storageKey: "checkin.scanSessionId.kiosk.simulation",
+  });
+  const scanSession = scanMode === "live" ? liveSession : simSession;
+  const isSimulation = scanMode === "simulation";
   const cache = useEpassCache({ eventId: selectedEventId || null });
 
-  // Restore persisted preferences.
+  // Date dropdown options for the selected event — every day from start to
+  // end inclusive, labelled with the weekday. Falls back to "Today" only
+  // when the event has no dates configured. If the currently picked date
+  // is outside the event window, snap to today (if it's in range) or to
+  // the first day of the event so the picker is never stuck on an invalid
+  // value.
+  const selectedEvent = useMemo(
+    () => events.find((e) => e.id === selectedEventId) ?? null,
+    [events, selectedEventId]
+  );
+  const eventDateOptions = useMemo(() => {
+    if (!selectedEvent?.start_date || !selectedEvent?.end_date) return [];
+    return enumerateDates(selectedEvent.start_date, selectedEvent.end_date)
+      .filter((iso) => !MEAL_BLACKOUT_DATES.has(iso))
+      .map((iso) => ({ iso, label: formatDateLabel(iso) }));
+  }, [selectedEvent]);
+  useEffect(() => {
+    if (eventDateOptions.length === 0) return;
+    const allIso = eventDateOptions.map((d) => d.iso);
+    if (allIso.includes(mealDate)) return;
+    const today = todayISO();
+    setMealDate(allIso.includes(today) ? today : allIso[0]);
+  }, [eventDateOptions, mealDate]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const m = window.localStorage.getItem("checkin.kiosk.inputMode") as InputMode | null;
-    if (m) setInputMode(m);
+    const im = window.localStorage.getItem("checkin.kiosk.inputMode") as InputMode | null;
+    if (im === "camera" || im === "hardware") setInputMode(im);
+    const sm = window.localStorage.getItem("checkin.kiosk.scanMode");
+    if (sm === "live" || sm === "simulation") setScanMode(sm as ScanMode);
+    else if (sm === "test") setScanMode("simulation"); // legacy
     const cf = window.localStorage.getItem("checkin.kiosk.cameraFacing") as CameraFacing | null;
     if (cf) setCameraFacing(cf);
   }, []);
 
-  const updateInputMode = (m: InputMode) => {
+  const updateInputMode = useCallback((m: InputMode) => {
     setInputMode(m);
     if (typeof window !== "undefined") {
       window.localStorage.setItem("checkin.kiosk.inputMode", m);
     }
-  };
+  }, []);
 
-  const updateCameraFacing = (cf: CameraFacing) => {
+  const updateCameraFacing = useCallback((cf: CameraFacing) => {
     setCameraFacing(cf);
     if (typeof window !== "undefined") {
       window.localStorage.setItem("checkin.kiosk.cameraFacing", cf);
     }
-  };
+  }, []);
+
+  const updateScanMode = useCallback((m: ScanMode) => {
+    setScanMode(m);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("checkin.kiosk.scanMode", m);
+    }
+  }, []);
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
@@ -176,11 +341,195 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     };
   }, []);
 
-  useEffect(() => () => {
-    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+  // Keep the screen awake while a session is running — the HID scanner only
+  // delivers keystrokes to the focused window, so the device sleeping == no
+  // scans land. The Screen Wake Lock API auto-releases on tab hide and can
+  // be re-requested when the tab comes back. Best-effort only (Safari iOS
+  // has spotty support; we silently fall back to "operator dims screen").
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    if (!("wakeLock" in navigator)) return;
+    let sentinel: WakeLockSentinel | null = null;
+    const acquire = async () => {
+      try {
+        sentinel = await (
+          navigator as Navigator & {
+            wakeLock: { request: (t: "screen") => Promise<WakeLockSentinel> };
+          }
+        ).wakeLock.request("screen");
+      } catch {
+        /* permissions / unsupported / not visible — ignore */
+      }
+    };
+    acquire();
+    const onVis = () => {
+      if (document.visibilityState === "visible") acquire();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      sentinel?.release().catch(() => {});
+    };
   }, []);
 
-  // Load meal schedule once and suggest a meal.
+  // Visibility warning. If the tab is backgrounded mid-session, HID keys
+  // and the camera both stop landing on this surface — flag it loudly so
+  // the operator brings us back to the foreground before continuing.
+  const [tabHidden, setTabHidden] = useState(false);
+  useEffect(() => {
+    const onVis = () =>
+      setTabHidden(document.visibilityState !== "visible");
+    onVis();
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  // Auto-end the session once the configured meal window closes (+15min
+  // grace). Stops the "operator forgot to End" footprint of half-closed
+  // sessions polluting the dashboard. Simulations never auto-end — those
+  // are training and the operator owns the lifecycle.
+  //
+  // Conservative rules to avoid the "session ends instantly on start"
+  // failure mode:
+  //   1. Only run when the meal_schedule has been fetched from the server
+  //      (schedule !== DEFAULT_MEAL_SCHEDULE reference) — otherwise the
+  //      default 19:30 dinner end would auto-close an evening session
+  //      before the operator's real schedule is loaded.
+  //   2. Never run on the very first tick — wait one minute so the
+  //      operator has at least 60s to react to a stale-session situation.
+  //   3. Only auto-end when mealDate is strictly in the past, OR mealDate
+  //      is today AND we're already past the end window. mealDate in the
+  //      future is left alone.
+  useEffect(() => {
+    if (!scanSession.session || isSimulation) return;
+    if (schedule === DEFAULT_MEAL_SCHEDULE) return; // wait for app_config
+    const win = schedule[mealKey];
+    if (!win?.end) return;
+
+    const AUTO_END_BUFFER_MIN = 15;
+    const sessionId = scanSession.session.id;
+    const sessionRef = scanSession; // capture stable ref for cleanup
+
+    function nowEt(): { date: string; minutesOfDay: number } {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/New_York",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).formatToParts(new Date());
+      const get = (t: string) =>
+        parts.find((p) => p.type === t)?.value ?? "";
+      const date = `${get("year")}-${get("month")}-${get("day")}`;
+      const minutesOfDay =
+        Number(get("hour")) * 60 + Number(get("minute"));
+      return { date, minutesOfDay };
+    }
+
+    function endMinutes(): number {
+      const [h, m] = win.end.split(":").map(Number);
+      return h * 60 + m + AUTO_END_BUFFER_MIN;
+    }
+
+    const check = () => {
+      if (sessionRef.session?.id !== sessionId) return;
+      const { date, minutesOfDay } = nowEt();
+      if (date < mealDate) return; // mealDate is in the future
+      if (date === mealDate && minutesOfDay < endMinutes()) return; // still in window
+      console.warn("[kiosk] auto-end", {
+        mealKey,
+        mealDate,
+        endAt: win.end,
+        bufferMin: AUTO_END_BUFFER_MIN,
+      });
+      sessionRef.end();
+    };
+
+    // No immediate check — first tick after 60s so a freshly-started
+    // session never trips it.
+    const id = setInterval(check, 60_000);
+    return () => clearInterval(id);
+    // scanSession intentionally referenced as a snapshot inside; only
+    // re-run when the session id, mode, schedule, or meal selection
+    // changes — not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    scanSession.session?.id,
+    isSimulation,
+    schedule,
+    mealKey,
+    mealDate,
+  ]);
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  // Toggle html.kiosk-mode while this surface is mounted. The admin layout's
+  // global stylesheet hides the sidebar + sticky header against that class so
+  // the kiosk is a true full-screen surface (matches the print-mode pattern).
+  // Removing the class on unmount restores normal admin chrome when the
+  // operator navigates back to /admin/checkin.
+  useEffect(() => {
+    document.documentElement.classList.add("kiosk-mode");
+    return () => document.documentElement.classList.remove("kiosk-mode");
+  }, []);
+
+  // Guard against accidental tab close / refresh / back navigation while a
+  // scan session is active. A bumped iPad or a misplaced swipe shouldn't
+  // silently end the session; force the operator through a confirm.
+  //
+  //  - beforeunload: native browser dialog on tab close / refresh / hard nav
+  //  - popstate: history trap that re-pushes the kiosk URL on back-swipe
+  //    and only releases the trap if the operator confirms
+  //
+  // Only armed while a session exists, so the operator can leave freely from
+  // the idle setup screen.
+  const sessionActive = Boolean(scanSession.session);
+  useEffect(() => {
+    if (!sessionActive) return;
+
+    const beforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Modern browsers ignore custom text but still show their own warning
+      // when returnValue is set. Required for Chrome compatibility.
+      e.returnValue = "";
+    };
+
+    window.history.pushState(null, "", window.location.href);
+    const popState = () => {
+      const confirmed = window.confirm(
+        "Leave the kiosk? The active scan session will stay open, but you'll have to navigate back to keep scanning."
+      );
+      if (confirmed) {
+        window.removeEventListener("popstate", popState);
+        window.history.back();
+      } else {
+        window.history.pushState(null, "", window.location.href);
+      }
+    };
+
+    window.addEventListener("beforeunload", beforeUnload);
+    window.addEventListener("popstate", popState);
+    return () => {
+      window.removeEventListener("beforeunload", beforeUnload);
+      window.removeEventListener("popstate", popState);
+    };
+  }, [sessionActive]);
+
+  useEffect(
+    () => () => {
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      if (endArmedTimerRef.current) clearTimeout(endArmedTimerRef.current);
+    },
+    []
+  );
+
   useEffect(() => {
     (async () => {
       try {
@@ -198,22 +547,45 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
           }
         }
       } catch {
-        // defaults
+        /* defaults */
       }
     })();
   }, []);
 
-  // Detach stale stored sessions when meal/date/event changes.
+  // Drop stored sessions that no longer match the selected meal/date/event.
   useEffect(() => {
-    if (!scanSession.session) return;
-    const mealMismatch =
-      scanSession.session.event_id !== selectedEventId ||
-      scanSession.session.meal_date !== mealDate ||
-      scanSession.session.kind !== MEAL_KIND[mealKey];
-    if (mealMismatch) {
-      scanSession.detach();
+    const mismatch = (s: ReturnType<typeof useScanSession>["session"]) =>
+      s !== null &&
+      (s.event_id !== selectedEventId ||
+        s.meal_date !== mealDate ||
+        s.kind !== MEAL_KIND[mealKey]);
+    if (mismatch(liveSession.session)) liveSession.detach();
+    if (mismatch(simSession.session)) simSession.detach();
+  }, [selectedEventId, mealDate, mealKey, liveSession, simSession]);
+
+  // Searchable roster for the manual ParticipantSearch fallback.
+  useEffect(() => {
+    if (!selectedEventId) {
+      setRoster([]);
+      return;
     }
-  }, [selectedEventId, mealDate, mealKey, scanSession]);
+    let cancelled = false;
+    setRosterLoading(true);
+    fetch(`/api/checkin/participants?eventId=${selectedEventId}`)
+      .then((r) => (r.ok ? r.json() : { participants: [] }))
+      .then((d) => {
+        if (!cancelled) setRoster(d.participants ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setRoster([]);
+      })
+      .finally(() => {
+        if (!cancelled) setRosterLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEventId]);
 
   const realtime = useRealtimeCheckins({
     eventId: selectedEventId || null,
@@ -228,37 +600,274 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     [realtime.checkins]
   );
 
+  // Authoritative General / Youth / Free counts (meal-wide + per-session).
+  const [stats, setStats] = useState<MealStats>({ meal: emptyTally(), session: null });
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [bumpKey, setBumpKey] = useState(0);
+  const lastTotalsRef = useRef<{ meal: number; session: number }>({
+    meal: 0,
+    session: 0,
+  });
+
+  // What MealCountsPanel renders. In live mode this is the server-fetched
+  // meal-stats; in simulation it's an in-memory tally over the dedupe
+  // map for the currently-selected (mealKey, mealDate), bucketed by the
+  // person's meal category (computed offline from birthDate + event start).
+  const displayStats: MealStats = useMemo(() => {
+    if (!isSimulation) return stats;
+    const seen = simDedupeRef.current.get(`${mealKey}|${mealDate}`);
+    const meal = emptyTally();
+    if (seen) {
+      for (const catKey of seen.values()) {
+        meal.total += 1;
+        meal[catKey] += 1;
+      }
+    }
+    return { meal, session: null };
+    // simBump is read so the memo invalidates after each simulated scan.
+  }, [isSimulation, stats, mealKey, mealDate, simBump]);
+
+  const fetchStats = useCallback(async () => {
+    if (!selectedEventId || !mealDate || !mealKey) return;
+    // Simulation mode never reads from the real meal-stats endpoint —
+    // its tally is the in-memory simCount synthesized below.
+    if (isSimulation) return;
+    setStatsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        eventId: selectedEventId,
+        mealDate,
+        mealType: MEAL_KEY_TO_TYPE[mealKey],
+      });
+      if (scanSession.session?.id) {
+        params.set("scanSessionId", scanSession.session.id);
+      }
+      const res = await fetch(`/api/checkin/meal-stats?${params.toString()}`);
+      if (res.ok) {
+        const data = (await res.json()) as MealStats;
+        const nextMeal = data.meal ?? emptyTally();
+        const nextSession = data.session ?? null;
+        const prevMealTotal = lastTotalsRef.current.meal;
+        const prevSessionTotal = lastTotalsRef.current.session;
+        const bumped =
+          nextMeal.total !== prevMealTotal ||
+          (nextSession?.total ?? 0) !== prevSessionTotal;
+        lastTotalsRef.current = {
+          meal: nextMeal.total,
+          session: nextSession?.total ?? 0,
+        };
+        setStats({ meal: nextMeal, session: nextSession });
+        if (bumped) setBumpKey((k) => k + 1);
+      }
+    } catch {
+      /* leave previous stats in place */
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [selectedEventId, mealDate, mealKey, scanSession.session?.id, isSimulation]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  // Re-pull stats whenever a new check-in lands (including from other devices).
+  // Debounced so a burst from other kiosks coalesces into one server round-trip
+  // instead of N — meal-stats does a full event scan, so 5 scans in 500ms
+  // would otherwise stack 5 backend queries while the operator is still
+  // working through their own line.
+  const lastCheckinIdRef = useRef<string | null>(null);
+  const statsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const top = realtime.checkins[0];
+    if (!top) return;
+    if (lastCheckinIdRef.current === top.id) return;
+    lastCheckinIdRef.current = top.id;
+    if (statsDebounceRef.current) clearTimeout(statsDebounceRef.current);
+    statsDebounceRef.current = setTimeout(fetchStats, 500);
+  }, [realtime.checkins, fetchStats]);
+  useEffect(
+    () => () => {
+      if (statsDebounceRef.current) clearTimeout(statsDebounceRef.current);
+    },
+    []
+  );
+
+  // Live "session elapsed" ticker so the timer keeps moving without polling.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!scanSession.session) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [scanSession.session]);
+
+  const sessionStartedAt = scanSession.session?.started_at ?? null;
+  const sessionElapsedMs = sessionStartedAt
+    ? Math.max(0, now - new Date(sessionStartedAt).getTime())
+    : 0;
+
   const flashInvalid = useCallback(() => setInvalidFlashId(Date.now()), []);
 
-  const processRawValue = useCallback(
-    async (rawValue: string) => {
+  const startResumeCountdown = useCallback(() => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    setResumeCountdown(Math.ceil(RESUME_DELAY_MS / 1000));
+    countdownRef.current = setInterval(() => {
+      setResumeCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    resumeTimerRef.current = setTimeout(() => {
+      // Keep the previous person's card visible — it stays as the "last
+      // scanned" panel so the operator can re-confirm who they just let
+      // through. Only the dedupe lock + countdown are released, so the next
+      // QR (even the same one) is accepted and swaps the card in place.
+      lastScannedRef.current = null;
+      setResumeCountdown(null);
+    }, RESUME_DELAY_MS);
+  }, []);
+
+  const processParsed = useCallback(
+    async (parsed: ParsedQR) => {
       if (!scanSession.canScan || !scanSession.session) return;
-      const parsed = parseQRValue(rawValue);
-      if (!parsed) {
-        flashInvalid();
-        feedback("error");
-        return;
-      }
       const dedupeKey =
         parsed.kind === "participantCode" ? parsed.participantCode : parsed.token;
       if (lastScannedRef.current === dedupeKey) return;
       lastScannedRef.current = dedupeKey;
 
-      if (processing) return;
-      setProcessing(true);
+      const seq = ++scanSeqRef.current;
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      setResumeCountdown(null);
 
-      // Cache-first: render the participant immediately while the verify
-      // call lands. The kiosk's display overlay gets the name right away.
-      const cached = await cache.lookup(parsed);
-      if (cached) {
+      // ── Simulation path ────────────────────────────────────────────────
+      // No server round-trip: cache resolves the person, an in-memory Set
+      // enforces the same "one meal per person per date" rule the real
+      // verify route would. Nothing is persisted, so the operator can
+      // rehearse a full meal flow with hardware scans without polluting the
+      // real eckcm_checkins table or meal counts.
+      if (isSimulation) {
+        const cached = await cache.lookup(parsed);
+        if (!cached) {
+          setDisplay({
+            ok: false,
+            title: "Not in cache",
+            detail: "Resync the e-pass cache or use a known participant.",
+          });
+          feedback("error");
+          startResumeCountdown();
+          return;
+        }
+        if (
+          !cached.isActive ||
+          (cached.registrationStatus !== "PAID" &&
+            cached.registrationStatus !== "APPROVED")
+        ) {
+          setDisplay({
+            ok: false,
+            title: "Cannot serve",
+            subtitle: cached.personName,
+            detail: cached.isActive
+              ? `Registration is ${cached.registrationStatus.toLowerCase()}`
+              : "E-Pass is inactive",
+          });
+          feedback("error");
+          startResumeCountdown();
+          return;
+        }
+
+        const mealKeyId = `${mealKey}|${mealDate}`;
+        const seen =
+          simDedupeRef.current.get(mealKeyId) ?? new Map<string, MealCategoryKey>();
+        const personKey = cached.participantCode ?? dedupeKey;
+        const cat = computeMealCategory(cached.birthDate, cached.eventStartDate);
+        const catKey: MealCategoryKey =
+          cat === "adult" ? "general" : cat === "youth" ? "youth" : cat === "free" ? "free" : "unknown";
+
+        if (seen.has(personKey)) {
+          setDisplay({
+            ok: false,
+            title: "Already simulated",
+            subtitle: cached.personName,
+            detail: cached.koreanName ?? undefined,
+            participantCode: cached.participantCode ?? null,
+            mealCategory: cat,
+            gender: cached.gender ?? null,
+          });
+          feedback("warn");
+          startResumeCountdown();
+          return;
+        }
+        seen.set(personKey, catKey);
+        simDedupeRef.current.set(mealKeyId, seen);
+
         setDisplay({
           ok: true,
-          title: "Confirming…",
+          title: "Welcome!",
           subtitle: cached.personName,
           detail: cached.koreanName ?? undefined,
           participantCode: cached.participantCode ?? null,
+          mealCategory: cat,
+          gender: cached.gender ?? null,
         });
+        feedback("success");
+        setSimBump((b) => b + 1);
+        startResumeCountdown();
+        return;
+      }
+      // ──────────────────────────────────────────────────────────────────
+
+      // Cache-first optimistic display. When the participant is already in
+      // the local IndexedDB cache AND looks valid (active + paid), show the
+      // green "Welcome!" panel immediately and let verify reconcile in the
+      // background. We don't flip `processing`, so the operator can scan the
+      // next person right away — the typical case where this matters most.
+      // Cache misses, or anything that doesn't look paid+active, keep the
+      // old conservative path (spinner → server verdict).
+      const cached = await cache.lookup(parsed);
+      const optimistic = Boolean(
+        cached &&
+          cached.isActive &&
+          (cached.registrationStatus === "PAID" ||
+            cached.registrationStatus === "APPROVED")
+      );
+
+      if (optimistic && cached) {
+        setDisplay({
+          ok: true,
+          title: "Welcome!",
+          subtitle: cached.personName,
+          detail: cached.koreanName ?? undefined,
+          participantCode: cached.participantCode ?? null,
+          mealCategory: computeMealCategory(
+            cached.birthDate,
+            cached.eventStartDate
+          ),
+          gender: cached.gender ?? null,
+        });
+        feedback("success");
+        startResumeCountdown();
+      } else {
+        setProcessing(true);
+        setDisplay(
+          cached
+            ? {
+                ok: true,
+                title: "Confirming…",
+                subtitle: cached.personName,
+                detail: cached.koreanName ?? undefined,
+                participantCode: cached.participantCode ?? null,
+                mealCategory: computeMealCategory(
+                  cached.birthDate,
+                  cached.eventStartDate
+                ),
+                gender: cached.gender ?? null,
+              }
+            : null
+        );
       }
 
       try {
@@ -274,23 +883,43 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
           }),
         });
         const data = await res.json();
+        // Drop responses for scans the operator has already moved past —
+        // otherwise an in-flight verify could overwrite the next person's
+        // result card with this one's late-arriving payload.
+        if (scanSeqRef.current !== seq) return;
         if (res.ok) {
-          const ok = data.status === "checked_in";
-          feedback(ok ? "success" : "warn");
-          setDisplay({
-            ok: data.status !== "error",
-            title:
-              data.status === "checked_in"
-                ? "Welcome!"
-                : data.status === "already_checked_in"
-                  ? "Already checked in"
-                  : "Done",
-            subtitle: data.person?.name,
-            detail: data.person?.koreanName ?? undefined,
-            participantCode: data.person?.participantCode ?? null,
-            mealCategory: data.person?.mealCategory ?? null,
-            totalCount: data.totalCount,
-          });
+          // For optimistic scans only swap when the server has new info to
+          // share (already_checked_in, a different name, etc.). A normal
+          // "checked_in" reply with matching name is the happy path and the
+          // green panel is already correct — leave it alone so we don't
+          // flash a re-render.
+          if (optimistic && data.status === "checked_in") {
+            setDisplay((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    mealCategory: data.person?.mealCategory ?? prev.mealCategory,
+                  }
+                : prev
+            );
+          } else {
+            const ok = data.status === "checked_in";
+            if (!optimistic) feedback(ok ? "success" : "warn");
+            setDisplay({
+              ok: data.status !== "error",
+              title:
+                data.status === "checked_in"
+                  ? "Welcome!"
+                  : data.status === "already_checked_in"
+                    ? "Already checked in"
+                    : "Done",
+              subtitle: data.person?.name,
+              detail: data.person?.koreanName ?? undefined,
+              participantCode: data.person?.participantCode ?? null,
+              mealCategory: data.person?.mealCategory ?? null,
+              gender: data.person?.gender ?? null,
+            });
+          }
         } else {
           feedback("error");
           setDisplay({
@@ -301,69 +930,122 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
           });
         }
       } catch {
+        if (scanSeqRef.current !== seq) return;
         feedback("error");
         setDisplay({ ok: false, title: "Network error", detail: "Try again" });
       } finally {
-        setProcessing(false);
-        // Reset for next scan after 3s
-        resumeTimerRef.current = setTimeout(() => {
-          setDisplay(null);
-          lastScannedRef.current = null;
-        }, 3000);
+        if (scanSeqRef.current === seq) {
+          setProcessing(false);
+          if (!optimistic) startResumeCountdown();
+        }
       }
     },
-    [scanSession.canScan, scanSession.session, processing, mealDate, mealKey, cache, flashInvalid]
+    [
+      scanSession.canScan,
+      scanSession.session,
+      mealDate,
+      mealKey,
+      cache,
+      startResumeCountdown,
+      isSimulation,
+    ]
   );
 
-  // Hardware scanner — always listens when in `hardware` mode, regardless of
-  // focus, because USB scanners blast Enter at the active window.
+  const processRawValue = useCallback(
+    async (rawValue: string) => {
+      const parsed = parseQRValue(rawValue);
+      if (!parsed) {
+        setLastInvalidRaw(rawValue);
+        console.warn("[kiosk] unparseable scan", {
+          length: rawValue.length,
+          raw: rawValue,
+          json: JSON.stringify(rawValue),
+        });
+        flashInvalid();
+        feedback("error");
+        return;
+      }
+      await processParsed(parsed);
+    },
+    [flashInvalid, processParsed]
+  );
+
+  // Hardware scanner stays armed in hardware mode regardless of focus, because
+  // USB scanners blast Enter at the active window.
   useHidScanner({
     enabled: inputMode === "hardware" && scanSession.canScan,
     onScan: processRawValue,
   });
 
-  // Camera scanner handler — feeds into the same pipeline.
   const handleCameraScan = useCallback(
     (codes: { rawValue: string }[]) => {
       if (!codes.length) return;
-      if (inputMode === "fake") {
-        // Fake mode: ignore actual decoded codes; the camera is just for show.
-        return;
-      }
       processRawValue(codes[0].rawValue);
     },
-    [inputMode, processRawValue]
+    [processRawValue]
   );
 
-  function toggleFullscreen() {
+  const handleSearchSelect = useCallback(
+    (participantCode: string) => {
+      if (processing) return;
+      processParsed({ kind: "participantCode", participantCode });
+    },
+    [processing, processParsed]
+  );
+
+  const enterFullscreen = useCallback(() => {
     if (typeof document === "undefined") return;
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen?.();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen?.();
-      setIsFullscreen(false);
     }
-  }
+  }, []);
+
+  const exitFullscreen = useCallback(() => {
+    if (typeof document === "undefined") return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+    }
+  }, []);
+
+  const startActiveSession = useCallback(async () => {
+    if (!selectedEventId) return;
+    setSwitchingMode(true);
+    try {
+      await scanSession.start({
+        eventId: selectedEventId,
+        kind: MEAL_KIND[mealKey],
+        mealDate,
+        label: `${MEAL_LABEL[mealKey]} · ${mealDate} · Kiosk${isSimulation ? " · Simulation" : ""}`,
+        isSandbox: isSimulation,
+      });
+    } finally {
+      setSwitchingMode(false);
+    }
+  }, [selectedEventId, mealKey, mealDate, scanMode, scanSession]);
 
   const constraints = devices.selectedDeviceId
     ? { deviceId: { exact: devices.selectedDeviceId } }
     : { facingMode: { ideal: cameraFacing } };
 
-  const liveCount = realtime.checkins.length;
+  const cameraReady =
+    inputMode === "camera" && camera.status === "granted" && scanSession.canScan;
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex flex-col overflow-hidden">
-      {/* Top bar */}
-      <header className="border-b bg-card/70 backdrop-blur px-4 py-2 flex items-center gap-2 flex-wrap">
-        <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+    <div
+      className={`fixed inset-0 flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 ${
+        isSimulation ? "ring-4 ring-purple-400 dark:ring-purple-600 ring-inset" : ""
+      }`}
+    >
+      {/* Top bar — slim, dense setup controls. */}
+      <header className="border-b bg-card/70 backdrop-blur px-3 py-2 flex items-center gap-2 flex-wrap">
+        <Button asChild variant="ghost" size="icon" className="h-11 w-11">
           <Link href="/admin/checkin" aria-label="Back to check-in">
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
 
         <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-          <SelectTrigger className="w-[200px] h-9">
+          <SelectTrigger className="w-[220px] h-11 text-base">
             <SelectValue placeholder="Event" />
           </SelectTrigger>
           <SelectContent>
@@ -376,20 +1058,29 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
         </Select>
 
         <Select value={mealDate} onValueChange={setMealDate}>
-          <SelectTrigger className="w-[150px] h-9">
+          <SelectTrigger className="w-[180px] h-11 text-base">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={todayISO()}>Today</SelectItem>
+            {eventDateOptions.length > 0 ? (
+              eventDateOptions.map((d) => (
+                <SelectItem key={d.iso} value={d.iso}>
+                  {d.label}
+                  {d.iso === todayISO() ? " · Today" : ""}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value={todayISO()}>Today</SelectItem>
+            )}
           </SelectContent>
         </Select>
 
         <Tabs value={mealKey} onValueChange={(v) => setMealKey(v as MealKey)}>
-          <TabsList>
+          <TabsList className="h-11">
             {MEAL_KEYS.map((k) => (
-              <TabsTrigger key={k} value={k} className="gap-1.5">
+              <TabsTrigger key={k} value={k} className="gap-1.5 px-3 text-base">
                 {MEAL_ICON[k]}
-                <span className="hidden sm:inline">{MEAL_LABEL[k]}</span>
+                <span className="hidden md:inline">{MEAL_LABEL[k]}</span>
                 {suggestMealKey(schedule) === k && (
                   <Sparkles className="h-3 w-3 text-amber-500" />
                 )}
@@ -398,117 +1089,167 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
           </TabsList>
         </Tabs>
 
-        <div className="ml-auto flex items-center gap-2">
-          <Tabs value={inputMode} onValueChange={(v) => updateInputMode(v as InputMode)}>
-            <TabsList>
-              <TabsTrigger value="camera" className="gap-1.5">
-                <Camera className="h-4 w-4" />
-                <span className="hidden md:inline">Camera</span>
-              </TabsTrigger>
-              <TabsTrigger value="hardware" className="gap-1.5">
-                <Keyboard className="h-4 w-4" />
-                <span className="hidden md:inline">Hardware</span>
-              </TabsTrigger>
-              <TabsTrigger value="fake" className="gap-1.5">
-                <Beaker className="h-4 w-4" />
-                <span className="hidden md:inline">Demo</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          {inputMode === "camera" && (
-            <Tabs
-              value={cameraFacing}
-              onValueChange={(v) => updateCameraFacing(v as CameraFacing)}
-            >
-              <TabsList>
-                <TabsTrigger value="user">Front</TabsTrigger>
-                <TabsTrigger value="environment">Back</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          )}
-
-          <Badge variant={isOnline ? "default" : "destructive"} className="gap-1">
-            {isOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          <Badge
+            variant={isOnline ? "default" : "destructive"}
+            className="gap-1 h-8 text-sm px-2.5"
+          >
+            {isOnline ? (
+              <Wifi className="h-3.5 w-3.5" />
+            ) : (
+              <WifiOff className="h-3.5 w-3.5" />
+            )}
             {isOnline ? "Online" : "Offline"}
           </Badge>
 
-          <Badge
-            variant={
-              cache.status === "ready"
-                ? "secondary"
-                : cache.status === "error"
-                  ? "destructive"
-                  : "outline"
-            }
-            className="gap-1"
-          >
-            <Database className="h-3 w-3" />
-            {cache.status === "loading"
-              ? "Syncing"
-              : cache.status === "ready"
-                ? `${cache.count}`
-                : "No cache"}
-          </Badge>
-
-          <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </Button>
+          {isFullscreen ? (
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={exitFullscreen}
+              className="h-11 px-4 gap-2 text-base"
+            >
+              <Minimize2 className="h-5 w-5" />
+              <span className="hidden sm:inline">Exit Fullscreen</span>
+            </Button>
+          ) : (
+            <Button
+              variant="default"
+              size="lg"
+              onClick={enterFullscreen}
+              className="h-11 px-4 gap-2 text-base"
+            >
+              <Maximize2 className="h-5 w-5" />
+              <span className="hidden sm:inline">Fullscreen</span>
+            </Button>
+          )}
         </div>
       </header>
 
-      {/* Scan session strip */}
-      <div className="border-b bg-card/40 px-4 py-2 flex items-center gap-3 flex-wrap">
+      {/* Session strip — lifecycle, timer, and live session counter. */}
+      <div
+        className={`border-b px-3 py-2 flex items-center gap-3 flex-wrap ${
+          isSimulation
+            ? "bg-purple-50/60 dark:bg-purple-950/30"
+            : "bg-card/40"
+        }`}
+      >
         {scanSession.session ? (
           <>
             <Badge
               className={
                 scanSession.canScan
-                  ? "gap-1 bg-green-600 hover:bg-green-700"
-                  : "gap-1"
+                  ? "gap-1 bg-green-600 hover:bg-green-700 h-8 text-sm"
+                  : "gap-1 h-8 text-sm"
               }
               variant={scanSession.canScan ? "default" : "secondary"}
             >
               {scanSession.canScan ? (
                 <>
-                  <Play className="h-3 w-3" />
+                  <Play className="h-3.5 w-3.5" />
                   Live
                 </>
               ) : (
                 <>
-                  <Pause className="h-3 w-3" />
+                  <Pause className="h-3.5 w-3.5" />
                   Paused
                 </>
               )}
             </Badge>
-            <span className="text-sm text-muted-foreground">
-              {scanSession.session.label}
-            </span>
-            <div className="ml-auto flex items-center gap-2">
-              <Badge variant="secondary" className="gap-1">
-                <Users className="h-3 w-3" />
-                {liveCount}
+
+            {isSimulation && (
+              <Badge
+                variant="outline"
+                className="gap-1 h-8 text-sm border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-700 dark:bg-purple-950 dark:text-purple-300"
+              >
+                <Beaker className="h-3.5 w-3.5" /> Simulation — not recorded
               </Badge>
+            )}
+
+            {sessionStartedAt && (
+              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                Started {formatClock(sessionStartedAt)}
+              </span>
+            )}
+
+            <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Timer className="h-4 w-4" />
+              {formatElapsed(sessionElapsedMs)}
+            </span>
+
+            {stats.session && (
+              <Badge
+                variant="secondary"
+                className="gap-1 h-8 text-sm px-3 tabular-nums"
+              >
+                Session: <span className="font-bold">{stats.session.total}</span>
+              </Badge>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
               {scanSession.canScan ? (
                 <Button
-                  size="sm"
+                  size="lg"
                   variant="secondary"
-                  onClick={scanSession.pause}
-                  className="gap-1.5"
+                  onClick={() => {
+                    scanSession.pause();
+                    // Hitting Pause cancels any armed End.
+                    setEndArmed(false);
+                    if (endArmedTimerRef.current) clearTimeout(endArmedTimerRef.current);
+                  }}
+                  className="h-11 gap-1.5 px-4"
                 >
                   <Pause className="h-4 w-4" /> Pause
                 </Button>
               ) : (
-                <Button size="sm" onClick={scanSession.resume} className="gap-1.5">
+                <Button
+                  size="lg"
+                  onClick={() => {
+                    scanSession.resume();
+                    setEndArmed(false);
+                    if (endArmedTimerRef.current) clearTimeout(endArmedTimerRef.current);
+                  }}
+                  className="h-11 gap-1.5 px-4"
+                >
                   <Play className="h-4 w-4" /> Resume
                 </Button>
               )}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive" className="gap-1.5">
-                    <Square className="h-4 w-4" /> Stop
-                  </Button>
-                </AlertDialogTrigger>
+              <Button
+                size="lg"
+                variant={endArmed ? "destructive" : "outline"}
+                onClick={() => {
+                  if (endArmed) {
+                    // 2nd press → confirm dialog.
+                    setEndDialogOpen(true);
+                    return;
+                  }
+                  // 1st press → pause + arm. Operator now sees a Resume
+                  // button beside it and "Confirm End" on this one.
+                  if (scanSession.canScan) scanSession.pause();
+                  setEndArmed(true);
+                  if (endArmedTimerRef.current) clearTimeout(endArmedTimerRef.current);
+                  endArmedTimerRef.current = setTimeout(
+                    () => setEndArmed(false),
+                    5000
+                  );
+                }}
+                className={`h-11 gap-1.5 px-4 ${
+                  endArmed
+                    ? "animate-pulse"
+                    : "border-destructive text-destructive hover:bg-destructive/10"
+                }`}
+              >
+                <Square className="h-4 w-4" />{" "}
+                {endArmed ? "Confirm End" : "End"}
+              </Button>
+              <AlertDialog
+                open={endDialogOpen}
+                onOpenChange={(open) => {
+                  setEndDialogOpen(open);
+                  if (!open) setEndArmed(false);
+                }}
+              >
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>End this kiosk session?</AlertDialogTitle>
@@ -516,13 +1257,28 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
                       Scanning will stop immediately and the session will be
                       closed. You can review the check-ins it recorded under{" "}
                       <span className="font-mono">Scan Sessions</span> later.
-                      Use <strong>Pause</strong> instead if you only need a
+                      Use <strong>Resume</strong> instead if you only need a
                       short break.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => scanSession.end()}>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        const endedId = scanSession.session?.id ?? null;
+                        await scanSession.end();
+                        setEndArmed(false);
+                        setEndDialogOpen(false);
+                        if (endArmedTimerRef.current) clearTimeout(endArmedTimerRef.current);
+                        if (endedId) {
+                          // Hand the operator a printable / exportable
+                          // summary of the session they just closed.
+                          router.push(
+                            `/admin/checkin/scan-sessions/${endedId}`
+                          );
+                        }
+                      }}
+                    >
                       End session
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -532,33 +1288,121 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
           </>
         ) : (
           <>
-            <span className="text-sm text-muted-foreground">No scan session</span>
-            <Button
-              size="sm"
-              className="ml-auto"
-              disabled={!selectedEventId}
-              onClick={() =>
-                scanSession.start({
-                  eventId: selectedEventId,
-                  kind: MEAL_KIND[mealKey],
-                  mealDate,
-                  label: `${MEAL_LABEL[mealKey]} · ${mealDate} · Kiosk`,
-                })
-              }
-            >
-              <Play className="h-4 w-4 mr-1" />
-              Start {MEAL_LABEL[mealKey]} Kiosk
-            </Button>
+            <span className="text-base text-muted-foreground">
+              No {isSimulation ? "simulation" : "live"} session
+            </span>
+            <div className="ml-auto flex items-center gap-2 flex-wrap">
+              <Tabs
+                value={scanMode}
+                onValueChange={(v) => updateScanMode(v as ScanMode)}
+              >
+                <TabsList
+                  className={`h-12 ${
+                    isSimulation
+                      ? "bg-purple-100 dark:bg-purple-950"
+                      : "bg-emerald-100/60 dark:bg-emerald-950/40"
+                  }`}
+                >
+                  <TabsTrigger
+                    value="live"
+                    className="gap-1.5 px-4 text-base"
+                  >
+                    <Radio className="h-4 w-4" />
+                    Live
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="simulation"
+                    className="gap-1.5 px-4 text-base"
+                  >
+                    <Beaker className="h-4 w-4" />
+                    Simulation
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <Button
+                size="lg"
+                className="h-12 px-6 text-base"
+                disabled={!selectedEventId || switchingMode}
+                onClick={startActiveSession}
+              >
+                {switchingMode ? (
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                ) : (
+                  <Play className="h-5 w-5 mr-2" />
+                )}
+                Start {MEAL_LABEL[mealKey]}{" "}
+                {isSimulation ? "Simulation" : "Kiosk"}
+              </Button>
+            </div>
           </>
         )}
       </div>
 
-      {/* Main scan area */}
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_320px] overflow-hidden">
-        <div className="relative flex items-center justify-center p-6 overflow-hidden">
-          {/* Camera / hardware viewport */}
-          <div className="relative w-full max-w-2xl aspect-square rounded-3xl overflow-hidden border-4 border-slate-200 dark:border-slate-800 shadow-2xl">
-            {inputMode === "camera" && camera.status === "granted" && scanSession.canScan ? (
+      {/* Main: scanner + manual fallback (left), big counts + recent (right). */}
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_440px] xl:grid-cols-[1fr_500px] overflow-hidden">
+        <section className="relative flex flex-col gap-3 p-4 lg:p-5 overflow-hidden">
+          {/* Input mode + camera facing — directly above the viewport. */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Tabs
+              value={inputMode}
+              onValueChange={(v) => updateInputMode(v as InputMode)}
+            >
+              <TabsList className="h-11">
+                <TabsTrigger value="hardware" className="gap-1.5 px-4 text-base">
+                  <Keyboard className="h-4 w-4" />
+                  Hardware
+                </TabsTrigger>
+                <TabsTrigger value="camera" className="gap-1.5 px-4 text-base">
+                  <Camera className="h-4 w-4" />
+                  Camera
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {inputMode === "camera" && (
+              <Tabs
+                value={cameraFacing}
+                onValueChange={(v) => updateCameraFacing(v as CameraFacing)}
+              >
+                <TabsList className="h-11">
+                  <TabsTrigger value="environment" className="px-3 text-base">
+                    Back
+                  </TabsTrigger>
+                  <TabsTrigger value="user" className="px-3 text-base">
+                    Front
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+
+            <span className="ml-auto text-sm text-muted-foreground hidden md:inline">
+              {inputMode === "hardware"
+                ? "Aim USB / Bluetooth scanner at the QR code"
+                : "Hold the QR code up to the camera"}
+            </span>
+          </div>
+
+          {/* Scan viewport */}
+          <div className="relative flex-1 min-h-[320px] rounded-3xl overflow-hidden border-4 border-slate-200 dark:border-slate-800 shadow-2xl bg-slate-900">
+            {!scanSession.session ? (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-slate-100 dark:bg-slate-900 text-slate-500">
+                <Pause className="h-16 w-16 opacity-60" />
+                <p className="text-xl font-medium">
+                  Start a {isSimulation ? "simulation" : "live"} session to begin
+                </p>
+                <p className="text-sm">
+                  {MEAL_LABEL[mealKey]} · {mealDate}
+                </p>
+              </div>
+            ) : !scanSession.canScan ? (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-slate-100 dark:bg-slate-900 text-slate-500">
+                <Pause className="h-16 w-16 opacity-60" />
+                <p className="text-xl font-medium">Scanning paused</p>
+                <p className="text-sm">Tap Resume to continue scanning</p>
+              </div>
+            ) : inputMode === "hardware" ? (
+              <SurveillanceCamera active facingMode="user" />
+            ) : cameraReady ? (
               <Scanner
                 key={`${devices.selectedDeviceId ?? cameraFacing}`}
                 constraints={constraints}
@@ -575,34 +1419,6 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
                   video: { objectFit: "cover" as const },
                 }}
               />
-            ) : inputMode === "fake" ? (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-950/50 dark:to-pink-950/50">
-                <Beaker className="h-24 w-24 text-purple-500 mb-4" />
-                <p className="text-2xl font-semibold">Demo mode</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Camera preview only — no real check-ins
-                </p>
-              </div>
-            ) : inputMode === "hardware" ? (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-900">
-                <Keyboard className="h-24 w-24 text-slate-400 mb-4" />
-                <p className="text-2xl font-semibold">Hardware scanner</p>
-                <p className="text-sm text-muted-foreground mt-2 text-center px-4">
-                  Aim your USB / Bluetooth scanner at a QR code
-                </p>
-                {!scanSession.canScan && (
-                  <p className="text-sm text-muted-foreground mt-4">
-                    Scanning paused
-                  </p>
-                )}
-              </div>
-            ) : !scanSession.canScan ? (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-900">
-                <Pause className="h-16 w-16 text-slate-400 mb-3" />
-                <p className="text-lg text-muted-foreground">
-                  Start a session to begin
-                </p>
-              </div>
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-900">
                 <p className="text-muted-foreground">
@@ -613,81 +1429,302 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
 
             {processing && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
-                <Loader2 className="h-16 w-16 animate-spin" />
-              </div>
-            )}
-
-            {/* Result overlay */}
-            {display && (
-              <div
-                className={`absolute inset-0 flex flex-col items-center justify-center text-white animate-in fade-in zoom-in duration-200 ${
-                  display.ok ? "bg-green-600/95" : "bg-amber-600/95"
-                }`}
-              >
-                {display.ok ? (
-                  <CheckCircle2 className="h-32 w-32 mb-4 drop-shadow-lg" />
-                ) : (
-                  <AlertOctagon className="h-32 w-32 mb-4 drop-shadow-lg" />
-                )}
-                <p className="text-5xl font-extrabold tracking-tight">{display.title}</p>
-                {display.subtitle && (
-                  <p className="text-3xl font-semibold mt-3">{display.subtitle}</p>
-                )}
-                {display.detail && (
-                  <p className="text-xl opacity-90 mt-1">{display.detail}</p>
-                )}
-                <div className="flex items-center gap-2 mt-5">
-                  {display.participantCode && (
-                    <Badge variant="outline" className="text-white border-white/40 font-mono text-base">
-                      {display.participantCode}
-                    </Badge>
-                  )}
-                  {display.mealCategory && (
-                    <Badge variant="outline" className="text-white border-white/40 capitalize text-base">
-                      {display.mealCategory === "adult"
-                        ? "General"
-                        : display.mealCategory === "youth"
-                          ? "Youth"
-                          : "Free"}
-                    </Badge>
-                  )}
-                </div>
-                {typeof display.totalCount === "number" && (
-                  <p className="text-lg opacity-90 mt-5">
-                    Total served: <span className="font-bold">{display.totalCount}</span>
-                  </p>
-                )}
+                <Loader2 className="h-20 w-20 animate-spin" />
               </div>
             )}
           </div>
 
-          {/* Camera select (only camera mode) */}
+          {/* Manual fallback search */}
+          <ParticipantSearch
+            participants={roster}
+            onSelect={handleSearchSelect}
+            disabled={processing || !scanSession.canScan}
+            loading={rosterLoading}
+          />
+
+          {/* Camera selector (only in camera mode) */}
           {inputMode === "camera" && camera.status === "granted" && (
-            <div className="absolute bottom-4 left-4 right-4 flex justify-center">
-              <CameraSelect
-                devices={devices.devices}
-                value={devices.selectedDeviceId}
-                onChange={devices.setSelectedDeviceId}
-              />
-            </div>
+            <CameraSelect
+              devices={devices.devices}
+              value={devices.selectedDeviceId}
+              onChange={devices.setSelectedDeviceId}
+            />
           )}
-        </div>
 
-        {/* Recent sidebar */}
-        <aside className="hidden lg:flex flex-col border-l bg-card/40">
-          <div className="px-4 py-3 border-b">
-            <p className="text-sm font-semibold">Recent Check-ins</p>
-            <p className="text-xs text-muted-foreground">
-              Live across all kiosks &amp; phones
-            </p>
-          </div>
-          <div className="flex-1 overflow-auto p-2">
-            <RecentCheckins checkins={recentResults} />
+          {/* Cache status / resync — kiosk-station-style (always expanded) */}
+          <CacheStatusBar
+            status={cache.status}
+            count={cache.count}
+            onResync={cache.refresh}
+          />
+        </section>
+
+        {/* Right column — result panel + counts + recent. */}
+        <aside className="flex flex-col border-t lg:border-t-0 lg:border-l bg-card/40 overflow-hidden">
+          <ResultPanel
+            display={display}
+            processing={processing}
+            resumeCountdown={resumeCountdown}
+          />
+          <MealCountsPanel
+            mealLabel={MEAL_LABEL[mealKey]}
+            stats={displayStats}
+            loading={statsLoading}
+            isSimulation={isSimulation}
+            bumpKey={bumpKey}
+            hasSession={Boolean(scanSession.session)}
+          />
+          <div className="flex flex-col border-t flex-1 min-h-0">
+            <div className="px-4 py-2 border-b flex items-center justify-between">
+              <p className="text-sm font-semibold">Recent Check-ins</p>
+              <Badge variant="outline" className="text-xs">
+                Live
+              </Badge>
+            </div>
+            <div className="flex-1 overflow-auto p-2">
+              <RecentCheckins checkins={recentResults} />
+            </div>
           </div>
         </aside>
       </main>
 
-      <InvalidQrOverlay trigger={invalidFlashId} />
+      <InvalidQrOverlay trigger={invalidFlashId} rawValue={lastInvalidRaw} />
+
+      {/* Tab-hidden warning. While the page isn't the foreground tab, HID
+          keystrokes go to whichever window is focused — i.e. nothing
+          lands here. The banner appears as soon as the tab loses
+          visibility (covers minimized window, switched tab, locked
+          screen, OS app switch on iPadOS) and vanishes on return. */}
+      {tabHidden && scanSession.session && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-amber-500/95 text-amber-950 select-none"
+        >
+          <AlertOctagon className="h-32 w-32 mb-4" />
+          <p className="text-4xl font-extrabold tracking-tight">
+            Kiosk tab is not in focus
+          </p>
+          <p className="text-xl mt-3 max-w-2xl text-center px-6">
+            HID scans only land on the foreground tab. Bring this tab back
+            to the front to keep scanning.
+          </p>
+        </div>
+      )}
+
+      {/* Floating Exit Fullscreen button — iPad operators leave fullscreen
+          without hunting the header. Bottom-right so it sits on the
+          counts/right column. */}
+      {isFullscreen && (
+        <Button
+          onClick={exitFullscreen}
+          size="lg"
+          variant="secondary"
+          className="fixed bottom-6 right-6 z-50 h-14 px-5 gap-2 text-base shadow-2xl border border-slate-300 dark:border-slate-700"
+        >
+          <Minimize2 className="h-5 w-5" />
+          Exit Fullscreen
+        </Button>
+      )}
+    </div>
+  );
+}
+
+interface ResultPanelProps {
+  display: DisplayedResult | null;
+  processing: boolean;
+  resumeCountdown: number | null;
+}
+
+/**
+ * The big "who just scanned" card. Lives in the right rail (above the meal
+ * counts) so the operator's eye doesn't have to move off the QR they're
+ * pointing at — the camera/CCTV viewport on the left stays clean.
+ *
+ * Idle state still renders a placeholder block so the panel always occupies
+ * the same vertical real estate and the layout doesn't jump on every scan.
+ */
+function ResultPanel({ display, processing, resumeCountdown }: ResultPanelProps) {
+  if (!display) {
+    return (
+      <div className="border-b px-4 py-6 flex flex-col items-center justify-center text-center min-h-[200px] bg-slate-50/60 dark:bg-slate-950/40">
+        {processing ? (
+          <>
+            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+            <p className="mt-3 text-sm uppercase tracking-widest text-muted-foreground">
+              Confirming…
+            </p>
+          </>
+        ) : (
+          <>
+            <UserRound className="h-12 w-12 text-muted-foreground/50" />
+            <p className="mt-3 text-sm uppercase tracking-widest text-muted-foreground">
+              Awaiting scan
+            </p>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      key={display.title + (display.subtitle ?? "")}
+      className={`border-b px-4 py-6 flex flex-col items-center text-center text-white animate-in fade-in zoom-in duration-150 ${
+        display.ok ? "bg-green-600/95" : "bg-amber-600/95"
+      }`}
+    >
+      {display.ok ? (
+        <CheckCircle2 className="h-16 w-16 mb-2 drop-shadow" />
+      ) : (
+        <AlertOctagon className="h-16 w-16 mb-2 drop-shadow" />
+      )}
+      <p className="text-3xl font-extrabold tracking-tight">{display.title}</p>
+      {display.subtitle && (
+        <p className="text-2xl font-semibold mt-2">{display.subtitle}</p>
+      )}
+      {display.detail && (
+        <p className="text-lg opacity-90 mt-1">{display.detail}</p>
+      )}
+      <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+        {(display.gender === "MALE" || display.gender === "FEMALE") && (
+          <Badge
+            variant="outline"
+            className={`bg-white text-base px-3 py-1 border-2 ${
+              display.gender === "MALE"
+                ? "border-blue-400 text-blue-700"
+                : "border-rose-400 text-rose-700"
+            }`}
+          >
+            {display.gender === "MALE" ? "Male" : "Female"}
+          </Badge>
+        )}
+        {display.mealCategory && (
+          <Badge
+            variant="outline"
+            className={`bg-white text-base px-3 py-1 border-2 ${
+              display.mealCategory === "adult"
+                ? "border-emerald-400 text-emerald-700"
+                : display.mealCategory === "youth"
+                  ? "border-amber-400 text-amber-700"
+                  : "border-gray-400 text-gray-700"
+            }`}
+          >
+            {display.mealCategory === "adult"
+              ? "General"
+              : display.mealCategory === "youth"
+                ? "Youth"
+                : "Free"}
+          </Badge>
+        )}
+      </div>
+      {resumeCountdown !== null && (
+        <p className="mt-3 text-xs font-medium tracking-widest uppercase opacity-90">
+          Ready for next in {resumeCountdown}…
+        </p>
+      )}
+    </div>
+  );
+}
+
+interface MealCountsPanelProps {
+  mealLabel: string;
+  stats: MealStats;
+  loading: boolean;
+  isSimulation: boolean;
+  bumpKey: number;
+  hasSession: boolean;
+}
+
+function MealCountsPanel({
+  mealLabel,
+  stats,
+  loading,
+  isSimulation,
+  bumpKey,
+  hasSession,
+}: MealCountsPanelProps) {
+  return (
+    <div className="px-4 pt-4 pb-3 space-y-4">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            {isSimulation
+              ? "Meal-wide — sandbox excluded"
+              : `${mealLabel} · Total Served`}
+          </p>
+          <p
+            key={`meal-${bumpKey}`}
+            className="text-7xl font-black tabular-nums leading-none mt-1 animate-in zoom-in-95 duration-200"
+          >
+            {stats.meal.total}
+          </p>
+        </div>
+        {loading && (
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mb-2" />
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <CountTile label="General" value={stats.meal.general} tone="general" />
+        <CountTile label="Youth" value={stats.meal.youth} tone="youth" />
+        <CountTile label="Free" value={stats.meal.free} tone="free" />
+      </div>
+
+      {hasSession && stats.session && (
+        <div
+          className={`rounded-lg border px-3 py-3 ${
+            isSimulation
+              ? "border-purple-300 bg-purple-50 dark:border-purple-700 dark:bg-purple-950/40"
+              : "border-slate-200 bg-muted/40 dark:border-slate-700"
+          }`}
+        >
+          <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+            This session{isSimulation ? " · simulation" : ""}
+          </p>
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <p
+              key={`sess-${bumpKey}`}
+              className="text-4xl font-extrabold tabular-nums leading-none animate-in zoom-in-95 duration-200"
+            >
+              {stats.session.total}
+            </p>
+            <p className="text-sm text-muted-foreground tabular-nums">
+              G {stats.session.general} · Y {stats.session.youth} · F{" "}
+              {stats.session.free}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const COUNT_TONE: Record<"general" | "youth" | "free", string> = {
+  general:
+    "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100",
+  youth:
+    "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100",
+  free: "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100",
+};
+
+function CountTile({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "general" | "youth" | "free";
+}) {
+  return (
+    <div
+      className={`rounded-lg border px-3 py-3 flex flex-col items-start ${COUNT_TONE[tone]}`}
+    >
+      <span className="text-xs uppercase tracking-wider opacity-80">{label}</span>
+      <span className="text-5xl font-extrabold tabular-nums leading-tight mt-0.5">
+        {value}
+      </span>
     </div>
   );
 }
