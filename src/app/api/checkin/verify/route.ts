@@ -1,13 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdmin } from "@/lib/auth/admin";
+import { requireCheckinStaff } from "@/lib/auth/admin";
 import { getHmacSecret } from "@/lib/services/app-config-cache";
 import {
   resolveParticipant,
   computeMealCategory,
   type ResolvedParticipant,
 } from "@/lib/services/participant-lookup";
+
+/** Friendly short date ("Thu, Jun 25") for a plain YYYY-MM-DD, TZ-safe. */
+function fmtStayDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 function toPersonPayload(p: ResolvedParticipant) {
   return {
@@ -53,7 +65,7 @@ export async function POST(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const adminAuth = await requireAdmin();
+  const adminAuth = await requireCheckinStaff();
   if (!adminAuth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -181,6 +193,20 @@ export async function POST(req: NextRequest) {
     }
     if (!isPaid) {
       return reject("Registration is not paid");
+    }
+  }
+
+  // Meal eligibility by attendance window. A participant only eats on the days
+  // they're actually here, so block DINING scans whose meal date falls outside
+  // their effective stay window (per-participant override, else the
+  // registration's start/end). Stops e.g. a Thursday arrival being served on
+  // Monday. No row is recorded — the operator sees a red "Cannot serve".
+  if (checkinType === "DINING") {
+    if (p.stayStartDate && mealDate < p.stayStartDate) {
+      return reject(`Not attending yet — arrives ${fmtStayDate(p.stayStartDate)}`);
+    }
+    if (p.stayEndDate && mealDate > p.stayEndDate) {
+      return reject(`Not attending — stay ended ${fmtStayDate(p.stayEndDate)}`);
     }
   }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdmin } from "@/lib/auth/admin";
+import { requireCheckinStaff } from "@/lib/auth/admin";
 import {
   pickBestMembership,
   type MembershipCodeRow,
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const adminAuth = await requireAdmin();
+  const adminAuth = await requireCheckinStaff();
   if (!adminAuth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

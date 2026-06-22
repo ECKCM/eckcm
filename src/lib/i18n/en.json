@@ -148,6 +148,7 @@
     "contactSupport": "Contact Support",
     "contactSupportDesc": "For any changes or cancellations, please contact the ECKCM registration team.",
     "booklet": "Booklet",
+    "newspaper": "Newspaper",
     "viewBooklet": "View event booklet"
   },
   "booklet": {
@@ -472,6 +473,7 @@
     "email": "Email",
     "emailHintOthers": "You may change this to the email of the person you are registering on behalf of.",
     "selectChurch": "Select church",
+    "searchChurch": "Search for your church…",
     "noChurchFound": "No church found."
   },
   "wizard": {

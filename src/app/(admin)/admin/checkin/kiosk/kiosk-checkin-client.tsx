@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -46,9 +47,11 @@ import {
   Clock,
   Timer,
   UserRound,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { feedback } from "@/lib/checkin/scanner-feedback";
 import { computeMealCategory } from "@/lib/checkin/meal-category";
 import { parseQRValue, toVerifyBody, type ParsedQR } from "@/lib/checkin/qr-parser";
@@ -113,6 +116,10 @@ const MEAL_KIND: Record<MealKey, "MEAL_BREAKFAST" | "MEAL_LUNCH" | "MEAL_DINNER"
 
 interface DisplayedResult {
   ok: boolean;
+  // Visual tone for the result card. Defaults from `ok` (success/warning); the
+  // "duplicate" tone gives "Already checked in" its own colour so a repeat scan
+  // is never mistaken for a fresh green "Welcome!".
+  variant?: "success" | "warning" | "duplicate";
   title: string;
   subtitle?: string;
   detail?: string;
@@ -152,45 +159,25 @@ function todayISO() {
   return fmt.format(new Date()); // en-CA yields YYYY-MM-DD
 }
 
-// Dates inside the event window that have no meals served (arrival /
-// departure days, off-site excursion days, etc). The picker hides them so
-// the operator can't accidentally start a session for a meal that doesn't
-// exist. TODO: lift to `eckcm_app_config.meal_blackout_dates` so each year
-// can be edited without a code change.
-const MEAL_BLACKOUT_DATES = new Set<string>([
-  "2026-06-21",
-  "2026-06-28",
-]);
-
-/** Inclusive list of ISO dates between start and end (both YYYY-MM-DD). */
-function enumerateDates(start: string, end: string): string[] {
-  if (!start || !end) return [];
-  const out: string[] = [];
-  // Parse as plain Y-M-D in UTC midnight so the day-by-day stepping isn't
-  // skewed by the operator's local timezone DST.
-  const cur = new Date(`${start}T00:00:00Z`);
-  const stop = new Date(`${end}T00:00:00Z`);
-  if (Number.isNaN(cur.getTime()) || Number.isNaN(stop.getTime())) return [];
-  while (cur <= stop) {
-    out.push(cur.toISOString().split("T")[0]);
-    cur.setUTCDate(cur.getUTCDate() + 1);
-  }
-  return out;
-}
-
-/** Render a YYYY-MM-DD as "Sat · Aug 1" for the date picker. */
-function formatDateLabel(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", {
-    timeZone: "UTC",
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 const RESUME_DELAY_MS = 1000;
+
+// Word the operator must type to confirm the event-wide "Reset All Meals" wipe.
+const RESET_ALL_CONFIRM = "RESET";
+
+/**
+ * True when a meal date falls within a participant's stay window. Null/undefined
+ * bounds mean "no restriction on that side". All values are YYYY-MM-DD, so a
+ * lexical string compare is a correct date compare.
+ */
+function withinStayWindow(
+  mealDate: string,
+  start: string | null | undefined,
+  end: string | null | undefined
+): boolean {
+  if (start && mealDate < start) return false;
+  if (end && mealDate > end) return false;
+  return true;
+}
 
 function formatElapsed(ms: number): string {
   if (ms < 0) ms = 0;
@@ -252,6 +239,12 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
   const [endArmed, setEndArmed] = useState(false);
   const [endDialogOpen, setEndDialogOpen] = useState(false);
   const endArmedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Hard Reset (clears this meal's recorded live check-ins) confirm dialog.
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  // Reset All Meals (clears every meal's live check-ins for the event) —
+  // gated behind a typed confirmation since it wipes the whole event.
+  const [resetAllDialogOpen, setResetAllDialogOpen] = useState(false);
+  const [resetAllConfirmText, setResetAllConfirmText] = useState("");
 
   // Roster for manual participant search (fallback when QR fails).
   const [roster, setRoster] = useState<SearchableParticipant[]>([]);
@@ -273,29 +266,9 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
   const isSimulation = scanMode === "simulation";
   const cache = useEpassCache({ eventId: selectedEventId || null });
 
-  // Date dropdown options for the selected event — every day from start to
-  // end inclusive, labelled with the weekday. Falls back to "Today" only
-  // when the event has no dates configured. If the currently picked date
-  // is outside the event window, snap to today (if it's in range) or to
-  // the first day of the event so the picker is never stuck on an invalid
-  // value.
-  const selectedEvent = useMemo(
-    () => events.find((e) => e.id === selectedEventId) ?? null,
-    [events, selectedEventId]
-  );
-  const eventDateOptions = useMemo(() => {
-    if (!selectedEvent?.start_date || !selectedEvent?.end_date) return [];
-    return enumerateDates(selectedEvent.start_date, selectedEvent.end_date)
-      .filter((iso) => !MEAL_BLACKOUT_DATES.has(iso))
-      .map((iso) => ({ iso, label: formatDateLabel(iso) }));
-  }, [selectedEvent]);
-  useEffect(() => {
-    if (eventDateOptions.length === 0) return;
-    const allIso = eventDateOptions.map((d) => d.iso);
-    if (allIso.includes(mealDate)) return;
-    const today = todayISO();
-    setMealDate(allIso.includes(today) ? today : allIso[0]);
-  }, [eventDateOptions, mealDate]);
+  // The meal date is a free, unrestricted native date input (see the header) —
+  // no event-window enumeration or blackout filtering, so the kiosk can record
+  // for any date (setup-day dry runs, backfilled meals, etc.).
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -384,84 +357,9 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  // Auto-end the session once the configured meal window closes (+15min
-  // grace). Stops the "operator forgot to End" footprint of half-closed
-  // sessions polluting the dashboard. Simulations never auto-end — those
-  // are training and the operator owns the lifecycle.
-  //
-  // Conservative rules to avoid the "session ends instantly on start"
-  // failure mode:
-  //   1. Only run when the meal_schedule has been fetched from the server
-  //      (schedule !== DEFAULT_MEAL_SCHEDULE reference) — otherwise the
-  //      default 19:30 dinner end would auto-close an evening session
-  //      before the operator's real schedule is loaded.
-  //   2. Never run on the very first tick — wait one minute so the
-  //      operator has at least 60s to react to a stale-session situation.
-  //   3. Only auto-end when mealDate is strictly in the past, OR mealDate
-  //      is today AND we're already past the end window. mealDate in the
-  //      future is left alone.
-  useEffect(() => {
-    if (!scanSession.session || isSimulation) return;
-    if (schedule === DEFAULT_MEAL_SCHEDULE) return; // wait for app_config
-    const win = schedule[mealKey];
-    if (!win?.end) return;
-
-    const AUTO_END_BUFFER_MIN = 15;
-    const sessionId = scanSession.session.id;
-    const sessionRef = scanSession; // capture stable ref for cleanup
-
-    function nowEt(): { date: string; minutesOfDay: number } {
-      const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "America/New_York",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }).formatToParts(new Date());
-      const get = (t: string) =>
-        parts.find((p) => p.type === t)?.value ?? "";
-      const date = `${get("year")}-${get("month")}-${get("day")}`;
-      const minutesOfDay =
-        Number(get("hour")) * 60 + Number(get("minute"));
-      return { date, minutesOfDay };
-    }
-
-    function endMinutes(): number {
-      const [h, m] = win.end.split(":").map(Number);
-      return h * 60 + m + AUTO_END_BUFFER_MIN;
-    }
-
-    const check = () => {
-      if (sessionRef.session?.id !== sessionId) return;
-      const { date, minutesOfDay } = nowEt();
-      if (date < mealDate) return; // mealDate is in the future
-      if (date === mealDate && minutesOfDay < endMinutes()) return; // still in window
-      console.warn("[kiosk] auto-end", {
-        mealKey,
-        mealDate,
-        endAt: win.end,
-        bufferMin: AUTO_END_BUFFER_MIN,
-      });
-      sessionRef.end();
-    };
-
-    // No immediate check — first tick after 60s so a freshly-started
-    // session never trips it.
-    const id = setInterval(check, 60_000);
-    return () => clearInterval(id);
-    // scanSession intentionally referenced as a snapshot inside; only
-    // re-run when the session id, mode, schedule, or meal selection
-    // changes — not on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    scanSession.session?.id,
-    isSimulation,
-    schedule,
-    mealKey,
-    mealDate,
-  ]);
+  // Auto-end on meal-window close was intentionally removed: the kiosk now
+  // records regardless of date/time, so a live session stays open until the
+  // operator ends it (or switches meal / date / event).
 
   useEffect(() => {
     const onFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
@@ -778,6 +676,26 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
           startResumeCountdown();
           return;
         }
+        // Attendance-window gate (mirrors the server verify rule). Simulation
+        // has no server round-trip, so enforce it here from the cached window.
+        if (
+          !withinStayWindow(mealDate, cached.stayStartDate, cached.stayEndDate)
+        ) {
+          setDisplay({
+            ok: false,
+            title: "Cannot serve",
+            subtitle: cached.personName,
+            detail:
+              cached.stayStartDate && mealDate < cached.stayStartDate
+                ? `Not attending yet — arrives ${cached.stayStartDate}`
+                : `Not attending — stay ended ${cached.stayEndDate ?? ""}`,
+            participantCode: cached.participantCode ?? null,
+            gender: cached.gender ?? null,
+          });
+          feedback("error");
+          startResumeCountdown();
+          return;
+        }
 
         const mealKeyId = `${mealKey}|${mealDate}`;
         const seen =
@@ -789,7 +707,8 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
 
         if (seen.has(personKey)) {
           setDisplay({
-            ok: false,
+            ok: true,
+            variant: "duplicate",
             title: "Already simulated",
             subtitle: cached.personName,
             detail: cached.koreanName ?? undefined,
@@ -832,7 +751,10 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
         cached &&
           cached.isActive &&
           (cached.registrationStatus === "PAID" ||
-            cached.registrationStatus === "APPROVED")
+            cached.registrationStatus === "APPROVED") &&
+          // Out-of-window meals must not flash green — let the server's
+          // authoritative reject land instead (red "Cannot serve").
+          withinStayWindow(mealDate, cached.stayStartDate, cached.stayEndDate)
       );
 
       if (optimistic && cached) {
@@ -913,6 +835,8 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
                   : data.status === "already_checked_in"
                     ? "Already checked in"
                     : "Done",
+              variant:
+                data.status === "already_checked_in" ? "duplicate" : undefined,
               subtitle: data.person?.name,
               detail: data.person?.koreanName ?? undefined,
               participantCode: data.person?.participantCode ?? null,
@@ -1023,6 +947,67 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     }
   }, [selectedEventId, mealKey, mealDate, scanMode, scanSession]);
 
+  // Hard Reset — permanently clears the recorded live (non-sandbox) check-ins
+  // for the currently selected meal slot (event + date + meal) so the live
+  // count restarts from zero. Registrations / payments are never touched. Any
+  // check-in operator may run it; the server audit-logs every reset.
+  const handleHardReset = useCallback(async () => {
+    if (!selectedEventId) return;
+    try {
+      const res = await fetch("/api/checkin/meal-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: selectedEventId,
+          mealDate,
+          mealType: MEAL_KEY_TO_TYPE[mealKey],
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || `Hard reset failed (${res.status})`);
+        return;
+      }
+      const n = data.deleted ?? 0;
+      toast.success(
+        `Cleared ${n} ${MEAL_LABEL[mealKey]} check-in${n === 1 ? "" : "s"} for ${mealDate}`
+      );
+      // Re-pull the authoritative meal count so the panel drops to zero.
+      fetchStats();
+    } catch {
+      toast.error("Network error during hard reset");
+    }
+  }, [selectedEventId, mealDate, mealKey, fetchStats]);
+
+  // Reset All Meals — clears every recorded live (non-sandbox) DINING check-in
+  // for the whole event (all dates + all meals) in one shot. Same audit/role
+  // rules as the per-meal reset, but gated behind a typed confirmation.
+  const handleResetAll = useCallback(async () => {
+    if (!selectedEventId) return;
+    if (resetAllConfirmText.trim().toUpperCase() !== RESET_ALL_CONFIRM) return;
+    try {
+      const res = await fetch("/api/checkin/event-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId: selectedEventId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || `Reset all failed (${res.status})`);
+        return;
+      }
+      const n = data.deleted ?? 0;
+      toast.success(
+        `Cleared all ${n} meal check-in${n === 1 ? "" : "s"} for this event`
+      );
+      setResetAllDialogOpen(false);
+      setResetAllConfirmText("");
+      fetchStats();
+    } catch {
+      toast.error("Network error during reset");
+    }
+  }, [selectedEventId, resetAllConfirmText, fetchStats]);
+
   const constraints = devices.selectedDeviceId
     ? { deviceId: { exact: devices.selectedDeviceId } }
     : { facingMode: { ideal: cameraFacing } };
@@ -1057,23 +1042,18 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
           </SelectContent>
         </Select>
 
-        <Select value={mealDate} onValueChange={setMealDate}>
-          <SelectTrigger className="w-[180px] h-11 text-base">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {eventDateOptions.length > 0 ? (
-              eventDateOptions.map((d) => (
-                <SelectItem key={d.iso} value={d.iso}>
-                  {d.label}
-                  {d.iso === todayISO() ? " · Today" : ""}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value={todayISO()}>Today</SelectItem>
-            )}
-          </SelectContent>
-        </Select>
+        {/* Unrestricted meal date — any date is allowed (setup-day dry runs,
+            backfills) so this is a free native date input, not a list pinned
+            to the event window. */}
+        <input
+          type="date"
+          value={mealDate}
+          onChange={(e) => {
+            if (e.target.value) setMealDate(e.target.value);
+          }}
+          aria-label="Meal date"
+          className="h-11 w-[180px] rounded-md border border-input bg-background px-3 text-base shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
 
         <Tabs value={mealKey} onValueChange={(v) => setMealKey(v as MealKey)}>
           <TabsList className="h-11">
@@ -1291,6 +1271,28 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
             <span className="text-base text-muted-foreground">
               No {isSimulation ? "simulation" : "live"} session
             </span>
+            {!isSimulation && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  disabled={!selectedEventId}
+                  onClick={() => setResetDialogOpen(true)}
+                  className="h-11 gap-1.5 px-4 border-destructive text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4" /> Hard Reset
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  disabled={!selectedEventId}
+                  onClick={() => setResetAllDialogOpen(true)}
+                  className="h-11 gap-1.5 px-4 border-destructive text-destructive hover:bg-destructive/10"
+                >
+                  <AlertOctagon className="h-4 w-4" /> Reset All Meals
+                </Button>
+              </div>
+            )}
             <div className="ml-auto flex items-center gap-2 flex-wrap">
               <Tabs
                 value={scanMode}
@@ -1334,6 +1336,92 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
                 {isSimulation ? "Simulation" : "Kiosk"}
               </Button>
             </div>
+
+            <AlertDialog
+              open={resetDialogOpen}
+              onOpenChange={setResetDialogOpen}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Hard reset {MEAL_LABEL[mealKey]} records?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently deletes every recorded{" "}
+                    <strong>{MEAL_LABEL[mealKey]}</strong> check-in for{" "}
+                    <span className="font-mono">{mealDate}</span> at this event —
+                    currently <strong>{displayStats.meal.total}</strong> served —
+                    so the live count restarts from zero. Registrations and
+                    payments are not affected. This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleHardReset}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Clear records
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog
+              open={resetAllDialogOpen}
+              onOpenChange={(open) => {
+                setResetAllDialogOpen(open);
+                if (!open) setResetAllConfirmText("");
+              }}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset ALL meal records?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently deletes{" "}
+                    <strong>every recorded meal check-in</strong> (all dates, all
+                    meals) for{" "}
+                    <strong>
+                      {events.find((e) => e.id === selectedEventId)?.name_en ??
+                        "this event"}
+                    </strong>{" "}
+                    so every meal count restarts from zero. Main-desk check-ins,
+                    registrations and payments are not affected. This cannot be
+                    undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="py-2">
+                  <label
+                    htmlFor="kiosk-reset-all-confirm"
+                    className="text-sm font-medium"
+                  >
+                    Type <span className="font-mono">{RESET_ALL_CONFIRM}</span> to
+                    confirm
+                  </label>
+                  <Input
+                    id="kiosk-reset-all-confirm"
+                    value={resetAllConfirmText}
+                    onChange={(e) => setResetAllConfirmText(e.target.value)}
+                    placeholder={RESET_ALL_CONFIRM}
+                    autoFocus
+                    className="mt-1.5"
+                  />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleResetAll}
+                    disabled={
+                      resetAllConfirmText.trim().toUpperCase() !==
+                      RESET_ALL_CONFIRM
+                    }
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Clear all records
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         )}
       </div>
@@ -1567,17 +1655,24 @@ function ResultPanel({ display, processing, resumeCountdown }: ResultPanelProps)
     );
   }
 
+  const tone: "success" | "warning" | "duplicate" =
+    display.variant ?? (display.ok ? "success" : "warning");
+  const toneBg =
+    tone === "success"
+      ? "bg-green-600/95"
+      : tone === "duplicate"
+        ? "bg-orange-500/95"
+        : "bg-red-600/95";
+
   return (
     <div
       key={display.title + (display.subtitle ?? "")}
-      className={`border-b px-4 py-6 flex flex-col items-center text-center text-white animate-in fade-in zoom-in duration-150 ${
-        display.ok ? "bg-green-600/95" : "bg-amber-600/95"
-      }`}
+      className={`border-b px-4 py-6 flex flex-col items-center text-center text-white animate-in fade-in zoom-in duration-150 ${toneBg}`}
     >
-      {display.ok ? (
-        <CheckCircle2 className="h-16 w-16 mb-2 drop-shadow" />
-      ) : (
+      {tone === "warning" ? (
         <AlertOctagon className="h-16 w-16 mb-2 drop-shadow" />
+      ) : (
+        <CheckCircle2 className="h-16 w-16 mb-2 drop-shadow" />
       )}
       <p className="text-3xl font-extrabold tracking-tight">{display.title}</p>
       {display.subtitle && (

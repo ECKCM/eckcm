@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdmin } from "@/lib/auth/admin";
+import { requireCheckinStaff } from "@/lib/auth/admin";
 import { CheckinBackButton } from "@/components/checkin/back-button";
 import { ScanSessionDetailClient } from "./scan-session-detail-client";
 
@@ -10,7 +10,7 @@ export default async function ScanSessionDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const adminAuth = await requireAdmin();
+  const adminAuth = await requireCheckinStaff();
   if (!adminAuth) {
     notFound();
   }

@@ -4,7 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, BookOpen } from "lucide-react";
+import { ShieldCheck, BookOpen, Newspaper } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/context";
 
@@ -162,7 +162,21 @@ export function EPassViewer({ epass, bookletUrl }: EPassViewerProps) {
           </div>
         </CardContent>
 
-        <div className="px-6 pb-6">
+        <div className="grid grid-cols-2 gap-3 px-6 pb-6">
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            asChild
+          >
+            <a
+              href="https://cksda.church/eckcm"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Newspaper className="size-4" />
+              {t("dashboard.newspaper")}
+            </a>
+          </Button>
           <Button
             variant="outline"
             className="w-full gap-2"

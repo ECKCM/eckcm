@@ -20,6 +20,10 @@ interface EPassCacheEntry {
   birthDate: string | null;
   /** "MALE" | "FEMALE" | null — shown on the result card. */
   gender: string | null;
+  /** Effective stay window (YYYY-MM-DD). Gates meal check-in by attendance day
+   *  offline; null bounds mean no restriction on that side. */
+  stayStartDate: string | null;
+  stayEndDate: string | null;
   isActive: boolean;
   registrationStatus: string;
 }

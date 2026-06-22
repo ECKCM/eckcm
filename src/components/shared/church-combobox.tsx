@@ -8,6 +8,8 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  ComboboxSelectTrigger,
+  ComboboxValue,
 } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/context";
@@ -28,6 +30,18 @@ interface ChurchComboboxProps {
   className?: string;
 }
 
+/**
+ * Church picker. Renders as a Select-style trigger button that opens a popup
+ * with the search field pinned at the top and the church list below it.
+ *
+ * This "input inside popup" shape (rather than a plain text-input combobox) is
+ * what makes it work on mobile: tapping the trigger opens the popup WITHOUT
+ * focusing the search field, so the soft keyboard doesn't pop up and bury the
+ * list. Users can scroll to pick, or tap the search box to filter — and because
+ * the search box sits at the top of the popup, it stays above the keyboard.
+ * Previously the input itself was the trigger, so tapping it raised the keyboard
+ * and covered the anchored dropdown, making churches un-selectable on phones.
+ */
 export function ChurchCombobox({
   churches,
   value,
@@ -62,11 +76,19 @@ export function ChurchCombobox({
       }}
       items={labels}
     >
-      <ComboboxInput
-        placeholder={placeholder ?? t("profile.selectChurch")}
+      <ComboboxSelectTrigger
         className={cn(className, error && "border-destructive")}
-      />
+      >
+        <ComboboxValue placeholder={placeholder ?? t("profile.selectChurch")} />
+      </ComboboxSelectTrigger>
       <ComboboxContent>
+        <div className="bg-popover sticky top-0 z-10 border-b p-1">
+          <ComboboxInput
+            showTrigger={false}
+            placeholder={t("profile.searchChurch")}
+            className="w-full border-0 bg-transparent shadow-none"
+          />
+        </div>
         <ComboboxEmpty>{t("profile.noChurchFound")}</ComboboxEmpty>
         <ComboboxList>
           {(item) => (

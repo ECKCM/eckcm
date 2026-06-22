@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdmin } from "@/lib/auth/admin";
+import { requireCheckinStaff } from "@/lib/auth/admin";
 import { computeMealCategory } from "@/lib/services/participant-lookup";
 
 /**
@@ -121,7 +121,7 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const auth = await requireAdmin();
+  const auth = await requireCheckinStaff();
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

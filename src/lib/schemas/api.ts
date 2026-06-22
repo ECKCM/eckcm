@@ -169,6 +169,21 @@ export const donationConfirmSchema = z.object({
   paymentIntentId: z.string().min(1),
 });
 
+// -- Custom payment (public "pay any amount" page) --
+
+export const customPaymentCreateIntentSchema = z.object({
+  amountCents: z.number().int().min(100).max(5_000_000), // $1 – $50,000
+  payerName: z.string().max(200).optional(),
+  payerEmail: z.string().email().max(255).optional(),
+  purpose: z.string().max(500).optional(),
+  coversFees: z.boolean().optional(),
+});
+
+export const customPaymentConfirmSchema = z.object({
+  paymentId: uuid,
+  paymentIntentId: z.string().min(1),
+});
+
 // Manual (non-card) donation: Zelle / Check / Cash. Recorded as PENDING,
 // admin confirms receipt later in the Donation Tracker.
 export const donationManualSchema = z.object({

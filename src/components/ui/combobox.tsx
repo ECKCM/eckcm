@@ -34,6 +34,37 @@ function ComboboxTrigger({
   )
 }
 
+const ComboboxValue = ComboboxPrimitive.Value
+
+/**
+ * A full-width, Select-style button that opens the popup. Pair with a
+ * `ComboboxInput` rendered *inside* `ComboboxContent` to build a searchable
+ * select: tapping the trigger opens the list without focusing the search field,
+ * so on touch devices the soft keyboard stays down and never buries the list.
+ */
+function ComboboxSelectTrigger({
+  className,
+  children,
+  ...props
+}: ComboboxPrimitive.Trigger.Props) {
+  return (
+    <ComboboxPrimitive.Trigger
+      data-slot="combobox-select-trigger"
+      className={cn(
+        "border-input bg-background ring-offset-background data-[placeholder]:text-muted-foreground flex h-10 w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:bg-accent/50 disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    >
+      <span className="min-w-0 flex-1 truncate text-left">{children}</span>
+      <ChevronDownIcon
+        data-slot="combobox-select-trigger-icon"
+        className="size-4 shrink-0 opacity-50"
+      />
+    </ComboboxPrimitive.Trigger>
+  )
+}
+
 function ComboboxClear({ className, ...props }: ComboboxPrimitive.Clear.Props) {
   return (
     <ComboboxPrimitive.Clear
@@ -183,4 +214,6 @@ export {
   ComboboxEmpty,
   ComboboxTrigger,
   ComboboxClear,
+  ComboboxValue,
+  ComboboxSelectTrigger,
 }
