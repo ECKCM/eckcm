@@ -28,6 +28,8 @@ import {
  */
 type MembershipRow = MembershipCodeRow & {
   person_id: string;
+  stay_start_date: string | null;
+  stay_end_date: string | null;
   eckcm_groups: {
     registration_id: string;
     eckcm_registrations: {
@@ -35,6 +37,8 @@ type MembershipRow = MembershipCodeRow & {
       confirmation_code: string;
       status: string;
       event_id: string;
+      start_date: string | null;
+      end_date: string | null;
       eckcm_events: {
         name_en: string;
         year: number;
@@ -86,6 +90,8 @@ export async function GET(req: NextRequest) {
       participant_code,
       status,
       created_at,
+      stay_start_date,
+      stay_end_date,
       eckcm_groups!inner(
         registration_id,
         eckcm_registrations!inner(
@@ -93,6 +99,8 @@ export async function GET(req: NextRequest) {
           confirmation_code,
           status,
           event_id,
+          start_date,
+          end_date,
           eckcm_events!inner(name_en, year, event_start_date)
         )
       ),
@@ -169,6 +177,10 @@ export async function GET(req: NextRequest) {
       eventStartDate: reg.eckcm_events.event_start_date,
       birthDate: m.eckcm_people.birth_date,
       gender: m.eckcm_people.gender,
+      // Effective stay window (per-participant override ?? registration
+      // default) so the kiosk can gate meals by attendance day offline too.
+      stayStartDate: m.stay_start_date ?? reg.start_date ?? null,
+      stayEndDate: m.stay_end_date ?? reg.end_date ?? null,
       // A person with no token row hasn't been explicitly deactivated, so
       // we treat them as active for the kiosk's purposes. The server-side
       // verify route is still the source of truth — the cache only powers

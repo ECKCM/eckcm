@@ -35,6 +35,9 @@ export interface CacheLookupHit {
   eventStartDate: string | null;
   /** "MALE" | "FEMALE" | null — shown as a badge on the result card. */
   gender: string | null;
+  /** Effective stay window (YYYY-MM-DD) — gates meals to attendance days. */
+  stayStartDate: string | null;
+  stayEndDate: string | null;
 }
 
 /**
@@ -154,6 +157,8 @@ export function useEpassCache({ eventId, onSync }: UseEpassCacheOptions) {
         birthDate: entry.birthDate ?? null,
         eventStartDate: entry.eventStartDate ?? null,
         gender: entry.gender ?? null,
+        stayStartDate: entry.stayStartDate ?? null,
+        stayEndDate: entry.stayEndDate ?? null,
       };
     }
     const entry = await lookupToken(parsed.token);
@@ -169,6 +174,8 @@ export function useEpassCache({ eventId, onSync }: UseEpassCacheOptions) {
       birthDate: entry.birthDate ?? null,
       eventStartDate: entry.eventStartDate ?? null,
       gender: entry.gender ?? null,
+      stayStartDate: entry.stayStartDate ?? null,
+      stayEndDate: entry.stayEndDate ?? null,
     };
   }, []);
 

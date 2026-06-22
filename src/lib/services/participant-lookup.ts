@@ -11,6 +11,10 @@ export interface ResolvedParticipant {
   gender: string | null;
   birthDate: string | null;
   isEpassActive: boolean;
+  // Effective stay window (per-participant override ?? registration default).
+  // Used to gate meal check-in to the days the participant actually attends.
+  stayStartDate: string | null;
+  stayEndDate: string | null;
   registration: {
     id: string;
     confirmationCode: string;
@@ -36,6 +40,8 @@ type ResolveResult =
 interface MembershipJoined {
   person_id: string;
   participant_code: string;
+  stay_start_date: string | null;
+  stay_end_date: string | null;
   eckcm_groups: {
     registration_id: string;
     eckcm_registrations: {
@@ -43,6 +49,8 @@ interface MembershipJoined {
       confirmation_code: string;
       status: string;
       event_id: string;
+      start_date: string | null;
+      end_date: string | null;
       eckcm_events: { name_en: string; year: number; event_start_date: string | null };
     };
   };
@@ -72,6 +80,8 @@ interface EpassJoined {
     confirmation_code: string;
     status: string;
     event_id: string;
+    start_date: string | null;
+    end_date: string | null;
     eckcm_events: { name_en: string; year: number; event_start_date: string | null };
   };
 }
@@ -112,6 +122,8 @@ export async function resolveParticipant(
       .select(`
         person_id,
         participant_code,
+        stay_start_date,
+        stay_end_date,
         eckcm_groups!inner(
           registration_id,
           eckcm_registrations!inner(
@@ -119,6 +131,8 @@ export async function resolveParticipant(
             confirmation_code,
             status,
             event_id,
+            start_date,
+            end_date,
             eckcm_events!inner(name_en, year, event_start_date)
           )
         ),
@@ -151,6 +165,8 @@ export async function resolveParticipant(
         gender: m.eckcm_people.gender,
         birthDate: m.eckcm_people.birth_date,
         isEpassActive: epass?.is_active ?? true,
+        stayStartDate: m.stay_start_date ?? reg.start_date ?? null,
+        stayEndDate: m.stay_end_date ?? reg.end_date ?? null,
         registration: {
           id: reg.id ?? m.eckcm_groups.registration_id,
           confirmationCode: reg.confirmation_code,
@@ -181,6 +197,8 @@ export async function resolveParticipant(
         confirmation_code,
         status,
         event_id,
+        start_date,
+        end_date,
         eckcm_events!inner(name_en, year, event_start_date)
       )
     `)
@@ -212,6 +230,11 @@ export async function resolveParticipant(
       gender: d.eckcm_people.gender,
       birthDate: d.eckcm_people.birth_date,
       isEpassActive: d.is_active,
+      // Legacy token path has no membership context here, so fall back to the
+      // registration's default stay window (per-participant overrides only
+      // apply on the participant-code path the kiosk QR uses).
+      stayStartDate: d.eckcm_registrations.start_date ?? null,
+      stayEndDate: d.eckcm_registrations.end_date ?? null,
       registration: {
         id: d.eckcm_registrations.id ?? d.registration_id,
         confirmationCode: d.eckcm_registrations.confirmation_code,

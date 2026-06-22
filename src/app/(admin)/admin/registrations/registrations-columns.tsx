@@ -6,6 +6,7 @@ import { RegistrationActions } from "./registration-actions";
 import { MoneyValue } from "@/contexts/money-visibility-context";
 import type { LockInfo } from "@/lib/hooks/use-registration-lock";
 import {
+  type CheckinAction,
   type Event,
   type RegistrationRow,
   statusVariant,
@@ -33,6 +34,10 @@ export interface ColumnRenderContext {
   ) => void;
   setProcessedConfirm: (
     v: { regId: string; current: boolean; name: string } | null
+  ) => void;
+  /** Open the confirmation dialog for an inline check-in / check-out toggle. */
+  setCheckinConfirm: (
+    v: { reg: RegistrationRow; action: CheckinAction } | null
   ) => void;
 }
 
@@ -215,10 +220,25 @@ export const REGISTRATION_COLUMNS: ColumnDef[] = [
     label: "C-IN",
     sortKey: "checked_in",
     center: true,
-    render: (r) => (
-      <Badge variant={r.checked_in ? "default" : "secondary"} className="text-xs">
-        {r.checked_in ? "Yes" : "No"}
-      </Badge>
+    render: (r, ctx) => (
+      <button
+        type="button"
+        title={r.checked_in ? "Click to undo check-in" : "Click to check in"}
+        onClick={() =>
+          ctx.setCheckinConfirm({
+            reg: r,
+            action: r.checked_in ? "uncheck_in" : "check_in",
+          })
+        }
+        className="cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Badge
+          variant={r.checked_in ? "default" : "secondary"}
+          className="text-xs hover:opacity-80"
+        >
+          {r.checked_in ? "Yes" : "No"}
+        </Badge>
+      </button>
     ),
   },
   {
@@ -226,11 +246,38 @@ export const REGISTRATION_COLUMNS: ColumnDef[] = [
     label: "C-OUT",
     sortKey: "checked_out",
     center: true,
-    render: (r) => (
-      <Badge variant={r.checked_out ? "default" : "secondary"} className="text-xs">
-        {r.checked_out ? "Yes" : "No"}
-      </Badge>
-    ),
+    render: (r, ctx) => {
+      // Check-out is only meaningful once checked in. Disable the toggle until
+      // the registration is checked in (matches the detail sheet behavior).
+      const disabled = !r.checked_in && !r.checked_out;
+      return (
+        <button
+          type="button"
+          disabled={disabled}
+          title={
+            disabled
+              ? "Check in first to enable check-out"
+              : r.checked_out
+              ? "Click to undo check-out"
+              : "Click to check out"
+          }
+          onClick={() =>
+            ctx.setCheckinConfirm({
+              reg: r,
+              action: r.checked_out ? "uncheck_out" : "check_out",
+            })
+          }
+          className="group rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
+        >
+          <Badge
+            variant={r.checked_out ? "default" : "secondary"}
+            className="text-xs group-enabled:group-hover:opacity-80"
+          >
+            {r.checked_out ? "Yes" : "No"}
+          </Badge>
+        </button>
+      );
+    },
   },
   {
     id: "lodging",

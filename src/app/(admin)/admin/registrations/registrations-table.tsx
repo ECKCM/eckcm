@@ -40,6 +40,7 @@ import { useTableSort } from "@/lib/hooks/use-table-sort";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 import {
+  type CheckinAction,
   type Event,
   type RegistrationRow,
   STATUS_OPTIONS,
@@ -113,6 +114,71 @@ function needsAttention(r: RegistrationRow): boolean {
     !(r.payment_method ?? "").toUpperCase().startsWith("ONSITE");
   return hasNote || hasRequest || r.is_highlighted || isPendingNonOnsite;
 }
+
+/**
+ * Copy + behavior for each inline check-in / check-out action. Drives the
+ * confirmation dialog so admins always see a clear warning before a state
+ * change that touches every participant of the registration.
+ */
+const CHECKIN_ACTIONS: Record<
+  CheckinAction,
+  {
+    title: string;
+    toast: string;
+    confirmLabel: string;
+    destructive: boolean;
+    describe: (code: string, count: number) => React.ReactNode;
+  }
+> = {
+  check_in: {
+    title: "Check in registration",
+    toast: "Checked in",
+    confirmLabel: "Check In",
+    destructive: false,
+    describe: (code, n) => (
+      <>
+        Mark <strong>{code}</strong> as checked in? This checks in all {n}{" "}
+        participant(s).
+      </>
+    ),
+  },
+  uncheck_in: {
+    title: "Undo check-in",
+    toast: "Check-in removed",
+    confirmLabel: "Undo Check-in",
+    destructive: true,
+    describe: (code, n) => (
+      <>
+        Remove check-in for <strong>{code}</strong>? This clears check-in for all{" "}
+        {n} participant(s) — and also clears any check-out.
+      </>
+    ),
+  },
+  check_out: {
+    title: "Check out registration",
+    toast: "Checked out",
+    confirmLabel: "Check Out",
+    destructive: false,
+    describe: (code, n) => (
+      <>
+        Mark <strong>{code}</strong> as checked out? This checks out all {n}{" "}
+        participant(s){". "}If anyone is not yet checked in, they are checked in
+        first.
+      </>
+    ),
+  },
+  uncheck_out: {
+    title: "Undo check-out",
+    toast: "Check-out removed",
+    confirmLabel: "Undo Check-out",
+    destructive: true,
+    describe: (code) => (
+      <>
+        Undo check-out for <strong>{code}</strong>? Participants stay checked in.
+      </>
+    ),
+  },
+};
 
 export function RegistrationsTable({ events, currentUserId, currentUserName }: RegistrationsTableProps) {
   const [mounted, setMounted] = useState(false);
@@ -620,6 +686,57 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
     }
   };
 
+  // ─── Inline check-in / check-out toggle ────────────────────────
+  // Toggling the C-IN / C-OUT badge directly from the row opens this confirm
+  // dialog, then hits the registration-level checkin API (touches every
+  // participant). Optimistic so the badge flips immediately.
+  const [checkinConfirm, setCheckinConfirm] = useState<{
+    reg: RegistrationRow;
+    action: CheckinAction;
+  } | null>(null);
+  const [checkinBusy, setCheckinBusy] = useState(false);
+
+  const executeCheckinToggle = async (reg: RegistrationRow, action: CheckinAction) => {
+    setCheckinBusy(true);
+    // Optimistic projection of the resulting badge state.
+    const projected =
+      action === "check_in"
+        ? { checked_in: true }
+        : action === "uncheck_in"
+        ? { checked_in: false, checked_out: false }
+        : action === "check_out"
+        ? { checked_in: true, checked_out: true }
+        : { checked_out: false };
+    const prev = { checked_in: reg.checked_in, checked_out: reg.checked_out };
+    setRegistrations((rows) =>
+      rows.map((r) => (r.id === reg.id ? { ...r, ...projected } : r))
+    );
+    if (detailReg?.id === reg.id) {
+      setDetailReg((d) => (d ? { ...d, ...projected } : d));
+    }
+    try {
+      const res = await fetch(`/api/admin/registrations/${reg.id}/checkin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to update check-in");
+      }
+      toast.success(CHECKIN_ACTIONS[action].toast);
+      loadRegistrations();
+    } catch (e) {
+      // Revert on failure.
+      setRegistrations((rows) =>
+        rows.map((r) => (r.id === reg.id ? { ...r, ...prev } : r))
+      );
+      toast.error(e instanceof Error ? e.message : "Failed to update check-in");
+    }
+    setCheckinBusy(false);
+    setCheckinConfirm(null);
+  };
+
   // ─── Filter ────────────────────────────────────────────────────
 
   // Distinct option lists derived from currently loaded rows.
@@ -666,6 +783,7 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
     updateStatus,
     setHighlightConfirm,
     setProcessedConfirm,
+    setCheckinConfirm,
   };
 
   // ─── Summary stats ─────────────────────────────────────────────
@@ -1013,6 +1131,44 @@ export function RegistrationsTable({ events, currentUserId, currentUserName }: R
                 }}
               >
                 {processedConfirm.current ? "Unmark" : "Mark Processed"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* Check-in / Check-out Confirmation Dialog */}
+      {checkinConfirm && (
+        <AlertDialog open onOpenChange={(open) => !open && !checkinBusy && setCheckinConfirm(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {CHECKIN_ACTIONS[checkinConfirm.action].title}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {CHECKIN_ACTIONS[checkinConfirm.action].describe(
+                  checkinConfirm.reg.confirmation_code,
+                  checkinConfirm.reg.people_count
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={checkinBusy}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={checkinBusy}
+                className={
+                  CHECKIN_ACTIONS[checkinConfirm.action].destructive
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : undefined
+                }
+                onClick={(e) => {
+                  e.preventDefault();
+                  executeCheckinToggle(checkinConfirm.reg, checkinConfirm.action);
+                }}
+              >
+                {checkinBusy
+                  ? "Saving…"
+                  : CHECKIN_ACTIONS[checkinConfirm.action].confirmLabel}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

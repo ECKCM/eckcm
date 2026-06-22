@@ -124,6 +124,56 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true });
     }
 
+    // ── Custom payments (public "pay any amount" page) ──
+    if (
+      pi.metadata?.type === "custom_payment" &&
+      pi.metadata?.customPaymentId
+    ) {
+      const customPaymentId = pi.metadata.customPaymentId;
+      const { data: payment } = await admin
+        .from("eckcm_custom_payments")
+        .select("id, status, metadata")
+        .eq("id", customPaymentId)
+        .single();
+
+      if (!payment) {
+        logger.warn("[stripe/webhook] Custom payment not found", {
+          customPaymentId,
+        });
+        return NextResponse.json({ received: true });
+      }
+
+      if (payment.status === "SUCCEEDED") {
+        logger.info(
+          "[stripe/webhook] Custom payment already SUCCEEDED, skipping",
+          { customPaymentId }
+        );
+        return NextResponse.json({ received: true });
+      }
+
+      await admin
+        .from("eckcm_custom_payments")
+        .update({
+          status: "SUCCEEDED",
+          metadata: {
+            ...((payment.metadata as Record<string, unknown> | null) ?? {}),
+            stripe_payment_method: pi.payment_method,
+            stripe_charge_id:
+              typeof pi.latest_charge === "string" ? pi.latest_charge : null,
+            confirmed_by: "webhook",
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", customPaymentId);
+
+      logger.info("[stripe/webhook] Custom payment succeeded", {
+        customPaymentId,
+        piId: pi.id,
+      });
+
+      return NextResponse.json({ received: true });
+    }
+
     // ── Registration payments ──
     const registrationId = pi.metadata?.registrationId;
     const invoiceId = pi.metadata?.invoiceId;
@@ -261,6 +311,36 @@ export async function POST(request: Request) {
           },
         })
         .eq("id", donationId);
+
+      return NextResponse.json({ received: true });
+    }
+
+    // ── Custom payment failures ──
+    if (
+      pi.metadata?.type === "custom_payment" &&
+      pi.metadata?.customPaymentId
+    ) {
+      const customPaymentId = pi.metadata.customPaymentId;
+      const failMessage = pi.last_payment_error?.message || "Payment failed";
+
+      logger.warn("[stripe/webhook] Custom payment failed", {
+        customPaymentId,
+        piId: pi.id,
+        failMessage,
+      });
+
+      await admin
+        .from("eckcm_custom_payments")
+        .update({
+          status: "FAILED",
+          metadata: {
+            stripe_payment_method: pi.payment_method,
+            confirmed_by: "webhook",
+            fail_reason: failMessage,
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", customPaymentId);
 
       return NextResponse.json({ received: true });
     }

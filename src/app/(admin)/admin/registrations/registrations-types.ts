@@ -1,6 +1,13 @@
 import { formatCurrency } from "@/lib/utils/formatters";
 import { isManualPaymentMethod } from "@/lib/payment/methods";
 
+/** Registration-level manual check-in actions (mirrors the API contract). */
+export type CheckinAction =
+  | "check_in"
+  | "uncheck_in"
+  | "check_out"
+  | "uncheck_out";
+
 export interface Event {
   id: string;
   name_en: string;
