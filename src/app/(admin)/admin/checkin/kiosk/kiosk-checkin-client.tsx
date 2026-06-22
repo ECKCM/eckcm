@@ -161,6 +161,10 @@ function todayISO() {
 
 const RESUME_DELAY_MS = 1000;
 
+// Hard ceiling on a single verify round-trip. If the server doesn't answer in
+// time we abort so the scan loop releases its dedupe lock instead of freezing.
+const VERIFY_TIMEOUT_MS = 12_000;
+
 // Word the operator must type to confirm the event-wide "Reset All Meals" wipe.
 const RESET_ALL_CONFIRM = "RESET";
 
@@ -460,6 +464,20 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     if (mismatch(liveSession.session)) liveSession.detach();
     if (mismatch(simSession.session)) simSession.detach();
   }, [selectedEventId, mealDate, mealKey, liveSession, simSession]);
+
+  // Reset transient per-scan UI whenever the active session changes (meal/date
+  // switch, end, restore). Otherwise a countdown or an armed End timer from the
+  // previous session lingers — the next "End" press skips its Arm step, or a
+  // stale "Ready for next…" panel hangs over the new session until refresh.
+  const activeSessionId = scanSession.session?.id ?? null;
+  useEffect(() => {
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    if (endArmedTimerRef.current) clearTimeout(endArmedTimerRef.current);
+    setResumeCountdown(null);
+    setEndArmed(false);
+    lastScannedRef.current = null;
+  }, [activeSessionId]);
 
   // Searchable roster for the manual ParticipantSearch fallback.
   useEffect(() => {
@@ -792,6 +810,13 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
         );
       }
 
+      // Bound the verify round-trip. A hung serverless function or a dropped
+      // connection would otherwise leave `await fetch` pending forever, so the
+      // `finally` below never runs and `lastScannedRef` stays locked — the
+      // operator sees scanning "freeze" until they refresh the page. Aborting
+      // turns that into a normal rejected promise that flows to `catch`.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), VERIFY_TIMEOUT_MS);
       try {
         const res = await fetch("/api/checkin/verify", {
           method: "POST",
@@ -803,6 +828,7 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
             mealType: MEAL_KEY_TO_TYPE[mealKey],
             scanSessionId: scanSession.session.id,
           }),
+          signal: controller.signal,
         });
         const data = await res.json();
         // Drop responses for scans the operator has already moved past —
@@ -858,8 +884,14 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
         feedback("error");
         setDisplay({ ok: false, title: "Network error", detail: "Try again" });
       } finally {
+        clearTimeout(timeoutId);
+        // Only the most recent scan owns the dedupe lock + countdown. If a
+        // newer scan has superseded this one it already armed its own
+        // countdown, so releasing here would let a stale result swap in.
         if (scanSeqRef.current === seq) {
           setProcessing(false);
+          // Optimistic scans armed their countdown up front (line ~774); only
+          // the conservative path still needs to release the dedupe lock here.
           if (!optimistic) startResumeCountdown();
         }
       }
