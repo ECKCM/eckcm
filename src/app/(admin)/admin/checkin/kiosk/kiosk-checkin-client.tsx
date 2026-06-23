@@ -54,7 +54,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { feedback } from "@/lib/checkin/scanner-feedback";
+import { feedback, primeAudio } from "@/lib/checkin/scanner-feedback";
 import { computeMealCategory } from "@/lib/checkin/meal-category";
 import { parseQRValue, toVerifyBody, type ParsedQR } from "@/lib/checkin/qr-parser";
 import { useCameraPermission } from "@/lib/checkin/use-camera-permission";
@@ -1034,6 +1034,9 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
 
   const startActiveSession = useCallback(async () => {
     if (!selectedEventId) return;
+    // Unlock iOS audio + speech from this tap so later scan beeps and the
+    // spoken "Re-entry" cue actually play on iPad.
+    primeAudio();
     setSwitchingMode(true);
     try {
       await scanSession.start({
@@ -1303,6 +1306,7 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
                 <Button
                   size="lg"
                   onClick={() => {
+                    primeAudio();
                     scanSession.resume();
                     setEndArmed(false);
                     if (endArmedTimerRef.current) clearTimeout(endArmedTimerRef.current);
