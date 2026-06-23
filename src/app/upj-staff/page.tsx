@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ScanLine, UtensilsCrossed, Hotel, ExternalLink } from "lucide-react";
+import { ScanLine, UtensilsCrossed, Hotel, ExternalLink, Activity, ClipboardList } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { deriveUpjToken } from "@/lib/services/upj-lodging";
+import { deriveLiveToken } from "@/lib/services/checkin-live";
 import {
   Card,
   CardContent,
@@ -63,10 +64,12 @@ export default async function UpjStaffDashboardPage() {
     .select("epass_hmac_secret")
     .eq("id", 1)
     .single();
-  const upjToken = deriveUpjToken(
-    (appConfig as { epass_hmac_secret?: string | null } | null)?.epass_hmac_secret,
-  );
+  const secret = (appConfig as { epass_hmac_secret?: string | null } | null)
+    ?.epass_hmac_secret;
+  const upjToken = deriveUpjToken(secret);
   const upjLodgingHref = upjToken ? `/upj-lodging/${upjToken}` : null;
+  const liveToken = deriveLiveToken(secret);
+  const liveCountsHref = liveToken ? `/live/${liveToken}` : null;
 
   return (
     <div className="mx-auto flex min-h-screen max-w-4xl flex-col px-4 py-8 sm:py-12">
@@ -93,6 +96,21 @@ export default async function UpjStaffDashboardPage() {
           title="Scan Sessions"
           description="Review and manage check-in sessions."
         />
+        <DashboardCard
+          href="/upj-staff/daily-meal-report"
+          icon={ClipboardList}
+          title="Daily Meal Report"
+          description="Served meals by age tier for any day. Export CSV or print."
+        />
+        {liveCountsHref && (
+          <DashboardCard
+            href={liveCountsHref}
+            icon={Activity}
+            title="Live Counts (Public)"
+            description="Real-time counts for active scans — shareable, no login."
+            external
+          />
+        )}
         {upjLodgingHref ? (
           <DashboardCard
             href={upjLodgingHref}

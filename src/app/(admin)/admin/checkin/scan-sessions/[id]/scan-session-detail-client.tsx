@@ -68,9 +68,50 @@ export function ScanSessionDetailClient({
   const realtime = useRealtimeCheckins({
     eventId: session.event_id,
     scanSessionId: session.id,
-    limit: 500,
+    // A single busy meal can exceed 400 check-ins; pull them all so the count
+    // shown here matches the rows recorded under this session (the API caps
+    // session-scoped reads high — see /api/checkin/recent).
+    limit: 2000,
     enabled: true,
   });
+
+  // For meal sessions, the rows recorded under THIS session are usually only
+  // part of the meal — a meal often spans several sessions (kiosk restarts,
+  // multiple devices). Pull the authoritative meal-wide total so the operator
+  // can see "this session: N · whole meal: M" instead of mistaking one
+  // session's partial count for the real headcount.
+  const mealType = (() => {
+    if (session.kind === "MEAL_BREAKFAST") return "BREAKFAST";
+    if (session.kind === "MEAL_LUNCH") return "LUNCH";
+    if (session.kind === "MEAL_DINNER") return "DINNER";
+    return null;
+  })();
+  const [mealTotal, setMealTotal] = useState<number | null>(null);
+  useEffect(() => {
+    if (!mealType || !session.meal_date || session.is_sandbox) return;
+    let cancelled = false;
+    const pull = () => {
+      const params = new URLSearchParams({
+        eventId: session.event_id,
+        mealDate: session.meal_date!,
+        mealType,
+      });
+      fetch(`/api/checkin/meal-stats?${params.toString()}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!cancelled && d?.meal) setMealTotal(d.meal.total);
+        })
+        .catch(() => {});
+    };
+    pull();
+    // Keep it fresh while the session is live (other devices add to the meal).
+    const t =
+      session.status === "ENDED" ? null : setInterval(pull, 15000);
+    return () => {
+      cancelled = true;
+      if (t) clearInterval(t);
+    };
+  }, [mealType, session.meal_date, session.event_id, session.is_sandbox, session.status]);
 
   // Keep the session status fresh while it's still active.
   useEffect(() => {
@@ -193,9 +234,20 @@ export function ScanSessionDetailClient({
 
       <Card>
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-base">
-            Check-ins ({recentResults.length})
-          </CardTitle>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <CardTitle className="text-base">
+              This session ({recentResults.length})
+            </CardTitle>
+            {mealTotal !== null && mealTotal !== recentResults.length && (
+              <span className="text-sm text-muted-foreground">
+                Whole meal total:{" "}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {mealTotal}
+                </span>{" "}
+                across all sessions
+              </span>
+            )}
+          </div>
           {session.status !== "ENDED" && (
             <Badge variant="outline" className="gap-1">
               <CircleDot className="h-3 w-3 animate-pulse text-green-600" />

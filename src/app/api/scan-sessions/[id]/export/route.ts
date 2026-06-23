@@ -27,6 +27,7 @@ interface CheckinRow {
   meal_date: string | null;
   meal_type: string | null;
   is_sandbox: boolean;
+  person_id: string;
   eckcm_people: {
     first_name_en: string | null;
     last_name_en: string | null;
@@ -34,10 +35,12 @@ interface CheckinRow {
     gender: string | null;
     birth_date: string | null;
   } | null;
-  eckcm_registrations: {
-    confirmation_code: string | null;
-    status: string | null;
-  } | null;
+}
+
+interface PersonCodes {
+  participantCode: string | null;
+  confirmationCode: string | null;
+  status: string | null;
 }
 
 interface SessionRow {
@@ -147,8 +150,11 @@ export async function GET(
     .single();
   const event = (ev as EventRow | null) ?? null;
 
-  // Need participant_code separately — eckcm_checkins doesn't carry it.
-  // Group memberships row per (person, registration) gives it.
+  // eckcm_checkins carries only person_id + event_id (NO registration_id, and
+  // no FK to eckcm_registrations) — selecting those columns errors the whole
+  // PostgREST query, which is what produced the empty exports. We fetch the
+  // raw rows here and resolve participant_code / confirmation_code / status
+  // separately via group memberships, matched by (person, event).
   const { data: rawCheckins } = await admin
     .from("eckcm_checkins")
     .select(
@@ -159,39 +165,56 @@ export async function GET(
       meal_type,
       is_sandbox,
       person_id,
-      registration_id,
-      eckcm_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date),
-      eckcm_registrations(confirmation_code, status)
+      eckcm_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date)
     `
     )
     .eq("scan_session_id", id)
     .order("checked_in_at", { ascending: true });
-  const checkins = (rawCheckins ?? []) as unknown as (CheckinRow & {
-    person_id: string;
-    registration_id: string | null;
-  })[];
+  const checkins = (rawCheckins ?? []) as unknown as CheckinRow[];
 
-  // Lookup participant_code per (person, registration). One query.
+  // Resolve codes per person within THIS session's event. A busy meal can have
+  // 400+ distinct people, so chunk the .in() to stay under the PostgREST URL
+  // length limit (300+ ids fails with "fetch failed").
   const personIds = [...new Set(checkins.map((c) => c.person_id))];
-  const regIds = [
-    ...new Set(checkins.map((c) => c.registration_id).filter(Boolean) as string[]),
-  ];
-  const codeByKey = new Map<string, string>();
-  if (personIds.length && regIds.length) {
+  const codeByPerson = new Map<string, PersonCodes>();
+  const CHUNK = 100;
+  for (let off = 0; off < personIds.length; off += CHUNK) {
+    const slice = personIds.slice(off, off + CHUNK);
     const { data: memberships } = await admin
       .from("eckcm_group_memberships")
-      .select("person_id, participant_code, eckcm_groups!inner(registration_id)")
-      .in("person_id", personIds)
-      .in("eckcm_groups.registration_id", regIds);
+      .select(
+        `
+        person_id,
+        participant_code,
+        eckcm_groups!inner(
+          eckcm_registrations!inner(event_id, confirmation_code, status)
+        )
+      `
+      )
+      .in("person_id", slice)
+      .eq("eckcm_groups.eckcm_registrations.event_id", s.event_id);
     for (const m of (memberships ?? []) as unknown as {
       person_id: string;
       participant_code: string | null;
-      eckcm_groups: { registration_id: string };
+      eckcm_groups: {
+        eckcm_registrations: {
+          event_id: string;
+          confirmation_code: string | null;
+          status: string | null;
+        };
+      };
     }[]) {
-      if (!m.participant_code) continue;
-      const key = `${m.person_id}:${m.eckcm_groups.registration_id}`;
-      // First-seen wins; participant_code rotation is rare.
-      if (!codeByKey.has(key)) codeByKey.set(key, m.participant_code);
+      const reg = m.eckcm_groups?.eckcm_registrations;
+      if (!reg) continue;
+      // First-seen wins; prefer a row that actually carries a participant_code.
+      const existing = codeByPerson.get(m.person_id);
+      if (!existing || (!existing.participantCode && m.participant_code)) {
+        codeByPerson.set(m.person_id, {
+          participantCode: m.participant_code ?? existing?.participantCode ?? null,
+          confirmationCode: reg.confirmation_code,
+          status: reg.status,
+        });
+      }
     }
   }
 
@@ -199,18 +222,14 @@ export async function GET(
 
   const rows = checkins.map((c, i) => {
     const p = c.eckcm_people;
-    const r = c.eckcm_registrations;
-    const code =
-      c.registration_id && codeByKey.get(`${c.person_id}:${c.registration_id}`)
-        ? codeByKey.get(`${c.person_id}:${c.registration_id}`)!
-        : "";
+    const codes = codeByPerson.get(c.person_id);
     return [
       i + 1,
       new Date(c.checked_in_at).toLocaleString("en-US", {
         timeZone: "America/New_York",
       }),
-      r?.confirmation_code ?? "",
-      code,
+      codes?.confirmationCode ?? "",
+      codes?.participantCode ?? "",
       p?.first_name_en ?? "",
       p?.last_name_en ?? "",
       p?.display_name_ko ?? "",
@@ -220,7 +239,7 @@ export async function GET(
       c.checkin_type,
       c.meal_date ?? "",
       c.meal_type ?? "",
-      r?.status ?? "",
+      codes?.status ?? "",
       c.is_sandbox ? "YES" : "",
     ];
   });

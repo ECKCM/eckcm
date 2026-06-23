@@ -9,10 +9,11 @@ import { requireCheckinStaff } from "@/lib/auth/admin";
  *
  * Body: { eventId }
  *
- * Scope: deletes only the real (non-sandbox) DINING check-ins for the event.
- * Main-desk (MAIN) check-ins, registrations, payments, people and e-passes are
- * never touched — this is the meal-kiosk-wide companion to the single-meal
- * /api/checkin/meal-reset, NOT the event-wide /api/admin/hard-reset-event nuke.
+ * Scope: deletes the DINING check-ins (BOTH real and sandbox/simulation) for the
+ * event. Main-desk (MAIN) check-ins, registrations, payments, people and
+ * e-passes are never touched — this is the meal-kiosk-wide companion to the
+ * single-meal /api/checkin/meal-reset, NOT the event-wide
+ * /api/admin/hard-reset-event nuke.
  *
  * Any check-in operator may run it (SUPER_ADMIN / EVENT_ADMIN / UPJ_STAFF); the
  * UI gates it behind a typed confirmation and the deletion is always written to
@@ -39,7 +40,6 @@ export async function POST(req: NextRequest) {
     .delete()
     .eq("event_id", eventId)
     .eq("checkin_type", "DINING")
-    .eq("is_sandbox", false)
     .select("id");
 
   if (error) {

@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-22T03:19:34.619Z",
+  "lastUpdated": "2026-06-23T07:15:16.578Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -177,7 +177,9 @@
     "__church-test",
     "pay",
     "meal-reset",
-    "event-reset"
+    "event-reset",
+    "checkin-live.ts",
+    "daily-meal-report"
   ],
   "primaryFeature": "payment-complete",
   "features": {
@@ -1242,9 +1244,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T23:03:35.831Z",
-        "lastUpdated": "2026-06-21T20:50:53.072Z"
+        "lastUpdated": "2026-06-23T06:53:09.290Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/epass/[token]/epass-viewer.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/live/[token]/live-counts-client.tsx"
     },
     "[id]": {
       "phase": "do",
@@ -1255,9 +1257,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T23:03:46.628Z",
-        "lastUpdated": "2026-06-21T19:24:07.873Z"
+        "lastUpdated": "2026-06-23T05:21:01.207Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/scan-sessions/[id]/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/scan-sessions/[id]/scan-session-detail-client.tsx"
     },
     "epass": {
       "phase": "do",
@@ -1697,7 +1699,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T17:56:36.813Z",
-        "lastUpdated": "2026-06-22T02:34:20.255Z"
+        "lastUpdated": "2026-06-23T07:11:08.209Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/checkin/verify/route.ts"
     },
@@ -1710,9 +1712,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T17:57:18.985Z",
-        "lastUpdated": "2026-06-22T02:35:28.588Z"
+        "lastUpdated": "2026-06-23T05:49:21.725Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/checkin/use-epass-cache.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/checkin/scanner-feedback.ts"
     },
     "main": {
       "phase": "do",
@@ -1762,7 +1764,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T19:02:31.745Z",
-        "lastUpdated": "2026-06-21T19:23:58.697Z"
+        "lastUpdated": "2026-06-23T00:49:12.642Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/checkin/recent/route.ts"
     },
@@ -1827,7 +1829,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T19:11:11.175Z",
-        "lastUpdated": "2026-06-22T02:36:03.169Z"
+        "lastUpdated": "2026-06-23T07:15:16.578Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/kiosk/kiosk-checkin-client.tsx"
     },
@@ -2269,7 +2271,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-12T21:28:20.912Z",
-        "lastUpdated": "2026-06-21T19:23:29.114Z"
+        "lastUpdated": "2026-06-23T06:19:57.506Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/scan-sessions/[id]/export/route.ts"
     },
@@ -2347,7 +2349,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-20T16:58:41.733Z",
-        "lastUpdated": "2026-06-21T19:23:44.844Z"
+        "lastUpdated": "2026-06-23T06:34:18.501Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/checkin/meal-stats/route.ts"
     },
@@ -2386,7 +2388,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-20T20:25:04.083Z",
-        "lastUpdated": "2026-06-20T20:25:09.618Z"
+        "lastUpdated": "2026-06-23T05:21:28.846Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/checkin/batch-sync/route.ts"
     },
@@ -2412,7 +2414,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-20T23:08:55.667Z",
-        "lastUpdated": "2026-06-21T00:00:36.229Z"
+        "lastUpdated": "2026-06-23T06:22:26.170Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/upj-staff/page.tsx"
     },
@@ -2464,7 +2466,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-21T19:22:21.683Z",
-        "lastUpdated": "2026-06-21T19:28:16.141Z"
+        "lastUpdated": "2026-06-23T06:59:52.056Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/checkin/meal-reset/route.ts"
     },
@@ -2477,9 +2479,35 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-21T20:24:02.765Z",
-        "lastUpdated": "2026-06-21T20:24:02.765Z"
+        "lastUpdated": "2026-06-23T07:00:19.858Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/checkin/event-reset/route.ts"
+    },
+    "checkin-live.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-23T06:12:06.680Z",
+        "lastUpdated": "2026-06-23T06:12:06.680Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/checkin-live.ts"
+    },
+    "daily-meal-report": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-23T06:21:10.343Z",
+        "lastUpdated": "2026-06-23T06:43:35.146Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/upj-staff/daily-meal-report/daily-meal-report-client.tsx"
     }
   },
   "pipeline": {
@@ -2490,7 +2518,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-22T03:19:34.619Z"
+    "lastActivity": "2026-06-23T07:15:16.578Z"
   },
   "history": [
     {
@@ -19212,6 +19240,486 @@
     {
       "timestamp": "2026-06-22T03:19:34.619Z",
       "feature": "registrations",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-22T21:03:33.694Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-22T21:10:42.570Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-22T21:14:09.834Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T00:48:08.216Z",
+      "feature": "recent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T00:48:28.610Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T00:48:43.968Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T00:49:12.642Z",
+      "feature": "recent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T05:19:12.733Z",
+      "feature": "verify",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T05:19:22.150Z",
+      "feature": "verify",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T05:19:44.118Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T05:20:27.022Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T05:20:34.132Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T05:20:43.801Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T05:20:52.012Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T05:21:01.207Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T05:21:28.846Z",
+      "feature": "batch-sync",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T05:46:28.718Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T05:49:21.725Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:12:06.680Z",
+      "feature": "checkin-live.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:12:34.341Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:12:45.576Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:13:16.321Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:13:34.325Z",
+      "feature": "upj-staff",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:13:43.992Z",
+      "feature": "upj-staff",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:13:53.752Z",
+      "feature": "upj-staff",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:19:17.981Z",
+      "feature": "export",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:19:57.506Z",
+      "feature": "export",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:21:10.343Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:21:27.518Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:22:09.989Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:22:17.913Z",
+      "feature": "upj-staff",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:22:26.170Z",
+      "feature": "upj-staff",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:27:34.318Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:27:44.840Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:28:07.598Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:28:16.438Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:28:31.621Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:28:43.431Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:29:31.221Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:29:40.082Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:29:49.297Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:29:57.688Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:30:06.801Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:33:10.544Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:34:18.501Z",
+      "feature": "meal-stats",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:34:53.132Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:40:43.426Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:41:03.503Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:41:14.358Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:41:29.332Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:41:44.437Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:42:06.535Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:42:23.145Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:42:46.922Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:42:57.671Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:43:04.438Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:43:35.146Z",
+      "feature": "daily-meal-report",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:51:30.692Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:51:40.999Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:52:01.843Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:52:23.631Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:52:37.730Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:53:09.290Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:59:44.191Z",
+      "feature": "meal-reset",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T06:59:52.056Z",
+      "feature": "meal-reset",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:00:12.016Z",
+      "feature": "event-reset",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:00:19.858Z",
+      "feature": "event-reset",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:00:40.081Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:10:49.794Z",
+      "feature": "verify",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:11:08.209Z",
+      "feature": "verify",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:11:39.768Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:12:07.549Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:12:27.876Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:12:42.339Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:13:03.760Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:13:31.683Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:13:55.552Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:14:19.171Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:14:48.053Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T07:15:16.578Z",
+      "feature": "kiosk",
       "phase": "do",
       "action": "updated"
     }

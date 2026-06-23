@@ -13,6 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,7 +78,6 @@ import {
   suggestMealKey,
 } from "@/lib/meal-schedule";
 import { CameraSelect } from "@/components/checkin/camera-select";
-import { InvalidQrOverlay } from "@/components/checkin/invalid-qr-overlay";
 import { RecentCheckins } from "@/components/checkin/recent-checkins";
 import { SurveillanceCamera } from "@/components/checkin/surveillance-camera";
 import {
@@ -214,10 +215,12 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [switchingMode, setSwitchingMode] = useState(false);
+  // Allow off-window dates: when on (the default), any QR we issued is served
+  // regardless of the participant's stay window — early arrivals, late
+  // departures, off-window dates all count. Turn off to re-enforce the window.
+  const [allowOutsideWindow, setAllowOutsideWindow] = useState(true);
 
   const [processing, setProcessing] = useState(false);
-  const [invalidFlashId, setInvalidFlashId] = useState<number | null>(null);
-  const [lastInvalidRaw, setLastInvalidRaw] = useState<string | null>(null);
   const [display, setDisplay] = useState<DisplayedResult | null>(null);
   const [resumeCountdown, setResumeCountdown] = useState<number | null>(null);
   const lastScannedRef = useRef<string | null>(null);
@@ -283,6 +286,9 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     else if (sm === "test") setScanMode("simulation"); // legacy
     const cf = window.localStorage.getItem("checkin.kiosk.cameraFacing") as CameraFacing | null;
     if (cf) setCameraFacing(cf);
+    // Default is allow (true); only an explicit "false" disables it.
+    const aow = window.localStorage.getItem("checkin.kiosk.allowOutsideWindow");
+    if (aow === "false") setAllowOutsideWindow(false);
   }, []);
 
   const updateInputMode = useCallback((m: InputMode) => {
@@ -303,6 +309,13 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     setScanMode(m);
     if (typeof window !== "undefined") {
       window.localStorage.setItem("checkin.kiosk.scanMode", m);
+    }
+  }, []);
+
+  const updateAllowOutsideWindow = useCallback((v: boolean) => {
+    setAllowOutsideWindow(v);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("checkin.kiosk.allowOutsideWindow", String(v));
     }
   }, []);
 
@@ -621,8 +634,6 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     ? Math.max(0, now - new Date(sessionStartedAt).getTime())
     : 0;
 
-  const flashInvalid = useCallback(() => setInvalidFlashId(Date.now()), []);
-
   const startResumeCountdown = useCallback(() => {
     if (countdownRef.current) clearInterval(countdownRef.current);
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
@@ -677,26 +688,32 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
           startResumeCountdown();
           return;
         }
-        if (
-          !cached.isActive ||
-          (cached.registrationStatus !== "PAID" &&
-            cached.registrationStatus !== "APPROVED")
-        ) {
-          setDisplay({
-            ok: false,
-            title: "Cannot serve",
-            subtitle: cached.personName,
-            detail: cached.isActive
-              ? `Registration is ${cached.registrationStatus.toLowerCase()}`
-              : "E-Pass is inactive",
-          });
-          feedback("error");
-          startResumeCountdown();
-          return;
+        // Mirror the server rule: PAID / APPROVED / SUBMITTED are all servable
+        // (a QR in hand means registration issued it). Only a deactivated PAID
+        // pass is blocked — SUBMITTED passes are inactive by nature.
+        {
+          const simStatus = cached.registrationStatus;
+          const simIsPaid = simStatus === "PAID" || simStatus === "APPROVED";
+          const simServable = simIsPaid || simStatus === "SUBMITTED";
+          if (!simServable || (simIsPaid && !cached.isActive)) {
+            setDisplay({
+              ok: false,
+              title: "Cannot serve",
+              subtitle: cached.personName,
+              detail: !simServable
+                ? `Registration is ${simStatus.toLowerCase()}`
+                : "E-Pass is inactive",
+            });
+            feedback("error");
+            startResumeCountdown();
+            return;
+          }
         }
         // Attendance-window gate (mirrors the server verify rule). Simulation
-        // has no server round-trip, so enforce it here from the cached window.
+        // has no server round-trip, so enforce it here from the cached window —
+        // unless "Allow off-window dates" is on (any issued QR is served).
         if (
+          !allowOutsideWindow &&
           !withinStayWindow(mealDate, cached.stayStartDate, cached.stayEndDate)
         ) {
           setDisplay({
@@ -734,12 +751,33 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
             mealCategory: cat,
             gender: cached.gender ?? null,
           });
-          feedback("warn");
+          feedback("duplicate");
           startResumeCountdown();
           return;
         }
         seen.set(personKey, catKey);
         simDedupeRef.current.set(mealKeyId, seen);
+
+        // Persist a sandbox row so the live board and Scan Sessions reflect the
+        // simulation in real time. Fire-and-forget: the kiosk's own count panel
+        // stays driven by the in-memory tally above, this only feeds the
+        // DB-backed views. The session is sandbox, so verify inserts
+        // is_sandbox=true — fully isolated from real meal counts. Only fires on
+        // the first scan of each person (we returned early on duplicates).
+        void fetch("/api/checkin/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...toVerifyBody(parsed),
+            checkinType: "DINING",
+            mealDate,
+            mealType: MEAL_KEY_TO_TYPE[mealKey],
+            scanSessionId: scanSession.session.id,
+            allowOutsideWindow,
+          }),
+        }).catch(() => {
+          /* best-effort — the simulation UI doesn't depend on this */
+        });
 
         setDisplay({
           ok: true,
@@ -765,14 +803,22 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
       // Cache misses, or anything that doesn't look paid+active, keep the
       // old conservative path (spinner → server verdict).
       const cached = await cache.lookup(parsed);
+      const cachedStatus = cached?.registrationStatus;
+      const cachedIsPaid =
+        cachedStatus === "PAID" || cachedStatus === "APPROVED";
+      const cachedServable = cachedIsPaid || cachedStatus === "SUBMITTED";
       const optimistic = Boolean(
         cached &&
-          cached.isActive &&
-          (cached.registrationStatus === "PAID" ||
-            cached.registrationStatus === "APPROVED") &&
+          cachedServable &&
+          // Only paid passes require an active flag; SUBMITTED walk-ins are
+          // inactive by nature and still flash green (server confirms).
+          (!cachedIsPaid || cached.isActive) &&
           // Out-of-window meals must not flash green — let the server's
-          // authoritative reject land instead (red "Cannot serve").
-          withinStayWindow(mealDate, cached.stayStartDate, cached.stayEndDate)
+          // authoritative reject land instead (red "Cannot serve"). When
+          // "Allow off-window dates" is on, the window no longer gates the
+          // optimistic green (the server will accept it too).
+          (allowOutsideWindow ||
+            withinStayWindow(mealDate, cached.stayStartDate, cached.stayEndDate))
       );
 
       if (optimistic && cached) {
@@ -827,6 +873,7 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
             mealDate,
             mealType: MEAL_KEY_TO_TYPE[mealKey],
             scanSessionId: scanSession.session.id,
+            allowOutsideWindow,
           }),
           signal: controller.signal,
         });
@@ -851,8 +898,16 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
                 : prev
             );
           } else {
-            const ok = data.status === "checked_in";
-            if (!optimistic) feedback(ok ? "success" : "warn");
+            // Always sound the distinct duplicate buzzer for a repeat scan —
+            // even on optimistic scans (which already chimed success up front)
+            // — so the operator unmistakably hears "already served". Fresh
+            // check-ins only beep here on the conservative (non-optimistic)
+            // path; optimistic ones already chimed.
+            if (data.status === "already_checked_in") {
+              feedback("duplicate");
+            } else if (!optimistic) {
+              feedback(data.status === "checked_in" ? "success" : "warn");
+            }
             setDisplay({
               ok: data.status !== "error",
               title:
@@ -904,6 +959,7 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
       cache,
       startResumeCountdown,
       isSimulation,
+      allowOutsideWindow,
     ]
   );
 
@@ -911,19 +967,32 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     async (rawValue: string) => {
       const parsed = parseQRValue(rawValue);
       if (!parsed) {
-        setLastInvalidRaw(rawValue);
         console.warn("[kiosk] unparseable scan", {
           length: rawValue.length,
           raw: rawValue,
           json: JSON.stringify(rawValue),
         });
-        flashInvalid();
-        feedback("error");
+        // Do NOT flash the big red "Invalid QR" overlay — at the meal desk a
+        // red error erodes the operators' trust in the count. The parser
+        // already de-noises IME/reader corruption, so a null here is a genuine
+        // non-participant scan. Show a quiet "scan again" prompt and a soft
+        // warn tone; keep the session live for the next scan.
+        feedback("warn");
+        setDisplay({
+          ok: false,
+          title: "Scan again",
+          detail: "QR not recognized — line it up and rescan",
+        });
+        if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+        resumeTimerRef.current = setTimeout(() => {
+          setDisplay(null);
+          lastScannedRef.current = null;
+        }, 1500);
         return;
       }
       await processParsed(parsed);
     },
-    [flashInvalid, processParsed]
+    [processParsed]
   );
 
   // Hardware scanner stays armed in hardware mode regardless of focus, because
@@ -1100,6 +1169,22 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
             ))}
           </TabsList>
         </Tabs>
+
+        {/* Allow off-window dates — when on (default), any QR we issued is
+            served regardless of the participant's stay window. */}
+        <div className="flex items-center gap-2 rounded-md border px-3 h-11">
+          <Switch
+            id="allow-off-window"
+            checked={allowOutsideWindow}
+            onCheckedChange={updateAllowOutsideWindow}
+          />
+          <Label
+            htmlFor="allow-off-window"
+            className="text-sm cursor-pointer whitespace-nowrap"
+          >
+            Allow off-window dates
+          </Label>
+        </div>
 
         <div className="ml-auto flex items-center gap-2 flex-wrap">
           <Badge
@@ -1607,8 +1692,6 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
           </div>
         </aside>
       </main>
-
-      <InvalidQrOverlay trigger={invalidFlashId} rawValue={lastInvalidRaw} />
 
       {/* Tab-hidden warning. While the page isn't the foreground tab, HID
           keystrokes go to whichever window is focused — i.e. nothing

@@ -57,6 +57,30 @@ export function parseQRValue(scannedValue: string): ParsedQR | null {
 
   // Legacy opaque token (case-sensitive) — match the original cleaned text.
   if (LEGACY_TOKEN_RE.test(cleaned)) return { kind: "token", token: cleaned };
+
+  // LAST-RESORT recovery. The check-in desk is counting paid attendees who are
+  // already through registration, so a scan must NEVER hard-reject just because
+  // an IME (Korean "한국어" input mode) or a flaky reader corrupted a few
+  // characters. Strip everything that can't belong to a participant-code QR and
+  // see if a recoverable code falls out of what remains.
+  //   - drop non-[A-Za-z0-9.] (Hangul jamo, control chars, stray punctuation)
+  //   - then look for the "6 base32 + 8 hex" signed shape, dot optional
+  const ascii = cleaned.replace(/[^A-Za-z0-9.]/g, "");
+  if (ascii) {
+    const recovered =
+      ascii.toUpperCase().match(SIGNED_CODE_RE) ??
+      ascii.toUpperCase().match(SPLICED_CODE_RE);
+    if (recovered) return signedParticipant(recovered[1], recovered[2]);
+    // Scan for a signed code embedded anywhere in the de-noised string.
+    const embedded = ascii
+      .toUpperCase()
+      .match(/([A-HJ-NP-Z2-9]{6})\.?([A-Fa-f0-9]{8})/);
+    if (embedded) return signedParticipant(embedded[1], embedded[2]);
+    // Bare 6-char code surfaced after de-noising.
+    const bare = ascii.toUpperCase().match(/[A-HJ-NP-Z2-9]{6}/);
+    if (bare) return { kind: "participantCode", participantCode: bare[0] };
+  }
+
   return null;
 }
 

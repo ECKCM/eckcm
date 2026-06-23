@@ -63,7 +63,14 @@ export async function GET(req: NextRequest) {
   const scanSessionId = searchParams.get("scanSessionId");
   const checkinType = searchParams.get("checkinType");
   const ids = searchParams.get("ids"); // comma-separated checkin ids (for realtime tail)
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "30", 10) || 30, 200);
+  // A scan-session detail view needs every row it recorded (a single busy meal
+  // can exceed 400), so the cap is raised when scoping to one scan_session.
+  // The unscoped event-wide list stays bounded at 200 to keep payloads sane.
+  const maxLimit = scanSessionId ? 2000 : 200;
+  const limit = Math.min(
+    parseInt(searchParams.get("limit") ?? "30", 10) || 30,
+    maxLimit
+  );
 
   if (!eventId && !ids) {
     return NextResponse.json(
