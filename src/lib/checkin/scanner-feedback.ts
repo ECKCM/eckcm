@@ -152,21 +152,54 @@ if (typeof window !== "undefined" && window.speechSynthesis) {
   };
 }
 
+let speechPrimed = false;
+
+/**
+ * Unlock audio + speech from inside a user gesture. iOS Safari blocks both the
+ * AudioContext and speechSynthesis until they're first triggered by a real tap;
+ * a sound fired later by a scan (not a tap) is silently dropped. Call this from
+ * the Start / Resume buttons so every later beep AND the spoken "Re-entry" cue
+ * actually play on iPad.
+ */
+export function primeAudio(): void {
+  // Create + resume the shared AudioContext under the gesture.
+  try {
+    getCtx();
+  } catch {
+    /* ignore */
+  }
+  // Unlock speech with one silent utterance inside the gesture.
+  try {
+    if (typeof window === "undefined") return;
+    const synth = window.speechSynthesis;
+    if (!synth || speechPrimed) return;
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
+    synth.speak(u);
+    speechPrimed = true;
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Speak a short phrase via the browser's built-in speech synthesis. Used for
- * the duplicate ("Re-entry") cue — spoken words are unambiguous at a busy meal
- * desk in a way a buzzer tone is not. No network / library needed. Uses a clear
- * female voice (see FEMALE_VOICE_HINTS) at full volume.
+ * the duplicate ("Re-entry") cue. Uses a clear female voice at full volume.
  *
- * Pending utterances are cancelled first so a burst of repeat scans doesn't
- * queue a backlog of overlapping voices.
+ * iOS Safari quirks handled here: speech must have been unlocked from a gesture
+ * (see primeAudio), `cancel()` is only issued when something is actually
+ * speaking (a bare cancel can wedge speech on iOS), and we nudge `resume()`
+ * because iOS sometimes leaves the queue paused right after `speak()`.
  */
 export function speak(text: string): void {
   try {
     if (typeof window === "undefined") return;
     const synth = window.speechSynthesis;
     if (!synth) return;
-    synth.cancel();
+    // Only clear a backlog if one exists — an unconditional cancel() can stop
+    // speech from ever starting again on iOS.
+    if (synth.speaking || synth.pending) synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
     const voice = cachedVoice ?? pickFemaleVoice();
     if (voice) {
@@ -177,17 +210,29 @@ export function speak(text: string): void {
       u.lang = "en-US";
     }
     u.volume = 1; // full scale; device volume is the real ceiling
-    u.rate = 1; // natural pace reads clearer than a sped-up cue
-    u.pitch = 1.05; // a touch brighter
+    u.rate = 1;
+    u.pitch = 1.05;
+    if (synth.paused) synth.resume();
     synth.speak(u);
+    // iOS sometimes parks the queue in a paused state immediately after speak().
+    setTimeout(() => {
+      try {
+        if (synth.paused) synth.resume();
+      } catch {
+        /* ignore */
+      }
+    }, 60);
   } catch {
-    // Speech synthesis unavailable — fall back silently.
+    // Speech synthesis unavailable — the duplicate buzzer still plays.
   }
 }
 
 export function feedback(tone: FeedbackTone): void {
   if (tone === "duplicate") {
-    // Spoken cue instead of a buzzer so the repeat scan is unmistakable.
+    // Always play the distinct buzzer (Web Audio — reliable on iPad, same path
+    // as the success tone) so the repeat scan is unmistakable even if speech
+    // synthesis is blocked. Layer the spoken "Re-entry" on top when it works.
+    playBeep("duplicate");
     speak("Re-entry");
   } else {
     playBeep(tone);
