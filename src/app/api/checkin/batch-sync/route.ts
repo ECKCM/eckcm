@@ -164,20 +164,25 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      if (!isActive) {
+      // A QR code in hand means registration issued the pass, so PAID /
+      // APPROVED / SUBMITTED are all servable. Only a deactivated PAID pass is
+      // blocked — SUBMITTED walk-ins are inactive by nature (pass activates on
+      // payment). CANCELLED / REFUNDED / DRAFT are hard stops.
+      const isPaid = regStatus === "PAID" || regStatus === "APPROVED";
+      const isServable = isPaid || regStatus === "SUBMITTED";
+      if (!isServable) {
+        results.push({
+          nonce: item.nonce,
+          status: "error",
+          error: `Registration is ${regStatus.toLowerCase()}`,
+        });
+        continue;
+      }
+      if (isPaid && !isActive) {
         results.push({
           nonce: item.nonce,
           status: "error",
           error: "E-Pass is inactive",
-        });
-        continue;
-      }
-
-      if (regStatus !== "PAID") {
-        results.push({
-          nonce: item.nonce,
-          status: "error",
-          error: "Registration is not paid",
         });
         continue;
       }

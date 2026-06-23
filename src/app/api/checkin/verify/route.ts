@@ -79,6 +79,10 @@ export async function POST(req: NextRequest) {
     mealDate,
     mealType,
     scanSessionId,
+    // When true, skip the meal attendance-window gate (serve early arrivals /
+    // late departures / off-window dates anyway). Set by the kiosk's
+    // "Allow off-window dates" toggle.
+    allowOutsideWindow = false,
   } = body;
 
   if (!token && !participantCode) {
@@ -160,6 +164,11 @@ export async function POST(req: NextRequest) {
   const p = resolution.participant;
   const status = p.registration.status;
   const isPaid = status === "PAID" || status === "APPROVED";
+  // Holding a QR code means the registration team already issued the pass, so
+  // every non-terminated registration is servable — PAID / APPROVED (settled)
+  // and SUBMITTED (on-site / unpaid walk-in). Only CANCELLED / REFUNDED /
+  // DRAFT are hard stops.
+  const isServable = isPaid || status === "SUBMITTED";
 
   const reject = (error: string) =>
     NextResponse.json(
@@ -188,11 +197,16 @@ export async function POST(req: NextRequest) {
       return reject("E-Pass is inactive");
     }
   } else {
-    if (!p.isEpassActive) {
-      return reject("E-Pass is inactive");
+    // DINING / SESSION / etc. Same rule as MAIN: any issued, non-terminated
+    // registration may be served. CANCELLED / REFUNDED / DRAFT are blocked.
+    if (!isServable) {
+      return reject(`Registration is ${status.toLowerCase()}`);
     }
-    if (!isPaid) {
-      return reject("Registration is not paid");
+    // Only block paid passes an admin intentionally deactivated. SUBMITTED
+    // (unpaid walk-in) passes are inactive by nature — the pass activates on
+    // payment — so an inactive flag there is expected, not a deactivation.
+    if (isPaid && !p.isEpassActive) {
+      return reject("E-Pass is inactive");
     }
   }
 
@@ -201,7 +215,9 @@ export async function POST(req: NextRequest) {
   // their effective stay window (per-participant override, else the
   // registration's start/end). Stops e.g. a Thursday arrival being served on
   // Monday. No row is recorded — the operator sees a red "Cannot serve".
-  if (checkinType === "DINING") {
+  // The kiosk's "Allow off-window dates" toggle (allowOutsideWindow) bypasses
+  // this so off-window arrivals can still be served on demand.
+  if (checkinType === "DINING" && !allowOutsideWindow) {
     if (p.stayStartDate && mealDate < p.stayStartDate) {
       return reject(`Not attending yet — arrives ${fmtStayDate(p.stayStartDate)}`);
     }

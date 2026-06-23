@@ -10,10 +10,11 @@ const MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER"] as const;
  *
  * Body: { eventId, mealDate (YYYY-MM-DD), mealType (BREAKFAST|LUNCH|DINNER) }
  *
- * Scope is deliberately narrow: it deletes ONLY the real (non-sandbox) DINING
- * check-ins for that exact (event, meal date, meal type). Registrations,
- * payments, people, e-passes and every other meal slot are untouched — this is
- * a "reset this meal's attendance", not the event-wide hard reset under
+ * Scope is deliberately narrow: it deletes the DINING check-ins (BOTH real and
+ * sandbox/simulation) for that exact (event, meal date, meal type), so the live
+ * count AND any simulation rows restart from zero. Registrations, payments,
+ * people, e-passes and every other meal slot are untouched — this is a "reset
+ * this meal's attendance", not the event-wide hard reset under
  * /api/admin/hard-reset-event.
  *
  * Any check-in operator may run it (SUPER_ADMIN / EVENT_ADMIN / UPJ_STAFF); the
@@ -55,7 +56,6 @@ export async function POST(req: NextRequest) {
     .eq("checkin_type", "DINING")
     .eq("meal_date", mealDate)
     .eq("meal_type", mealType)
-    .eq("is_sandbox", false)
     .select("id");
 
   if (error) {

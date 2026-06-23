@@ -96,21 +96,31 @@ export async function GET(req: NextRequest) {
   const eventStartDate =
     (ev as { event_start_date: string | null } | null)?.event_start_date ?? null;
 
-  // Meal-wide authoritative count (real check-ins only).
-  const { data: mealData, error: mealError } = await admin
-    .from("eckcm_checkins")
-    .select("person_id, eckcm_people!inner(birth_date)")
-    .eq("event_id", eventId)
-    .eq("checkin_type", "DINING")
-    .eq("meal_date", mealDate)
-    .eq("meal_type", mealType)
-    .eq("is_sandbox", false);
-
-  if (mealError) {
-    return NextResponse.json({ error: mealError.message }, { status: 500 });
+  // Meal-wide authoritative count (real check-ins only). Page through with
+  // .range() — a busy meal can exceed PostgREST's default 1000-row cap, and an
+  // un-paged select would silently truncate and undercount the headcount.
+  const PAGE = 1000;
+  const mealRows: CheckinPersonRow[] = [];
+  for (let offset = 0; ; offset += PAGE) {
+    const { data, error: mealError } = await admin
+      .from("eckcm_checkins")
+      .select("person_id, eckcm_people!inner(birth_date)")
+      .eq("event_id", eventId)
+      .eq("checkin_type", "DINING")
+      .eq("meal_date", mealDate)
+      .eq("meal_type", mealType)
+      .eq("is_sandbox", false)
+      .order("id", { ascending: true })
+      .range(offset, offset + PAGE - 1);
+    if (mealError) {
+      return NextResponse.json({ error: mealError.message }, { status: 500 });
+    }
+    const batch = (data as unknown as CheckinPersonRow[]) ?? [];
+    mealRows.push(...batch);
+    if (batch.length < PAGE) break;
   }
 
-  const meal = tally((mealData as unknown as CheckinPersonRow[]) ?? [], eventStartDate);
+  const meal = tally(mealRows, eventStartDate);
 
   let session: Tally | null = null;
   if (scanSessionId) {
