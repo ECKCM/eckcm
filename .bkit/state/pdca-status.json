@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-23T07:15:16.578Z",
+  "lastUpdated": "2026-06-23T12:32:42.075Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -1673,7 +1673,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T14:43:28.520Z",
-        "lastUpdated": "2026-06-21T00:04:28.537Z"
+        "lastUpdated": "2026-06-23T12:18:17.135Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/supabase/middleware.ts"
     },
@@ -1712,7 +1712,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T17:57:18.985Z",
-        "lastUpdated": "2026-06-23T05:49:21.725Z"
+        "lastUpdated": "2026-06-23T12:32:42.075Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/checkin/scanner-feedback.ts"
     },
@@ -1829,7 +1829,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T19:11:11.175Z",
-        "lastUpdated": "2026-06-23T07:15:16.578Z"
+        "lastUpdated": "2026-06-23T11:06:53.607Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/kiosk/kiosk-checkin-client.tsx"
     },
@@ -2518,7 +2518,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-23T07:15:16.578Z"
+    "lastActivity": "2026-06-23T12:32:42.075Z"
   },
   "history": [
     {
@@ -19720,6 +19720,84 @@
     {
       "timestamp": "2026-06-23T07:15:16.578Z",
       "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T10:47:56.604Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T10:48:34.835Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T10:48:50.351Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T10:49:05.515Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T11:06:20.775Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T11:06:29.363Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T11:06:41.374Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T11:06:53.607Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T12:18:02.428Z",
+      "feature": "supabase",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T12:18:17.135Z",
+      "feature": "supabase",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T12:32:03.956Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T12:32:26.306Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-23T12:32:42.075Z",
+      "feature": "checkin",
       "phase": "do",
       "action": "updated"
     }

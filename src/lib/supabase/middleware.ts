@@ -3,7 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getRequiredPermission, hasRequiredPermission } from "@/lib/permissions";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
-// Staff/admins below SUPER_ADMIN / EVENT_ADMIN are capped to a 1-day session.
+// Staff/admins are capped to a 1-day session, EXCEPT SUPER_ADMIN / EVENT_ADMIN
+// and UPJ_STAFF (long-running meal kiosks must not be force-signed-out mid-meal).
 const MAX_STAFF_SESSION_MS = 24 * 60 * 60 * 1000; // 1 day
 
 /**
@@ -81,8 +82,15 @@ async function isSessionExpiredForUser(
     .map((a) => (a.eckcm_roles as unknown as { name: string } | null)?.name)
     .filter((name): name is string => Boolean(name));
 
-  // SUPER_ADMIN / EVENT_ADMIN keep their session.
-  if (roleNames.includes("SUPER_ADMIN") || roleNames.includes("EVENT_ADMIN")) {
+  // SUPER_ADMIN / EVENT_ADMIN keep their session. UPJ_STAFF is also exempt:
+  // they run long meal-kiosk sessions (often spanning >24h on a left-on iPad),
+  // and a mid-meal forced sign-out silently stops scanning. The 24h cap is a
+  // shared-admin-account safeguard that doesn't fit the kiosk operator.
+  if (
+    roleNames.includes("SUPER_ADMIN") ||
+    roleNames.includes("EVENT_ADMIN") ||
+    roleNames.includes("UPJ_STAFF")
+  ) {
     return false;
   }
 

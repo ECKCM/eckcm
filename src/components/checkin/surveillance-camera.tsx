@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { VideoOff } from "lucide-react";
 
 interface SurveillanceCameraProps {
@@ -9,6 +9,13 @@ interface SurveillanceCameraProps {
   /** Which camera to show. Defaults to the front (selfie) camera. */
   facingMode?: "user" | "environment";
   className?: string;
+  /**
+   * What to render when the camera can't be opened (no camera, denied, or
+   * in use). The surveillance feed is a non-essential deterrent, so callers
+   * (e.g. the hardware-scanner kiosk) pass a calm "ready to scan" panel here
+   * instead of the alarming default "Camera unavailable" frame.
+   */
+  fallback?: ReactNode;
 }
 
 function clockLabel(): string {
@@ -39,6 +46,7 @@ export function SurveillanceCamera({
   active,
   facingMode = "user",
   className,
+  fallback,
 }: SurveillanceCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -162,6 +170,12 @@ export function SurveillanceCamera({
       stop();
     };
   }, [active, facingMode]);
+
+  // Camera failed and the caller gave us a fallback — render that instead of
+  // the alarming default frame (the surveillance feed is non-essential).
+  if (error && fallback !== undefined) {
+    return <>{fallback}</>;
+  }
 
   return (
     <div

@@ -1610,7 +1610,20 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
                 <p className="text-sm">Tap Resume to continue scanning</p>
               </div>
             ) : inputMode === "hardware" ? (
-              <SurveillanceCamera active facingMode="user" />
+              <SurveillanceCamera
+                active
+                facingMode="user"
+                // Hardware scanning never needs the camera — if the surveillance
+                // preview can't open (no camera / denied / in use), show a calm
+                // "ready" panel instead of a scary "Camera unavailable" frame.
+                fallback={
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-slate-100 dark:bg-slate-900 text-slate-500">
+                    <Keyboard className="h-16 w-16 opacity-60" />
+                    <p className="text-xl font-medium">Ready to scan</p>
+                    <p className="text-sm">Scan a QR code with the hardware scanner</p>
+                  </div>
+                }
+              />
             ) : cameraReady ? (
               <Scanner
                 key={`${devices.selectedDeviceId ?? cameraFacing}`}
