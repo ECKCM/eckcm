@@ -78,11 +78,16 @@ export function playBeep(tone: FeedbackTone = "success"): void {
     case "duplicate":
       // Deliberately NOT a chime: a low, double "uh-uh" buzzer that can never
       // be mistaken for the green success tone. This is the "already served"
-      // signal the meal desk listens for.
+      // signal the meal desk listens for. Each tone is LAYERED (fundamental +
+      // sub-octave) and overdriven (gain > 1 → clips) so it's noticeably louder
+      // and cuts through a noisy hall, including on the iPad's small speaker.
       playNotes([
-        { freq: 360, start: 0, dur: 0.16, type: "sawtooth" },
-        { freq: 360, start: 0.22, dur: 0.16, type: "sawtooth" },
-        { freq: 260, start: 0.44, dur: 0.26, type: "sawtooth" },
+        { freq: 360, start: 0, dur: 0.18, type: "sawtooth", gain: 1.4 },
+        { freq: 180, start: 0, dur: 0.18, type: "square", gain: 1.0 },
+        { freq: 360, start: 0.24, dur: 0.18, type: "sawtooth", gain: 1.4 },
+        { freq: 180, start: 0.24, dur: 0.18, type: "square", gain: 1.0 },
+        { freq: 260, start: 0.48, dur: 0.3, type: "sawtooth", gain: 1.5 },
+        { freq: 130, start: 0.48, dur: 0.3, type: "square", gain: 1.0 },
       ]);
       break;
     case "warn":
@@ -192,11 +197,17 @@ export function primeAudio(): void {
  * speaking (a bare cancel can wedge speech on iOS), and we nudge `resume()`
  * because iOS sometimes leaves the queue paused right after `speak()`.
  */
-export function speak(text: string): void {
+/**
+ * @param onEnd called when speech finishes (or errors). Lets the caller chain a
+ *   sound AFTER the voice — e.g. the buzzer plays once "Re-entry" has spoken.
+ * @returns true if speech was attempted (synth available), false otherwise so
+ *   the caller can fall back immediately.
+ */
+export function speak(text: string, onEnd?: () => void): boolean {
   try {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") return false;
     const synth = window.speechSynthesis;
-    if (!synth) return;
+    if (!synth) return false;
     // Only clear a backlog if one exists — an unconditional cancel() can stop
     // speech from ever starting again on iOS.
     if (synth.speaking || synth.pending) synth.cancel();
@@ -212,6 +223,10 @@ export function speak(text: string): void {
     u.volume = 1; // full scale; device volume is the real ceiling
     u.rate = 1;
     u.pitch = 1.05;
+    if (onEnd) {
+      u.onend = () => onEnd();
+      u.onerror = () => onEnd();
+    }
     if (synth.paused) synth.resume();
     synth.speak(u);
     // iOS sometimes parks the queue in a paused state immediately after speak().
@@ -222,18 +237,37 @@ export function speak(text: string): void {
         /* ignore */
       }
     }, 60);
+    return true;
   } catch {
-    // Speech synthesis unavailable — the duplicate buzzer still plays.
+    // Speech synthesis unavailable — the caller falls back to the buzzer.
+    return false;
   }
+}
+
+function once(fn: () => void): () => void {
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    fn();
+  };
 }
 
 export function feedback(tone: FeedbackTone): void {
   if (tone === "duplicate") {
-    // Always play the distinct buzzer (Web Audio — reliable on iPad, same path
-    // as the success tone) so the repeat scan is unmistakable even if speech
-    // synthesis is blocked. Layer the spoken "Re-entry" on top when it works.
-    playBeep("duplicate");
-    speak("Re-entry");
+    // Speak "Re-entry" FIRST, then sound the buzzer once the voice finishes —
+    // the spoken cue leads, the buzzer punctuates. The buzzer is guaranteed to
+    // play exactly once via three paths so it's never lost:
+    //   1. on the utterance's onend (normal case → buzzer right after voice)
+    //   2. immediately if speech can't run at all (blocked/unsupported)
+    //   3. a max-delay safety in case iOS never fires onend
+    const buzz = once(() => playBeep("duplicate"));
+    const attempted = speak("Re-entry", buzz);
+    if (!attempted) {
+      buzz();
+    } else {
+      setTimeout(buzz, 1600);
+    }
   } else {
     playBeep(tone);
   }
