@@ -54,6 +54,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 import { feedback, primeAudio } from "@/lib/checkin/scanner-feedback";
 import { computeMealCategory } from "@/lib/checkin/meal-category";
 import { parseQRValue, toVerifyBody, type ParsedQR } from "@/lib/checkin/qr-parser";
@@ -64,6 +65,7 @@ import {
 } from "@/lib/checkin/use-camera-devices";
 import { useHidScanner } from "@/lib/checkin/use-hid-scanner";
 import { useScanSession } from "@/lib/checkin/use-scan-session";
+import { useSessionKeepalive } from "@/lib/checkin/use-session-keepalive";
 import { useEpassCache } from "@/lib/checkin/use-epass-cache";
 import {
   realtimeCheckinToScanResult,
@@ -272,6 +274,12 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
   const scanSession = scanMode === "live" ? liveSession : simSession;
   const isSimulation = scanMode === "simulation";
   const cache = useEpassCache({ eventId: selectedEventId || null });
+
+  // Keep the kiosk operator (e.g. upj@eckcm.com) signed in indefinitely. The
+  // iPad is often left on for days; this proactively refreshes the Supabase
+  // access token on a timer and on wake/online so it never expires into a
+  // forced /login redirect mid-meal. See useSessionKeepalive for the why.
+  useSessionKeepalive();
 
   // The meal date is a free, unrestricted native date input (see the header) —
   // no event-window enumeration or blackout filtering, so the kiosk can record
@@ -1039,17 +1047,37 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     primeAudio();
     setSwitchingMode(true);
     try {
-      await scanSession.start({
+      const args = {
         eventId: selectedEventId,
         kind: MEAL_KIND[mealKey],
         mealDate,
         label: `${MEAL_LABEL[mealKey]} · ${mealDate} · Kiosk${isSimulation ? " · Simulation" : ""}`,
         isSandbox: isSimulation,
-      });
+      };
+      let started = await scanSession.start(args);
+      if (!started) {
+        // Most common cause of a "nothing happened" Start tap is a stale
+        // Supabase access token after the iPad slept: the POST 401s and the
+        // hook silently set its error state. Force a token refresh and retry
+        // once before surfacing anything to the operator.
+        try {
+          await createClient().auth.getSession();
+        } catch {
+          // ignore — retry will reveal whether auth is really the problem
+        }
+        started = await scanSession.start(args);
+      }
+      if (!started) {
+        // Both attempts failed — make the failure visible instead of leaving
+        // the operator staring at an unresponsive button.
+        toast.error(
+          scanSession.error ?? "Couldn't start the session. Check the connection and try again."
+        );
+      }
     } finally {
       setSwitchingMode(false);
     }
-  }, [selectedEventId, mealKey, mealDate, scanMode, scanSession]);
+  }, [selectedEventId, mealKey, mealDate, scanMode, scanSession, isSimulation]);
 
   // Hard Reset — permanently clears the recorded live (non-sandbox) check-ins
   // for the currently selected meal slot (event + date + meal) so the live
