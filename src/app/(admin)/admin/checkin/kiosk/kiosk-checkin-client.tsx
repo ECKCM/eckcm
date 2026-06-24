@@ -55,6 +55,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { KIOSK_VERSION_LABEL } from "@/lib/version";
 import { feedback, primeAudio } from "@/lib/checkin/scanner-feedback";
 import { computeMealCategory } from "@/lib/checkin/meal-category";
 import { parseQRValue, toVerifyBody, type ParsedQR } from "@/lib/checkin/qr-parser";
@@ -1293,6 +1294,13 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
                 <Beaker className="h-3.5 w-3.5" /> Simulation — not recorded
               </Badge>
             )}
+
+            <Badge
+              variant="outline"
+              className="h-8 text-sm tabular-nums font-mono text-muted-foreground"
+            >
+              {KIOSK_VERSION_LABEL}
+            </Badge>
 
             {sessionStartedAt && (
               <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
