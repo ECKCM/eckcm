@@ -115,8 +115,14 @@ export async function POST(req: NextRequest) {
         ),
         eckcm_people!inner(first_name_en, last_name_en, display_name_ko)
       `)
+      // Tolerate DUPLICATE membership rows for one person (recovery / re-add /
+      // manual ops). `.single()` errors on >1 row → bogus "Invalid participant
+      // code"; take the oldest (original) row, matching the e-pass QR resolver.
       .eq("participant_code", resolvedCode)
-      .single();
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
 
     if (memberError || !membership) {
       return NextResponse.json({ error: "Invalid participant code" }, { status: 404 });
