@@ -136,6 +136,10 @@ const T = {
   phone: { en: "Phone", ko: "전화번호" },
   church: { en: "Church", ko: "교회 이름" },
   optional: { en: "Optional", ko: "선택" },
+  requiredDetails: {
+    en: "Please complete all required details with a valid email.",
+    ko: "필수 정보를 모두 입력하고 올바른 이메일을 적어 주세요.",
+  },
   paymentMethod: { en: "Payment Method", ko: "결제 수단" },
   onsiteHint: {
     en: (m: string) =>
@@ -240,6 +244,15 @@ export function MealPayClient({ event, prices }: Props) {
   const totalPreview = amountCents + feePreview;
   // Need ≥1 pass selected with pricing.
   const canSubmit = onsiteCount >= 1 && onsiteTotal > 0;
+
+  // All buyer details are required — Legal Name, a valid Email, Phone, and
+  // Church — so a request always fully identifies the buyer.
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payerEmail.trim());
+  const detailsValid =
+    payerName.trim().length > 0 &&
+    emailValid &&
+    payerPhone.trim().length > 0 &&
+    churchName.trim().length > 0;
 
   /* ---------------------------------------------------------------- */
   /*  No active event / pricing missing                               */
@@ -374,6 +387,10 @@ export function MealPayClient({ event, prices }: Props) {
   const handleContinue = () => {
     if (!canSubmit) {
       toast.error(T.pricingUnavailable[lang]);
+      return;
+    }
+    if (!detailsValid) {
+      toast.error(T.requiredDetails[lang]);
       return;
     }
     if (isCard) void startOnsiteCardPayment();
@@ -776,23 +793,25 @@ export function MealPayClient({ event, prices }: Props) {
               placeholder={T.fullNamePlaceholder[lang]}
               value={payerName}
               onChange={setPayerName}
+              required
             />
             <EmailField
               label={T.email[lang]}
               value={payerEmail}
               onChange={setPayerEmail}
+              required
             />
             <PhoneField
               label={T.phone[lang]}
-              optionalLabel={T.optional[lang]}
               value={payerPhone}
               onChange={setPayerPhone}
+              required
             />
             <ChurchNameField
               label={T.church[lang]}
-              optionalLabel={T.optional[lang]}
               value={churchName}
               onChange={setChurchName}
+              required
             />
           </CardContent>
         </Card>
