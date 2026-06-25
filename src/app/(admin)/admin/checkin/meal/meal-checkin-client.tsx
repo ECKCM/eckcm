@@ -198,6 +198,70 @@ export function MealCheckinClient({ events }: { events: EventOption[] }) {
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
 
+      // ── Disposable meal pass ── a registration-free /m/ QR. Goes to its own
+      // redeem endpoint (not /api/checkin/verify, which is participant-only) and
+      // is rendered into the same ScanResult card shape. No cache preview — the
+      // local cache only knows registered participants.
+      if (parsed.kind === "mealPass") {
+        let mpResult: ScanResult;
+        try {
+          const res = await fetch("/api/mealpass/redeem", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              token: parsed.token,
+              mealDate,
+              mealType: MEAL_KEY_TO_TYPE[mealKey],
+              scanSessionId: scanSession.session.id,
+            }),
+          });
+          const data = await res.json();
+          const mp = data.mealPass as
+            | { payerName: string | null; usesRemaining: number; usesTotal: number }
+            | undefined;
+          const who = mp?.payerName?.trim() || "Meal Pass";
+          if (res.ok && data.status === "checked_in") {
+            mpResult = {
+              status: "checked_in",
+              person: {
+                name: `${who} · ${mp?.usesRemaining ?? 0} of ${mp?.usesTotal ?? 0} left`,
+              },
+              checkinType: "DINING",
+              mealType: MEAL_LABEL[mealKey],
+              mealDate,
+              isSandbox: data.isSandbox,
+              timestamp: new Date(),
+            };
+          } else if (data.status === "used_up") {
+            mpResult = {
+              status: "error",
+              person: { name: who },
+              errorMessage: "Meal pass fully used",
+              timestamp: new Date(),
+            };
+          } else {
+            mpResult = {
+              status: "error",
+              person: mp ? { name: who } : undefined,
+              errorMessage: data.error || "Meal pass not valid",
+              timestamp: new Date(),
+            };
+          }
+        } catch {
+          mpResult = {
+            status: "error",
+            errorMessage: "Network error",
+            timestamp: new Date(),
+            isOffline: true,
+          };
+        }
+        feedback(mpResult.status === "checked_in" ? "success" : "error");
+        setScanResult(mpResult);
+        setProcessing(false);
+        startResumeCountdown();
+        return;
+      }
+
       // Cache-first preview — renders the name & meal category instantly while
       // verify completes. Status stays pending until the server lands.
       const cached = await cache.lookup(parsed);

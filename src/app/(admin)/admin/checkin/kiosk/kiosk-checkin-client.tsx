@@ -55,6 +55,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { KIOSK_VERSION_LABEL } from "@/lib/version";
 import { feedback, primeAudio } from "@/lib/checkin/scanner-feedback";
 import { computeMealCategory } from "@/lib/checkin/meal-category";
 import { parseQRValue, toVerifyBody, type ParsedQR } from "@/lib/checkin/qr-parser";
@@ -225,6 +226,9 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
   const [processing, setProcessing] = useState(false);
   const [display, setDisplay] = useState<DisplayedResult | null>(null);
   const [resumeCountdown, setResumeCountdown] = useState<number | null>(null);
+  // Full-screen "ALREADY USED" red flash for a fully-used meal pass — the
+  // strongest "do not serve" cue. Auto-hides; tap anywhere to dismiss.
+  const [usedUpFlash, setUsedUpFlash] = useState<{ id: number; name: string } | null>(null);
   const lastScannedRef = useRef<string | null>(null);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -453,6 +457,14 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
     []
   );
 
+  // Auto-hide the full-screen "ALREADY USED" flash after a few seconds. Keyed on
+  // the flash object so a re-scan of another used pass re-arms the timer.
+  useEffect(() => {
+    if (!usedUpFlash) return;
+    const t = setTimeout(() => setUsedUpFlash(null), 2600);
+    return () => clearTimeout(t);
+  }, [usedUpFlash]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -677,6 +689,103 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
       setResumeCountdown(null);
+
+      // ── Disposable meal pass ── a registration-free /m/{token} QR (from
+      // /admin/print/qr-cards). Redeems against its own endpoint instead of
+      // /api/checkin/verify (which is participant-only). qr-cards passes are
+      // ACTIVE / COMP, so they serve once with no approval needed.
+      if (parsed.kind === "mealPass") {
+        if (isSimulation) {
+          // Redeeming consumes a real use even from a sandbox session, so meal
+          // passes are never exercised in simulation — use a Live session.
+          setDisplay({
+            ok: false,
+            title: "Live only",
+            detail: "Meal passes can only be scanned in a Live session.",
+          });
+          feedback("warn");
+          startResumeCountdown();
+          return;
+        }
+        setProcessing(true);
+        setDisplay(null);
+        try {
+          const res = await fetch("/api/mealpass/redeem", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              token: parsed.token,
+              mealDate,
+              mealType: MEAL_KEY_TO_TYPE[mealKey],
+              scanSessionId: scanSession.session.id,
+            }),
+          });
+          const data = await res.json();
+          if (scanSeqRef.current !== seq) return;
+          const mp = data.mealPass as
+            | {
+                payerName: string | null;
+                tier: string | null;
+                usesRemaining: number;
+                usesTotal: number;
+              }
+            | undefined;
+          const who = mp?.payerName?.trim() || "Meal Pass";
+          const tier =
+            mp?.tier === "MEAL_YOUTH"
+              ? "youth"
+              : mp?.tier === "MEAL_GENERAL"
+                ? "adult"
+                : null;
+          const remain = mp
+            ? `${mp.usesRemaining} of ${mp.usesTotal} left`
+            : undefined;
+          if (res.ok && data.status === "checked_in") {
+            feedback("success");
+            setDisplay({
+              ok: true,
+              title: "Welcome!",
+              subtitle: who,
+              detail: remain,
+              mealCategory: tier,
+            });
+            // Meal-pass redemptions aren't on the eckcm_checkins realtime feed,
+            // so refresh the authoritative meal count ourselves.
+            fetchStats();
+          } else if (data.status === "used_up") {
+            // Hard stop — fully-used pass. Loudest "Re-entry" buzzer + a
+            // full-screen red flash so a busy meal line can NEVER wave them
+            // through. Red card (no variant → warning tone), not orange.
+            feedback("duplicate");
+            setDisplay({
+              ok: false,
+              title: "Already used",
+              subtitle: who,
+              detail: "Pass fully used — do not serve.",
+            });
+            setUsedUpFlash({ id: Date.now(), name: who });
+          } else {
+            feedback("error");
+            setDisplay({
+              ok: false,
+              title: "Cannot serve",
+              subtitle: mp ? who : undefined,
+              detail: data.error || "Meal pass not valid",
+            });
+          }
+        } catch {
+          if (scanSeqRef.current === seq) {
+            feedback("error");
+            setDisplay({ ok: false, title: "Network error", detail: "Try again" });
+          }
+        } finally {
+          if (scanSeqRef.current === seq) {
+            setProcessing(false);
+            startResumeCountdown();
+          }
+        }
+        return;
+      }
 
       // ── Simulation path ────────────────────────────────────────────────
       // No server round-trip: cache resolves the person, an in-memory Set
@@ -968,6 +1077,7 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
       startResumeCountdown,
       isSimulation,
       allowOutsideWindow,
+      fetchStats,
     ]
   );
 
@@ -1293,6 +1403,13 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
                 <Beaker className="h-3.5 w-3.5" /> Simulation — not recorded
               </Badge>
             )}
+
+            <Badge
+              variant="outline"
+              className="h-8 text-sm tabular-nums font-mono text-muted-foreground"
+            >
+              {KIOSK_VERSION_LABEL}
+            </Badge>
 
             {sessionStartedAt && (
               <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -1757,6 +1874,28 @@ export function KioskCheckinClient({ events }: { events: EventOption[] }) {
             HID scans only land on the foreground tab. Bring this tab back
             to the front to keep scanning.
           </p>
+        </div>
+      )}
+
+      {/* "ALREADY USED" hard stop — full-screen red flash for a fully-used
+          meal pass. Sits above every other overlay so a busy line can never
+          wave the holder through. Auto-hides; tap anywhere to dismiss. */}
+      {usedUpFlash && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          onClick={() => setUsedUpFlash(null)}
+          className="fixed inset-0 z-[120] flex flex-col items-center justify-center bg-red-600/95 text-white select-none cursor-pointer animate-in fade-in zoom-in duration-150"
+        >
+          <AlertOctagon className="h-40 w-40 mb-6 drop-shadow-lg" />
+          <p className="text-6xl font-black tracking-tight">ALREADY USED</p>
+          {usedUpFlash.name && usedUpFlash.name !== "Meal Pass" && (
+            <p className="text-3xl font-bold mt-4">{usedUpFlash.name}</p>
+          )}
+          <p className="text-2xl font-semibold mt-3 opacity-95">
+            Do not serve — pass fully used
+          </p>
+          <p className="text-base opacity-70 mt-8">Tap anywhere to dismiss</p>
         </div>
       )}
 

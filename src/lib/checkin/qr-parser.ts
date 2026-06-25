@@ -1,6 +1,10 @@
 export type ParsedQR =
   | { kind: "participantCode"; participantCode: string }
-  | { kind: "token"; token: string };
+  | { kind: "token"; token: string }
+  // Standalone / disposable meal pass — a registration-free QR (see
+  // eckcm_meal_passes). Encoded as a /m/{token} URL so it never collides with
+  // the participant-code or legacy e-pass schemes below.
+  | { kind: "mealPass"; token: string };
 
 // Participant codes use Crockford-ish base32 (no I/O/0/1) for the 6-char code,
 // followed by an 8-char HMAC signature (hex). The signature regexes accept
@@ -17,6 +21,10 @@ const SIGNED_CODE_RE = new RegExp(`^(${CODE_BODY})\\.(${SIG_BODY})$`);
 const SPLICED_CODE_RE = new RegExp(`^(${CODE_BODY})(${SIG_BODY})$`);
 const PLAIN_CODE_RE = new RegExp(`^${CODE_BODY}$`);
 const EPASS_URL_RE = /\/epass\/(?:[A-Za-z0-9]+_)?([A-Za-z0-9_-]{20,})/;
+// Disposable meal-pass URL: /m/{token}. Tested BEFORE the e-pass URL and the
+// bare legacy-token fallback so a meal-pass token is never misclassified as an
+// e-pass token.
+const MEALPASS_URL_RE = /\/m\/([A-Za-z0-9_-]{20,})/;
 const LEGACY_TOKEN_RE = /^[A-Za-z0-9_-]{20,40}$/;
 
 function signedParticipant(code: string, sig: string): ParsedQR {
@@ -42,7 +50,13 @@ export function parseQRValue(scannedValue: string): ParsedQR | null {
   const cleaned = scannedValue.trim().replace(/\s+/g, "");
   if (!cleaned) return null;
 
-  // URL first — tokens are case-sensitive, so test before any upper-casing.
+  // Disposable meal-pass URL first — /m/{token}. Tokens are case-sensitive, so
+  // test before any upper-casing and before the e-pass URL (whose token shape
+  // overlaps). A meal-pass QR is the only thing carrying a /m/ path.
+  const mealPassMatch = cleaned.match(MEALPASS_URL_RE);
+  if (mealPassMatch) return { kind: "mealPass", token: mealPassMatch[1] };
+
+  // E-Pass URL next — tokens are case-sensitive, so test before any upper-casing.
   const urlMatch = cleaned.match(EPASS_URL_RE);
   if (urlMatch) return { kind: "token", token: urlMatch[1] };
 

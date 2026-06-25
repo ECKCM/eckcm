@@ -64,6 +64,10 @@ const ROUTE_PERMISSIONS: [string, RouteRule][] = [
   // Donations
   ["/admin/donations", "settings.manage"],
 
+  // Meal passes (approve on-site Zelle/Cash/Check requests) — same money-admin
+  // gate as manual payments / donations.
+  ["/admin/meal-passes", "settings.manage"],
+
   // Audit & Users
   ["/admin/audit", "audit.read"],
   ["/admin/users", "user.manage"],

@@ -124,6 +124,60 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true });
     }
 
+    // ── Meal passes (public /mealpay page) ──
+    // Backup path for /api/mealpay/confirm: flip the pass PENDING → ACTIVE and
+    // the linked payment row → SUCCEEDED. Idempotent.
+    if (pi.metadata?.type === "meal_pass" && pi.metadata?.mealPassId) {
+      const mealPassId = pi.metadata.mealPassId;
+      const { data: pass } = await admin
+        .from("eckcm_meal_passes")
+        .select("id, status, custom_payment_id")
+        .eq("id", mealPassId)
+        .single();
+
+      if (!pass) {
+        logger.warn("[stripe/webhook] Meal pass not found", { mealPassId });
+        return NextResponse.json({ received: true });
+      }
+
+      if (pass.status === "ACTIVE" || pass.status === "USED_UP") {
+        logger.info("[stripe/webhook] Meal pass already active, skipping", {
+          mealPassId,
+        });
+        return NextResponse.json({ received: true });
+      }
+
+      if (pass.custom_payment_id) {
+        const { data: payment } = await admin
+          .from("eckcm_custom_payments")
+          .select("metadata")
+          .eq("id", pass.custom_payment_id)
+          .single();
+        await admin
+          .from("eckcm_custom_payments")
+          .update({
+            status: "SUCCEEDED",
+            metadata: {
+              ...((payment?.metadata as Record<string, unknown> | null) ?? {}),
+              stripe_payment_method: pi.payment_method,
+              stripe_charge_id:
+                typeof pi.latest_charge === "string" ? pi.latest_charge : null,
+              confirmed_by: "webhook",
+            },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", pass.custom_payment_id);
+      }
+
+      await admin
+        .from("eckcm_meal_passes")
+        .update({ status: "ACTIVE", updated_at: new Date().toISOString() })
+        .eq("id", mealPassId);
+
+      logger.info("[stripe/webhook] Meal pass activated", { mealPassId, piId: pi.id });
+      return NextResponse.json({ received: true });
+    }
+
     // ── Custom payments (public "pay any amount" page) ──
     if (
       pi.metadata?.type === "custom_payment" &&
@@ -311,6 +365,45 @@ export async function POST(request: Request) {
           },
         })
         .eq("id", donationId);
+
+      return NextResponse.json({ received: true });
+    }
+
+    // ── Meal pass failures ──
+    // Mark the linked payment FAILED; leave the pass PENDING (never servable
+    // until paid). Idempotent.
+    if (pi.metadata?.type === "meal_pass" && pi.metadata?.mealPassId) {
+      const mealPassId = pi.metadata.mealPassId;
+      const failMessage = pi.last_payment_error?.message || "Payment failed";
+
+      const { data: pass } = await admin
+        .from("eckcm_meal_passes")
+        .select("id, status, custom_payment_id")
+        .eq("id", mealPassId)
+        .single();
+
+      logger.warn("[stripe/webhook] Meal pass payment failed", {
+        mealPassId,
+        piId: pi.id,
+        failMessage,
+      });
+
+      // Never downgrade a pass that already went ACTIVE (a stale failed attempt
+      // can arrive after a later success).
+      if (pass && pass.status !== "ACTIVE" && pass.status !== "USED_UP" && pass.custom_payment_id) {
+        await admin
+          .from("eckcm_custom_payments")
+          .update({
+            status: "FAILED",
+            metadata: {
+              stripe_payment_method: pi.payment_method,
+              confirmed_by: "webhook",
+              fail_reason: failMessage,
+            },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", pass.custom_payment_id);
+      }
 
       return NextResponse.json({ received: true });
     }
