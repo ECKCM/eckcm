@@ -89,8 +89,14 @@ export async function POST(req: NextRequest) {
               eckcm_registrations!inner(status, event_id)
             )
           `)
+          // Tolerate DUPLICATE membership rows (recovery / re-add). `.single()`
+          // errors on >1 row → bogus "Invalid participant code"; take the
+          // oldest (original) row, matching the e-pass QR resolver.
           .eq("participant_code", resolvedCode)
-          .single();
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .limit(1)
+          .maybeSingle();
 
         if (memberError || !membership) {
           results.push({

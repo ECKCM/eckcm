@@ -138,8 +138,19 @@ export async function resolveParticipant(
         ),
         eckcm_people!inner(first_name_en, last_name_en, display_name_ko, gender, birth_date)
       `)
+      // participant_code is meant to be unique, but DUPLICATE membership rows
+      // for the same person are a real-world condition (recovery / re-add /
+      // manual ops — see pickBestMembership). `.single()` ERRORS on >1 row,
+      // which surfaced at the meal kiosk — where every attendee is scanned for
+      // each meal — as a bogus "Invalid participant code" for a valid person.
+      // Take the ORIGINAL (oldest) row deterministically so a duplicate can
+      // never reject the scan, mirroring the e-pass QR resolver
+      // (resolveParticipantCode / pickBestMembership).
       .eq("participant_code", resolvedCode)
-      .single();
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
 
     if (error || !membership) {
       return { ok: false, error: { code: "not_found", message: "Invalid participant code" } };
