@@ -205,3 +205,112 @@ export const linkConfirmSchema = z.object({
   token: z.string().min(1).max(256),
   paymentIntentId: z.string().min(1),
 });
+
+// -- Standalone meal passes (public /mealpay + admin bulk print) --
+
+// A buyer purchases N generic meal redemptions. Tier picks the MEAL_* fee
+// category whose amount_cents is the per-meal price (read server-side; the
+// client never sends a price). Quantity is the number of meals.
+const mealTier = z.enum(["MEAL_GENERAL", "MEAL_YOUTH"]);
+
+export const mealpayCreateIntentSchema = z.object({
+  eventId: uuid,
+  tierCode: mealTier,
+  quantity: z.number().int().min(1).max(50),
+  payerName: z.string().max(200).optional(),
+  payerEmail: z.string().email().max(255).optional(),
+  payerPhone: z.string().max(40).optional(),
+  churchName: z.string().max(200).optional(),
+  coversFees: z.boolean().optional(),
+});
+
+export const mealpayConfirmSchema = z.object({
+  mealPassId: uuid,
+  paymentIntentId: z.string().min(1),
+});
+
+// On-site (manual, non-card) meal-pass request: Zelle / Cash / Check. Unlike
+// card (one tier), an on-site request can stack multiple tiers in one go
+// (e.g. General × 5 + Youth × 3). No QR is issued on screen — the desk hands
+// out pre-printed QR cards; this records the aggregate request for the admin to
+// confirm payment and approve. At least one tier must be > 0.
+export const mealpayOnsiteSchema = z
+  .object({
+    eventId: uuid,
+    general: z.number().int().min(0).max(200),
+    youth: z.number().int().min(0).max(200),
+    payerName: z.string().max(200).optional(),
+    payerEmail: z.string().email().max(255).optional(),
+    payerPhone: z.string().max(40).optional(),
+    churchName: z.string().max(200).optional(),
+    method: z.enum(["CARD", "ZELLE", "CASH", "CHECK"]),
+  })
+  .refine((d) => d.general + d.youth >= 1, {
+    message: "At least one pass is required",
+    path: ["general"],
+  });
+
+// Physical meal-pass request paid online by CARD (multi-tier, no on-screen QR).
+// Same aggregate request as the on-site flow — admin hands out pre-printed cards
+// at the desk — but the buyer pays now via Stripe instead of at the desk. Prices
+// are read server-side; the client only sends counts. At least one tier must be
+// > 0.
+export const mealpayOnsiteCardIntentSchema = z
+  .object({
+    eventId: uuid,
+    general: z.number().int().min(0).max(200),
+    youth: z.number().int().min(0).max(200),
+    payerName: z.string().max(200).optional(),
+    payerEmail: z.string().email().max(255).optional(),
+    payerPhone: z.string().max(40).optional(),
+    churchName: z.string().max(200).optional(),
+    coversFees: z.boolean().optional(),
+  })
+  .refine((d) => d.general + d.youth >= 1, {
+    message: "At least one pass is required",
+    path: ["general"],
+  });
+
+// Admin edits an on-site/card meal-pass REQUEST. Buyer contact is always
+// editable; tier counts recompute the amount server-side. For card-paid
+// (Stripe-linked) requests the counts/amount are locked (the card was already
+// charged) — the API rejects count changes on those.
+export const mealPassRequestEditSchema = z
+  .object({
+    payerName: z.string().max(200).optional(),
+    payerEmail: z.string().max(255).optional(),
+    payerPhone: z.string().max(40).optional(),
+    churchName: z.string().max(200).optional(),
+    general: z.number().int().min(0).max(200),
+    youth: z.number().int().min(0).max(200),
+  })
+  .refine((d) => d.general + d.youth >= 1, {
+    message: "At least one pass is required",
+    path: ["general"],
+  });
+
+// Staff scans a disposable meal-pass QR at the food line.
+export const mealPassRedeemSchema = z.object({
+  token: z.string().min(1).max(256),
+  mealDate: dateStr,
+  mealType: z.enum(["BREAKFAST", "LUNCH", "DINNER"]),
+  scanSessionId: uuid.optional(),
+});
+
+// Admin generates a batch of single-use meal passes for printing, split by
+// tier (e.g. General × 5 + Youth × 5). At least one tier must be > 0.
+export const bulkMealPassSchema = z
+  .object({
+    general: z.number().int().min(0).max(500),
+    youth: z.number().int().min(0).max(500),
+    eventId: uuid.optional(),
+    label: z.string().max(200).optional(),
+  })
+  .refine((d) => d.general + d.youth >= 1, {
+    message: "At least one pass is required",
+    path: ["general"],
+  })
+  .refine((d) => d.general + d.youth <= 500, {
+    message: "Up to 500 passes per batch",
+    path: ["general"],
+  });

@@ -77,6 +77,38 @@ describe("parseQRValue — tokens", () => {
   });
 });
 
+describe("parseQRValue — disposable meal passes", () => {
+  // 32-char base64url, the shape generateEPassToken() emits.
+  const token = "AbCdEf0123456789xyzABml9RA5Qz7Kp";
+
+  it("extracts a meal-pass token from a /m/ URL", () => {
+    expect(parseQRValue(`https://eckcm.com/m/${token}`)).toEqual({
+      kind: "mealPass",
+      token,
+    });
+  });
+
+  it("classifies /m/ as a meal pass, never an e-pass token", () => {
+    // The token shape overlaps the e-pass token regex, so the /m/ path MUST be
+    // tested first. Guards against a meal-pass QR being routed to e-pass verify.
+    const parsed = parseQRValue(`https://eckcm.com/m/${token}`);
+    expect(parsed?.kind).toBe("mealPass");
+  });
+
+  it("is whitespace-tolerant for /m/ URLs", () => {
+    expect(parseQRValue(`  https://eckcm.com/m/${token}  `)).toEqual({
+      kind: "mealPass",
+      token,
+    });
+  });
+
+  it("does not treat an /epass/ URL as a meal pass", () => {
+    expect(
+      parseQRValue("https://eckcm.com/epass/AbCdEf0123456789xyzAB")
+    ).toEqual({ kind: "token", token: "AbCdEf0123456789xyzAB" });
+  });
+});
+
 describe("parseQRValue — rejects", () => {
   it("returns null for empty input", () => {
     expect(parseQRValue("")).toBeNull();

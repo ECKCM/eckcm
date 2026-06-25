@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-06-23T12:32:42.075Z",
+  "lastUpdated": "2026-06-25T08:56:15.480Z",
   "activeFeatures": [
     "payment-complete",
     "lodging",
@@ -179,7 +179,17 @@
     "meal-reset",
     "event-reset",
     "checkin-live.ts",
-    "daily-meal-report"
+    "daily-meal-report",
+    "meal-pass.service.ts",
+    "redeem",
+    "bulk-generate",
+    "pricing",
+    "mealpay",
+    "qr-cards",
+    "meal-passes",
+    "approve",
+    "void",
+    "onsite-card-intent"
   ],
   "primaryFeature": "payment-complete",
   "features": {
@@ -334,9 +344,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T20:29:55.102Z",
-        "lastUpdated": "2026-06-21T03:32:40.220Z"
+        "lastUpdated": "2026-06-25T05:30:38.487Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/components/shared/church-combobox.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/shared/contact-fields.tsx"
     },
     "complete-profile": {
       "phase": "do",
@@ -425,9 +435,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T21:01:37.763Z",
-        "lastUpdated": "2026-06-21T01:52:44.678Z"
+        "lastUpdated": "2026-06-25T00:01:59.378Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/registration-combobox.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/components/admin/admin-sidebar.tsx"
     },
     "manual": {
       "phase": "do",
@@ -477,9 +487,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-26T21:02:20.119Z",
-        "lastUpdated": "2026-06-21T18:06:11.072Z"
+        "lastUpdated": "2026-06-24T20:43:50.297Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/custom-payment/confirm/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/mealpay/confirm/route.ts"
     },
     "groups": {
       "phase": "do",
@@ -659,9 +669,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-27T04:04:07.405Z",
-        "lastUpdated": "2026-06-21T18:05:55.385Z"
+        "lastUpdated": "2026-06-25T04:47:43.968Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/custom-payment/create-intent/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/mealpay/create-intent/route.ts"
     },
     "registration": {
       "phase": "do",
@@ -1088,7 +1098,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T19:03:52.956Z",
-        "lastUpdated": "2026-06-21T18:06:28.915Z"
+        "lastUpdated": "2026-06-24T20:46:19.279Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/stripe/webhook/route.ts"
     },
@@ -1244,9 +1254,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T23:03:35.831Z",
-        "lastUpdated": "2026-06-23T06:53:09.290Z"
+        "lastUpdated": "2026-06-25T00:03:03.486Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/live/[token]/live-counts-client.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/m/[token]/meal-pass-viewer.tsx"
     },
     "[id]": {
       "phase": "do",
@@ -1257,9 +1267,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-31T23:03:46.628Z",
-        "lastUpdated": "2026-06-23T05:21:01.207Z"
+        "lastUpdated": "2026-06-25T08:07:31.557Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/scan-sessions/[id]/scan-session-detail-client.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/meal-passes/[id]/route.ts"
     },
     "epass": {
       "phase": "do",
@@ -1387,7 +1397,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-01T02:25:27.097Z",
-        "lastUpdated": "2026-06-21T18:05:34.692Z"
+        "lastUpdated": "2026-06-25T08:06:56.056Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/lib/schemas/api.ts"
     },
@@ -1712,9 +1722,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T17:57:18.985Z",
-        "lastUpdated": "2026-06-23T12:32:42.075Z"
+        "lastUpdated": "2026-06-24T20:40:20.903Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/checkin/scanner-feedback.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/checkin/qr-parser.ts"
     },
     "main": {
       "phase": "do",
@@ -1790,9 +1800,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T19:06:48.105Z",
-        "lastUpdated": "2026-05-28T23:38:41.410Z"
+        "lastUpdated": "2026-06-24T20:51:13.485Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/meal/page.tsx"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/meal/meal-checkin-client.tsx"
     },
     "checkout": {
       "phase": "do",
@@ -1829,7 +1839,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-27T19:11:11.175Z",
-        "lastUpdated": "2026-06-23T11:06:53.607Z"
+        "lastUpdated": "2026-06-25T08:47:42.622Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/checkin/kiosk/kiosk-checkin-client.tsx"
     },
@@ -1881,9 +1891,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-31T10:51:14.805Z",
-        "lastUpdated": "2026-05-31T10:51:14.805Z"
+        "lastUpdated": "2026-06-25T06:01:42.040Z"
       },
-      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/payment/onsite-submit/route.ts"
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/mealpay/onsite-submit/route.ts"
     },
     "stripe-config": {
       "phase": "do",
@@ -2349,7 +2359,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-20T16:58:41.733Z",
-        "lastUpdated": "2026-06-23T06:34:18.501Z"
+        "lastUpdated": "2026-06-25T08:56:15.480Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/checkin/meal-stats/route.ts"
     },
@@ -2362,7 +2372,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-06-20T19:44:25.899Z",
-        "lastUpdated": "2026-06-20T19:44:25.899Z"
+        "lastUpdated": "2026-06-24T20:41:08.017Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/__tests__/unit/services/qr-parser.test.ts"
     },
@@ -2508,6 +2518,136 @@
         "lastUpdated": "2026-06-23T06:43:35.146Z"
       },
       "lastFile": "/Users/rlulu/dev/eckcm/src/app/upj-staff/daily-meal-report/daily-meal-report-client.tsx"
+    },
+    "meal-pass.service.ts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-24T20:42:31.976Z",
+        "lastUpdated": "2026-06-24T20:42:31.976Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/lib/services/meal-pass.service.ts"
+    },
+    "redeem": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-24T20:44:52.681Z",
+        "lastUpdated": "2026-06-25T08:48:43.819Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/mealpass/redeem/route.ts"
+    },
+    "bulk-generate": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-24T20:45:24.405Z",
+        "lastUpdated": "2026-06-24T21:53:03.241Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/meal-passes/bulk-generate/route.ts"
+    },
+    "pricing": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-24T20:46:45.113Z",
+        "lastUpdated": "2026-06-24T20:46:45.113Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/mealpay/pricing/route.ts"
+    },
+    "mealpay": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-24T20:47:35.284Z",
+        "lastUpdated": "2026-06-25T08:03:21.160Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(public)/mealpay/mealpay-client.tsx"
+    },
+    "qr-cards": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-24T20:50:04.258Z",
+        "lastUpdated": "2026-06-25T08:21:49.362Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/print/qr-cards/page.tsx"
+    },
+    "meal-passes": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-24T21:16:52.144Z",
+        "lastUpdated": "2026-06-25T08:09:57.666Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/(admin)/admin/meal-passes/page.tsx"
+    },
+    "approve": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-24T21:17:11.221Z",
+        "lastUpdated": "2026-06-25T00:18:53.116Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/meal-passes/[id]/approve/route.ts"
+    },
+    "void": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-24T21:17:30.937Z",
+        "lastUpdated": "2026-06-25T00:19:05.147Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/admin/meal-passes/[id]/void/route.ts"
+    },
+    "onsite-card-intent": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-06-25T07:46:48.128Z",
+        "lastUpdated": "2026-06-25T07:46:48.128Z"
+      },
+      "lastFile": "/Users/rlulu/dev/eckcm/src/app/api/mealpay/onsite-card-intent/route.ts"
     }
   },
   "pipeline": {
@@ -2518,7 +2658,7 @@
   "session": {
     "startedAt": "2026-03-26T19:43:25.388Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-06-23T12:32:42.075Z"
+    "lastActivity": "2026-06-25T08:56:15.480Z"
   },
   "history": [
     {
@@ -19798,6 +19938,1332 @@
     {
       "timestamp": "2026-06-23T12:32:42.075Z",
       "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T15:01:40.970Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T15:01:47.442Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T15:01:55.595Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T15:02:11.473Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T15:02:23.606Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T15:26:04.082Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T15:26:09.646Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T15:26:18.034Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:40:02.679Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:40:11.259Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:40:20.903Z",
+      "feature": "checkin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:40:59.388Z",
+      "feature": "qr-parser.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:41:08.017Z",
+      "feature": "qr-parser.test.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:42:15.492Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:42:31.976Z",
+      "feature": "meal-pass.service.ts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:43:27.372Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:43:50.297Z",
+      "feature": "confirm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:44:09.687Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:44:52.681Z",
+      "feature": "redeem",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:45:24.405Z",
+      "feature": "bulk-generate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:46:07.006Z",
+      "feature": "webhook",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:46:19.279Z",
+      "feature": "webhook",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:46:45.113Z",
+      "feature": "pricing",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:47:35.284Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:48:43.649Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:50:04.258Z",
+      "feature": "qr-cards",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:51:13.485Z",
+      "feature": "meal",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:51:58.938Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T20:52:15.221Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:05:42.596Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:06:14.648Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:12:21.104Z",
+      "feature": "redeem",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:12:34.007Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:12:49.370Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:12:56.026Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:13:39.517Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:13:49.678Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:13:57.539Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:14:12.569Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:14:19.507Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:14:47.335Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:14:55.521Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:15:06.070Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:15:18.147Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:15:35.759Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:15:42.319Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:15:49.275Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:16:36.887Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:16:52.144Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:17:11.221Z",
+      "feature": "approve",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:17:30.937Z",
+      "feature": "void",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:18:24.639Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:19:03.522Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:22:26.978Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:22:34.424Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:31:23.484Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:31:30.889Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:31:49.189Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:40:54.985Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:41:06.132Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:41:18.126Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:41:32.660Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:41:53.859Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:42:14.959Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:42:32.057Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:42:49.480Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:42:56.017Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:43:32.164Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:43:39.385Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:43:45.271Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:44:24.199Z",
+      "feature": "redeem",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:44:35.854Z",
+      "feature": "redeem",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:44:44.051Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:44:52.027Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:44:58.364Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:45:03.501Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:52:40.928Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:53:03.241Z",
+      "feature": "bulk-generate",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:53:30.903Z",
+      "feature": "qr-cards",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:53:51.975Z",
+      "feature": "qr-cards",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:54:09.840Z",
+      "feature": "qr-cards",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:54:27.539Z",
+      "feature": "qr-cards",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T21:54:35.195Z",
+      "feature": "qr-cards",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T23:57:09.452Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T23:57:48.008Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T23:58:11.580Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T23:58:31.748Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T23:58:47.187Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T23:59:10.065Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T23:59:26.363Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-24T23:59:45.462Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:00:09.301Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:00:39.211Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:00:54.597Z",
+      "feature": "approve",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:01:07.268Z",
+      "feature": "void",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:01:49.925Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:01:59.378Z",
+      "feature": "admin",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:02:05.654Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:02:23.396Z",
+      "feature": "redeem",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:02:36.582Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:02:44.115Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:02:51.260Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:03:03.486Z",
+      "feature": "[token]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:14:34.118Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:15:11.163Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:15:19.150Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:15:25.217Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:15:32.290Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:15:48.719Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:16:03.913Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:16:16.392Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:16:40.157Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:17:05.864Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:17:26.215Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:17:44.671Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:17:56.072Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:18:04.423Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:18:37.803Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:18:53.116Z",
+      "feature": "approve",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:19:05.147Z",
+      "feature": "void",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T00:19:46.827Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:46:56.975Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:47:04.844Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:47:18.567Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:47:31.368Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:47:37.101Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:47:43.968Z",
+      "feature": "create-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:48:10.989Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:48:22.263Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:48:45.236Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:48:53.182Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:49:05.587Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:49:13.875Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:49:20.941Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:49:31.282Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:49:40.336Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T04:49:48.376Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T05:30:38.487Z",
+      "feature": "eckcm",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T05:31:06.072Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T05:31:20.624Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T05:49:26.204Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:01:29.495Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:01:42.040Z",
+      "feature": "onsite-submit",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:01:52.244Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:02:18.137Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:02:37.289Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:02:52.249Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:03:42.101Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:03:55.523Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:04:30.142Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:04:59.108Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:09:15.271Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:09:39.085Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:09:46.400Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:09:55.965Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:35:35.262Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:36:17.704Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:36:27.071Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:37:19.298Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:37:57.491Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:38:07.217Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:38:16.349Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:38:53.104Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:39:03.743Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:39:13.368Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:54:44.645Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T06:54:48.830Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:19:49.391Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:19:58.605Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:22:11.196Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:22:56.563Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:23:09.879Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:39:37.349Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:39:51.141Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:46:18.763Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:46:48.128Z",
+      "feature": "onsite-card-intent",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:47:00.453Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:47:06.271Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:47:22.583Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:47:46.280Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:47:56.337Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:48:15.549Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:48:26.906Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:48:49.289Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:49:52.438Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:50:00.969Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:51:15.388Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:51:22.673Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:51:34.561Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:56:18.076Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:56:23.920Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:56:31.895Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:56:40.744Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:59:22.323Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T07:59:48.606Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:01:23.357Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:01:32.257Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:03:21.160Z",
+      "feature": "mealpay",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:06:56.056Z",
+      "feature": "schemas",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:07:31.557Z",
+      "feature": "[id]",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:07:40.075Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:07:56.828Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:08:03.260Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:08:24.196Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:08:34.668Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:09:18.698Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:09:57.666Z",
+      "feature": "meal-passes",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:21:49.362Z",
+      "feature": "qr-cards",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:36:54.445Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:43:29.417Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:44:29.152Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:44:54.520Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:45:17.460Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:46:50.184Z",
+      "feature": "meal-stats",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:47:07.033Z",
+      "feature": "meal-stats",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:47:35.534Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:47:42.622Z",
+      "feature": "kiosk",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:48:33.770Z",
+      "feature": "redeem",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:48:43.819Z",
+      "feature": "redeem",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:56:05.442Z",
+      "feature": "meal-stats",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-06-25T08:56:15.480Z",
+      "feature": "meal-stats",
       "phase": "do",
       "action": "updated"
     }

@@ -29,6 +29,14 @@ interface CheckinPersonRow {
   eckcm_people: { birth_date: string | null };
 }
 
+// Disposable meal-pass redemption joined to its pass tier. Counted into the
+// same meal tally as participant check-ins so the headcount reflects everyone
+// served — registered attendees AND standalone meal-pass holders.
+interface RedemptionRow {
+  meal_pass_id: string;
+  eckcm_meal_passes: { tier_code: string | null };
+}
+
 interface Tally {
   total: number;
   general: number;
@@ -52,6 +60,17 @@ function tally(rows: CheckinPersonRow[], eventStartDate: string | null): Tally {
     else t.unknown += 1;
   }
   return t;
+}
+
+/** Fold meal-pass redemptions into an existing tally, tiered by the pass code. */
+function addRedemptions(t: Tally, rows: RedemptionRow[]): void {
+  for (const r of rows) {
+    t.total += 1;
+    const tier = r.eckcm_meal_passes?.tier_code ?? null;
+    if (tier === "MEAL_GENERAL") t.general += 1;
+    else if (tier === "MEAL_YOUTH") t.youth += 1;
+    else t.unknown += 1;
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -122,6 +141,37 @@ export async function GET(req: NextRequest) {
 
   const meal = tally(mealRows, eventStartDate);
 
+  // Fold in disposable meal-pass redemptions for this exact meal slot (live
+  // only) so a standalone pass counts toward the headcount just like a
+  // registered attendee's check-in. Paged the same way to dodge the 1000 cap.
+  //
+  // NON-FATAL: the meal-pass tables are a newer feature, so a missing table /
+  // unapplied migration (common on a local DB) must NOT take down the whole
+  // count — without this guard the participant headcount silently stops
+  // updating ("기록이 안 됨"). On error we log and return the check-in count.
+  try {
+    for (let offset = 0; ; offset += PAGE) {
+      const { data, error: redError } = await admin
+        .from("eckcm_meal_pass_redemptions")
+        .select("meal_pass_id, eckcm_meal_passes!inner(tier_code)")
+        .eq("event_id", eventId)
+        .eq("meal_date", mealDate)
+        .eq("meal_type", mealType)
+        .eq("is_sandbox", false)
+        .order("id", { ascending: true })
+        .range(offset, offset + PAGE - 1);
+      if (redError) throw new Error(redError.message);
+      const batch = (data as unknown as RedemptionRow[]) ?? [];
+      addRedemptions(meal, batch);
+      if (batch.length < PAGE) break;
+    }
+  } catch (e) {
+    console.error(
+      "[meal-stats] meal-pass redemption fold skipped:",
+      e instanceof Error ? e.message : e
+    );
+  }
+
   let session: Tally | null = null;
   if (scanSessionId) {
     const { data: sessionData, error: sessionError } = await admin
@@ -135,6 +185,21 @@ export async function GET(req: NextRequest) {
       (sessionData as unknown as CheckinPersonRow[]) ?? [],
       eventStartDate
     );
+    // This scanner's own meal-pass redemptions count toward its session tally
+    // too. Non-fatal for the same reason as the meal-wide fold above.
+    try {
+      const { data: sessRed, error: sessRedError } = await admin
+        .from("eckcm_meal_pass_redemptions")
+        .select("meal_pass_id, eckcm_meal_passes!inner(tier_code)")
+        .eq("scan_session_id", scanSessionId);
+      if (sessRedError) throw new Error(sessRedError.message);
+      addRedemptions(session, (sessRed as unknown as RedemptionRow[]) ?? []);
+    } catch (e) {
+      console.error(
+        "[meal-stats] session meal-pass redemption fold skipped:",
+        e instanceof Error ? e.message : e
+      );
+    }
   }
 
   return NextResponse.json({ meal, session });

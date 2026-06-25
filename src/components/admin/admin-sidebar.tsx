@@ -100,6 +100,7 @@ const navLinks: NavLinkDef[] = [
   { href: "/admin/guardian-consents", label: "Guardian Consents", icon: ShieldCheck, exact: false, permission: "participant.read" },
   { href: "/admin/funding", label: "Funding Tracker", icon: HandCoins, exact: false, permission: "settings.manage" },
   { href: "/admin/donations", label: "Donations", icon: Heart, exact: false, permission: "settings.manage" },
+  { href: "/admin/meal-passes", label: "Meal Passes", icon: UtensilsCrossed, exact: false, permission: "settings.manage" },
   { href: "/admin/audit", label: "Audit Logs", icon: ScrollText, exact: false, permission: "audit.read" },
   { href: "/admin/users", label: "Users", icon: Users, exact: false, permission: "user.manage" },
 ];
