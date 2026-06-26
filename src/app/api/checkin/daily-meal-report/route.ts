@@ -201,6 +201,30 @@ export async function GET(req: NextRequest) {
     if (key) manual[key] = m.count;
   }
 
+  // Admin scan-count adjustments (signed deltas). Absent = 0. Folded into each
+  // meal's total here so every consumer (cards, table, CSV, grand total) sees a
+  // single corrected scanned figure; the raw system count isn't separately
+  // exposed on this report. Adjusted total is clamped to >= 0.
+  const { data: adjRows } = await admin
+    .from("eckcm_meal_scan_adjustments")
+    .select("meal_type, adjustment")
+    .eq("event_id", eventId)
+    .eq("meal_date", date);
+  for (const a of (adjRows ?? []) as { meal_type: string; adjustment: number }[]) {
+    const key = MEAL_TYPE_TO_KEY[a.meal_type];
+    if (!key || !a.adjustment) continue;
+    const t = meals[key];
+    const before = t.total;
+    const after = Math.max(0, before + a.adjustment);
+    const delta = after - before;
+    t.total = after;
+    // Attribute the delta to "general" (the dominant, billable tier) so the
+    // tier columns still sum to the total. Clamp the bucket at 0.
+    t.general = Math.max(0, t.general + delta);
+    totals.total = Math.max(0, totals.total + delta);
+    totals.general = Math.max(0, totals.general + delta);
+  }
+
   return NextResponse.json(
     { date, meals, totals, sessions: sessionsByMeal, manual },
     { headers: { "Cache-Control": "no-store" } }
