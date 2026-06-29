@@ -29,6 +29,7 @@ import {
   Scale,
   HandCoins,
   Heart,
+  Ticket,
   Sigma,
 } from "lucide-react";
 import { MoneyValue } from "@/contexts/money-visibility-context";
@@ -77,11 +78,25 @@ interface MoneyStats {
     receivedCount: number;
     pendingCount: number;
   };
+  customPayments: {
+    grossCents: number;
+    netCents: number;
+    pendingCents: number;
+    receivedCount: number;
+    pendingCount: number;
+  };
 }
 
 const EMPTY_MONEY: MoneyStats = {
   funding: { allocatedCents: 0, manualCents: 0, totalCents: 0 },
   donations: {
+    grossCents: 0,
+    netCents: 0,
+    pendingCents: 0,
+    receivedCount: 0,
+    pendingCount: 0,
+  },
+  customPayments: {
     grossCents: 0,
     netCents: 0,
     pendingCents: 0,
@@ -127,8 +142,12 @@ export function DashboardView({ events }: { events: EventOption[] }) {
     }
     if (moneyRes && moneyRes.ok) {
       try {
-        const data = (await moneyRes.json()) as MoneyStats;
-        setMoneyStats(data);
+        const data = (await moneyRes.json()) as Partial<MoneyStats>;
+        setMoneyStats({
+          funding: data.funding ?? EMPTY_MONEY.funding,
+          donations: data.donations ?? EMPTY_MONEY.donations,
+          customPayments: data.customPayments ?? EMPTY_MONEY.customPayments,
+        });
       } catch {
         // leave previous value
       }
@@ -188,7 +207,8 @@ export function DashboardView({ events }: { events: EventOption[] }) {
     stats.net +
     stats.amountDue +
     moneyStats.donations.netCents +
-    moneyStats.funding.totalCents;
+    moneyStats.funding.totalCents +
+    moneyStats.customPayments.netCents;
 
   const collections = useMemo(() => collectionsByMethod(rows), [rows]);
 
@@ -391,6 +411,38 @@ export function DashboardView({ events }: { events: EventOption[] }) {
         />
       </div>
 
+      {/* Meal passes & custom payments */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <StatTile
+          icon={<Ticket className="size-4 text-violet-600" />}
+          label="Meal Passes & Custom"
+          value={
+            <MoneyValue>
+              {formatMoney(moneyStats.customPayments.grossCents)}
+            </MoneyValue>
+          }
+          hint={
+            <MoneyValue>
+              {`Net ${formatMoney(moneyStats.customPayments.netCents)} · ${
+                moneyStats.customPayments.receivedCount
+              } payment${
+                moneyStats.customPayments.receivedCount === 1 ? "" : "s"
+              }`}
+            </MoneyValue>
+          }
+        />
+        <StatTile
+          icon={<Clock className="size-4 text-amber-600" />}
+          label="Custom Pending"
+          value={
+            <MoneyValue>
+              {formatMoney(moneyStats.customPayments.pendingCents)}
+            </MoneyValue>
+          }
+          hint={`${moneyStats.customPayments.pendingCount} awaiting receipt`}
+        />
+      </div>
+
       {/* Grand Total — every money stream summed */}
       <GrandTotalCard
         totalCents={grandTotalCents}
@@ -398,6 +450,7 @@ export function DashboardView({ events }: { events: EventOption[] }) {
         amountDueCents={stats.amountDue}
         donationNetCents={moneyStats.donations.netCents}
         fundingCents={moneyStats.funding.totalCents}
+        customNetCents={moneyStats.customPayments.netCents}
       />
 
       {/* Trend chart */}
@@ -603,12 +656,14 @@ function GrandTotalCard({
   amountDueCents,
   donationNetCents,
   fundingCents,
+  customNetCents,
 }: {
   totalCents: number;
   regNetCents: number;
   amountDueCents: number;
   donationNetCents: number;
   fundingCents: number;
+  customNetCents: number;
 }) {
   return (
     <div className="rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-emerald-100/40 p-5 dark:border-emerald-900 dark:from-emerald-950/40 dark:to-emerald-950/10">
@@ -622,14 +677,16 @@ function GrandTotalCard({
             <MoneyValue>{formatCurrency(totalCents, { decimals: 0 })}</MoneyValue>
           </p>
           <p className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-300/80">
-            Registration net + Amount due + Donation net + Funding total
+            Registration net + Amount due + Donation net + Funding total + Meal
+            passes &amp; custom net
           </p>
         </div>
-        <div className="grid shrink-0 grid-cols-4 gap-x-4 gap-y-1 text-right text-xs sm:text-sm">
+        <div className="grid shrink-0 grid-cols-5 gap-x-4 gap-y-1 text-right text-xs sm:text-sm">
           <span className="text-muted-foreground">Reg. Net</span>
           <span className="text-muted-foreground">Amount Due</span>
           <span className="text-muted-foreground">Donations Net</span>
           <span className="text-muted-foreground">Funding</span>
+          <span className="text-muted-foreground">Meal/Custom</span>
           <span className="font-semibold tabular-nums">
             <MoneyValue>{formatCurrency(regNetCents, { decimals: 0 })}</MoneyValue>
           </span>
@@ -643,6 +700,11 @@ function GrandTotalCard({
           </span>
           <span className="font-semibold tabular-nums">
             <MoneyValue>{formatCurrency(fundingCents, { decimals: 0 })}</MoneyValue>
+          </span>
+          <span className="font-semibold tabular-nums">
+            <MoneyValue>
+              {formatCurrency(customNetCents, { decimals: 0 })}
+            </MoneyValue>
           </span>
         </div>
       </div>

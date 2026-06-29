@@ -102,6 +102,12 @@ export default async function UpjStaffDashboardPage() {
           title="Daily Meal Report"
           description="Served meals by age tier for any day. Export CSV or print."
         />
+        <DashboardCard
+          href="/upj-staff/full-meal-report"
+          icon={ClipboardList}
+          title="Full Meal Report"
+          description="Every day of the event by meal and age tier, with totals."
+        />
         {liveCountsHref && (
           <DashboardCard
             href={liveCountsHref}

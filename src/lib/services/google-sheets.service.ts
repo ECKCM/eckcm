@@ -32,6 +32,7 @@ export const REGISTRATION_HEADERS = [
   "End Date",
   "Nights",
   "Total Amount ($)",
+  "Total Adjusted ($)",
   "Payment Status",
   "Payment Method",
   "Group Count",
@@ -187,6 +188,7 @@ interface RegistrationRow {
   end_date: string;
   nights_count: number;
   total_amount_cents: number;
+  total_adjusted_cents: number;
   additional_requests: string | null;
   notes: string | null;
   created_at: string;
@@ -239,8 +241,8 @@ async function fetchRegistrations(eventId: string): Promise<RegistrationRow[]> {
 
   const regIds = registrations.map((r: any) => r.id);
 
-  // Fetch groups, memberships, people, payments in parallel
-  const [groupsRes, invoicesRes] = await Promise.all([
+  // Fetch groups, memberships, people, payments, adjustments in parallel
+  const [groupsRes, invoicesRes, adjustmentsRes] = await Promise.all([
     admin
       .from("eckcm_groups")
       .select(`
@@ -258,6 +260,17 @@ async function fetchRegistrations(eventId: string): Promise<RegistrationRow[]> {
         eckcm_payments(status, payment_method)
       `)
       .in("registration_id", regIds),
+    // Post-registration adjustments per registration. The ledger also holds the
+    // `initial_payment` charge (the original registration fee) — that is NOT an
+    // adjustment, so it's excluded; otherwise the signed sum just re-derives the
+    // final total. The remaining rows (discount/refund/charge/date_change/etc.)
+    // are the real changes, summed signed (negative = discount/refund, positive
+    // = extra charge).
+    admin
+      .from("eckcm_registration_adjustments")
+      .select("registration_id, difference, adjustment_type")
+      .neq("adjustment_type", "initial_payment")
+      .in("registration_id", regIds),
   ]);
 
   if (groupsRes.error) {
@@ -270,9 +283,27 @@ async function fetchRegistrations(eventId: string): Promise<RegistrationRow[]> {
       error: invoicesRes.error.message,
     });
   }
+  if (adjustmentsRes.error) {
+    logger.error("[google-sheets] fetchRegistrations adjustments query failed", {
+      error: adjustmentsRes.error.message,
+    });
+  }
 
   const groups = groupsRes.data ?? [];
   const invoices = invoicesRes.data ?? [];
+
+  // Sum signed adjustment differences per registration (initial_payment already
+  // filtered out by the query above).
+  const adjustedByReg = new Map<string, number>();
+  for (const a of (adjustmentsRes.data ?? []) as {
+    registration_id: string;
+    difference: number | null;
+  }[]) {
+    adjustedByReg.set(
+      a.registration_id,
+      (adjustedByReg.get(a.registration_id) ?? 0) + (a.difference ?? 0)
+    );
+  }
 
   // Build lookup maps
   const groupsByReg = new Map<string, any[]>();
@@ -330,6 +361,7 @@ async function fetchRegistrations(eventId: string): Promise<RegistrationRow[]> {
       end_date: reg.end_date,
       nights_count: reg.nights_count,
       total_amount_cents: reg.total_amount_cents,
+      total_adjusted_cents: adjustedByReg.get(reg.id) ?? 0,
       additional_requests: reg.additional_requests,
       notes: reg.notes,
       created_at: reg.created_at,
@@ -363,6 +395,7 @@ function registrationToRow(r: RegistrationRow): (string | number)[] {
     r.end_date,
     r.nights_count,
     (r.total_amount_cents / 100).toFixed(2),
+    (r.total_adjusted_cents / 100).toFixed(2),
     r.payment_status,
     r.payment_method,
     r.group_count,
