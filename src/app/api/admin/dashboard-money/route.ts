@@ -89,6 +89,46 @@ export async function GET(request: Request) {
     }
   }
 
+  // ─── Custom payments (meal passes + generic custom payments) ─────
+  // eckcm_custom_payments holds three income streams that the Grand Total
+  // otherwise misses entirely: online card meal passes (kind=meal_pass),
+  // on-site meal-pass requests (kind=meal_pass_onsite_request, paid via
+  // Zelle/Cash/Check/Card) and generic /custom-payment rows (no kind).
+  // Mirrors the donations rule: SUCCEEDED counts as received (NET after the
+  // Stripe estimate for card), on-site PENDING (non-card) counts as awaiting
+  // receipt, and abandoned CARD PENDING/FAILED attempts are dropped as noise.
+  // The table has no event_id, so — like donations — it is kept all-time and
+  // attributed to the active season.
+  const { data: customPayments } = await admin
+    .from("eckcm_custom_payments")
+    .select("amount_cents, fee_cents, payment_method, status");
+
+  let customGross = 0;
+  let customNet = 0;
+  let customPending = 0;
+  let customReceivedCount = 0;
+  let customPendingCount = 0;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const c of (customPayments ?? []) as any[]) {
+    const isCard = c.payment_method === "CARD";
+    if (isCard && (c.status === "PENDING" || c.status === "FAILED")) {
+      continue;
+    }
+    const total = c.amount_cents ?? 0;
+    // Stripe 2.9% + 30¢ estimate — fee_cents is unreliable on these rows, so
+    // we estimate the same way the Donations tile does.
+    const fee = isCard ? Math.round(total * 0.029) + 30 : 0;
+    if (c.status === "SUCCEEDED") {
+      customGross += total;
+      customNet += total - fee;
+      customReceivedCount += 1;
+    } else if (c.status === "PENDING") {
+      customPending += total;
+      customPendingCount += 1;
+    }
+  }
+
   return NextResponse.json({
     funding: {
       allocatedCents: fundingAllocated,
@@ -101,6 +141,13 @@ export async function GET(request: Request) {
       pendingCents: donationsPending,
       receivedCount: donationsReceivedCount,
       pendingCount: donationsPendingCount,
+    },
+    customPayments: {
+      grossCents: customGross,
+      netCents: customNet,
+      pendingCents: customPending,
+      receivedCount: customReceivedCount,
+      pendingCount: customPendingCount,
     },
   });
 }
