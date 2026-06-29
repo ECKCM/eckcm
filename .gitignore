@@ -66,3 +66,6 @@ node_modules/
 
 # Booklet conversion output (large; uploaded to storage, not committed)
 /booklet-out/
+
+# Pre-downgrade data backups (PII / money — never commit)
+backups/

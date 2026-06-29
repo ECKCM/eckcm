@@ -1,0 +1,29 @@
+name: Supabase keep-alive
+
+# Keep the Supabase Free-tier project from auto-pausing (pauses after 7 days
+# with no DB activity). We ping every 3 days — comfortably under the 7-day
+# limit, so a single skipped run still leaves margin.
+#
+# Requires two repo secrets (Settings → Secrets and variables → Actions):
+#   KEEP_ALIVE_URL  — https://<your-domain>/api/cron/keep-alive
+#   CRON_SECRET     — same value as the Vercel CRON_SECRET env var
+#
+# Note: GitHub disables scheduled workflows after 60 days of repo inactivity;
+# a commit (or a manual run via "Run workflow") re-arms it.
+
+on:
+  schedule:
+    - cron: "17 8 */3 * *" # every 3 days at 08:17 UTC (off-peak minute)
+  workflow_dispatch: {} # allow manual trigger from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping keep-alive endpoint
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.KEEP_ALIVE_URL }}")
+          echo "HTTP $code"
+          test "$code" = "200"
